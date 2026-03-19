@@ -21,7 +21,7 @@ Internal variable naming is guidance, not a merge gate.
 | Prefix | Use | Notes |
 | --- | --- | --- |
 | `calculate_` | deterministic numeric calculation | numeric result |
-| `derive_` | derive structure, fields, or non-scalar artifacts | structural result |
+| `derive_` | derive a non-scalar artifact when no more precise prefix fits | structural fallback only; not for in-place assignment, classification, formatting, filtering, selection, or plain aggregation |
 | `estimate_` | approximate numeric value | approximation allowed |
 | `infer_` | infer latent property, classification, schema guess, or structured interpretation from incomplete evidence | not for plain boolean checks or direct numeric computation |
 
@@ -53,6 +53,8 @@ Internal variable naming is guidance, not a merge gate.
 
 | Prefix | Use | Notes |
 | --- | --- | --- |
+| `classify_` | assign a category, state, bucket, or label by rule | use for rule-based classification, not aggregation or free-form formatting |
+| `format_` | produce a human-facing display string or label | presentation text only; not structural reshaping or parsing |
 | `convert_` | equivalent type or format conversion | prefer reversibility |
 | `sanitize_` | repair invalid text, field names, or unsupported characters | not business filtering |
 | `center_` | location shift only | additive shift only |
@@ -103,7 +105,8 @@ Internal variable naming is guidance, not a merge gate.
 | --- | --- | --- |
 | `infer_` | evidence-based interpretation, classification, schema guess, or structured inference result | plain boolean predicates, direct numeric computation, or pure reshaping without uncertainty |
 | `is_` / `should_` | `is_` for factual `bool`; `should_` for policy | using `infer_` for boolean checks |
-| `calculate_` / `derive_` | `calculate_` for numeric values; `derive_` for structure | mixing numeric outputs into `derive_` without structural intent |
+| `calculate_` / `derive_` | `calculate_` for numeric values; `derive_` only for non-scalar artifacts when no more precise prefix fits | mixing numeric outputs into `derive_`, or using `derive_` for in-place assignment, classification, formatting, filtering, selection, or plain aggregation |
+| `classify_` / `format_` | `classify_` assigns rule-based categories; `format_` produces human-facing text | using `format_` for structural reshaping or `classify_` for aggregation |
 | `create_` / `generate_` | `create_` for one object; `generate_` for batch or sequence output | using `generate_` for one-off construction |
 | `read_` / `scan_` | `read_` for materialized parsing; `scan_` for lazy or metadata-first access | materializing the primary payload by default in `scan_` |
 | `write_` / `sink_` | `write_` for ordinary persistence; `sink_` for true streaming | using `sink_` for non-streaming writes |
@@ -166,7 +169,11 @@ Prefer module-level functions over vague public methods such as:
 - Avoid `obj`, `tmp`, `x`, or `value` when a concrete role name exists.
 - In Python and Rust loop binders, use an underscore-prefixed binder such as
   `_sheet` or `_name`.
+- In Python `lambda` parameters and Rust closure parameters, use the same
+  underscore-prefixed binder style as loops, such as `_sheet` or `_name`.
 - In R loop binders, use a dot-prefixed binder such as `.sheet` or `.name`.
+- In R anonymous function parameters, including `\(.x)` style binders, use the
+  same dot-prefixed binder style as loops, such as `.sheet` or `.name`.
 
 ## Public-facing Schema and Header Naming
 
