@@ -49,6 +49,7 @@ Internal variable naming is guidance, not a merge gate.
 | `has_` | factual presence, containment, possession, or attached-resource existence predicate | returns `bool`; not for general state adjectives such as available, ready, or valid |
 | `should_` | policy predicate | returns `bool` |
 | `validate_` | strong validation | invalid input raises |
+| `ensure_` | ensure a required object, node, property, or state exists and return it if useful | may create or repair before returning |
 
 ### Transform
 
@@ -78,6 +79,14 @@ Internal variable naming is guidance, not a merge gate.
 | `plan_` | produce a plan or specification | planning step |
 | `apply_` | apply a plan to a target | application step |
 
+### Editing and Mutation
+
+| Prefix | Use | Notes |
+| --- | --- | --- |
+| `clear_` | clear the contents or state of an existing object while retaining the object itself | whole-content clearing, not targeted removal |
+| `remove_` | remove a member, entry, field, node, or child object from an existing parent or container | targeted removal, not whole-content clearing |
+| `insert_` | insert content, nodes, or elements into an existing ordered or anchored target at a defined position | structural insertion only; use when insertion position is essential |
+
 ### I/O
 
 | Prefix | Use | Notes |
@@ -106,12 +115,15 @@ Internal variable naming is guidance, not a merge gate.
 | --- | --- | --- |
 | `infer_` | evidence-based interpretation, classification, schema guess, or structured inference result | plain boolean predicates, direct numeric computation, or pure reshaping without uncertainty |
 | `has_` / `is_` / `should_` | `has_` for presence, containment, possession, or attached-resource existence; `is_` for factual state or property; `should_` for policy | using `has_` for adjective-like states such as available, ready, or valid; using `infer_` for boolean checks; using `should_` for factual state |
+| `ensure_` / `validate_` | `ensure_` may create, repair, or initialize so a required state or object exists; `validate_` only checks and raises on invalid input | using `validate_` for repair or `ensure_` as a pure validation gate |
 | `calculate_` / `derive_` | `calculate_` for numeric values; `derive_` only for non-scalar artifacts when no more precise prefix fits | mixing numeric outputs into `derive_`, or using `derive_` for in-place assignment, classification, formatting, filtering, selection, or plain aggregation |
 | `classify_` / `format_` | `classify_` assigns rule-based categories; `format_` produces human-facing text | using `format_` for structural reshaping or `classify_` for aggregation |
 | `create_` / `generate_` | `create_` for one object; `generate_` for batch or sequence output | using `generate_` for one-off construction |
 | `read_` / `scan_` | `read_` for materialized parsing; `scan_` for lazy or metadata-first access | materializing the primary payload by default in `scan_` |
 | `write_` / `sink_` | `write_` for ordinary persistence; `sink_` for true streaming | using `sink_` for non-streaming writes |
 | `select_` / `filter_` | `select_` for projection; `filter_` for predicates | mixing projection into `filter_` or predicates into `select_` |
+| `clear_` / `remove_` | `clear_` empties retained object contents or state; `remove_` deletes specific members, entries, fields, or nodes | using `clear_` for targeted deletion or `remove_` for whole-object clearing |
+| `insert_` / `apply_` | `insert_` for position-aware structural insertion into an existing target; `apply_` for applying a plan, rule, or spec to a target | using `apply_` when insertion position is the essential behavior, or `insert_` for generic rule application |
 | `sanitize_` | minimally repair invalid input while preserving semantics where possible | business filtering, row dropping, or destructive rewriting hidden behind `sanitize_` |
 | `validate_` | strong validation | full payload parsing that belongs in `read_` or `scan_` |
 | `summarize_` / `report_` | `summarize_` reduces source data; `report_` assembles a human-facing artifact | using `report_` as a catch-all for low-level serialization |
