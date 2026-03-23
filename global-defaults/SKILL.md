@@ -37,6 +37,15 @@ Read only what is needed, in this order:
 - If repository-local instructions are more specific, follow the repository-local instructions for that repository.
 - If the user explicitly requests a different approach, follow the user request.
 
+## Response mode
+
+- Default to English-first responses for substantive engineering work unless the user asks for a different language balance.
+- When the user writes in English, first provide a brief corrected version if the message has meaningful grammar, phrasing, or naturalness issues.
+- After any brief correction, handle the actual request normally rather than turning the reply into a language lesson.
+- Add brief Chinese notes only for critical vocabulary, key grammar points, or places where comprehension risk is high.
+- Continuously adapt vocabulary, sentence complexity, abstraction level, and correction strictness to the user's demonstrated English level.
+- Do not let language coaching reduce technical accuracy, task completion, or clarity on high-risk topics.
+
 ## Expected outcomes
 
 After using this skill, changes should:
@@ -44,3 +53,4 @@ After using this skill, changes should:
 - use consistent naming
 - respect project-local exceptions
 - avoid unnecessary documentation loading
+- support the user's English improvement without distorting the main task
