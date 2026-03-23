@@ -46,6 +46,7 @@ Internal variable naming is guidance, not a merge gate.
 | Prefix | Use | Notes |
 | --- | --- | --- |
 | `is_` | factual predicate | returns `bool` |
+| `has_` | factual presence, containment, possession, or attached-resource existence predicate | returns `bool`; not for general state adjectives such as available, ready, or valid |
 | `should_` | policy predicate | returns `bool` |
 | `validate_` | strong validation | invalid input raises |
 
@@ -104,7 +105,7 @@ Internal variable naming is guidance, not a merge gate.
 | Boundary | Use | Avoid |
 | --- | --- | --- |
 | `infer_` | evidence-based interpretation, classification, schema guess, or structured inference result | plain boolean predicates, direct numeric computation, or pure reshaping without uncertainty |
-| `is_` / `should_` | `is_` for factual `bool`; `should_` for policy | using `infer_` for boolean checks |
+| `has_` / `is_` / `should_` | `has_` for presence, containment, possession, or attached-resource existence; `is_` for factual state or property; `should_` for policy | using `has_` for adjective-like states such as available, ready, or valid; using `infer_` for boolean checks; using `should_` for factual state |
 | `calculate_` / `derive_` | `calculate_` for numeric values; `derive_` only for non-scalar artifacts when no more precise prefix fits | mixing numeric outputs into `derive_`, or using `derive_` for in-place assignment, classification, formatting, filtering, selection, or plain aggregation |
 | `classify_` / `format_` | `classify_` assigns rule-based categories; `format_` produces human-facing text | using `format_` for structural reshaping or `classify_` for aggregation |
 | `create_` / `generate_` | `create_` for one object; `generate_` for batch or sequence output | using `generate_` for one-off construction |
@@ -151,6 +152,7 @@ Prefer module-level functions over vague public methods such as:
 ## CLI Option Naming
 
 - Boolean options:
+  - `has_...` for factual presence, containment, or possession toggles
   - `is_...` for factual or state toggles
   - `should_...` for policy or strategy toggles
 - Non-boolean options:
