@@ -41,6 +41,27 @@ exceptions, but should not silently contradict this file.
   low-level kernels unless they are explicitly part of the kernel contract.
 - Public behavior and compatibility take priority over internal refactors.
 
+## Native Abstractions and Data Flow
+
+- Prefer the current domain library's native bulk abstractions over handwritten
+  loops or ad hoc intermediate state.
+- For tabular data, prefer DataFrame or query-expression APIs for projection,
+  grouping, window calculation, joining, reshaping, and column-wise transforms.
+- For arrays and numerical work, prefer vectorized or batched APIs from the
+  numerical/statistical library already owning that operation.
+- For graph, text, sequence, Excel, Parquet, JSON, and similar structured
+  domains, use stable parser, writer, graph, or domain-model APIs instead of
+  manual string splitting or reimplementing core algorithms.
+- Keep information on one appropriate structure when it naturally belongs
+  there. Avoid repeatedly splitting, pivoting, rejoining, or materializing
+  parallel temporary states unless a boundary or algorithm requires it.
+- Convert to lower-level forms such as lists, dictionaries, NumPy arrays,
+  pandas frames, or temporary files only at explicit boundaries, and keep that
+  conversion close to the caller that requires it.
+- For fast-moving libraries, inspect the currently installed API before coding:
+  check the local version, available selectors/helpers, source, or a small
+  executable example rather than relying only on older idioms.
+
 ## Configuration and Defaults
 
 - Technical defaults belong in explicit config structures, not scattered inside
