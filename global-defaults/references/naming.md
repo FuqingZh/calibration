@@ -222,9 +222,13 @@ Prefer module-level functions over vague public methods such as:
 ## Internal Naming Guidance
 
 - Prefer semantic names over type-only names.
-- For parameters, use role-oriented names such as `file_...`, `dir_...`,
-  `path_...`, `rule_...`, `thr_...`, `df_...`, `dt_...`, `set_...`,
-  and `fn_...` when they improve clarity.
+- For common structures, use `structure_role`: `df_`, `dt_`, `cols_`,
+  `col_`, `rows_`, `row_`, `ids_`, `set_`, `file_`, `dir_`, `path_`,
+  `rule_`, `thr_`, `fn_`. Prefer `cols_optional`, `col_protein`,
+  `ids_sample`, and `rows_output`; avoid `optional_columns`,
+  `protein_column`, `sample_ids`, and `output_rows`.
+- Use these prefixes for parameters and locals when the structure is part of
+  the reader-visible contract or materially improves scanability.
 - For dictionaries and dictionary-like mappings, prefer `value_by_key` names
   over generic `map_...` names when both key and value roles are known, such as
   `sample_ids_by_group`, `sample_idx_by_id`, or `row_by_term`.
