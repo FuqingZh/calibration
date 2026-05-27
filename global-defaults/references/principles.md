@@ -84,6 +84,21 @@ exceptions, but should not silently contradict this file.
 - Contract boundaries between layers, languages, or modules should have
   dedicated contract tests where practical.
 
+## Project Knowledge
+
+- Long-lived architecture, contracts, implementation plans, test plans, and
+  benchmark records belong in project `docs/`.
+- Task-level execution retrospectives, judgment errors, and short-lived
+  observations belong in project `.traces/`.
+- Raw execution history should not be copied by default. Prefer git history,
+  agent/session logs, test artifacts, and product logs as the source for raw
+  process evidence.
+- Use `.traces/evidence/` only when the evidence cannot be reconstructed from
+  those existing records, and keep that directory out of git by default.
+- Repeatedly validated trace observations should be promoted into project
+  `docs/`, repository-local instructions, or this canon instead of remaining
+  only as local retrospective notes.
+
 ## Performance and Measurement
 
 - Measure performance against explicit inputs and environments.
@@ -104,4 +119,10 @@ exceptions, but should not silently contradict this file.
 
 - Read `../docs/technology/main_path_readability/20260318-v1.0.md` for the
   detailed main-path readability rule.
+- Read `../docs/workflow/project_docs_architecture/20260527-v1.0-project-docs-architecture.md`
+  when defining or auditing project documentation layout, document naming, or
+  document lifecycle rules.
+- Read `../docs/workflow/task_traces_and_retros/20260527-v1.0-task-traces-and-retros.md`
+  when defining or using `.traces` records, engineering retrospectives, or
+  trace-to-doc promotion rules.
 - Read `docs_index.md` for longer schema and layout specifications.

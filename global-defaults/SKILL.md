@@ -10,9 +10,10 @@ This skill contains the user's default cross-project engineering guidance.
 Use this skill when:
 - working on code
 - planning or reviewing architecture changes
+- designing project documentation structure or engineering trace/retro rules
 - defining or modifying APIs or CLIs
 - naming modules, functions, methods, options, fields, files, or exported artifacts
-- updating tests or documentation related to code changes
+- updating tests, documentation, or project knowledge records related to code changes
 
 Do not use this skill for:
 - casual conversation
@@ -34,6 +35,8 @@ Read only what is needed, in this order:
 - Treat `references/naming.md` as the source of truth for cross-project naming and interface conventions.
 - Treat `references/docs_index.md` as navigation only, not as the source of truth for rules.
 - Do not load the entire `docs/` tree by default.
+- Load workflow documentation only when the task specifically involves project docs architecture,
+  `.traces`, engineering retrospectives, or knowledge-promotion rules.
 - If repository-local instructions are more specific, follow the repository-local instructions for that repository.
 - If the user explicitly requests a different approach, follow the user request.
 
