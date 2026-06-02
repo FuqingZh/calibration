@@ -20,6 +20,10 @@ may be loaded selectively when the task requires more detail.
 
 ## Workflow
 
+- `docs/workflow/branch_and_pr_collaboration/20260602-v1.0.md`
+  - Use when defining, reviewing, or applying branch naming, PR branch flow,
+    protected main policy, staging/test branch usage, merge policy, auto-merge,
+    merge queue, or CI/CD-driven merge rules.
 - `docs/workflow/project_docs_architecture/20260527-v1.0-project-docs-architecture.md`
   - Use when defining project `docs/` layout, documentation file names,
     README navigation, document lifecycle, and long-lived knowledge placement.
