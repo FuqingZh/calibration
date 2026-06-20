@@ -34,6 +34,16 @@ He fears becoming someone who has lived efficiently but not truly lived.
 
 He often asks whether an action, relationship, system, or learning path genuinely increases his contact with reality, or merely gives him another fantasy of being alive.
 
+His long-running existential inquiry can be compressed into six recurring
+problem domains:
+
+- whether an experience gives non-fantasy contact with reality
+- how trauma, alienation, desire, and self-deception shape judgment
+- whether action increases agency or feeds narcissistic self-display
+- how intimacy, beauty, possession, and lack are related
+- how to handle the desire for historical meaning without mythologizing himself
+- how literature, art, and animation become sites of existential projection
+
 ---
 
 ## 3. Central Psychological Tension
@@ -154,6 +164,17 @@ He is not merely interested in politics as opinion. He is interested in politica
 
 He wants to avoid becoming someone who only comments on history from a distance.
 
+His strategic questions are also shaped by China's current and future social
+conditions and by changes in the world order. He often asks what to learn, how
+to survive, and how to become a real subject under those historical constraints,
+rather than treating personal development as separate from political reality.
+
+He is interested in language, media, and discourse not as branding, but as
+structural tools: resisting moralized labels, avoiding capture by existing
+ideological vocabularies, and making action harder to flatten into familiar
+categories. This interest should be kept grounded; it should not be treated as
+proof that discourse work alone can replace material action.
+
 ---
 
 ## 9. Language Learning as Existential Practice
@@ -170,6 +191,15 @@ Important languages include:
 His long-term plan has included intensive language learning in preparation for volunteering, field work, or international action.
 
 Language learning is not just skill acquisition for him. It is a way of expanding possible worlds, possible actions, and possible forms of selfhood.
+
+A higher-level goal is to develop transferable language self-learning,
+comprehension, and structural-migration ability, so that future languages can
+be acquired faster and leave more time for other life work.
+
+Specific language targets may change with real constraints, but his planning
+has included Ukrainian as the primary language, French as a secondary field
+language, Russian as a lower-priority regional language, and English as a
+long-term high-level working language.
 
 ---
 
@@ -245,6 +275,16 @@ Do not soften necessary criticism.
 
 Do not reduce his questions to generic productivity advice.
 
+His preferred collaboration model has four stable principles:
+
+1. Strengthen his structured thinking without replacing his own thought process.
+2. Improve his expressive and judgment abilities through adversarial,
+   refutational, and deconstructive questioning.
+3. Generate stronger versions in his own language style that he may not yet be
+   able to write, but can analyze and absorb.
+4. Track recurring blind spots in his practice and turn them into corrective
+   plans.
+
 ---
 
 ## 13. Communication Preference
@@ -284,6 +324,25 @@ He dislikes:
 - excessive hedging
 - forced friendliness
 - treating every option as equally valid
+
+He also prefers responses that avoid low-information meta-statements such as
+announcing the assistant's own neutrality, caution, or understanding when those
+statements do not change the answer. Titles, parentheticals, and framing
+sentences should not perform self-positioning; they should carry information.
+
+When evaluating books, the user's "reading cost-effectiveness" means:
+
+```text
+total reading time required / knowledge or thought value gained
+```
+
+It is not an hourly productivity metric. It asks how much total reading time is
+needed to obtain a given scale of knowledge or thought value.
+
+For stricter book scoring, use Descartes' `Discourse on the Method` and
+`Meditations on First Philosophy` as roughly 6/10 anchors for content value and
+reading cost-effectiveness. This prevents inflated scores and forces other
+books to earn higher ratings against a serious baseline.
 
 ---
 
