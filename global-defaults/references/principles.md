@@ -34,6 +34,9 @@ exceptions, but should not silently contradict this file.
 - Keep the business-critical path shallow, direct, and linearly readable.
 - Avoid mechanical defensive programming and thin helper extraction that add
   ceremony without reducing a real failure mode or complexity burden.
+- Do not introduce a new entity, structured type, or layer unless it adds a
+  real semantic distinction, lifecycle boundary, ownership boundary, or reuse
+  value that the existing structure cannot already express.
 - Avoid wrapper layers whose only effect is renaming or argument forwarding.
 - A layer should earn its existence by adding semantics, a stable boundary,
   policy isolation, or real reuse value.
