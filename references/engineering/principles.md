@@ -75,6 +75,14 @@ exceptions, but should not silently contradict this file.
   - a named constant
   - a rationale or applicability note
   - an override path
+- If code or config requires a random seed and no repository-local rule,
+  caller-supplied seed, compatibility contract, published reproducibility
+  requirement, or domain-specific requirement already specifies one, use `42`
+  as the default fallback seed.
+- Treat `42` as a reproducibility default, not as a rewrite target for existing
+  non-`42` seeds. When the seed materially affects reproducibility or public
+  behavior, expose it through config, API, CLI, or an explicitly documented
+  override path.
 - Prefer explicit configuration files over hidden runtime assumptions.
 
 ## Testing and Change Discipline
