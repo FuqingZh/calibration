@@ -4,7 +4,7 @@
 #
 # Managed targets:
 #   ~/.codex/AGENTS.md
-#   ~/.codex/skills/global-defaults
+#   ~/.codex/skills/{global-defaults,personal-strategy}
 
 set -euo pipefail
 
@@ -53,9 +53,17 @@ CANON_ROOT="$SCRIPT_DIR"
 CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
 SKILLS_DIR="$CODEX_HOME/skills"
 AGENTS_TARGET="$CODEX_HOME/AGENTS.md"
-SKILL_TARGET="$SKILLS_DIR/global-defaults"
-SKILL_SOURCE="$CANON_ROOT/global-defaults"
+SKILL_SOURCE_ROOT="$CANON_ROOT/skills"
 TEMPLATE="$CANON_ROOT/codex/AGENTS.md.template"
+MANAGED_SKILLS=(
+  global-defaults
+  personal-strategy
+)
+RETIRED_SKILLS=(
+  engineering-design
+  naming
+  project-docs
+)
 
 require_file() {
   local path="$1"
@@ -100,28 +108,58 @@ ensure_parent_dirs() {
 }
 
 install_skill_link() {
-  if [[ -L "$SKILL_TARGET" ]]; then
+  local skill="$1"
+  local target="$SKILLS_DIR/$skill"
+  local source="$SKILL_SOURCE_ROOT/$skill"
+
+  require_dir "$source"
+
+  if [[ -L "$target" ]]; then
     local current
-    current="$(readlink "$SKILL_TARGET")"
-    if [[ "$current" == "$SKILL_SOURCE" ]]; then
-      say "Skill link already current: $SKILL_TARGET -> $SKILL_SOURCE"
+    current="$(readlink "$target")"
+    if [[ "$current" == "$source" ]]; then
+      say "Skill link already current: $target -> $source"
       return
     fi
-  elif [[ ! -e "$SKILL_TARGET" ]]; then
+  elif [[ ! -e "$target" ]]; then
     :
   elif ! $FORCE; then
-    echo "Refusing to replace existing skill path without --force: $SKILL_TARGET" >&2
+    echo "Refusing to replace existing skill path without --force: $target" >&2
     exit 1
   fi
 
-  if [[ -e "$SKILL_TARGET" || -L "$SKILL_TARGET" ]]; then
-    run rm -rf "$SKILL_TARGET"
+  if [[ -e "$target" || -L "$target" ]]; then
+    run rm -rf "$target"
   fi
-  run ln -s "$SKILL_SOURCE" "$SKILL_TARGET"
+  run ln -s "$source" "$target"
   if $DRY_RUN; then
-    say "Skill link planned: $SKILL_TARGET -> $SKILL_SOURCE"
+    say "Skill link planned: $target -> $source"
   else
-    say "Skill link installed: $SKILL_TARGET -> $SKILL_SOURCE"
+    say "Skill link installed: $target -> $source"
+  fi
+}
+
+remove_retired_skill_link() {
+  local skill="$1"
+  local target="$SKILLS_DIR/$skill"
+  local retired_source="$SKILL_SOURCE_ROOT/$skill"
+
+  if [[ ! -L "$target" ]]; then
+    return
+  fi
+
+  local current
+  current="$(readlink "$target")"
+  if [[ "$current" != "$retired_source" ]]; then
+    say "Retired skill left untouched: $target -> $current"
+    return
+  fi
+
+  run rm -f "$target"
+  if $DRY_RUN; then
+    say "Retired skill removal planned: $target"
+  else
+    say "Retired skill removed: $target"
   fi
 }
 
@@ -171,15 +209,21 @@ install_agents_file() {
 
 main() {
   require_file "$TEMPLATE"
-  require_dir "$SKILL_SOURCE"
+  require_dir "$SKILL_SOURCE_ROOT"
 
   say "Engineering canon root: $CANON_ROOT"
   say "Codex home: $CODEX_HOME"
   say "AGENTS target: $AGENTS_TARGET"
-  say "Skill target: $SKILL_TARGET"
+  say "Skill source root: $SKILL_SOURCE_ROOT"
+  say "Skills target root: $SKILLS_DIR"
 
   ensure_parent_dirs
-  install_skill_link
+  for skill in "${RETIRED_SKILLS[@]}"; do
+    remove_retired_skill_link "$skill"
+  done
+  for skill in "${MANAGED_SKILLS[@]}"; do
+    install_skill_link "$skill"
+  done
   install_agents_file
 }
 

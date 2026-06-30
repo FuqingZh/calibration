@@ -1,6 +1,6 @@
 ---
 name: global-defaults
-description: Use for default cross-project engineering rules. Provides shared principles, naming conventions, and document navigation for coding, refactoring, architecture, API, CLI, testing, and documentation tasks.
+description: Use for default cross-project engineering rules. Provides shared principles, naming conventions, architecture judgment, interface guidance, and document navigation for coding, refactoring, API, CLI, testing, and documentation tasks.
 ---
 
 # Global Defaults
@@ -10,6 +10,8 @@ This skill contains the user's default cross-project engineering guidance.
 Use this skill when:
 - working on code
 - planning or reviewing architecture changes
+- deciding module boundaries, interface shape, abstraction depth, or where logic belongs
+- reviewing main-path readability, wrapper layers, or implementation tradeoffs
 - designing project documentation structure or engineering trace/retro rules
 - defining or modifying APIs or CLIs
 - naming modules, functions, methods, options, fields, files, or exported artifacts
@@ -24,17 +26,23 @@ Do not use this skill for:
 
 Read only what is needed, in this order:
 
-1. `references/principles.md`
-2. `references/naming.md`
-3. `references/docs_index.md`
-4. Specific files under `docs/` only if `docs_index.md` points to them for the current task
+1. `../../references/engineering/principles.md`
+2. `../../references/engineering/naming.md`
+3. `../../references/engineering/docs_index.md`
+4. Specific files under `../../references/engineering/docs/` only if
+   `docs_index.md` points to them for the current task
+5. `../../references/engineering/docs/technology/main_path_readability/20260318-v1.0.md`
+   when reviewing wrapper layers, orchestration shape, or main-path readability
 
 ## Rules
 
-- Treat `references/principles.md` as the source of truth for cross-project engineering principles.
-- Treat `references/naming.md` as the source of truth for cross-project naming and interface conventions.
-- Treat `references/docs_index.md` as navigation only, not as the source of truth for rules.
+- Treat `../../references/engineering/principles.md` as the source of truth for cross-project engineering principles.
+- Treat `../../references/engineering/naming.md` as the source of truth for cross-project naming and interface conventions.
+- Treat `../../references/engineering/docs_index.md` as navigation only, not as the source of truth for rules.
 - Do not load the entire `docs/` tree by default.
+- Keep business-critical paths shallow, direct, and auditable.
+- Add abstractions only when they create a real semantic, lifecycle, ownership, policy, or reuse boundary.
+- Separate corrected problem framing from implementation mechanics when the user's premise is weak.
 - Load workflow documentation only when the task specifically involves project docs architecture,
   `.traces`, engineering retrospectives, or knowledge-promotion rules.
 - If repository-local instructions are more specific, follow the repository-local instructions for that repository.
@@ -54,6 +62,7 @@ Read only what is needed, in this order:
 After using this skill, changes should:
 - follow the shared principles
 - use consistent naming
+- make the main path easier to read and expose the smallest useful interface
 - respect project-local exceptions
 - avoid unnecessary documentation loading
 - support the user's English improvement without distorting the main task
