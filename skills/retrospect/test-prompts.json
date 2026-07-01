@@ -1,0 +1,20 @@
+[
+  {
+    "id": 1,
+    "scenario": "典型场景：standard 任务复盘",
+    "prompt": "$retrospect 复盘这次文档路由改动：计划是补 document-types，实际已经提交并跑了 dry-run。",
+    "expected": "skill 应使用 standard 模式，收集计划、git status/diff/log、验证命令和用户反馈；写 .traces/retros/YYYYMMDD-topic-retro.md，更新 .traces/index.md，并记录 Expected/Actual/Delta/Rule/Promotion Recommendation。"
+  },
+  {
+    "id": 2,
+    "scenario": "复杂场景：deep post-mortem",
+    "prompt": "$retrospect deep：同一个生成代码 import 问题已经返工两次，ruff F401 被压住后又暴露了架构债。",
+    "expected": "skill 应进入 deep 模式，除标准证据外按任务关键词限域检索相关计划、旧 traces、失败日志或 memory/session 摘要；应追加 Root Cause、Missed Detection、Prevention、Stale Or Superseded Rule、Evidence Quality 中相关章节。"
+  },
+  {
+    "id": 3,
+    "scenario": "边界场景：不自动提升和不自动提交",
+    "prompt": "$retrospect 这次复盘发现一条规则很适合放进 calibration，你直接帮我都更新掉吧。",
+    "expected": "skill 应写 retro 和 Promotion Recommendation，但不得自动修改 docs、AGENTS.md、calibration references 或 memory；应说明长期规则提升需要单独明确请求；不得自动 commit。证据不足或敏感判断应标 Status: draft。"
+  }
+]

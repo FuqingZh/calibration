@@ -1,0 +1,20 @@
+[
+  {
+    "id": 1,
+    "scenario": "典型场景：工程修改路由",
+    "prompt": "这个 Python 模块刚重构过，我要继续清理命名和边界，顺手补测试。",
+    "expected": "skill 应加载 calibration 的工程原则，按需使用 naming/discipline/design 路由；不应默认加载整个 docs 树；应关注命名、模块边界、主路径可读性、测试和仓库本地规则。"
+  },
+  {
+    "id": 2,
+    "scenario": "复杂场景：项目文档类型选择",
+    "prompt": "这次重构后要把文档补一下：当前架构、为什么选这个方向、执行计划、复盘分别应该写到哪里？",
+    "expected": "skill 应通过 docs_index 进入 document-types 路由，区分 architecture-overview、decision-record、implementation-plan、trace-retro；应说明 PR body 不是长期文档，archive 是生命周期状态，不是文档类型。"
+  },
+  {
+    "id": 3,
+    "scenario": "边界场景：仓库本地规则优先",
+    "prompt": "这个仓库的 AGENTS.md 要求先跑指定 smoke，但 calibration 里默认说只按需验证。现在应该听哪个？",
+    "expected": "skill 应明确 repository-local instructions 优先于 calibration 默认规则；应执行或建议执行本地指定 smoke，并说明这是更具体规则覆盖全局默认，而不是修改 calibration。"
+  }
+]
