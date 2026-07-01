@@ -19,6 +19,7 @@ system, not the system itself.
 - `references/engineering/docs_index.md`: navigation for longer specifications
 - `references/engineering/docs/`: reusable long-form specifications and patterns
 - `references/persona/USER_PERSONA.md`: git-synced subject-structure profile for strategic and communication context
+- `thirdparty/`: vendored optional skills and their source/patch records
 
 ## Install
 
@@ -34,9 +35,14 @@ Install or refresh the local Codex entry:
 bash install.sh
 ```
 
+When adopting previously hand-installed optional skills for the first time, use
+`--force` after reviewing `--dry-run --force` so the installer can replace those
+local directories with managed symlinks.
+
 The installer renders `codex/AGENTS.md.template` into `~/.codex/AGENTS.md`
-with the current repository path and symlinks managed skills from `skills/`
-into `~/.codex/skills/`. Existing `AGENTS.md` content is backed up before
+with the current repository path and symlinks managed first-party skills from
+`skills/` and managed vendored skills from `thirdparty/skills/` into
+`~/.codex/skills/`. Existing `AGENTS.md` content is backed up before
 replacement when it differs.
 
 ## Intent
@@ -49,6 +55,18 @@ replacement when it differs.
   this repository, then rerun `install.sh`.
 - Keep project-specific exceptions in each repository's local docs.
 - Prefer one source of truth over duplicated guidance.
+
+## Managed Optional Skills
+
+The installer also manages selected user-invoked third-party skills:
+
+- `brainstorming`: exploratory design mode for ambiguous work
+- `grilling`: adversarial stress-test mode for plans and designs
+- `writing-great-skills`: reference for writing and editing skills predictably
+
+These skills are vendored under `thirdparty/skills/`. The installer does not
+download them from the network. Local patches and source notes are tracked in
+`thirdparty/PATCHES.md` and `thirdparty/sources.tsv`.
 
 ## Rename Note
 

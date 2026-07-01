@@ -5,6 +5,7 @@
 # Managed targets:
 #   ~/.codex/AGENTS.md
 #   ~/.codex/skills/{calibration,personal-strategy}
+#   ~/.codex/skills/{brainstorming,grilling,writing-great-skills}
 
 set -euo pipefail
 
@@ -54,10 +55,16 @@ CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
 SKILLS_DIR="$CODEX_HOME/skills"
 AGENTS_TARGET="$CODEX_HOME/AGENTS.md"
 SKILL_SOURCE_ROOT="$CALIBRATION_ROOT/skills"
+THIRDPARTY_SKILL_SOURCE_ROOT="$CALIBRATION_ROOT/thirdparty/skills"
 TEMPLATE="$CALIBRATION_ROOT/codex/AGENTS.md.template"
 MANAGED_SKILLS=(
   calibration
   personal-strategy
+)
+MANAGED_THIRDPARTY_SKILLS=(
+  brainstorming
+  grilling
+  writing-great-skills
 )
 RETIRED_SKILLS=(
   engineering-design
@@ -110,8 +117,9 @@ ensure_parent_dirs() {
 
 install_skill_link() {
   local skill="$1"
+  local source_root="$2"
   local target="$SKILLS_DIR/$skill"
-  local source="$SKILL_SOURCE_ROOT/$skill"
+  local source="$source_root/$skill"
 
   require_dir "$source"
 
@@ -211,11 +219,13 @@ install_agents_file() {
 main() {
   require_file "$TEMPLATE"
   require_dir "$SKILL_SOURCE_ROOT"
+  require_dir "$THIRDPARTY_SKILL_SOURCE_ROOT"
 
   say "Calibration root: $CALIBRATION_ROOT"
   say "Codex home: $CODEX_HOME"
   say "AGENTS target: $AGENTS_TARGET"
   say "Skill source root: $SKILL_SOURCE_ROOT"
+  say "Third-party skill source root: $THIRDPARTY_SKILL_SOURCE_ROOT"
   say "Skills target root: $SKILLS_DIR"
 
   ensure_parent_dirs
@@ -223,7 +233,10 @@ main() {
     remove_retired_skill_link "$skill"
   done
   for skill in "${MANAGED_SKILLS[@]}"; do
-    install_skill_link "$skill"
+    install_skill_link "$skill" "$SKILL_SOURCE_ROOT"
+  done
+  for skill in "${MANAGED_THIRDPARTY_SKILLS[@]}"; do
+    install_skill_link "$skill" "$THIRDPARTY_SKILL_SOURCE_ROOT"
   done
   install_agents_file
 }

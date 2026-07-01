@@ -1,0 +1,4 @@
+name	source_repo	source_path	imported_from	local_policy	notes
+brainstorming	https://github.com/obra/superpowers	skills/brainstorming	/home/fqzhang/.codex/skills/brainstorming	vendored+patched	User-invoked exploratory design mode; local patch removes Superpowers-specific hard requirements.
+grilling	local installed skill	/home/fqzhang/.codex/skills/grilling	/home/fqzhang/.codex/skills/grilling	vendored+patched	User-invoked adversarial stress-test mode.
+writing-great-skills	https://github.com/mattpocock/skills	writing-great-skills	/home/fqzhang/.codex/skills/writing-great-skills	vendored	Reference for predictable skill writing; kept user-invoked.
