@@ -51,6 +51,10 @@ Read only what is needed, in this order:
 - Load document-type routing only when the task involves writing, placing, or
   classifying project docs, implementation plans, decisions, or task retros.
 - Load workflow documentation only when the task specifically involves project docs architecture, `.traces`, engineering retrospectives, or knowledge-promotion rules.
+- Suggest `$retrospect` only after meaningful engineering deltas such as failed
+  assumptions, rework, validation surprises, broad refactors, customer-facing
+  delivery, deployment risk, repeated patterns, or production-adjacent work.
+  Do not run it automatically.
 - If repository-local instructions are more specific, follow the repository-local instructions for that repository.
 - If the user explicitly requests a different approach, follow the user request.
 

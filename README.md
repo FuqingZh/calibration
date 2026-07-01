@@ -14,6 +14,7 @@ system, not the system itself.
 - `codex/AGENTS.md.template`: canonical template for `~/.codex/AGENTS.md`
 - `skills/calibration/SKILL.md`: default Codex engineering skill entrypoint, including architecture and implementation design judgment
 - `skills/personal-strategy/SKILL.md`: persona-backed strategy and planning skill
+- `skills/retrospect/SKILL.md`: user-invoked engineering retrospective and post-mortem skill
 - `references/engineering/principles.md`: stable cross-project engineering principles
 - `references/engineering/naming/`: naming and interface conventions, split by decision surface
 - `references/engineering/discipline/`: refactor, debugging, and verification gates
@@ -60,7 +61,11 @@ replacement when it differs.
 
 ## Managed Optional Skills
 
-The installer also manages selected user-invoked third-party skills:
+The installer also manages selected user-invoked skills:
+
+- `retrospect`: evidence-driven engineering retrospective and post-mortem mode
+
+The managed third-party skills are:
 
 - `brainstorming`: exploratory design mode for ambiguous work
 - `grilling`: adversarial stress-test mode for plans and designs
@@ -68,9 +73,9 @@ The installer also manages selected user-invoked third-party skills:
 - `writing-plans`: implementation planning mode for approved multi-step work
 - `darwin-skill`: skill evaluation and optimization mode
 
-These skills are vendored under `thirdparty/skills/`. The installer does not
-download them from the network. Local patches and source notes are tracked in
-`thirdparty/PATCHES.md` and `thirdparty/sources.tsv`.
+Third-party skills are vendored under `thirdparty/skills/`. The installer does
+not download them from the network. Local patches and source notes are tracked
+in `thirdparty/PATCHES.md` and `thirdparty/sources.tsv`.
 
 The stale `grill-me` skill name is retired in favor of `grilling`. Existing
 unmanaged `grill-me` directories are removed only when running the installer
