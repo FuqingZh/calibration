@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 #
-# Install engineering-canon into the local Codex configuration.
+# Install calibration into the local Codex configuration.
 #
 # Managed targets:
 #   ~/.codex/AGENTS.md
-#   ~/.codex/skills/{global-defaults,personal-strategy}
+#   ~/.codex/skills/{calibration,personal-strategy}
 
 set -euo pipefail
 
@@ -49,18 +49,19 @@ while [[ $# -gt 0 ]]; do
 done
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
-CANON_ROOT="$SCRIPT_DIR"
+CALIBRATION_ROOT="$SCRIPT_DIR"
 CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
 SKILLS_DIR="$CODEX_HOME/skills"
 AGENTS_TARGET="$CODEX_HOME/AGENTS.md"
-SKILL_SOURCE_ROOT="$CANON_ROOT/skills"
-TEMPLATE="$CANON_ROOT/codex/AGENTS.md.template"
+SKILL_SOURCE_ROOT="$CALIBRATION_ROOT/skills"
+TEMPLATE="$CALIBRATION_ROOT/codex/AGENTS.md.template"
 MANAGED_SKILLS=(
-  global-defaults
+  calibration
   personal-strategy
 )
 RETIRED_SKILLS=(
   engineering-design
+  global-defaults
   naming
   project-docs
 )
@@ -87,8 +88,8 @@ escape_sed_replacement() {
 
 render_template() {
   local escaped_root
-  escaped_root="$(escape_sed_replacement "$CANON_ROOT")"
-  sed "s/{{ENGINEERING_CANON_ROOT}}/$escaped_root/g" "$TEMPLATE"
+  escaped_root="$(escape_sed_replacement "$CALIBRATION_ROOT")"
+  sed "s/{{CALIBRATION_ROOT}}/$escaped_root/g" "$TEMPLATE"
 }
 
 say() {
@@ -211,7 +212,7 @@ main() {
   require_file "$TEMPLATE"
   require_dir "$SKILL_SOURCE_ROOT"
 
-  say "Engineering canon root: $CANON_ROOT"
+  say "Calibration root: $CALIBRATION_ROOT"
   say "Codex home: $CODEX_HOME"
   say "AGENTS target: $AGENTS_TARGET"
   say "Skill source root: $SKILL_SOURCE_ROOT"

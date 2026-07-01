@@ -1,16 +1,21 @@
-# engineering-canon
+# calibration
 
-Cross-project engineering source of truth for Codex skills, engineering
-references, naming rules, and reusable structural specifications.
+A personal engineering calibration system for code, agents, judgment, and
+delivery.
+
+`calibration` keeps the user's cross-project engineering principles, naming
+rules, design judgment, verification discipline, Codex skill entrypoints, and
+managed local setup in one repository. Skills are one presentation layer of the
+system, not the system itself.
 
 ## Layout
 
 - `install.sh`: local installer for Codex global entry and skill symlinks
 - `codex/AGENTS.md.template`: canonical template for `~/.codex/AGENTS.md`
-- `skills/global-defaults/SKILL.md`: default Codex engineering skill entrypoint, including architecture and implementation design judgment
+- `skills/calibration/SKILL.md`: default Codex engineering skill entrypoint, including architecture and implementation design judgment
 - `skills/personal-strategy/SKILL.md`: persona-backed strategy and planning skill
 - `references/engineering/principles.md`: stable cross-project engineering principles
-- `references/engineering/naming.md`: naming and interface conventions
+- `references/engineering/naming/`: naming and interface conventions, split by decision surface
 - `references/engineering/docs_index.md`: navigation for longer specifications
 - `references/engineering/docs/`: reusable long-form specifications and patterns
 - `references/persona/USER_PERSONA.md`: git-synced subject-structure profile for strategic and communication context
@@ -36,7 +41,7 @@ replacement when it differs.
 
 ## Intent
 
-- Keep reusable Codex skill entrypoints in `skills/`; keep architecture/design judgment in `global-defaults` unless it needs a distinct interaction mode.
+- Keep reusable Codex skill entrypoints in `skills/`; keep architecture/design judgment in `calibration` unless it needs a distinct interaction mode.
 - Keep narrow topics such as naming and project-doc placement as references unless they need a distinct interaction mode.
 - Keep engineering source documents in `references/engineering/`.
 - Keep the user persona context in `references/persona/`; it is not an engineering rule file.
@@ -44,3 +49,10 @@ replacement when it differs.
   this repository, then rerun `install.sh`.
 - Keep project-specific exceptions in each repository's local docs.
 - Prefer one source of truth over duplicated guidance.
+
+## Rename Note
+
+`calibration` replaces the old `engineering-canon` repository name and the old
+`global-defaults` skill name. The migration is intentionally not
+backward-compatible: use the installer to remove retired local skill links and
+install the current `$calibration` entrypoint.

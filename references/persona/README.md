@@ -22,7 +22,7 @@ Use `$personal-strategy` for tasks involving:
 - explicit requests to reason from the user's subject structure
 
 Do not load it by default for ordinary coding, refactoring, tests, or mechanical
-implementation tasks. For those tasks, use `$global-defaults` and repository-local
+implementation tasks. For those tasks, use `$calibration` and repository-local
 instructions.
 
 ## Recommended Codex setup
@@ -34,7 +34,7 @@ under this repository:
 ## User Persona Context
 
 The user's git-synced persona profile is located at:
-`<engineering-canon>/references/persona/USER_PERSONA.md`.
+`<calibration>/references/persona/USER_PERSONA.md`.
 
 Use `$personal-strategy` when the task involves strategic direction,
 career/life planning, long-term priorities, architectural judgment with
@@ -42,6 +42,6 @@ personal tradeoffs, communication style, or explicit requests to reason from
 the user's subject structure.
 
 Do not load it by default for ordinary coding, refactoring, tests, or
-mechanical implementation tasks. For those, follow `$global-defaults` and
+mechanical implementation tasks. For those, follow `$calibration` and
 repository-local instructions.
 ```

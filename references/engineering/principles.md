@@ -88,8 +88,10 @@ exceptions, but should not silently contradict this file.
 ## Testing and Change Discipline
 
 - Behavior changes require tests.
+- Keep public API changes minimal and explicit.
 - Public API, CLI, exported schema, and compatibility changes require tests and
   documentation updates.
+- Keep docs and examples in sync with public APIs.
 - Prefer additive evolution; deprecate before removal when external users may be
   affected.
 - Contract boundaries between layers, languages, or modules should have

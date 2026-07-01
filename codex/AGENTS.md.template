@@ -5,7 +5,7 @@ the user explicitly overrides them.
 
 ## Scope and Priority
 
-- Follow these global defaults by default.
+- Follow these calibration defaults by default.
 - If a repository has its own `AGENTS.md`, treat repo-specific instructions as
   more specific guidance for that repository.
 - If a deeper directory has its own `AGENTS.md` or `AGENTS.override.md`, treat
@@ -16,10 +16,10 @@ the user explicitly overrides them.
 
 - For coding, refactoring, architecture, module boundaries, interface shape,
   main-path readability, implementation tradeoffs, API, CLI, testing, schema, or
-  documentation tasks, use `$global-defaults` before making substantive
+  documentation tasks, use `$calibration` before making substantive
   changes.
 - Keep changes consistent with the shared principles, naming rules, and
-  reusable specifications exposed by `$global-defaults`.
+  reusable specifications exposed by `$calibration`.
 - Do not load large documentation trees by default. Read only the minimal
   references needed for the current task.
 - Prefer explicit project-local rules when they exist and do not conflict with
@@ -31,20 +31,20 @@ the user explicitly overrides them.
   verify naming, compatibility, testing, and documentation impact.
 - When changing build behavior, generated outputs, or cross-language contracts,
   confirm the repository-local instructions before proceeding.
-- If global defaults and repository-local rules differ, follow the
+- If calibration defaults and repository-local rules differ, follow the
   repository-local rule for that repository and note the exception.
 
 ## Notes
 
 - In WSL, the same skill is available via:
-  `{{ENGINEERING_CANON_ROOT}}/skills`
+  `{{CALIBRATION_ROOT}}/skills`
 - Keep this file short. Detailed rules belong in the skill references, not
   here.
 
 ## User Persona Context
 
 The user's git-synced persona profile is located at:
-`{{ENGINEERING_CANON_ROOT}}/references/persona/USER_PERSONA.md`.
+`{{CALIBRATION_ROOT}}/references/persona/USER_PERSONA.md`.
 
 Use `$personal-strategy` when the task involves strategic direction,
 career/life planning, long-term priorities, architectural judgment with
@@ -52,5 +52,5 @@ personal tradeoffs, communication style, or explicit requests to reason from
 the user's subject structure.
 
 Do not load it by default for ordinary coding, refactoring, tests, or
-mechanical implementation tasks. For those, follow `$global-defaults` and
+mechanical implementation tasks. For those, follow `$calibration` and
 repository-local instructions.

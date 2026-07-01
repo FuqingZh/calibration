@@ -1,11 +1,11 @@
 ---
-name: global-defaults
+name: calibration
 description: Use for default cross-project engineering rules. Provides shared principles, naming conventions, architecture judgment, interface guidance, and document navigation for coding, refactoring, API, CLI, testing, and documentation tasks.
 ---
 
-# Global Defaults
+# Calibration
 
-This skill contains the user's default cross-project engineering guidance.
+This skill is the user's default cross-project engineering calibration entrypoint.
 
 Use this skill when:
 - working on code
@@ -27,7 +27,7 @@ Do not use this skill for:
 Read only what is needed, in this order:
 
 1. `../../references/engineering/principles.md`
-2. `../../references/engineering/naming.md`
+2. `../../references/engineering/naming/README.md`
 3. `../../references/engineering/docs_index.md`
 4. Specific files under `../../references/engineering/docs/` only if
    `docs_index.md` points to them for the current task
@@ -37,7 +37,8 @@ Read only what is needed, in this order:
 ## Rules
 
 - Treat `../../references/engineering/principles.md` as the source of truth for cross-project engineering principles.
-- Treat `../../references/engineering/naming.md` as the source of truth for cross-project naming and interface conventions.
+- Treat `../../references/engineering/naming/README.md` as the router for cross-project naming and interface conventions.
+- Read only the specific `../../references/engineering/naming/*.md` file needed for the current naming decision.
 - Treat `../../references/engineering/docs_index.md` as navigation only, not as the source of truth for rules.
 - Do not load the entire `docs/` tree by default.
 - Keep business-critical paths shallow, direct, and auditable.

@@ -8,7 +8,7 @@ may be loaded selectively when the task requires more detail.
 - Do not load `docs/` by default.
 - Load a specific document only when the current task materially depends on its
   rules.
-- Prefer `principles.md` and `naming.md` unless the task is specifically about
+- Prefer `principles.md` and `naming/README.md` unless the task is specifically about
   pipeline layout, artifact contracts, identifiers, project documentation
   architecture, engineering traces, retrospectives, or main-path readability.
 
