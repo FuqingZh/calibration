@@ -19,8 +19,8 @@ Implemented on 2026-07-01 in three semantic batches:
 - design references and default routing
 - optional skill cleanup and third-party source traceability
 
-`writing-plans` and `darwin-skill` remain intentionally uninstalled because
-they were not selected as managed optional skills for this pass.
+`writing-plans` and `darwin-skill` were later selected explicitly and are now
+vendored as managed user-invoked optional skills.
 
 ## Batch 1: Discipline References
 
@@ -60,8 +60,8 @@ Clean up optional skill management:
 
 - retire the stale `grill-me` skill in favor of `grilling`
 - keep `brainstorming`, `grilling`, and `writing-great-skills` user-invoked
-- keep `writing-plans` uninstalled unless explicitly requested later
-- keep `darwin-skill` uninstalled unless skill self-improvement work needs it
+- vendor `writing-plans` when explicitly requested; keep it user-invoked
+- vendor `darwin-skill` when explicitly requested; keep it user-invoked
 - add upstream commit or import ref fields to third-party source records where
   available
 - decide whether to patch the brainstorming visual companion from

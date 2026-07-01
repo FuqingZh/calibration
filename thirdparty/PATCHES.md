@@ -41,3 +41,29 @@ Imported from the locally installed `writing-great-skills` skill.
 Local changes:
 
 - None at import time. The skill was already user-invoked.
+
+## writing-plans
+
+Imported from Superpowers `writing-plans`.
+
+Local changes:
+
+- Set `disable-model-invocation: true` so the skill is user-invoked only.
+- Replaced the forced `docs/superpowers/plans/` output path with repository-local
+  planning and documentation conventions.
+- Removed forced TDD, frequent commit, subagent-driven-development, and
+  executing-plans requirements. The local version still requires explicit
+  verification gates but follows repository-local execution practice.
+- Kept `plan-document-reviewer-prompt.md` as an optional reviewer template.
+
+## darwin-skill
+
+Imported from `alchaincyf/darwin-skill`.
+
+Local changes:
+
+- Set `disable-model-invocation: true` so the skill is user-invoked only.
+- Shortened the frontmatter description to avoid a large always-visible trigger
+  surface while preserving the full upstream body and assets.
+- Replaced runtime-specific executable paths in the body and README with
+  runtime-neutral or Codex-compatible paths.

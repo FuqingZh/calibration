@@ -5,7 +5,7 @@
 # Managed targets:
 #   ~/.codex/AGENTS.md
 #   ~/.codex/skills/{calibration,personal-strategy}
-#   ~/.codex/skills/{brainstorming,grilling,writing-great-skills}
+#   ~/.codex/skills/{brainstorming,grilling,writing-great-skills,writing-plans,darwin-skill}
 
 set -euo pipefail
 
@@ -65,6 +65,8 @@ MANAGED_THIRDPARTY_SKILLS=(
   brainstorming
   grilling
   writing-great-skills
+  writing-plans
+  darwin-skill
 )
 RETIRED_SKILLS=(
   engineering-design

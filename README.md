@@ -65,6 +65,8 @@ The installer also manages selected user-invoked third-party skills:
 - `brainstorming`: exploratory design mode for ambiguous work
 - `grilling`: adversarial stress-test mode for plans and designs
 - `writing-great-skills`: reference for writing and editing skills predictably
+- `writing-plans`: implementation planning mode for approved multi-step work
+- `darwin-skill`: skill evaluation and optimization mode
 
 These skills are vendored under `thirdparty/skills/`. The installer does not
 download them from the network. Local patches and source notes are tracked in
