@@ -16,6 +16,8 @@ system, not the system itself.
 - `skills/personal-strategy/SKILL.md`: persona-backed strategy and planning skill
 - `references/engineering/principles.md`: stable cross-project engineering principles
 - `references/engineering/naming/`: naming and interface conventions, split by decision surface
+- `references/engineering/discipline/`: refactor, debugging, and verification gates
+- `references/engineering/design/`: codebase design and boundary judgment
 - `references/engineering/docs_index.md`: navigation for longer specifications
 - `references/engineering/docs/`: reusable long-form specifications and patterns
 - `references/persona/USER_PERSONA.md`: git-synced subject-structure profile for strategic and communication context
