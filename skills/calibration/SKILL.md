@@ -31,7 +31,8 @@ Read only what is needed, in this order:
    - naming decisions: `../../references/engineering/naming/README.md`
    - refactor, debugging, or completion checks: `../../references/engineering/discipline/README.md`
    - architecture, module, interface, abstraction, or wrapper decisions: `../../references/engineering/design/README.md`
-   - long-form specifications and project-doc routing: `../../references/engineering/docs_index.md`
+   - long-form specifications, project-doc routing, or document-type selection:
+     `../../references/engineering/docs_index.md`
 3. Specific files pointed to by those routers, only when their trigger matches
    the current task.
 4. `../../references/engineering/docs/technology/main_path_readability/20260318-v1.0.md`
@@ -47,6 +48,8 @@ Read only what is needed, in this order:
 - Keep business-critical paths shallow, direct, and auditable.
 - Add abstractions only when they create a real semantic, lifecycle, ownership, policy, or reuse boundary.
 - Separate corrected problem framing from implementation mechanics when the user's premise is weak.
+- Load document-type routing only when the task involves writing, placing, or
+  classifying project docs, implementation plans, decisions, or task retros.
 - Load workflow documentation only when the task specifically involves project docs architecture, `.traces`, engineering retrospectives, or knowledge-promotion rules.
 - If repository-local instructions are more specific, follow the repository-local instructions for that repository.
 - If the user explicitly requests a different approach, follow the user request.

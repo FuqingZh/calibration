@@ -9,8 +9,9 @@ may be loaded selectively when the task requires more detail.
 - Load a specific document only when the current task materially depends on its
   rules.
 - Prefer `principles.md` and `naming/README.md` unless the task is specifically about
-  pipeline layout, artifact contracts, identifiers, project documentation
-  architecture, engineering traces, retrospectives, or main-path readability.
+  pipeline layout, artifact contracts, identifiers, document-type selection,
+  project documentation architecture, engineering traces, retrospectives, or
+  main-path readability.
 
 ## Technology
 
@@ -20,6 +21,11 @@ may be loaded selectively when the task requires more detail.
 
 ## Workflow
 
+- `docs/document-types/README.md`
+  - Use when writing, placing, or classifying architecture overviews, design
+    proposals, decision records, implementation plans, or task retrospectives.
+  - Do not use it for PR body generation unless the user asks how PR summaries
+    relate to durable project docs.
 - `docs/workflow/branch_and_pr_collaboration/20260602-v1.0.md`
   - Use when defining, reviewing, or applying branch naming, PR branch flow,
     protected main policy, staging/test branch usage, merge policy, auto-merge,
