@@ -11,6 +11,17 @@ The rename, naming split, third-party skill vendoring, and installer takeover
 are complete. The remaining work is to make the default `calibration` skill a
 more precise router and to finish cleaning up optional skill management.
 
+## Status
+
+Implemented on 2026-07-01 in three semantic batches:
+
+- discipline references
+- design references and default routing
+- optional skill cleanup and third-party source traceability
+
+`writing-plans` and `darwin-skill` remain intentionally uninstalled because
+they were not selected as managed optional skills for this pass.
+
 ## Batch 1: Discipline References
 
 Create `references/engineering/discipline/` with a short router and three

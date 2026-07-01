@@ -70,6 +70,10 @@ These skills are vendored under `thirdparty/skills/`. The installer does not
 download them from the network. Local patches and source notes are tracked in
 `thirdparty/PATCHES.md` and `thirdparty/sources.tsv`.
 
+The stale `grill-me` skill name is retired in favor of `grilling`. Existing
+unmanaged `grill-me` directories are removed only when running the installer
+with `--force`.
+
 ## Rename Note
 
 `calibration` replaces the old `engineering-canon` repository name and the old

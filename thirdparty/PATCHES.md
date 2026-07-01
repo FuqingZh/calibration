@@ -20,6 +20,8 @@ Local changes:
   environment planning format unless the user invokes `writing-plans`.
 - Kept the visual companion assets and pointer for cases where a visual design
   question genuinely benefits from them.
+- Changed persistent visual-companion session paths from `.superpowers/brainstorm`
+  to `.calibration/brainstorm`.
 - Removed the unused Superpowers spec-reviewer prompt because it still encoded
   the old `docs/superpowers/specs/` path.
 

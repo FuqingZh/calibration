@@ -72,6 +72,9 @@ RETIRED_SKILLS=(
   naming
   project-docs
 )
+RETIRED_UNMANAGED_SKILLS=(
+  grill-me
+)
 
 require_file() {
   local path="$1"
@@ -172,6 +175,27 @@ remove_retired_skill_link() {
   fi
 }
 
+remove_retired_unmanaged_skill_path() {
+  local skill="$1"
+  local target="$SKILLS_DIR/$skill"
+
+  if [[ ! -e "$target" && ! -L "$target" ]]; then
+    return
+  fi
+
+  if ! $FORCE; then
+    say "Retired unmanaged skill left untouched without --force: $target"
+    return
+  fi
+
+  run rm -rf "$target"
+  if $DRY_RUN; then
+    say "Retired unmanaged skill removal planned: $target"
+  else
+    say "Retired unmanaged skill removed: $target"
+  fi
+}
+
 backup_agents_target() {
   if ! $BACKUP || [[ ! -e "$AGENTS_TARGET" && ! -L "$AGENTS_TARGET" ]]; then
     return
@@ -231,6 +255,9 @@ main() {
   ensure_parent_dirs
   for skill in "${RETIRED_SKILLS[@]}"; do
     remove_retired_skill_link "$skill"
+  done
+  for skill in "${RETIRED_UNMANAGED_SKILLS[@]}"; do
+    remove_retired_unmanaged_skill_path "$skill"
   done
   for skill in "${MANAGED_SKILLS[@]}"; do
     install_skill_link "$skill" "$SKILL_SOURCE_ROOT"
