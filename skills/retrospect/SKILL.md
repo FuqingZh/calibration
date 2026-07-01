@@ -59,6 +59,37 @@ Do not perform unconstrained history scans.
 Do not copy raw logs by default. Cite paths, commands, and short evidence
 summaries instead.
 
+## Checkpoints
+
+Use explicit checkpoints to prevent retrospectives from turning uncertain
+observations into durable rules.
+
+- 🔴 CHECKPOINT: If evidence is missing, contradictory, sensitive, or based
+  mostly on user memory, mark the retro `Status: draft` before writing.
+- 🔴 CHECKPOINT: If the retro recommends promotion to project docs,
+  repository-local instructions, calibration, or memory, write the
+  recommendation only. Stop before editing those targets unless the user gives a
+  separate explicit request.
+- 🔴 CHECKPOINT: Before writing a deep retro, state the keywords that bound the
+  historical search. If no credible bounded keyword set exists, fall back to
+  `standard`.
+- 🔴 CHECKPOINT: Before updating `.traces/index.md`, keep it a short navigation
+  index. Do not convert it into a second retrospective or raw evidence log.
+
+## Failure Table
+
+| Trigger | Action |
+|---|---|
+| No git repository is available | Use only provided evidence and mark `Status: draft`; do not invent git history. |
+| No active plan or goal can be found | Reconstruct expected behavior from the user request, commits, docs, and tests; label the source in `Expected`. |
+| Git diff is empty but the user asks for a completed-task retro | Use recent commits and user-provided evidence; if neither exists, ask for the task boundary before writing. |
+| Validation evidence is missing | Record the missing validation explicitly in `Evidence Quality`; do not claim success. |
+| Evidence conflicts | Prefer checked artifacts over memory; record the conflict and mark `Status: draft`. |
+| Deep mode lacks bounded keywords | Run `standard` mode and note that deep historical search was skipped. |
+| `.traces/index.md` is missing | Create a minimal index with recent retros and repeated patterns only. |
+| The user asks to promote a rule during the retro | Write a promotion recommendation and stop before editing long-term rule files. |
+| The user asks for raw logs in the retro | Summarize and cite paths by default; use `.traces/evidence/` only when the repository already allows it or the user explicitly asks. |
+
 ## Output Location
 
 Write the retrospective to:
