@@ -9,9 +9,9 @@ Imported from the locally installed Superpowers `brainstorming` skill.
 Local changes:
 
 - Set `disable-model-invocation: true` so the skill is user-invoked only.
-- Removed the hard gate that forbids implementation before the Superpowers
-  design flow completes. The local convention is still to get approval before
-  building, but not to block already-approved work.
+- Kept the original brainstorming interaction protocol: explore first, ask one
+  question at a time, propose multiple approaches, recommend one, present a
+  design checkpoint, and require user approval before implementation.
 - Replaced the forced `docs/superpowers/specs/` output path with repository-local
   docs, decision-record, plan, or trace conventions.
 - Removed the forced immediate commit requirement. Commit when the user asks,
