@@ -4,7 +4,7 @@
 #
 # Managed targets:
 #   ~/.codex/AGENTS.md
-#   ~/.codex/skills/{calibration,personal-strategy,retrospect}
+#   ~/.codex/skills/{calibration,retrospect}
 #   ~/.codex/skills/{brainstorming,grilling,writing-great-skills,writing-plans,darwin-skill}
 
 set -euo pipefail
@@ -59,7 +59,6 @@ THIRDPARTY_SKILL_SOURCE_ROOT="$CALIBRATION_ROOT/thirdparty/skills"
 TEMPLATE="$CALIBRATION_ROOT/codex/AGENTS.md.template"
 MANAGED_SKILLS=(
   calibration
-  personal-strategy
   retrospect
 )
 MANAGED_THIRDPARTY_SKILLS=(
@@ -73,6 +72,7 @@ RETIRED_SKILLS=(
   engineering-design
   global-defaults
   naming
+  personal-strategy
   project-docs
 )
 RETIRED_UNMANAGED_SKILLS=(

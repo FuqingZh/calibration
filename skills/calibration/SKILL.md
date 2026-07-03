@@ -66,7 +66,6 @@ Read only what is needed, in this order:
 | Direct user instructions conflict with calibration | Follow the user instruction unless it requires unsafe or impossible action; state the tradeoff. |
 | A routed reference file is missing | Continue from `principles.md`, say which reference was unavailable, and do not invent the missing rule. |
 | The task spans multiple routers | Load only the routers needed for the active decision; do not preload the whole docs tree. |
-| The task is ordinary coding but mentions persona or strategy | Do not load `personal-strategy` unless the user asks for strategic or subject-structure reasoning. |
 | The task has a meaningful engineering delta | Suggest `$retrospect` once; do not run it without explicit invocation. |
 | The user asks for docs but the document type is unclear | Use `docs_index.md` and document-type routing before writing durable docs. |
 

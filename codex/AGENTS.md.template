@@ -40,17 +40,3 @@ the user explicitly overrides them.
   `{{CALIBRATION_ROOT}}/skills`
 - Keep this file short. Detailed rules belong in the skill references, not
   here.
-
-## User Persona Context
-
-The user's git-synced persona profile is located at:
-`{{CALIBRATION_ROOT}}/references/persona/USER_PERSONA.md`.
-
-Use `$personal-strategy` when the task involves strategic direction,
-career/life planning, long-term priorities, architectural judgment with
-personal tradeoffs, communication style, or explicit requests to reason from
-the user's subject structure.
-
-Do not load it by default for ordinary coding, refactoring, tests, or
-mechanical implementation tasks. For those, follow `$calibration` and
-repository-local instructions.

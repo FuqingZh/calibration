@@ -12,7 +12,6 @@ The covered scope is:
 - engineering document type routing
 - the first-party `retrospect` skill
 - first-party Darwin test prompts
-- the narrowed `personal-strategy` boundary
 - current user-invoked skill roles
 
 ## Document Type Routing
@@ -93,7 +92,6 @@ Add Darwin-compatible `test-prompts.json` files for the first-party skills:
 
 - `skills/calibration/test-prompts.json`
 - `skills/retrospect/test-prompts.json`
-- `skills/personal-strategy/test-prompts.json`
 
 Each file contains three prompts covering the typical path, a complex or
 ambiguous case, and a boundary or false-trigger case.
@@ -102,28 +100,6 @@ These files are durable evaluation assets. They do not imply that full Darwin
 optimization has already been run. Do not create `results.tsv` or treat dry-run
 assessment as a completed independent evaluation until an explicit evaluation
 pass is requested.
-
-## Personal Strategy Boundary
-
-`personal-strategy` is now explicit-use only. It carries
-`disable-model-invocation: true` and should not be loaded for ordinary
-engineering work.
-
-Use it only when the user explicitly invokes it or clearly asks for
-persona-backed reasoning about strategy, long-term direction, personal motive,
-communication style, life or career tradeoffs, subject structure, or persona
-updates.
-
-Do not use it for ordinary coding, refactoring, testing, naming,
-implementation planning, or mechanical documentation work. Do not infer a
-personal-strategy layer from normal engineering hesitation unless the user asks
-for that layer.
-
-`USER_PERSONA.md` remains the only persona source. The persona content should
-not be copied into the skill.
-
-`calibration` should not suggest `$personal-strategy`. Mixed requests should
-separate engineering facts from personal strategy before answering.
 
 ## Current Skill Roles
 
@@ -142,7 +118,6 @@ User-invoked optional skills are intentionally narrow:
   rubrics, and human checkpoints
 - `writing-great-skills`: reference for writing and editing skills
 - `retrospect`: post-task evidence-driven retrospective
-- `personal-strategy`: persona-backed strategic reasoning only on explicit use
 
 Installing these optional skills does not make them always-on. Their value is
 in being available through the calibration installer while preserving explicit
@@ -156,7 +131,6 @@ The decisions above are implemented by the following current commits:
 - `9333a02` adds the first-party `retrospect` skill
 - `ec72084` adds first-party skill test prompts
 - `0a19ebf` hardens failure branches and checkpoints
-- `bf5278f` makes `personal-strategy` explicit-use only
 
 ## Open Follow-ups
 

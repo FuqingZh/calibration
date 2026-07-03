@@ -1,19 +1,17 @@
 # calibration
 
-A personal engineering calibration system for code, agents, judgment, and
-delivery.
+An engineering calibration system for code, agents, judgment, and delivery.
 
-`calibration` keeps the user's cross-project engineering principles, naming
-rules, design judgment, verification discipline, Codex skill entrypoints, and
-managed local setup in one repository. Skills are one presentation layer of the
-system, not the system itself.
+`calibration` keeps cross-project engineering principles, naming rules, design
+judgment, verification discipline, Codex skill entrypoints, and managed local
+setup in one repository. Skills are one presentation layer of the system, not
+the system itself.
 
 ## Layout
 
 - `install.sh`: local installer for Codex global entry and skill symlinks
 - `codex/AGENTS.md.template`: canonical template for `~/.codex/AGENTS.md`
 - `skills/calibration/SKILL.md`: default Codex engineering skill entrypoint, including architecture and implementation design judgment
-- `skills/personal-strategy/SKILL.md`: persona-backed strategy and planning skill
 - `skills/retrospect/SKILL.md`: user-invoked engineering retrospective and post-mortem skill
 - `references/engineering/principles.md`: stable cross-project engineering principles
 - `references/engineering/naming/`: naming and interface conventions, split by decision surface
@@ -21,7 +19,6 @@ system, not the system itself.
 - `references/engineering/design/`: codebase design and boundary judgment
 - `references/engineering/docs_index.md`: navigation for longer specifications
 - `references/engineering/docs/`: reusable long-form specifications and patterns
-- `references/persona/USER_PERSONA.md`: git-synced subject-structure profile for strategic and communication context
 - `thirdparty/`: vendored optional skills and their source/patch records
 
 ## Install
@@ -53,7 +50,6 @@ replacement when it differs.
 - Keep reusable Codex skill entrypoints in `skills/`; keep architecture/design judgment in `calibration` unless it needs a distinct interaction mode.
 - Keep narrow topics such as naming and project-doc placement as references unless they need a distinct interaction mode.
 - Keep engineering source documents in `references/engineering/`.
-- Keep the user persona context in `references/persona/`; it is not an engineering rule file.
 - Treat `~/.codex/AGENTS.md` as a local generated file; update the template in
   this repository, then rerun `install.sh`.
 - Keep project-specific exceptions in each repository's local docs.

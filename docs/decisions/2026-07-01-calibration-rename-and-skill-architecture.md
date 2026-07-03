@@ -4,7 +4,7 @@ Date: 2026-07-01
 
 ## Decision
 
-Rename the personal engineering system from `engineering-canon` to
+Rename the engineering calibration system from `engineering-canon` to
 `calibration`.
 
 `calibration` is the product name, repository name, and default Codex skill
@@ -25,7 +25,7 @@ The new name, `calibration`, better describes the system's role:
 - calibrate engineering judgment against evidence, local contracts, and
   repository-specific rules
 - keep reusable principles, references, and optional skills under one managed
-  personal engineering system
+  engineering calibration system
 - emphasize method and judgment over a static rule archive
 
 The name also leaves room for influences from field manuals, methodical
@@ -35,7 +35,7 @@ skills collection.
 
 ## Product Boundary
 
-`calibration` is a personal engineering system.
+`calibration` is an engineering calibration system.
 
 It includes:
 
@@ -45,7 +45,6 @@ It includes:
 - design and discipline references
 - managed third-party or user-invoked skills
 - installer logic for synchronizing local Codex state
-- persona references for strategy work
 
 It is not only:
 
@@ -70,7 +69,6 @@ Examples:
 - `brainstorming`: user-invoked exploratory design mode
 - `grilling`: user-invoked adversarial stress-test mode
 - `writing-great-skills`: user-invoked skill evaluation and editing reference
-- `personal-strategy`: separate trigger for persona-backed strategic reasoning
 
 ## Reference Architecture
 
@@ -146,8 +144,8 @@ Retired names should be removed rather than kept as aliases:
 - `global-defaults`
 
 The installer is the source of truth for synchronizing the local Codex home.
-After migration, it should manage `calibration` and `personal-strategy`, and it
-should retire `global-defaults` and `engineering-design`.
+After migration, it should manage `calibration` and retire `global-defaults`
+and `engineering-design`.
 
 No old local directory symlink should be retained. No old skill symlink should
 be retained. The README should mention the rename, but runtime behavior should
@@ -158,8 +156,8 @@ use only the new names.
 1. Document the rename and architecture decisions.
 2. Rename the default skill from `global-defaults` to `calibration`.
 3. Update `codex/AGENTS.md.template` to use `$calibration`.
-4. Update `install.sh` to manage `calibration`, keep `personal-strategy`, and
-   retire `global-defaults` and `engineering-design`.
+4. Update `install.sh` to manage `calibration` and retire `global-defaults`
+   and `engineering-design`.
 5. Update README and references from `engineering-canon` to `calibration`.
 6. Verify the installer with `bash install.sh --dry-run`.
 7. Run the installer to refresh `/home/fqzhang/.codex`.
