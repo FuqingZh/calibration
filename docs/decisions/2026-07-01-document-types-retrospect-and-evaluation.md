@@ -92,6 +92,7 @@ Add Darwin-compatible `test-prompts.json` files for the first-party skills:
 
 - `skills/calibration/test-prompts.json`
 - `skills/retrospect/test-prompts.json`
+- `skills/writing-docstrings/test-prompts.json`
 
 Each file contains three prompts covering the typical path, a complex or
 ambiguous case, and a boundary or false-trigger case.
@@ -106,6 +107,12 @@ pass is requested.
 `calibration` remains the default engineering router for coding, refactoring,
 architecture, interface shape, naming, testing, schema, CLI, API, and project
 documentation tasks.
+
+Model-invoked support skills are narrow:
+
+- `writing-docstrings`: Python docstring quality gate for explicit docstring
+  tasks, public or exported APIs, and durable workflow/product contract
+  boundaries
 
 User-invoked optional skills are intentionally narrow:
 

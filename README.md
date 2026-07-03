@@ -13,6 +13,7 @@ the system itself.
 - `codex/AGENTS.md.template`: canonical template for `~/.codex/AGENTS.md`
 - `skills/calibration/SKILL.md`: default Codex engineering skill entrypoint, including architecture and implementation design judgment
 - `skills/retrospect/SKILL.md`: user-invoked engineering retrospective and post-mortem skill
+- `skills/writing-docstrings/SKILL.md`: Python docstring quality gate for public APIs and durable workflow boundaries
 - `references/engineering/principles.md`: stable cross-project engineering principles
 - `references/engineering/naming/`: naming and interface conventions, split by decision surface
 - `references/engineering/discipline/`: refactor, debugging, and verification gates
@@ -55,13 +56,14 @@ replacement when it differs.
 - Keep project-specific exceptions in each repository's local docs.
 - Prefer one source of truth over duplicated guidance.
 
-## Managed Optional Skills
+## Managed Skills
 
-The installer also manages selected user-invoked skills:
+The installer also manages selected first-party skills:
 
 - `retrospect`: evidence-driven engineering retrospective and post-mortem mode
+- `writing-docstrings`: Python docstring quality gate for public APIs and durable workflow boundaries
 
-The managed third-party skills are:
+The managed third-party optional skills are:
 
 - `brainstorming`: exploratory design mode for ambiguous work
 - `grilling`: adversarial stress-test mode for plans and designs

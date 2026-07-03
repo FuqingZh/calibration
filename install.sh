@@ -4,7 +4,7 @@
 #
 # Managed targets:
 #   ~/.codex/AGENTS.md
-#   ~/.codex/skills/{calibration,retrospect}
+#   ~/.codex/skills/{calibration,retrospect,writing-docstrings}
 #   ~/.codex/skills/{brainstorming,grilling,writing-great-skills,writing-plans,darwin-skill}
 
 set -euo pipefail
@@ -60,6 +60,7 @@ TEMPLATE="$CALIBRATION_ROOT/codex/AGENTS.md.template"
 MANAGED_SKILLS=(
   calibration
   retrospect
+  writing-docstrings
 )
 MANAGED_THIRDPARTY_SKILLS=(
   brainstorming
