@@ -12,8 +12,8 @@ the system itself.
 - `install.sh`: local installer for Codex global entry and skill symlinks
 - `codex/AGENTS.md.template`: canonical template for `~/.codex/AGENTS.md`
 - `skills/calibration/SKILL.md`: default Codex engineering skill entrypoint, including architecture and implementation design judgment
-- `skills/retrospect/SKILL.md`: user-invoked engineering retrospective and post-mortem skill
-- `skills/writing-docstrings/SKILL.md`: Python docstring quality gate for public APIs and durable workflow boundaries
+- `skills/retrospect/SKILL.md`: user-invoked evidence-driven retrospective and lesson-refinement skill
+- `skills/writing-code-docs/SKILL.md`: language-aware code documentation for public APIs and durable workflow boundaries
 - `references/engineering/principles.md`: stable cross-project engineering principles
 - `references/engineering/naming/`: naming and interface conventions, split by decision surface
 - `references/engineering/discipline/`: refactor, debugging, and verification gates
@@ -60,24 +60,32 @@ replacement when it differs.
 
 The installer also manages selected first-party skills:
 
-- `retrospect`: evidence-driven engineering retrospective and post-mortem mode
-- `writing-docstrings`: Python docstring quality gate for public APIs and durable workflow boundaries
+- `retrospect`: evidence-driven retrospective and lesson-refinement mode for completed work and cross-stage patterns
+- `writing-code-docs`: language-aware code documentation for public APIs and durable workflow boundaries
 
 The managed third-party optional skills are:
 
 - `brainstorming`: exploratory design mode for ambiguous work
 - `grilling`: adversarial stress-test mode for plans and designs
 - `writing-great-skills`: reference for writing and editing skills predictably
-- `writing-plans`: implementation planning mode for approved multi-step work
-- `darwin-skill`: skill evaluation and optimization mode
 
 Third-party skills are vendored under `thirdparty/skills/`. The installer does
 not download them from the network. Local patches and source notes are tracked
 in `thirdparty/PATCHES.md` and `thirdparty/sources.tsv`.
 
+`writing-plans` and `darwin-skill` remain vendored for source and provenance
+review but are no longer installed as runtime skills. Codex Plan Mode plus the
+implementation-plan reference owns planning behavior; Darwin's optimization
+system remains available for study without becoming a default calibration
+entrypoint.
+
 The stale `grill-me` skill name is retired in favor of `grilling`. Existing
 unmanaged `grill-me` directories are removed only when running the installer
 with `--force`.
+
+`writing-docstrings` is retired in favor of the language-aware
+`writing-code-docs` skill. The installer removes the old symlink only when it
+still points to this repository's retired first-party path.
 
 ## Rename Note
 

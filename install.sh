@@ -4,8 +4,8 @@
 #
 # Managed targets:
 #   ~/.codex/AGENTS.md
-#   ~/.codex/skills/{calibration,retrospect,writing-docstrings}
-#   ~/.codex/skills/{brainstorming,grilling,writing-great-skills,writing-plans,darwin-skill}
+#   ~/.codex/skills/{calibration,retrospect,writing-code-docs}
+#   ~/.codex/skills/{brainstorming,grilling,writing-great-skills}
 
 set -euo pipefail
 
@@ -60,14 +60,12 @@ TEMPLATE="$CALIBRATION_ROOT/codex/AGENTS.md.template"
 MANAGED_SKILLS=(
   calibration
   retrospect
-  writing-docstrings
+  writing-code-docs
 )
 MANAGED_THIRDPARTY_SKILLS=(
   brainstorming
   grilling
   writing-great-skills
-  writing-plans
-  darwin-skill
 )
 RETIRED_SKILLS=(
   engineering-design
@@ -75,6 +73,11 @@ RETIRED_SKILLS=(
   naming
   personal-strategy
   project-docs
+  writing-docstrings
+)
+RETIRED_THIRDPARTY_SKILLS=(
+  writing-plans
+  darwin-skill
 )
 RETIRED_UNMANAGED_SKILLS=(
   grill-me
@@ -157,8 +160,9 @@ install_skill_link() {
 
 remove_retired_skill_link() {
   local skill="$1"
+  local source_root="$2"
   local target="$SKILLS_DIR/$skill"
-  local retired_source="$SKILL_SOURCE_ROOT/$skill"
+  local retired_source="$source_root/$skill"
 
   if [[ ! -L "$target" ]]; then
     return
@@ -258,7 +262,10 @@ main() {
 
   ensure_parent_dirs
   for skill in "${RETIRED_SKILLS[@]}"; do
-    remove_retired_skill_link "$skill"
+    remove_retired_skill_link "$skill" "$SKILL_SOURCE_ROOT"
+  done
+  for skill in "${RETIRED_THIRDPARTY_SKILLS[@]}"; do
+    remove_retired_skill_link "$skill" "$THIRDPARTY_SKILL_SOURCE_ROOT"
   done
   for skill in "${RETIRED_UNMANAGED_SKILLS[@]}"; do
     remove_retired_unmanaged_skill_path "$skill"

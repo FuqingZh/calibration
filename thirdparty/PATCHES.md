@@ -17,7 +17,7 @@ Local changes:
 - Removed the forced immediate commit requirement. Commit when the user asks,
   the task includes commit/push, or the repository workflow requires it.
 - Removed the forced transition to `writing-plans`. Use the active repository or
-  environment planning format unless the user invokes `writing-plans`.
+  environment planning mode.
 - Kept the visual companion assets and pointer for cases where a visual design
   question genuinely benefits from them.
 - Changed persistent visual-companion session paths from `.superpowers/brainstorm`
@@ -55,6 +55,9 @@ Local changes:
   executing-plans requirements. The local version still requires explicit
   verification gates but follows repository-local execution practice.
 - Kept `plan-document-reviewer-prompt.md` as an optional reviewer template.
+- Retained the vendored source for provenance, but removed it from installer
+  management after Codex Plan Mode and the shared implementation-plan reference
+  became the active planning control surfaces.
 
 ## darwin-skill
 
@@ -67,3 +70,6 @@ Local changes:
   surface while preserving the full upstream body and assets.
 - Replaced runtime-specific executable paths in the body and README with
   runtime-neutral or Codex-compatible paths.
+- Retained the vendored source for provenance and study, but removed it from
+  installer management because its large-scale rubric-and-ratchet optimization
+  model is not part of the daily calibration workflow.

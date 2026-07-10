@@ -42,8 +42,7 @@ You MUST complete these items in order:
    docs, decision-record, plan, or trace convention. Do not force a
    `docs/superpowers/specs/` path.
 7. **Move into implementation planning only when appropriate** - use the active
-   repository or environment format. Do not force a `writing-plans` transition
-   unless the user invokes it or the repository workflow requires it.
+   repository or environment planning mode.
 8. **Commit only when appropriate** - commit only when the user asks, the task
    includes commit/push, or a repository workflow explicitly requires a
    committed design or plan.
