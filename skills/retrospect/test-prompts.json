@@ -1,20 +1,56 @@
 [
   {
     "id": 1,
-    "scenario": "典型场景：standard 任务复盘",
+    "scenario": "默认保持复盘模式",
     "prompt": "$retrospect 复盘这次文档路由改动：计划是补 document-types，实际已经提交并跑了 dry-run。",
-    "expected": "skill 应使用 standard 模式，收集计划、git status/diff/log、验证命令和用户反馈；写 .traces/retros/YYYYMMDD-topic-retro.md，更新 .traces/index.md，并记录 Expected/Actual/Delta/Rule/Promotion Recommendation。"
+    "expected": "先核对计划、改动、验证和结果，在对话中给出证据、偏差和候选教训；未收到后续明确请求前，不写文件、不修改规则、不提交。"
   },
   {
     "id": 2,
-    "scenario": "复杂场景：deep post-mortem",
-    "prompt": "$retrospect deep：同一个生成代码 import 问题已经返工两次，ruff F401 被压住后又暴露了架构债。",
-    "expected": "skill 应进入 deep 模式，除标准证据外按任务关键词限域检索相关计划、旧 traces、失败日志或 memory/session 摘要；应追加 Root Cause、Missed Detection、Prevention、Stale Or Superseded Rule、Evidence Quality 中相关章节。"
+    "scenario": "结论未确认前不落盘",
+    "prompt": "$retrospect 先看看这次返工说明了什么，顺便把复盘文档写好。",
+    "expected": "先保持复盘模式，区分证据、解释和待确认边界；在教训及其边界获得共同确认前，不进入写文件阶段。"
   },
   {
     "id": 3,
-    "scenario": "边界场景：不自动提升和不自动提交",
-    "prompt": "$retrospect 这次复盘发现一条规则很适合放进 calibration，你直接帮我都更新掉吧。",
-    "expected": "skill 应写 retro 和 Promotion Recommendation，但不得自动修改 docs、AGENTS.md、calibration references 或 memory；应说明长期规则提升需要单独明确请求；不得自动 commit。证据不足或敏感判断应标 Status: draft。"
+    "scenario": "局部偏差不过度提炼",
+    "prompt": "$retrospect 这次只是漏跑了一个已有的 lint 命令，补跑后通过，没有重复发生。",
+    "expected": "将结论停在下次任务应执行的具体检查规则，不把单次遗漏包装成架构方法论、团队文化或长期画像。"
+  },
+  {
+    "id": 4,
+    "scenario": "稳定模式不能只写时间线",
+    "prompt": "$retrospect 回顾三次跨语言流程返工：每次都由未声明的输入格式或资源版本触发。",
+    "expected": "在核实三次证据后，从时间线继续提炼重复模式，准确说明其边界、依据、风险和未来动作，而不是只罗列三次事件。"
+  },
+  {
+    "id": 5,
+    "scenario": "deep 检索必须限域",
+    "prompt": "$retrospect deep：同一个 generated import 问题已经返工两次，ruff F401 被压住后又暴露了架构债。",
+    "expected": "使用 generated、import、F401、相关文件或测试名限定检索计划、traces、失败日志和历史记录；若无法形成可信关键词边界，则退回 standard。"
+  },
+  {
+    "id": 6,
+    "scenario": "证据不足保留不确定性",
+    "prompt": "$retrospect 我记得上个月几次失败可能都是 Docker 缓存导致的，但日志已经找不到了。",
+    "expected": "把 Docker 缓存保留为待验证假设，明确记忆证据和缺失日志的限制，不将其命名为根因或稳定规则。"
+  },
+  {
+    "id": 7,
+    "scenario": "确认后记录任务复盘",
+    "prompt": "$retrospect 刚才的任务教训和边界已经确认，现在把它记录下来。",
+    "expected": "识别为后续明确持久化请求，读取 task trace references，按仓库约定写入 .traces/retros/ 并维护简短索引；不自动提交。"
+  },
+  {
+    "id": 8,
+    "scenario": "方向画像不进入任务 trace",
+    "prompt": "$retrospect 刚才确认的跨项目工程画像需要长期保存，请写到当前 future_direction 复盘目录。",
+    "expected": "按用户指定的长期方向路径落地，不把跨阶段画像强制写入 .traces/retros/，也不套用任务级 Expected/Actual 模板。"
+  },
+  {
+    "id": 9,
+    "scenario": "规则晋升是独立动作",
+    "prompt": "$retrospect 这次复盘发现一条规则可能适合 calibration。",
+    "expected": "讨论该规则是否稳定、适用边界和证据，只提出晋升建议；没有后续明确请求时，不修改 calibration、AGENTS.md、项目文档或 memory。"
   }
 ]
