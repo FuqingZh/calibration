@@ -1,0 +1,38 @@
+[
+  {
+    "name": "python_library_public_api_examples",
+    "scenario": "A reusable Python package API has two non-obvious public usage modes.",
+    "prompt": "Use $writing-code-docs to add or revise documentation for a reusable Python public API with two distinct usage modes and existing type hints.",
+    "expected": "Follow repository style or the Python Google-style fallback, avoid repeating type hints, and add one small stable example for each non-obvious usage mode."
+  },
+  {
+    "name": "python_workflow_maintenance_boundary",
+    "scenario": "A Python workflow function connects validated analysis artifacts to report packaging.",
+    "prompt": "Use $writing-code-docs to review a Python function between analysis artifacts and report packaging.",
+    "expected": "Classify it as maintenance-facing, document the boundary, rationale, and tempting invalid simplification, and do not require an example unless the callable is also library-facing."
+  },
+  {
+    "name": "avoid_ceremonial_private_helper",
+    "scenario": "A module contains obvious private helpers and thin forwarding wrappers.",
+    "prompt": "Use $writing-code-docs to decide whether every private helper and forwarding wrapper in this module needs documentation.",
+    "expected": "Reject ceremonial documentation where the code surface is already clear and recommend improving names, boundaries, or wrappers instead of explaining them with prose."
+  },
+  {
+    "name": "language_native_repository_convention",
+    "scenario": "A Rust, Go, or R repository already has an established native documentation convention.",
+    "prompt": "Use $writing-code-docs to revise documentation attached to code in a non-Python repository with an established local convention.",
+    "expected": "Identify the language and native documentation carrier, follow the repository convention, and do not transfer Python section names by analogy."
+  },
+  {
+    "name": "language_official_fallback",
+    "scenario": "A non-Python repository has no local documentation convention or bundled reference.",
+    "prompt": "Use $writing-code-docs to document a public API in a language with no repository-local documentation convention.",
+    "expected": "Consult the language's official documentation convention, state the gap if it cannot be established, and avoid inventing a format."
+  },
+  {
+    "name": "library_and_maintenance_boundary",
+    "scenario": "An exported API is both caller-facing and a compatibility-sensitive workflow boundary.",
+    "prompt": "Use $writing-code-docs to document an exported API that callers use directly and maintainers must preserve as a workflow contract.",
+    "expected": "Classify it as both library-facing and maintenance-facing, serve both readers, and avoid repeating the same fact across usage and maintenance documentation."
+  }
+]

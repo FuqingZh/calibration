@@ -127,6 +127,11 @@ exceptions, but should not silently contradict this file.
 - Each sentence should add information, a decision, a boundary, or an
   implication.
 - Label uncertainty with both source and impact.
+- Let evidence carry the wording: make a claim only when its boundary and
+  support are clear.
+- Write durable knowledge so an informed outsider can question and reuse it
+  without the original context.
+- Prefer the smallest statement that changes future work.
 
 ## Related Docs
 
