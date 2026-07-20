@@ -1,146 +1,74 @@
 # Principles
 
-This document is the cross-project source of truth for stable engineering
-principles. Repository-local docs may add stricter rules or domain-specific
-exceptions, but should not silently contradict this file.
-
-## Scope and Priority
-
-- Direct user instructions override defaults.
-- Repository-local `AGENTS.md`, `CONTRIBUTING.md`, or equivalent project docs
-  may refine these rules for that repository.
-- Use this file for rules that should stay stable across projects.
-
-## Working Mode
-
-- Default role: thinking collaborator plus code auditor.
-- Give a clear preferred option first, then alternatives and trade-offs.
-- Use auditable reasoning: definitions, assumptions, steps, boundaries,
-  examples, and explicit uncertainty when needed.
-- Do not optimize for agreement over correctness.
-- If a task shape is better suited for delegation than local interactive work,
-  say so explicitly instead of silently changing working mode.
+These are the cross-project defaults that remain useful across engineering
+topics.
 
 ## Problem Framing
 
-- Do not only solve within the user’s stated premises.
-- Challenge false constraints, wrong abstractions, and pseudo-requirements when
-  they materially affect the solution.
+- Challenge a false constraint, wrong abstraction, or pseudo-requirement when
+  it materially changes the solution.
 - Prefer a corrected problem statement over a polished solution to the wrong
   problem.
 
-## Architecture Boundaries
-
-- Keep the business-critical path shallow, direct, and linearly readable.
-- Avoid mechanical defensive programming and thin helper extraction that add
-  ceremony without reducing a real failure mode or complexity burden.
-- Do not introduce a new entity, structured type, or layer unless it adds a
-  real semantic distinction, lifecycle boundary, ownership boundary, or reuse
-  value that the existing structure cannot already express.
-- Avoid wrapper layers whose only effect is renaming or argument forwarding.
-- A layer should earn its existence by adding semantics, a stable boundary,
-  policy isolation, or real reuse value.
-- Keep product policy, project taste, and caller-specific defaults out of
-  low-level kernels unless they are explicitly part of the kernel contract.
-- Public behavior and compatibility take priority over internal refactors.
-
 ## Native Abstractions and Data Flow
 
-- Prefer the current domain library's native bulk abstractions over handwritten
-  loops or ad hoc intermediate state.
+- Prefer the installed domain library's native bulk abstractions over
+  handwritten loops or ad hoc intermediate state.
 - For tabular data, prefer DataFrame or query-expression APIs for projection,
   grouping, window calculation, joining, reshaping, and column-wise transforms.
 - For arrays and numerical work, prefer vectorized or batched APIs from the
-  numerical/statistical library already owning that operation.
+  numerical or statistical library that owns the operation.
 - For graph, text, sequence, Excel, Parquet, JSON, and similar structured
   domains, use stable parser, writer, graph, or domain-model APIs instead of
   manual string splitting or reimplementing core algorithms.
 - Keep information on one appropriate structure when it naturally belongs
-  there. Avoid repeatedly splitting, pivoting, rejoining, or materializing
-  parallel temporary states unless a boundary or algorithm requires it.
+  there. Split, pivot, rejoin, or materialize parallel state only when a
+  boundary or algorithm requires it.
 - Convert to lower-level forms such as lists, dictionaries, NumPy arrays,
-  pandas frames, or temporary files only at explicit boundaries, and keep that
-  conversion close to the caller that requires it.
-- For fast-moving libraries, inspect the currently installed API before coding:
-  check the local version, available selectors/helpers, source, or a small
-  executable example rather than relying only on older idioms.
+  pandas frames, or temporary files at explicit boundaries, close to the caller
+  that requires the conversion.
+- For fast-moving libraries, inspect the installed version, available API,
+  source, or a small executable example before relying on remembered idioms.
 
 ## Configuration and Defaults
 
-- Technical defaults belong in explicit config structures, not scattered inside
-  orchestration logic.
-- Product or style preferences belong in caller-facing config or project-level
-  docs.
-- Any magic threshold must have:
-  - a named constant
-  - a rationale or applicability note
-  - an override path
-- If code or config requires a random seed and no repository-local rule,
-  caller-supplied seed, compatibility contract, published reproducibility
-  requirement, or domain-specific requirement already specifies one, use `42`
-  as the default fallback seed.
-- Treat `42` as a reproducibility default, not as a rewrite target for existing
-  non-`42` seeds. When the seed materially affects reproducibility or public
-  behavior, expose it through config, API, CLI, or an explicitly documented
-  override path.
+- Put technical defaults in explicit configuration structures rather than
+  scattering them through orchestration logic.
+- Put product and style preferences in caller-facing configuration or
+  project-level documentation.
+- Give every magic threshold a named constant, an applicability rationale, and
+  an override path.
+- When no local rule, caller value, compatibility contract, or domain
+  requirement specifies a random seed, use `42` as the fallback.
+- Treat `42` as a reproducibility default, not a rewrite target. Expose a seed
+  when it materially affects reproducibility or public behavior.
 - Prefer explicit configuration files over hidden runtime assumptions.
-
-## Testing and Change Discipline
-
-- Behavior changes require tests.
-- Keep public API changes minimal and explicit.
-- Public API, CLI, exported schema, and compatibility changes require tests and
-  documentation updates.
-- Keep docs and examples in sync with public APIs.
-- Prefer additive evolution; deprecate before removal when external users may be
-  affected.
-- Contract boundaries between layers, languages, or modules should have
-  dedicated contract tests where practical.
 
 ## Project Knowledge
 
-- Long-lived architecture, contracts, implementation plans, test plans, and
-  benchmark records belong in project `docs/`.
-- Task-level execution retrospectives, judgment errors, and short-lived
-  observations belong in project `.traces/`.
-- Raw execution history should not be copied by default. Prefer git history,
-  agent/session logs, test artifacts, and product logs as the source for raw
-  process evidence.
-- Use `.traces/evidence/` only when the evidence cannot be reconstructed from
-  those existing records, and keep that directory out of git by default.
-- Repeatedly validated trace observations should be promoted into project
-  `docs/`, repository-local instructions, or this canon instead of remaining
-  only as local retrospective notes.
+- Keep long-lived architecture, contracts, plans, test plans, and benchmark
+  records in project `docs/`.
+- Keep task-level execution retrospectives, judgment errors, and short-lived
+  observations in project `.traces/`.
+- Use reconstructable git history, session logs, test artifacts, and product
+  logs as raw process evidence. Use `.traces/evidence/` only when the evidence
+  cannot be reconstructed, and keep it out of git by default.
+- Promote repeatedly validated trace observations into project documentation,
+  repository instructions, or calibration.
 
 ## Performance and Measurement
 
-- Measure performance against explicit inputs and environments.
-- Record the environment and scale, not only the headline number.
-- Validate outputs, not only runtime.
-- Treat benchmarks as artifacts with reproducible context.
+- Measure against explicit inputs, environments, and scale.
+- Validate outputs as well as runtime.
+- Keep benchmarks as reproducible artifacts rather than isolated headline
+  numbers.
 
 ## Communication
 
-- Avoid slogan-like phrasing, fake-friendly colloquialisms, and bureaucratic
-  boilerplate.
-- Avoid low-information meta narration.
-- Each sentence should add information, a decision, a boundary, or an
-  implication.
-- Label uncertainty with both source and impact.
-- Let evidence carry the wording: make a claim only when its boundary and
-  support are clear.
-- Write durable knowledge so an informed outsider can question and reuse it
-  without the original context.
-- Prefer the smallest statement that changes future work.
-
-## Related Docs
-
-- Read `../docs/technology/main_path_readability/20260318-v1.0.md` for the
-  detailed main-path readability rule.
-- Read `../docs/workflow/project_docs_architecture/20260527-v1.0-project-docs-architecture.md`
-  when defining or auditing project documentation layout, document naming, or
-  document lifecycle rules.
-- Read `../docs/workflow/task_traces_and_retros/20260527-v1.0-task-traces-and-retros.md`
-  when defining or using `.traces` records, engineering retrospectives, or
-  trace-to-doc promotion rules.
-- Read `docs_index.md` for longer schema and layout specifications.
+- Lead with the conclusion or preferred option.
+- Include the evidence checked and enough rationale to audit the decision.
+- State material assumptions, uncertainty, and residual risk with their impact.
+- Give the next action when one remains.
+- Remove repeated background, low-information process narration, slogans, and
+  boilerplate before removing decision evidence.
+- Provide concise decision rationale rather than private chain-of-thought.

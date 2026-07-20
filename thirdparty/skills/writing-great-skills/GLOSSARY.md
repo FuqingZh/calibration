@@ -18,19 +18,28 @@ How a skill is reached — and the two loads you pay for the choice.
 
 ### Model-Invoked
 
-A skill that keeps its **description** field, so the agent can see it and fire it autonomously — and the human can still type its name, so model-invocation always _includes_ user reach. There is no model-only state: a description only ever _adds_ agent discovery, never removes the human's. Pays a permanent **context load** on every turn in exchange for that discoverability. Reachable by other skills, because the description that makes it agent-discoverable makes it invocable. A model-invoked skill whose content is all **reference** is also one home for shared reference: another skill can invoke it, so reference needed by several skills lives in one place. Pick model-invocation only when the agent must reach the skill on its own; if it never fires except by hand, drop the description and pay no context load.
+A skill whose `agents/openai.yaml` allows implicit invocation, either explicitly
+or through the default. Its frontmatter **description** lets the model discover
+and invoke it autonomously, while explicit human invocation remains available.
+It pays **context load** for discoverability.
 
 _Avoid_: ability, tool, capability
 
 ### User-Invoked
 
-A skill with its **description** stripped — invisible to the agent and reachable only by the human typing its name (user-_only_, where **model-invoked** is user-_and-agent_). Trades agent-discoverability for zero **context load**. Because it has no description, nothing but the human can reach it: no other skill can fire it.
+A skill with `policy.allow_implicit_invocation: false` in
+`agents/openai.yaml`. It remains available when the human explicitly invokes
+`$skill-name`, but it is not injected for autonomous discovery. It trades that
+discovery for lower **context load** and spends human **cognitive load** instead.
 
 _Avoid_: procedure, workflow, command
 
 ### Description
 
-The skill's machine-readable trigger, and the one **context pointer** a **model-invoked** skill is forced to keep loaded at all times. Its mere presence _is_ the invocation axis: keep it and the skill is model-invoked (and reachable by other skills); delete it and the skill is **user-invoked**, reachable only by the human. The source of a model-invoked skill's **context load**.
+The concise frontmatter summary of what the skill does and when it applies. For
+a **model-invoked** skill it is the machine-readable trigger and top-level
+**context pointer**. For a **user-invoked** skill it remains human-facing
+metadata; invocation policy lives in `agents/openai.yaml`.
 
 _Avoid_: frontmatter, summary
 
@@ -42,7 +51,10 @@ _Avoid_: link, reference, import
 
 ### Context Load
 
-The cost a **model-invoked** skill imposes on the agent's context window — its **description**, always loaded, spending both tokens and attention. What **user-invoked** skills escape by having no description, and the brake on splitting into more model-invoked skills.
+The tokens and attention a **model-invoked** skill spends by making its
+**description** available for autonomous discovery. A **user-invoked** skill
+avoids that implicit load. This is the brake on splitting into more
+model-invoked skills.
 
 _Avoid_: token cost, context bloat
 
@@ -54,7 +66,10 @@ _Avoid_: human index, burden, overhead
 
 ### Router Skill
 
-A **user-invoked** skill whose job is to point at your other user-invoked skills — naming each and when to reach for it — so the human has one skill to remember instead of many. It can only hint, never fire them: user-invoked skills have no **description**, so nothing but the human can reach them. The cure for **cognitive load** when user-invoked skills multiply.
+An explicit skill that points at related **user-invoked** skills and states the
+decision boundary for choosing each one, so the human has one entrypoint to
+remember. It reduces **cognitive load** without enabling implicit invocation for
+the routed skills.
 
 _Avoid_: dispatcher, menu, registry, index, router procedure
 
@@ -158,6 +173,15 @@ _Failure mode._ Ending the current step before it is genuinely done, because the
 
 _Avoid_: premature closure, the rush, rushing, shortcutting
 
+### Negation
+
+_Failure mode._ Steering by prohibition, which makes the forbidden behavior
+more available by naming it. Prompt the positive target instead. Keep a
+prohibition only for a hard guardrail that cannot be expressed positively, and
+pair it with the behavior to perform.
+
+_Avoid_: ironic rebound, don't-prompting, the pink elephant
+
 ## Pruning
 
 Keeping a skill lean — each remedy paired with the failure it cures.
@@ -190,6 +214,11 @@ _Avoid_: accretion, bloat, cruft, rot
 
 _Failure mode._ An instruction that changes nothing because the model already does it by default — you pay load to tell the agent what it would do anyway. The test: does a line change behaviour versus the default? A line can be perfectly **relevant** and still be a no-op. The same priors that make a **leading word** free make a no-op worthless.
 
-A leading word is a _technique_; No-Op is a _verdict_ on a line — and they cross. A leading word too weak to beat the default is a no-op (_be thorough_ when the agent is already thorough-ish), and the fix is a stronger word that passes the verdict (_relentless_), not a different technique. So the No-Op test — does it change behaviour versus the default? — is also how you grade whether a leading word is earning its repetitions. This is model-relative, not reader-relative: two people disagreeing over whether a line is a no-op disagree about the default, and settle it by running the skill, not by debate.
+A leading word is a _technique_; No-Op is a _verdict_ on a line. Remove a
+no-op, or make the instruction operational by adding the missing scope,
+required evidence, completion criterion, or stopping condition. Use a stronger
+word only when forward tests show that wording, rather than a missing boundary,
+is the actual behavior gap. The verdict is model-relative and should be settled
+by running the skill rather than by debate.
 
 _Avoid_: redundant instruction, restating the obvious, belaboring

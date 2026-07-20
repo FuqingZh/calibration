@@ -1,7 +1,6 @@
 ---
 name: writing-plans
 description: User-invoked implementation planning mode for approved specs, requirements, or multi-step engineering work.
-disable-model-invocation: true
 ---
 
 # Writing Plans

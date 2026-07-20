@@ -1,7 +1,6 @@
 ---
 name: darwin-skill
 description: "User-invoked skill evaluation and optimization mode for improving SKILL.md files with rubric, test prompts, and human checkpoints."
-disable-model-invocation: true
 ---
 
 # Darwin Skill 2.0

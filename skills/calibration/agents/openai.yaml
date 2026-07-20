@@ -1,0 +1,6 @@
+interface:
+  display_name: "Calibration"
+  short_description: "Route cross-project engineering decisions"
+  default_prompt: "Use $calibration to calibrate this engineering change against repository rules and shared defaults."
+policy:
+  allow_implicit_invocation: true

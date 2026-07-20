@@ -1,11 +1,22 @@
 ---
 name: grilling
-description: User-invoked adversarial stress-test mode for plans, architecture, and implementation approaches.
-disable-model-invocation: true
+description: User-invoked adversarial stress-test mode for a plan, decision, or idea.
 ---
 
-Interview me relentlessly about every aspect of this plan until we reach a shared understanding. Walk down each branch of the design tree, resolving dependencies between decisions one-by-one. For each question, provide your recommended answer.
+# Grilling
 
-Ask the questions one at a time, waiting for feedback on each question before continuing. Asking multiple questions at once is bewildering.
+Stress-test the subject by walking each material branch of its decision tree.
+Resolve dependencies between decisions one at a time, and provide a recommended
+answer with each question.
 
-If a question can be answered by exploring the codebase, explore the codebase instead.
+Ask one question per message and wait for feedback before continuing.
+
+Look up facts that can be established from the environment, including files,
+tools, and existing documentation. Put decisions to the user and wait for their
+answer.
+
+Take no implementation action until the user confirms the shared understanding.
+
+Stop when no unresolved decision can materially change the scope, interface,
+risk, or verification path. Summarize the confirmed understanding at that
+point.

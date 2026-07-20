@@ -1,0 +1,6 @@
+interface:
+  display_name: "Writing Plans"
+  short_description: "Write an executable implementation plan"
+  default_prompt: "Use $writing-plans to turn these approved requirements into an executable implementation plan."
+policy:
+  allow_implicit_invocation: false
