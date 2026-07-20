@@ -1,0 +1,6 @@
+interface:
+  display_name: "Writing Code Docs"
+  short_description: "Write contract-focused native code docs"
+  default_prompt: "Use $writing-code-docs to document the caller and maintainer contracts in this code."
+policy:
+  allow_implicit_invocation: true

@@ -2,6 +2,52 @@
 
 Date: 2026-07-03
 
+Status: Superseded by `writing-code-docs`
+
+Current entry points: `skills/writing-code-docs/SKILL.md` and
+`skills/writing-code-docs/test-prompts.json`.
+
+The body below is retained as the historical Python-first design. The current
+skill is language-aware, uses Google style only as the Python fallback, and
+uses Polars guidance as an on-demand example-calibration reference rather than
+keeping a full local example guide.
+
+## Current Decision
+
+The current `writing-code-docs` contract is reader- and consequence-based:
+
+- trace each in-scope symbol through real code, call sites, tests, schemas, or
+  outputs before documenting it;
+- classify its readers as callers, maintainers, both, or none;
+- do not document a symbol with no reader, and do not use documentation to
+  compensate for a bad public boundary;
+- give each caller-facing class, function, method, and property its own example;
+- exercise that symbol directly and show the smallest public consequence that
+  explains why a caller would use it;
+- cover every distinct public consequence once, without ceremonial examples or
+  repeated setup that teaches no new behavior;
+- for maintainers, state the boundary, why it exists, and the tempting change
+  that would break it;
+- when a symbol is only a maintenance helper, prefer a private name and
+  maintenance-facing documentation over manufacturing a public example.
+
+“Smallest” constrains each example, while complete coverage applies across the
+symbol's distinct caller-visible consequences. It does not mean that every
+simple observable such as `.height`, `.shape`, a stored argument, or an
+`isinstance` check is automatically useful. The observed result must explain
+the API's purpose or a meaningful parameter effect.
+
+Repository-local and language-native conventions take precedence. Python uses
+Google style only when the repository has no local convention. Polars is an
+on-demand reference for coverage judgment, not a format dependency and not a
+source of examples to imitate mechanically.
+
+The earlier proposal to keep `references/python-google.md` was retired. Static
+Python syntax and Google-style mechanics belong to their official references;
+the skill keeps only the compact judgment rules that affect documentation
+quality. `test-prompts.json` tests those rules without hard-coding one project
+method or fixture.
+
 ## Purpose
 
 This document records the design direction for a future `writing-docstrings`

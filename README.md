@@ -13,7 +13,7 @@ the system itself.
 - `codex/AGENTS.md.template`: canonical template for `~/.codex/AGENTS.md`
 - `skills/calibration/SKILL.md`: default Codex engineering skill entrypoint, including architecture and implementation design judgment
 - `skills/retrospect/SKILL.md`: user-invoked evidence-driven retrospective and lesson-refinement skill
-- `skills/writing-code-docs/SKILL.md`: language-aware code documentation for public APIs and durable workflow boundaries
+- `skills/writing-code-docs/SKILL.md`: language-aware, Python-calibrated code documentation for public APIs and durable workflow boundaries
 - `references/engineering/principles.md`: stable cross-project engineering principles
 - `references/engineering/naming/`: naming and interface conventions, split by decision surface
 - `references/engineering/discipline/`: refactor, debugging, and verification gates
@@ -61,7 +61,7 @@ replacement when it differs.
 The installer also manages selected first-party skills:
 
 - `retrospect`: evidence-driven retrospective and lesson-refinement mode for completed work and cross-stage patterns
-- `writing-code-docs`: language-aware code documentation for public APIs and durable workflow boundaries
+- `writing-code-docs`: language-aware, Python-calibrated code documentation for public APIs and durable workflow boundaries
 
 The managed third-party optional skills are:
 
@@ -72,6 +72,10 @@ The managed third-party optional skills are:
 Third-party skills are vendored under `thirdparty/skills/`. The installer does
 not download them from the network. Local patches and source notes are tracked
 in `thirdparty/PATCHES.md` and `thirdparty/sources.tsv`.
+
+`test-prompts.json` files are behavioral evaluation inputs. Their presence does
+not prove an optimization or regression result until the prompts have been run
+under a stated model, reasoning effort, and comparison method.
 
 `writing-plans` and `darwin-skill` remain vendored for source and provenance
 review but are no longer installed as runtime skills. Codex Plan Mode plus the
