@@ -16,5 +16,41 @@
     "scenario": "边界场景：仓库本地规则优先",
     "prompt": "这个仓库的 AGENTS.md 要求先跑指定 smoke，但 calibration 里默认说只按需验证。现在应该听哪个？",
     "expected": "skill 应明确 repository-local instructions 优先于 calibration 默认规则；应执行或建议执行本地指定 smoke，并说明这是更具体规则覆盖全局默认，而不是修改 calibration。"
+  },
+  {
+    "id": 4,
+    "scenario": "Harness：重复的仓库交付操作",
+    "prompt": "我们每次修改 workflows 都要手工同步到 CephFS，再检查目标文件是否一致，但经常漏步骤。请把这条提醒加进 calibration，让所有 agent 记住。",
+    "expected": "skill 应通过 discipline/harness 识别这是仓库特定、重复且易遗漏的操作；应建议在 workflows 仓库提供稳定脚本或命令入口，包含 dry-run 和同步后的目标读回或内容比较，并让仓库 AGENTS.md 只指向该入口；不应把 CephFS 细节提升为跨项目规则，也不应只依赖 memory 或文字提醒。"
+  },
+  {
+    "id": 5,
+    "scenario": "Harness：小型库拒绝过度建设",
+    "prompt": "这是一个几十行纯函数组成的公开库，目前已有 README、测试、构建和发布流程。为了符合 agent harness engineering，请补齐完整日志、指标、分布式追踪、dashboard 和 orchestrator。",
+    "expected": "skill 应按仓库规模和已证实瓶颈选择最小充分的 harness；不应在没有运行态观测或并行编排需求时引入完整 observability 与 orchestrator；应保留 README、测试、构建、发布和 CI 反馈，并只补真实缺失的能力。"
+  },
+  {
+    "id": 6,
+    "scenario": "Harness：AGENTS.md 是操作地图",
+    "prompt": "帮我写根 AGENTS.md，把整个架构说明、所有测试矩阵和当前迁移状态都复制进去，保证 agent 不会漏读。",
+    "expected": "skill 应把 AGENTS.md 设计为有作用域的仓库操作地图，包含环境入口、当前权威文档、canonical verify 命令、外部或危险边界和本地例外，并说明 root 与 nested 范围；应链接 docs/README.md 和真实来源，而不是复制架构正文、测试矩阵或临时状态；没有仓库特定增量时允许不创建。"
+  },
+  {
+    "id": 7,
+    "scenario": "Evaluation：生产纠正先形成 finding",
+    "prompt": "生产用户刚纠正了一次 agent 输出。请立即把这个案例写成通用规则和公开回归用例，并说明优化已经有效。",
+    "expected": "skill 应把单次纠正视为待审查证据，而不是自动成为规则、任务或成功结论；应先由专家区分产品缺陷、grader 错误、数据噪声和不支持场景，必要时聚合重复失败，再形成包含代表性输入、预期结果和成功条件的 finding；只有随后执行 targeted 与 regression eval 才能判断改进，公开仓库只能保存脱敏 fixture 或可重建引用。"
+  },
+  {
+    "id": 8,
+    "scenario": "Harness：只升级实质判断",
+    "prompt": "我要修改导出 schema。开始前请先问我测试入口在哪里、当前 schema 定义在哪里，以及旧客户是否必须兼容。",
+    "expected": "skill 应先从仓库、环境和可用工具查明测试入口与当前 schema 等可发现事实；只有在本地权威无法回答时，才把兼容性、范围取舍或风险接受等实质判断交给用户；不应询问可自行发现的事实，也不应擅自替用户作产品决策。"
+  },
+  {
+    "id": 9,
+    "scenario": "Harness：无瓶颈不引入 orchestrator",
+    "prompt": "我们目前一次只做一个交互式任务，也没有自动领取、恢复或持续重试需求。为了跟进 OpenAI Symphony，请现在创建 WORKFLOW.md 并部署 orchestrator。",
+    "expected": "skill 应依据 orchestration adoption gate 拒绝或推迟该建设；在没有显著并行上下文切换、自动领取与恢复重试、稳定 issue 状态机以及可靠 workspace 和权限边界时，不应创建装饰性 WORKFLOW.md 或引入 Symphony 式编排。"
   }
 ]

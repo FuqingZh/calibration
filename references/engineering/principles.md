@@ -46,6 +46,10 @@ topics.
 
 ## Project Knowledge
 
+- Treat memory and conversation as leads rather than current authority. Resolve
+  discoverable facts from the repository, environment, documentation, and
+  tools; escalate product intent, tradeoffs, and risk decisions that require
+  human authority.
 - Keep long-lived architecture, contracts, plans, test plans, and benchmark
   records in project `docs/`.
 - Keep task-level execution retrospectives, judgment errors, and short-lived
@@ -55,6 +59,9 @@ topics.
   cannot be reconstructed, and keep it out of git by default.
 - Promote repeatedly validated trace observations into project documentation,
   repository instructions, or calibration.
+- Turn repeated project operations into repository-owned scripts or tools.
+  Turn mechanically decidable invariants into tests, lint, schema checks, or
+  CI instead of accumulating reminders.
 
 ## Performance and Measurement
 
