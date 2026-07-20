@@ -20,6 +20,7 @@ the system itself.
 - `references/engineering/design/`: codebase design and boundary judgment
 - `references/engineering/docs_index.md`: navigation for longer specifications
 - `references/engineering/docs/`: reusable long-form specifications and patterns
+- `docs/README.md`: current decision, evaluation, and implementation-plan map
 - `thirdparty/`: vendored optional skills and their source/patch records
 
 ## Install

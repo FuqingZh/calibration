@@ -74,3 +74,6 @@ Before changing the skill bodies again:
 4. Reject an evaluation closeout when expected scorecard fields are blank.
 5. Use this accepted candidate, rather than `5e50f96`, as the baseline for the
    next optimization round.
+
+Execution is tracked in
+`../implementation-plan/20260720-v1.0-agent-harness-collaboration-implementation-plan.md`.
