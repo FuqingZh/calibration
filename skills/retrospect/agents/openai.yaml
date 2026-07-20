@@ -1,0 +1,6 @@
+interface:
+  display_name: "Retrospect"
+  short_description: "Trace evidence into a reusable lesson"
+  default_prompt: "Use $retrospect to derive a bounded lesson from the evidence of this completed work."
+policy:
+  allow_implicit_invocation: false

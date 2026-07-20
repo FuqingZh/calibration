@@ -5,61 +5,83 @@ description: Use for writing, revising, or auditing docstrings and language-nati
 
 # Writing Code Docs
 
-Document the contract, not the code.
+Trace each in-scope symbol through real use until its contract is clear to its
+intended readers.
 
-## Route
+Ground that contract in relevant code, call sites, tests, schemas, or outputs,
+not the signature alone.
 
-Identify the language, its documentation carrier, and the repository-local
-convention before writing.
+A contract is clear to callers when they know what they may rely on, and to
+maintainers when they know what they must preserve.
 
-Follow the repository's documentation convention when one is present.
+## Convention
 
-For Python without a local convention, use Google-style docstrings; read
-`references/python-google.md` for non-trivial sections, examples, or
-maintenance notes.
+Before writing, find and follow any repository-local, language-native
+documentation convention.
 
-For another language without a local convention or bundled reference, consult
-its official documentation convention; if that is unavailable, state the gap
-before choosing a format. Do not transfer Python sections by analogy.
+For Python without a local convention, follow the docstring convention in the
+[Google Python Style Guide](https://google.github.io/styleguide/pyguide.html#s3.8-comments-and-docstrings).
 
-## Decide
+Under that fallback, use
+[doctest-style](https://docs.python.org/3/library/doctest.html) `Examples:` for
+caller-facing examples and `Notes:` for maintenance boundaries.
 
-Determine whether the code is library-facing, maintenance-facing, both, or
-neither.
+For other languages without a local convention, follow the official
+documentation convention; if none exists, state the gap before choosing a
+format.
 
-Write only contract information that is not readily recoverable from the name,
-signature, types, schema, or nearby code.
+Do not transfer Python sections by analogy.
 
-## Library-Facing
+## Readers
 
-For library-facing code, document correct use and the behavior callers may rely
-on.
+Classify each in-scope symbol by its readers: callers, maintainers, both, or
+none.
 
-Add the smallest stable example for each distinct usage mode that is not
-obvious from the signature; do not add multiple examples that prove the same
-contract.
+Do not document symbols with no reader.
 
-## Maintenance-Facing
+In prose, do not restate what names, signatures, types, schemas, or nearby code
+already show.
 
-For maintenance-facing code, document the boundary a maintainer must preserve,
-why it exists, and which apparently safe changes would violate it.
+For callers, show how to use the symbol and what they may rely on.
 
-When both apply, serve both readers without repeating the same fact.
+Give every caller-facing class, function, method, and property its own example,
+even when its contract is simple.
 
-Do not translate domain terms when translation would change their technical or
-product meaning.
+Exercise the symbol and show the smallest public consequence that explains why
+a caller would use it.
+
+Cover each distinct public consequence once.
+
+When example coverage or granularity remains unclear, read
+[Polars: Writing doc examples](https://docs.pola.rs/development/contributing/test/#writing-doc-examples).
+Borrow its coverage judgment: start with default use, show meaningful parameter
+effects and special interactions, and keep each example short without repeating
+the same consequence. Inspect one analogous Polars API page only when that
+still leaves the degree unclear.
+
+Keep the repository's selected format, or the Google-style fallback for Python.
+Polars' numpydoc section format is not part of this skill. If the link is
+unavailable, continue from the rules above.
+
+For maintainers, name the boundary, why it exists, and the tempting change that
+would break it.
+
+When both apply, serve each reader without duplication.
 
 ## Boundaries
 
-Do not use code documentation to compensate for a bad name, unclear boundary,
-or mechanical wrapper; improve the code instead.
+Keep domain terms unchanged unless the repository defines their translation.
 
-Do not use code documentation to replace tests, runtime or schema validation,
-user guides, or architecture records.
+Treat bad names, unclear boundaries, and mechanical wrappers as code problems,
+not documentation problems; fix them when in scope and report them otherwise.
 
-Do not invent documentation sections that the language or repository convention
-does not support.
+Do not substitute documentation for tests, validation, user guides, or
+architecture records.
 
-Complete only when every in-scope symbol has been classified and each retained
-code document follows the selected convention, serves its identified reader,
-and adds contract information not readily recoverable from code.
+## Completion
+
+Complete only when every in-scope symbol has been classified, every retained
+code document follows the selected language convention and serves its readers,
+each caller-facing symbol has its own example, the examples collectively cover
+every distinct public consequence once, and maintenance notes state any
+boundary that is easy to break by an apparently safe change.

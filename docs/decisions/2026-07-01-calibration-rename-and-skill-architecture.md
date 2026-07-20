@@ -2,6 +2,13 @@
 
 Date: 2026-07-01
 
+Status: Implemented
+
+Current entry points: `README.md`, `skills/calibration/SKILL.md`,
+`codex/AGENTS.md.template`, and `install.sh`.
+
+The body below is the historical design record.
+
 ## Decision
 
 Rename the engineering calibration system from `engineering-canon` to

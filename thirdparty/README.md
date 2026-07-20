@@ -17,6 +17,8 @@ patches stay explicit.
 
 - Keep optional mode skills user-invoked unless there is a clear reason for
   model invocation.
+- Express invocation policy in each skill's `agents/openai.yaml`; keep
+  `SKILL.md` frontmatter portable.
 - Keep upstream names when possible so user prompts match external references.
 - Record local behavior changes in `PATCHES.md` instead of renaming the skill.
 - Do not make the installer perform network fetches.

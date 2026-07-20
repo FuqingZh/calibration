@@ -1,42 +1,7 @@
 # Global AGENTS.md
 
-These instructions apply to every repository and every new conversation unless
-the user explicitly overrides them.
+For coding, refactoring, architecture, interfaces, naming, APIs, CLIs, schemas,
+testing, validation, or durable documentation, use `$calibration` before making
+substantive changes. Load only the references it routes for the current task.
 
-## Scope and Priority
-
-- Follow these calibration defaults by default.
-- If a repository has its own `AGENTS.md`, treat repo-specific instructions as
-  more specific guidance for that repository.
-- If a deeper directory has its own `AGENTS.md` or `AGENTS.override.md`, treat
-  the deeper file as more specific for that subtree.
-- Direct user instructions override all defaults.
-
-## Default Behavior
-
-- For coding, refactoring, architecture, module boundaries, interface shape,
-  main-path readability, implementation tradeoffs, API, CLI, testing, schema, or
-  documentation tasks, use `$calibration` before making substantive
-  changes.
-- Keep changes consistent with the shared principles, naming rules, and
-  reusable specifications exposed by `$calibration`.
-- Do not load large documentation trees by default. Read only the minimal
-  references needed for the current task.
-- Prefer explicit project-local rules when they exist and do not conflict with
-  direct user instructions.
-
-## Required Checks
-
-- When changing public APIs, CLIs, exported schemas, or user-facing behavior,
-  verify naming, compatibility, testing, and documentation impact.
-- When changing build behavior, generated outputs, or cross-language contracts,
-  confirm the repository-local instructions before proceeding.
-- If calibration defaults and repository-local rules differ, follow the
-  repository-local rule for that repository and note the exception.
-
-## Notes
-
-- In WSL, the same skill is available via:
-  `{{CALIBRATION_ROOT}}/skills`
-- Keep this file short. Detailed rules belong in the skill references, not
-  here.
+In WSL, the skill source is available at `{{CALIBRATION_ROOT}}/skills`.

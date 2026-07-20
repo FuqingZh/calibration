@@ -1,0 +1,6 @@
+interface:
+  display_name: "Darwin Skill"
+  short_description: "Evaluate skills with rubric and test prompts"
+  default_prompt: "Use $darwin-skill to evaluate and optimize this skill with explicit test prompts and checkpoints."
+policy:
+  allow_implicit_invocation: false
