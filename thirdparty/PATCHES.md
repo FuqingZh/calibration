@@ -1,46 +1,52 @@
 # Third-party Skill Patches
 
 This file records local behavior changes made to vendored third-party skills.
+Exact imported and checked refs live in `sources.tsv`.
 
 ## brainstorming
 
-Imported from the locally installed Superpowers `brainstorming` skill.
+Imported from Superpowers `brainstorming`.
 
 Local changes:
 
-- Set `disable-model-invocation: true` so the skill is user-invoked only.
-- Kept the original brainstorming interaction protocol: explore first, ask one
-  question at a time, propose multiple approaches, recommend one, present a
-  design checkpoint, and require user approval before implementation.
-- Replaced the forced `docs/superpowers/specs/` output path with repository-local
-  docs, decision-record, plan, or trace conventions.
-- Removed the forced immediate commit requirement. Commit when the user asks,
-  the task includes commit/push, or the repository workflow requires it.
-- Removed the forced transition to `writing-plans`. Use the active repository or
-  environment planning mode.
-- Kept the visual companion assets and pointer for cases where a visual design
-  question genuinely benefits from them.
-- Changed persistent visual-companion session paths from `.superpowers/brainstorm`
-  to `.calibration/brainstorm`.
-- Removed the unused Superpowers spec-reviewer prompt because it still encoded
-  the old `docs/superpowers/specs/` path.
+- Set `policy.allow_implicit_invocation: false` in `agents/openai.yaml`.
+- Preserve the hard gate and visible protocol: inspect the project, ask one
+  question at a time, compare 2-3 mutually exclusive approaches, recommend one,
+  present a Design Checkpoint, and wait for approval before implementation.
+- Remove forced design persistence, the `docs/superpowers/specs/` path,
+  immediate commit, and the required `writing-plans` handoff. Use repository
+  conventions only when persistence or planning is actually requested.
+- Route general codebase-design judgment through repository rules and
+  `$calibration` instead of duplicating architecture doctrine in this skill.
+- Keep the visual companion and its just-in-time offer. Store persistent helper
+  state under `.calibration/brainstorm`, not `.superpowers/brainstorm`.
+- Remove the unused Superpowers spec-reviewer prompt that encoded the old path.
 
 ## grilling
 
-Imported from the locally installed `grilling` skill.
+Imported from Matt Pocock's `skills/productivity/grilling`.
 
 Local changes:
 
-- Set `disable-model-invocation: true` so the skill is user-invoked only.
-- Kept the adversarial one-question-at-a-time interview behavior unchanged.
+- Set `policy.allow_implicit_invocation: false` in `agents/openai.yaml`.
+- Sync the upstream distinction between discoverable facts and user decisions,
+  plus the confirmation gate before action.
+- Add a stopping condition based on unresolved decisions that can materially
+  change scope, interface, risk, or verification.
 
 ## writing-great-skills
 
-Imported from the locally installed `writing-great-skills` skill.
+Imported from Matt Pocock's `skills/productivity/writing-great-skills`.
 
 Local changes:
 
-- None at import time. The skill was already user-invoked.
+- Keep the upstream explicit-invocation policy in `agents/openai.yaml` and add a
+  local default prompt.
+- Sync the Negation failure mode.
+- Update invocation guidance for current Codex `agents/openai.yaml` policy.
+- Replace the default stronger-adjective remedy for a no-op with removal or an
+  explicit scope, evidence requirement, completion criterion, or stopping
+  condition.
 
 ## writing-plans
 
@@ -48,16 +54,15 @@ Imported from Superpowers `writing-plans`.
 
 Local changes:
 
-- Set `disable-model-invocation: true` so the skill is user-invoked only.
-- Replaced the forced `docs/superpowers/plans/` output path with repository-local
+- Set `policy.allow_implicit_invocation: false` in `agents/openai.yaml`.
+- Replace the forced `docs/superpowers/plans/` output path with repository-local
   planning and documentation conventions.
-- Removed forced TDD, frequent commit, subagent-driven-development, and
-  executing-plans requirements. The local version still requires explicit
-  verification gates but follows repository-local execution practice.
-- Kept `plan-document-reviewer-prompt.md` as an optional reviewer template.
-- Retained the vendored source for provenance, but removed it from installer
-  management after Codex Plan Mode and the shared implementation-plan reference
-  became the active planning control surfaces.
+- Remove forced TDD, frequent commit, subagent-driven development, and
+  executing-plans requirements. Keep explicit verification gates while
+  following repository-local execution practice.
+- Keep `plan-document-reviewer-prompt.md` as an optional reviewer template.
+- Retain the source for provenance while excluding it from installer management;
+  Codex Plan Mode and the shared implementation-plan reference are active.
 
 ## darwin-skill
 
@@ -65,11 +70,10 @@ Imported from `alchaincyf/darwin-skill`.
 
 Local changes:
 
-- Set `disable-model-invocation: true` so the skill is user-invoked only.
-- Shortened the frontmatter description to avoid a large always-visible trigger
-  surface while preserving the full upstream body and assets.
-- Replaced runtime-specific executable paths in the body and README with
-  runtime-neutral or Codex-compatible paths.
-- Retained the vendored source for provenance and study, but removed it from
-  installer management because its large-scale rubric-and-ratchet optimization
-  model is not part of the daily calibration workflow.
+- Set `policy.allow_implicit_invocation: false` in `agents/openai.yaml`.
+- Shorten the frontmatter description while preserving the upstream body and
+  assets.
+- Replace runtime-specific executable paths with runtime-neutral or
+  Codex-compatible paths.
+- Retain the source for provenance and study while excluding it from installer
+  management.

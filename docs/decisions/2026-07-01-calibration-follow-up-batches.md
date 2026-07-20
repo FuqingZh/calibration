@@ -2,6 +2,14 @@
 
 Date: 2026-07-01
 
+Status: Superseded
+
+Current entry points: `README.md`, `skills/calibration/SKILL.md`, `install.sh`,
+and `thirdparty/sources.tsv`.
+
+The body below is retained as the historical batch record. Its optional-skill
+installation roles are not the current runtime contract.
+
 ## Purpose
 
 This document records the remaining decisions from the calibration skill

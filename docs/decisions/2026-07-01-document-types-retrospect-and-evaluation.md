@@ -2,6 +2,16 @@
 
 Date: 2026-07-01
 
+Status: Partially superseded
+
+Current entry points: `references/engineering/docs/document-types/README.md`,
+`skills/retrospect/SKILL.md`, `skills/writing-code-docs/SKILL.md`, and
+`README.md`.
+
+The body below remains a historical record. The current retrospect skill is
+discussion-first, `writing-code-docs` replaces `writing-docstrings`, and
+`writing-plans` plus `darwin-skill` are no longer installer-managed.
+
 ## Purpose
 
 This document records the later decisions from the calibration refinement
