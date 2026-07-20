@@ -7,14 +7,17 @@ implementation plans. Reusable cross-project engineering guidance lives under
 ## Read First
 
 1. `../README.md` for the active repository surface and installer contract.
-2. `decisions/2026-07-20-skill-optimization-evaluation-closeout.md` for the
-   accepted skill baseline and evaluation limitations.
-3. `decisions/2026-07-20-agent-contribution-and-task-isolation.md` for commit
+2. `decisions/2026-07-20-agent-harness-and-evaluation-closeout.md` for the
+   rejected Slice 2 candidate, completed blind evaluation, and closed pilot
+   gate.
+3. `decisions/2026-07-20-skill-optimization-evaluation-closeout.md` for the
+   accepted prior skill baseline and earlier evaluation limitations.
+4. `decisions/2026-07-20-agent-contribution-and-task-isolation.md` for commit
    identity, PR ownership, Worktree, and task-boundary decisions.
-4. `decisions/2026-07-20-agent-harness-and-evaluation-ownership.md` for the
+5. `decisions/2026-07-20-agent-harness-and-evaluation-ownership.md` for the
    repository-harness and behavior-evaluation ownership boundary.
-5. `implementation-plan/20260720-v1.1-agent-harness-evaluation-implementation-plan.md`
-   for the next execution sequence.
+6. `implementation-plan/20260720-v1.1-agent-harness-evaluation-implementation-plan.md`
+   for the closed execution record and successor handoff.
 
 ## Decision Status
 
@@ -26,16 +29,21 @@ implementation plans. Reusable cross-project engineering guidance lives under
   superseded historical decision.
 - `decisions/2026-07-03-writing-docstrings-skill-design.md`: superseded by
   `writing-code-docs`.
-- `decisions/2026-07-20-skill-optimization-evaluation-closeout.md`: current
-  evaluation acceptance record.
+- `decisions/2026-07-20-skill-optimization-evaluation-closeout.md`: accepted
+  prior skill baseline and earlier evaluation limitations.
 - `decisions/2026-07-20-agent-contribution-and-task-isolation.md`: current
   collaboration decision.
 - `decisions/2026-07-20-agent-harness-and-evaluation-ownership.md`: current
   harness and evaluation ownership decision.
+- `decisions/2026-07-20-agent-harness-and-evaluation-closeout.md`: rejected
+  Slice 2 behavior candidate and current Slice 3 evaluation record.
 
-## Active Plan
+## Plan Status
 
-The active plan is
+The latest plan is
 `implementation-plan/20260720-v1.1-agent-harness-evaluation-implementation-plan.md`.
-The earlier agent-harness collaboration plan is superseded after its static
-validation slice completed in pull request #4.
+It closed after Slice 3 rejected the evaluated candidate, so Slice 4 bounded
+pilots are not active. The next task must choose a narrow reversal or corrected
+successor and complete a new evaluation before reopening pilots. The earlier
+agent-harness collaboration plan remains superseded after its static validation
+slice completed in pull request #4.
