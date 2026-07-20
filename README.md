@@ -16,7 +16,8 @@ the system itself.
 - `skills/writing-code-docs/SKILL.md`: language-aware, Python-calibrated code documentation for public APIs and durable workflow boundaries
 - `references/engineering/principles.md`: stable cross-project engineering principles
 - `references/engineering/naming/`: naming and interface conventions, split by decision surface
-- `references/engineering/discipline/`: refactor, debugging, and verification gates
+- `references/engineering/discipline/`: refactoring, debugging, verification,
+  repository-harness, and evaluation decisions
 - `references/engineering/design/`: codebase design and boundary judgment
 - `references/engineering/docs_index.md`: navigation for longer specifications
 - `references/engineering/docs/`: reusable long-form specifications and patterns

@@ -11,7 +11,9 @@ implementation plans. Reusable cross-project engineering guidance lives under
    accepted skill baseline and evaluation limitations.
 3. `decisions/2026-07-20-agent-contribution-and-task-isolation.md` for commit
    identity, PR ownership, Worktree, and task-boundary decisions.
-4. `implementation-plan/20260720-v1.0-agent-harness-collaboration-implementation-plan.md`
+4. `decisions/2026-07-20-agent-harness-and-evaluation-ownership.md` for the
+   repository-harness and behavior-evaluation ownership boundary.
+5. `implementation-plan/20260720-v1.1-agent-harness-evaluation-implementation-plan.md`
    for the next execution sequence.
 
 ## Decision Status
@@ -28,10 +30,12 @@ implementation plans. Reusable cross-project engineering guidance lives under
   evaluation acceptance record.
 - `decisions/2026-07-20-agent-contribution-and-task-isolation.md`: current
   collaboration decision.
+- `decisions/2026-07-20-agent-harness-and-evaluation-ownership.md`: current
+  harness and evaluation ownership decision.
 
 ## Active Plan
 
 The active plan is
-`implementation-plan/20260720-v1.0-agent-harness-collaboration-implementation-plan.md`.
-It starts only after pull request #3 has merged and `origin/main` has been
-verified locally.
+`implementation-plan/20260720-v1.1-agent-harness-evaluation-implementation-plan.md`.
+The earlier agent-harness collaboration plan is superseded after its static
+validation slice completed in pull request #4.

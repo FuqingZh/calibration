@@ -1,6 +1,6 @@
 ---
 name: calibration
-description: Use for cross-project engineering decisions about coding, refactoring, architecture, interfaces, naming, APIs, CLIs, schemas, testing, validation, and durable documentation.
+description: Use for cross-project engineering decisions about coding, refactoring, architecture, interfaces, naming, APIs, CLIs, schemas, testing, validation, repository harnesses, agent workflows, evaluation, and durable documentation.
 ---
 
 # Calibration
@@ -20,7 +20,8 @@ Read `../../references/engineering/principles.md`.
 Load only the routers required by the decisions at hand:
 
 - naming: `../../references/engineering/naming/README.md`
-- refactoring, debugging, and verification:
+- refactoring, debugging, verification, repository harnesses, and agent or
+  workflow evaluation:
   `../../references/engineering/discipline/README.md`
 - architecture, module boundaries, interfaces, and abstraction:
   `../../references/engineering/design/README.md`

@@ -53,8 +53,8 @@ provide the audit trail; a separate commit author does not. Each next task must
 recover durable context from repository documents and GitHub state rather than
 depending on the archived conversation.
 
-The pull request template planned in the active implementation plan must include
-an `Agent involvement` field. Repository-local contribution rules override this
+If a repository adopts a pull request template, it should include an
+`Agent involvement` field. Repository-local contribution rules override this
 default when contributing to an external project.
 
 ## Reopen When
