@@ -46,6 +46,22 @@ An actionable finding states:
 Group related failures only when one bounded cause or intervention can
 plausibly address them. Preserve uncertain explanations as hypotheses.
 
+## Evaluation Proportionality
+
+Choose the smallest evidence surface that can support the claim:
+
+- use static validation and ordinary verification for wording, navigation,
+  link, ownership, or deduplication changes that do not claim changed agent
+  behavior;
+- use focused representative cases when one scoped behavior may change; and
+- use repeated blinded targeted-and-regression comparison only for an
+  important behavior change, adoption of a new behavioral baseline, or a
+  decision where model variance could materially change the outcome.
+
+Do not start a broad model-backed A/B merely because a skill or engineering
+reference changed. State the behavioral claim and decision it must support
+before choosing the evaluation size.
+
 ## Evaluation Design
 
 Match the evaluation to the claim. For comparative agent or skill evaluation:

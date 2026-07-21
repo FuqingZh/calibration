@@ -7,12 +7,11 @@ implementation plans. Reusable cross-project engineering guidance lives under
 ## Read First
 
 1. `../README.md` for the active repository surface and installer contract.
-2. `decisions/2026-07-21-harness-successor-evaluation-closeout.md` for the
-   rejected v1.2 successor, staged blind evaluation, and current pilot gate.
-3. `decisions/2026-07-20-agent-harness-and-evaluation-ownership.md` for the
+2. `decisions/2026-07-20-agent-harness-and-evaluation-ownership.md` for the
    accepted repository-harness and behavior-evaluation ownership boundary.
-4. `implementation-plan/20260721-v1.2-harness-successor-cleanup-implementation-plan.md`
-   for the closed successor plan and its Stage B failure.
+3. `decisions/2026-07-21-harness-successor-evaluation-closeout.md` for the
+   rejected v1.2 candidate and why its result remains historical evidence
+   rather than the current optimization agenda.
 
 ## Decision Status
 
@@ -36,12 +35,14 @@ implementation plans. Reusable cross-project engineering guidance lives under
 - `decisions/2026-07-21-harness-successor-evaluation-closeout.md`: rejected
   pull request #7 successor and current staged evaluation record.
 
-## Plan Status
+## Current Boundary
 
-The latest plan is
-`implementation-plan/20260721-v1.2-harness-successor-cleanup-implementation-plan.md`.
-It closed after Stage B rejected the successor, so Slice 4 bounded pilots remain
-inactive. A later task must propose a materially scoped new candidate and
-complete a new evaluation before reopening pilots. The v1.1 plan remains a
-closed predecessor, and the earlier agent-harness collaboration plan remains
-superseded after its static validation slice completed in pull request #4.
+There is no active calibration-optimization plan. The v1.2 successor plan
+closed after Stage B, the v1.1 plan is a closed predecessor, and the earlier
+agent-harness collaboration plan is superseded. Future work should apply the
+accepted principles in real projects and bring back repeated evidence; do not
+continue tuning calibration wording without a concrete cross-project failure.
+
+Slice 4 bounded pilots remain inactive. Reopen a pilot only through a separate
+project decision with a concrete need and verification path, not as a default
+continuation of the closed evaluation plans.
