@@ -12,10 +12,10 @@ implementation plans. Reusable cross-project engineering guidance lives under
 3. `decisions/2026-07-21-harness-successor-evaluation-closeout.md` for the
    rejected v1.2 candidate and why its result remains historical evidence
    rather than the current optimization agenda.
-4. `decisions/2026-07-21-repository-delivery-feedback-loop.md` and
-   `implementation-plan/20260721-v1.3-repository-delivery-feedback-loop-implementation-plan.md`
-   for the smoke-validated delivery-loop candidate and its remaining PR review
-   gate.
+4. `decisions/2026-07-21-repository-delivery-feedback-loop.md` for the accepted
+   failure-driven repository delivery loop.
+5. `implementation-plan/20260721-v1.4-repository-engineering-capability-adoption-implementation-plan.md`
+   for the current proportional adoption work and its two repository pilots.
 
 ## Decision Status
 
@@ -38,16 +38,16 @@ implementation plans. Reusable cross-project engineering guidance lives under
   Slice 2 behavior candidate and current Slice 3 evaluation record.
 - `decisions/2026-07-21-harness-successor-evaluation-closeout.md`: rejected
   pull request #7 successor and current staged evaluation record.
-- `decisions/2026-07-21-repository-delivery-feedback-loop.md`: smoke-validated
-  candidate for failure-driven repository delivery feedback; pull-request
-  review remains pending.
+- `decisions/2026-07-21-repository-delivery-feedback-loop.md`: accepted
+  failure-driven repository delivery feedback boundary; merged by PR #10.
 
 ## Current Boundary
 
-The v1.3 repository-delivery feedback-loop candidate completed implementation
-and passed read-only smoke validation in `FuqingZh/calibration` and
-`FuqingZh/biofetch`. Pull-request review is the remaining delivery gate. The
-rejected v1.2 candidate remains closed and is not its behavioral baseline.
+The v1.3 repository-delivery feedback loop is accepted and closed. The active
+v1.4 plan adds a proportional repository capability adoption entrypoint, then
+tests it on `bio_plot` as an application/Symphony pilot and on `biofetch` as a
+non-application transfer check.
 
-Broader project pilots, orchestrator work, bulk environment provisioning, and
-per-repository scheduled tasks remain inactive.
+These pilots do not authorize bulk environment provisioning, mandatory
+per-repository configuration, auto-merge, or project-specific operating rules
+inside calibration.

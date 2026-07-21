@@ -2,7 +2,7 @@
 
 Date: 2026-07-21
 
-Status: Candidate validated; pending pull-request review
+Status: Accepted
 
 ## Context
 
@@ -93,11 +93,10 @@ and improve the feedback loop only after a representative failure.
   creation, and first remote readback. Expected CI and review waits then belong
   to the platform or a background task; pending state is a valid handoff, not a
   completion claim.
-- The candidate must still complete pull-request CI and independent Codex
-  review before merge. A later newly created PR should verify that Automatic
-  Review triggers without the one-time manual request used for this pre-existing
-  Draft PR and should pilot one shared PR babysitter rather than foreground
-  polling.
+- Later pull requests should verify that Automatic Review triggers without the
+  one-time manual request used for this pre-existing Draft PR. A shared
+  babysitter or orchestrator remains conditional on recurring volume and the
+  orchestration adoption gate.
 
 ## Reopen Conditions
 
@@ -133,3 +132,11 @@ multiple review cycles polling remote queues that had already accepted the
 work. That wait did not require user judgment and therefore belongs to a
 background PR babysitter. This finding justifies a bounded shared-task pilot;
 it does not require per-repository tasks or a new orchestrator.
+
+## Delivery Result
+
+PR #10 merged to `main` as
+`536794eeb0cd1ff4a42b69607c32e4d0b5e26f4d` on 2026-07-21. The stable
+`validate-skills` check passed on head
+`98ca915270424d6f4fda46dfd8141744930664eb`, Automatic Codex Review reported
+no issue on that head, and all review threads were resolved before merge.
