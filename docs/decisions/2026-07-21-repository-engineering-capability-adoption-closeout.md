@@ -136,10 +136,13 @@ finding. Pull request #4 then merged as
 `eec47579411cdb8aee9b385ef19fc293d02bd9ae`; `main` Actions run `29817336552`
 passed the same `validate-biofetch` test, vet, and build job.
 
-The account's Automatic Codex Review produced no public review, comment, or
-thread between pull-request creation, the ready-for-review transition, and
-merge. This delivery therefore verifies the repository CI and an independent
-agent review, but not the configured automatic GitHub review trigger.
+Automatic Codex Review completed before merge without a manual trigger. The
+`chatgpt-codex-connector[bot]` account added a `+1` reaction to pull request #4
+at `2026-07-21T09:03:36Z`, representing the no-finding result. Calibration
+pull request #12 independently received the same automatic `+1` result at
+`2026-07-21T09:20:29Z`. These readbacks verify the configured automatic review
+trigger in both the private CLI repository and the public calibration
+repository.
 
 No product source, runtime environment, application-only capability, or
 orchestrator was added to `biofetch`.
@@ -171,9 +174,10 @@ repositories.
   supplied one CLI case; they do not establish broad comparative performance.
 - The checks did not run a blind behavior evaluation because this stage did
   not change behavior-bearing calibration guidance.
-- Automatic Codex Review did not return before biofetch pull request #4
-  merged. Its trigger behavior remains an external control-plane limitation,
-  not a capability this repository closeout can claim as verified.
+- A no-finding Automatic Codex Review may be represented only by a pull-request
+  reaction, with no review, comment, or thread object. Review-state audits must
+  include issue reactions; checking only review and comment collections creates
+  a false negative.
 - Symphony and its adapters are an engineering preview and may change after
   the pinned observations in this record.
 
