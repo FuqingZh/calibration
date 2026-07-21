@@ -39,6 +39,45 @@ possible, enforce it:
 Memory and conversation may identify where to look, but current repository,
 environment, and external-system evidence remain authoritative.
 
+## Repository Capability Adoption
+
+When asked to assess or improve a repository for agent-led engineering, begin
+with its delivery goal, local authority, current feedback loop, and a
+representative task. Do not begin from a universal maturity model or a fixed
+set of artifacts.
+
+Treat named tools and artifacts as possible means unless the user or an
+accepted contract requires that exact artifact. Assess the capability they
+serve before creating them.
+
+Consider only capabilities that are material to the repository's work:
+
+- finding current authority and repository-specific operating constraints;
+- setting up, executing, and deciding deterministic verification;
+- delivering through pull-request validation, independent review, and bounded
+  feedback repair when pull requests are the repository's delivery path;
+- starting and observing the real runtime when correctness depends on
+  application behavior;
+- preserving, resuming, or orchestrating task state when actual task volume
+  requires it; and
+- promoting repeated failures into the owning test, constraint, operation, or
+  document.
+
+Classify each considered capability from current evidence as present, missing,
+or not applicable. Leave an adequate capability unchanged. For a missing
+capability, add the smallest durable increment with its repository or external
+control-plane owner. Do not replace a not-applicable capability with ceremony.
+For example, a library or CLI does not need a UI, staging deployment,
+observability stack, or orchestrator merely because an application repository
+might benefit from them.
+
+An assessment request is read-only. When adoption is authorized, implement
+reversible repository-local gaps without asking the user for discoverable
+facts; retain the human-authority and external-control-plane boundaries below.
+Do not assign a generic maturity score, require identical `AGENTS.md`, CI,
+runtime, or workflow files, or promote repository-local implementation details
+into calibration.
+
 ## `AGENTS.md` Contract
 
 Treat `AGENTS.md` as an operational map for an agent entering a repository or
@@ -147,6 +186,14 @@ relevant prerequisites exist:
 
 Without those conditions, use ordinary short-lived tasks, Worktrees, scripts,
 and platform-native PR state. Do not create a decorative workflow contract.
+
+When the gate is satisfied, prefer an existing maintained execution engine,
+such as Symphony, over a custom scheduler. The engine may claim, resume, and
+retry work, but it does not own repository authority, acceptance criteria,
+permissions, or risk policy. Keep workflow state and environment details with
+the repository or external control plane, validate one bounded representative
+task before broader rollout, and do not turn local labels, deployment topology,
+or access configuration into cross-project calibration rules.
 
 ## Completion
 
