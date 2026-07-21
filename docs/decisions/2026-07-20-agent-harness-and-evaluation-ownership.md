@@ -23,7 +23,8 @@ guidance.
 
 - Add `references/engineering/discipline/harness.md` as the owner of
   repository-capability diagnosis, capability placement, `AGENTS.md` content
-  boundaries, human escalation, harness levels, and orchestration adoption.
+  boundaries, human escalation, harness proportionality, and orchestration
+  adoption.
 - Add `references/engineering/discipline/evaluation.md` as the owner of agent,
   skill, and workflow quality comparison based on representative evidence.
 - Keep `verification.md` responsible for whether the current change satisfies
@@ -82,6 +83,25 @@ by itself prove that calibration improved.
 Pull request #5's behavior candidate and pull request #7's narrow successor
 were rejected by their separate evaluation closeouts. Those results do not
 reverse this ownership decision.
+
+Final convergence keeps this ownership deliberately small:
+
+- make repository authority and executable feedback easy for agents to find;
+- move repeated operations and decidable constraints into project-owned
+  scripts, tests, lint, schemas, or CI;
+- leave discoverable facts to agents and human-authority decisions to people;
+  and
+- evaluate behavior changes with the smallest evidence surface that supports
+  the decision.
+
+Calibration owns the cross-project judgment and routing, not a universal
+harness implementation. Each project owns its concrete commands, checks,
+observability, and exceptions. A large blinded comparison is reserved for an
+important behavior claim or baseline decision, not ordinary documentation
+cleanup.
+
+This convergence is an accepted scope decision, not a reversal of the pull
+request #7 evaluation result or a claim that its candidate proved superior.
 
 ## Reopen When
 
