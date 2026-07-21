@@ -23,6 +23,10 @@ Load only the routers required by the decisions at hand:
 - refactoring, debugging, verification, repository harnesses, and agent or
   workflow evaluation:
   `../../references/engineering/discipline/README.md`
+- repository delivery feedback, including setup discovery, pull-request
+  validation, CI, agent review, cloud execution gaps, and repeated delivery
+  failures:
+  `../../references/engineering/discipline/harness.md`
 - architecture, module boundaries, interfaces, and abstraction:
   `../../references/engineering/design/README.md`
 - long-form engineering specifications and document routing:

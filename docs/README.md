@@ -12,6 +12,9 @@ implementation plans. Reusable cross-project engineering guidance lives under
 3. `decisions/2026-07-21-harness-successor-evaluation-closeout.md` for the
    rejected v1.2 candidate and why its result remains historical evidence
    rather than the current optimization agenda.
+4. `decisions/2026-07-21-repository-delivery-feedback-loop.md` and
+   `implementation-plan/20260721-v1.3-repository-delivery-feedback-loop-implementation-plan.md`
+   for the active evidence-driven delivery-loop candidate and smoke gate.
 
 ## Decision Status
 
@@ -34,15 +37,16 @@ implementation plans. Reusable cross-project engineering guidance lives under
   Slice 2 behavior candidate and current Slice 3 evaluation record.
 - `decisions/2026-07-21-harness-successor-evaluation-closeout.md`: rejected
   pull request #7 successor and current staged evaluation record.
+- `decisions/2026-07-21-repository-delivery-feedback-loop.md`: active candidate
+  for failure-driven repository delivery feedback; acceptance is pending two
+  real cloud smoke tasks.
 
 ## Current Boundary
 
-There is no active calibration-optimization plan. The v1.2 successor plan
-closed after Stage B, the v1.1 plan is a closed predecessor, and the earlier
-agent-harness collaboration plan is superseded. Future work should apply the
-accepted principles in real projects and bring back repeated evidence; do not
-continue tuning calibration wording without a concrete cross-project failure.
+The v1.3 repository-delivery feedback-loop candidate is the only active plan.
+It responds to a concrete cloud execution failure and must pass read-only smoke
+validation in two real repositories before acceptance. The rejected v1.2
+candidate remains closed and is not its behavioral baseline.
 
-Slice 4 bounded pilots remain inactive. Reopen a pilot only through a separate
-project decision with a concrete need and verification path, not as a default
-continuation of the closed evaluation plans.
+Broader project pilots, orchestrator work, bulk environment provisioning, and
+per-repository scheduled tasks remain inactive.

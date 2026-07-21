@@ -48,6 +48,8 @@ and execute work, such as:
 - a compact repository or subtree map;
 - links to current architecture, testing, planning, and deployment authority;
 - environment entrypoints and canonical verification commands;
+- repository-specific review guidance when external agents cannot inherit a
+  developer's global instructions;
 - external resources, dangerous operations, and permission boundaries;
 - repository-local exceptions to broader defaults.
 
@@ -55,6 +57,46 @@ Keep root and nested scopes explicit. Point to `docs/README.md` when the
 repository has one. Do not copy architecture prose, test matrices, temporary
 task state, generic engineering guidance, or source articles into
 `AGENTS.md`. A repository with no useful local increment may omit it.
+
+## Repository Delivery Feedback Loop
+
+When a repository change is intended to land through a pull request:
+
+1. Discover the repository-owned setup, validation, and delivery commands,
+   together with the current CI and review feedback surfaces.
+2. Use existing platform defaults and automatic setup before adding custom
+   configuration.
+3. Treat an observed setup, validation, review, or environment failure as
+   evidence of a missing capability. Do not preconfigure every repository.
+4. Place the smallest fix with its durable owner: a repository command or
+   script, a mechanical test or CI check, a useful repository-specific
+   `AGENTS.md` increment, or the external platform that owns the capability.
+5. Prefer one repository-owned entrypoint that local agents, CI, cloud
+   environments, and developers can reuse.
+6. Drive the pull request through mechanical validation and agent review,
+   address actionable feedback, and repeat until the declared checks pass or
+   a decision requiring human authority remains.
+7. Verify external state after changing it. If the current surface cannot
+   observe or modify an external control plane, report the exact authorization
+   or configuration action without claiming completion.
+
+A cloud environment is an execution surface, not the repository's source of
+truth. Start with automatic setup and customize it only after a representative
+task exposes a concrete gap. Keep setup logic in the repository when local,
+CI, and cloud execution can share it. Keep server-only dependencies and data
+behind repository-owned checks or CI runners rather than assuming a hosted
+environment can reproduce them.
+
+Prefer platform-native automatic review when the repository and account
+support it. Put only repository-specific review guidance in the closest useful
+`AGENTS.md`; do not assume that global local instructions are available in
+cloud execution.
+
+Adopt a recurring pull-request babysitter or failure-classification task only
+after the operation is genuinely recurring. Prefer one shared task covering
+selected repositories over duplicated per-repository tasks, and keep schedule
+state in the platform control plane rather than representing it as repository
+state.
 
 ## Harness Proportionality
 
