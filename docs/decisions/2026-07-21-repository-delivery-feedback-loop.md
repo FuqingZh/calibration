@@ -89,10 +89,15 @@ and improve the feedback loop only after a representative failure.
 - External settings and writes require readback from the owning control plane;
   repository files cannot stand in for that verification.
 - Cross-repository Cloud invocations must name the target branch explicitly.
+- Foreground implementation owns the change, local validation, push, PR
+  creation, and first remote readback. Expected CI and review waits then belong
+  to the platform or a background task; pending state is a valid handoff, not a
+  completion claim.
 - The candidate must still complete pull-request CI and independent Codex
   review before merge. A later newly created PR should verify that Automatic
   Review triggers without the one-time manual request used for this pre-existing
-  Draft PR.
+  Draft PR and should pilot one shared PR babysitter rather than foreground
+  polling.
 
 ## Reopen Conditions
 
@@ -122,3 +127,9 @@ Cross-repository Cloud tasks must specify the target repository branch. The
 CLI otherwise inherits the caller's current branch; an unrelated branch name
 causes checkout to fail before the agent runs and is an invocation error, not
 evidence that the target environment or repository is broken.
+
+PR #10 also exposed a delivery-loop ownership gap: foreground execution spent
+multiple review cycles polling remote queues that had already accepted the
+work. That wait did not require user judgment and therefore belongs to a
+background PR babysitter. This finding justifies a bounded shared-task pilot;
+it does not require per-repository tasks or a new orchestrator.

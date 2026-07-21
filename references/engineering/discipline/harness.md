@@ -77,10 +77,18 @@ When a repository change is intended to land through a pull request:
    `AGENTS.md` increment, or the external platform that owns the capability.
 5. Prefer one repository-owned entrypoint that local agents, CI, cloud
    environments, and developers can reuse.
-6. Drive the pull request through mechanical validation and agent review,
-   address actionable feedback, and repeat until the declared checks pass or
-   a decision requiring human authority remains.
-7. Verify external state after changing it. If the current surface cannot
+6. Hand the pull request to mechanical validation and platform-native agent
+   review. After the first remote readback confirms that those systems accepted
+   the current commit, return control with the durable PR state instead of
+   keeping a foreground conversation open for expected remote waits.
+7. Continue asynchronous CI, review, and deployment waits through the owning
+   platform or a background or scheduled task. Wake the foreground only for
+   actionable feedback, a terminal result, or a decision requiring human
+   authority; keep pending work explicit rather than claiming completion.
+8. Address mechanical feedback in a bounded background iteration and repeat
+   until the declared checks pass. Escalate product intent, tradeoffs, risk, and
+   irreversible actions rather than making the user babysit routine polling.
+9. Verify external state after changing it. If the current surface cannot
    observe or modify an external control plane, report the exact authorization
    or configuration action without claiming completion.
 
@@ -97,7 +105,9 @@ support it. Put only repository-specific review guidance in the closest useful
 cloud execution.
 
 Adopt a recurring pull-request babysitter or failure-classification task only
-after the operation is genuinely recurring. Prefer one shared task covering
+after the operation is genuinely recurring. A foreground conversation that
+repeatedly polls CI or review queues, or repeatedly reopens after mechanical
+feedback, is evidence of that recurrence. Prefer one shared task covering
 selected repositories over duplicated per-repository tasks, and keep schedule
 state in the platform control plane rather than representing it as repository
 state.
