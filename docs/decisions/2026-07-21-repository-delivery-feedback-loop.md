@@ -2,7 +2,7 @@
 
 Date: 2026-07-21
 
-Status: Candidate pending cross-repository smoke validation
+Status: Candidate validated; pending pull-request review
 
 ## Context
 
@@ -70,3 +70,16 @@ Accept the candidate only after local static validation and read-only cloud
 smoke tasks in two real repositories. A smoke task must report the commands and
 evidence it checked, leave no diff, and distinguish a repository gap from an
 external authorization or environment limitation.
+
+## Validation Result
+
+The candidate passed the acceptance smoke in `FuqingZh/calibration` and
+`FuqingZh/biofetch`. Both tasks reached `READY` with no diff. The biofetch run
+followed repository-owned documentation and passed its documented Go test,
+vet, build, and CLI inspection path without adding repository or cloud
+configuration.
+
+Cross-repository Cloud tasks must specify the target repository branch. The
+CLI otherwise inherits the caller's current branch; an unrelated branch name
+causes checkout to fail before the agent runs and is an invocation error, not
+evidence that the target environment or repository is broken.
