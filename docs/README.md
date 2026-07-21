@@ -10,14 +10,10 @@ implementation plans. Reusable cross-project engineering guidance lives under
 2. `decisions/2026-07-20-agent-harness-and-evaluation-closeout.md` for the
    rejected Slice 2 candidate, completed blind evaluation, and closed pilot
    gate.
-3. `decisions/2026-07-20-skill-optimization-evaluation-closeout.md` for the
-   accepted prior skill baseline and earlier evaluation limitations.
-4. `decisions/2026-07-20-agent-contribution-and-task-isolation.md` for commit
-   identity, PR ownership, Worktree, and task-boundary decisions.
-5. `decisions/2026-07-20-agent-harness-and-evaluation-ownership.md` for the
+3. `decisions/2026-07-20-agent-harness-and-evaluation-ownership.md` for the
    repository-harness and behavior-evaluation ownership boundary.
-6. `implementation-plan/20260720-v1.1-agent-harness-evaluation-implementation-plan.md`
-   for the closed execution record and successor handoff.
+4. `implementation-plan/20260721-v1.2-harness-successor-cleanup-implementation-plan.md`
+   for the active successor and evaluation gates.
 
 ## Decision Status
 
@@ -33,17 +29,16 @@ implementation plans. Reusable cross-project engineering guidance lives under
   prior skill baseline and earlier evaluation limitations.
 - `decisions/2026-07-20-agent-contribution-and-task-isolation.md`: current
   collaboration decision.
-- `decisions/2026-07-20-agent-harness-and-evaluation-ownership.md`: current
-  harness and evaluation ownership decision.
+- `decisions/2026-07-20-agent-harness-and-evaluation-ownership.md`: accepted
+  harness and evaluation ownership boundary; its pull request #5 behavior
+  candidate was rejected separately.
 - `decisions/2026-07-20-agent-harness-and-evaluation-closeout.md`: rejected
   Slice 2 behavior candidate and current Slice 3 evaluation record.
 
 ## Plan Status
 
-The latest plan is
-`implementation-plan/20260720-v1.1-agent-harness-evaluation-implementation-plan.md`.
-It closed after Slice 3 rejected the evaluated candidate, so Slice 4 bounded
-pilots are not active. The next task must choose a narrow reversal or corrected
-successor and complete a new evaluation before reopening pilots. The earlier
-agent-harness collaboration plan remains superseded after its static validation
-slice completed in pull request #4.
+The active plan is
+`implementation-plan/20260721-v1.2-harness-successor-cleanup-implementation-plan.md`.
+It narrows the rejected candidate and requires staged blind evaluation before
+merge. Slice 4 bounded pilots remain closed. The v1.1 plan closed after Slice 3,
+and the earlier v1.0 collaboration plan remains superseded.

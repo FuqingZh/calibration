@@ -2,7 +2,10 @@
 
 Date: 2026-07-20
 
-Status: Accepted
+Status: Accepted ownership boundary
+
+Behavior status: the pull request #5 candidate was rejected by
+[`2026-07-20-agent-harness-and-evaluation-closeout.md`](2026-07-20-agent-harness-and-evaluation-closeout.md).
 
 ## Context
 

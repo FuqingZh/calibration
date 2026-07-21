@@ -1,6 +1,6 @@
 ---
 name: calibration
-description: Use for cross-project engineering decisions about coding, refactoring, architecture, interfaces, naming, APIs, CLIs, schemas, testing, validation, repository harnesses, agent workflows, evaluation, and durable documentation.
+description: Use for cross-project engineering decisions about coding, refactoring, architecture, interfaces, naming, APIs, CLIs, schemas, testing, validation, repository harnesses, agent or workflow evaluation, and durable documentation.
 ---
 
 # Calibration

@@ -56,20 +56,15 @@ repository has one. Do not copy architecture prose, test matrices, temporary
 task state, generic engineering guidance, or source articles into
 `AGENTS.md`. A repository with no useful local increment may omit it.
 
-## Harness Levels
+## Harness Proportionality
 
-Scale the harness to the repository's actual failure and delivery surface:
+Start with the repository's existing feedback loop and add only the smallest
+capability that addresses an observed failure. README guidance, focused tests,
+CI, build, and publish checks may already be sufficient.
 
-- **Small public library:** README, focused CI, tests, build, and publish
-  checks are usually sufficient.
-- **Business or domain repository:** add an authority map, canonical verify
-  path, representative fixtures, and explicit external boundaries.
-- **Application or pipeline:** add isolated environments, runtime
-  observability, end-to-end checks, deployment verification, and readback of
-  externally visible effects.
-
-Do not import application-scale orchestration or observability into a small
-library without evidence that its current feedback loop is inadequate.
+Add isolation, runtime observability, end-to-end verification, or orchestration
+only when the repository's delivery or coordination failures demonstrate that
+need. Repository size or the harness label alone is not evidence.
 
 ## Human Escalation
 
@@ -82,9 +77,8 @@ Escalate decisions that require human authority:
 - judgment that remains materially underdetermined after safe evidence
   gathering.
 
-Resolve facts available from the repository, environment, documentation, or
-tools before asking the user. Present the checked evidence when a remaining
-judgment is escalated.
+When escalation remains necessary, present the checked evidence, the unresolved
+decision, and a recommendation.
 
 ## Orchestration Adoption Gate
 

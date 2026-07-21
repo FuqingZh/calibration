@@ -22,9 +22,9 @@ type file that matches the current phase.
 
 ## Non-Types
 
-- `AGENTS.md` is a scoped operational map for agents, not a durable engineering
-  document type. It should point to current authority and executable commands
-  instead of duplicating project documentation.
+- `AGENTS.md` is a scoped operational map, not a durable engineering document
+  type. Its content boundary is defined by the
+  [repository-agent harness](../../discipline/harness.md#agentsmd-contract).
 - PR body is a review artifact. Generate it at PR time from the implementation
   plan, actual diff, and verification results.
 - Archive is a lifecycle state, not a document type. Archived documents keep
