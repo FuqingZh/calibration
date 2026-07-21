@@ -66,9 +66,13 @@ When a repository change is intended to land through a pull request:
    together with the current CI and review feedback surfaces.
 2. Use existing platform defaults and automatic setup before adding custom
    configuration.
-3. Treat an observed setup, validation, review, or environment failure as
-   evidence of a missing capability. Do not preconfigure every repository.
-4. Place the smallest fix with its durable owner: a repository command or
+3. Classify an observed setup, validation, review, or environment failure
+   before changing the harness. When an existing check correctly identifies an
+   implementation defect, fix the product code; the feedback capability is
+   already working. Do not preconfigure every repository.
+4. Only treat the failure as a missing capability when the repository cannot
+   reliably discover, execute, decide, or observe what delivery requires. Then
+   place the smallest fix with its durable owner: a repository command or
    script, a mechanical test or CI check, a useful repository-specific
    `AGENTS.md` increment, or the external platform that owns the capability.
 5. Prefer one repository-owned entrypoint that local agents, CI, cloud

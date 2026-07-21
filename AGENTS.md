@@ -25,13 +25,17 @@ bash -n install.sh
 CODEX_HOME="$(mktemp -d)" bash install.sh --dry-run
 git diff --check
 git diff --cached --check
-git diff --check origin/main...HEAD
+git diff --check "${BASE_REF:-main}...HEAD"
+git status --short
 ```
 
 Use an explicit temporary `CODEX_HOME`; never overwrite the user's active
 Codex installation during validation.
 Run all three diff checks before delivery: the worktree, staged changes, and
-the committed branch range relative to `origin/main` are distinct surfaces.
+the committed branch range are distinct surfaces. Set `BASE_REF` to the pull
+request base SHA or an available local base branch when `main` is unavailable.
+Treat unexpected status entries after validation as artifacts to remove or
+classify before delivery.
 
 ## Review Guidelines
 

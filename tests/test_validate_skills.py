@@ -176,6 +176,15 @@ class FinalConvergenceContractTests(unittest.TestCase):
         self.assertNotIn("## Harness Levels", harness)
         self.assertIn("does not imply a\nmandatory harness checklist", harness)
 
+    def test_delivery_loop_classifies_failures_before_harness_changes(self) -> None:
+        harness = (
+            REPOSITORY_ROOT / "references/engineering/discipline/harness.md"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("before changing the harness", harness)
+        self.assertIn("implementation defect, fix the product code", harness)
+        self.assertIn("Only treat the failure as a missing capability", harness)
+
     def test_evaluation_reserves_broad_ab_for_important_claims(self) -> None:
         evaluation = (
             REPOSITORY_ROOT / "references/engineering/discipline/evaluation.md"
