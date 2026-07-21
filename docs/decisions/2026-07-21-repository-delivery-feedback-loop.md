@@ -23,6 +23,22 @@ The evidence supports a smaller problem than universal repository
 provisioning: start with platform defaults, expose repository-owned entrypoints,
 and improve the feedback loop only after a representative failure.
 
+## Alternatives Considered
+
+- Add a new delivery or bootstrap skill with a universal repository checklist.
+  Rejected because setup, CI, review, and runtime needs remain repository- and
+  platform-specific, while the existing harness already owns capability
+  placement.
+- Pre-provision cloud environments, `AGENTS.md`, CI, and scheduled tasks for
+  every repository. Rejected because absence alone is not evidence of a gap
+  and bulk configuration creates control-plane drift and maintenance cost.
+- Keep every delivery failure project-local. Rejected because the recurring
+  judgment about where to place a fix is cross-project, even though the fix
+  itself should normally stay with its repository or platform owner.
+- Extend the existing harness with a failure-driven delivery loop. Chosen as
+  the smallest change that preserves repository ownership and can be tested in
+  representative repositories.
+
 ## Decision
 
 - Route repository delivery feedback through the existing calibration skill
@@ -63,6 +79,29 @@ and improve the feedback loop only after a representative failure.
 - No bulk cloud-environment provisioning in calibration.
 - No new orchestrator or `WORKFLOW.md`.
 - No change to the frozen prior evaluation cases in this candidate.
+
+## Consequences And Follow-up Obligations
+
+- Repository onboarding begins with discovery and a representative task, not
+  a mandatory provisioning checklist.
+- A missing command, CI check, review, or hosted dependency is corrected only
+  after evidence identifies its durable owner.
+- External settings and writes require readback from the owning control plane;
+  repository files cannot stand in for that verification.
+- Cross-repository Cloud invocations must name the target branch explicitly.
+- The candidate must still complete pull-request CI and independent Codex
+  review before merge. A later newly created PR should verify that Automatic
+  Review triggers without the one-time manual request used for this pre-existing
+  Draft PR.
+
+## Reopen Conditions
+
+Revisit this decision if repeated repository delivery failures show that
+failure-driven setup is too late, if a stable platform-native bootstrap
+contract makes shared configuration cheaper than repository discovery, if
+recurring multi-repository volume justifies a scheduled task or orchestrator,
+or if representative evidence shows that a currently optional capability must
+become a cross-project gate.
 
 ## Acceptance
 

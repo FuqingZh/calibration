@@ -14,7 +14,8 @@ implementation plans. Reusable cross-project engineering guidance lives under
    rather than the current optimization agenda.
 4. `decisions/2026-07-21-repository-delivery-feedback-loop.md` and
    `implementation-plan/20260721-v1.3-repository-delivery-feedback-loop-implementation-plan.md`
-   for the active evidence-driven delivery-loop candidate and smoke gate.
+   for the smoke-validated delivery-loop candidate and its remaining PR review
+   gate.
 
 ## Decision Status
 
@@ -37,16 +38,16 @@ implementation plans. Reusable cross-project engineering guidance lives under
   Slice 2 behavior candidate and current Slice 3 evaluation record.
 - `decisions/2026-07-21-harness-successor-evaluation-closeout.md`: rejected
   pull request #7 successor and current staged evaluation record.
-- `decisions/2026-07-21-repository-delivery-feedback-loop.md`: active candidate
-  for failure-driven repository delivery feedback; acceptance is pending two
-  real cloud smoke tasks.
+- `decisions/2026-07-21-repository-delivery-feedback-loop.md`: smoke-validated
+  candidate for failure-driven repository delivery feedback; pull-request
+  review remains pending.
 
 ## Current Boundary
 
-The v1.3 repository-delivery feedback-loop candidate is the only active plan.
-It responds to a concrete cloud execution failure and must pass read-only smoke
-validation in two real repositories before acceptance. The rejected v1.2
-candidate remains closed and is not its behavioral baseline.
+The v1.3 repository-delivery feedback-loop candidate completed implementation
+and passed read-only smoke validation in `FuqingZh/calibration` and
+`FuqingZh/biofetch`. Pull-request review is the remaining delivery gate. The
+rejected v1.2 candidate remains closed and is not its behavioral baseline.
 
 Broader project pilots, orchestrator work, bulk environment provisioning, and
 per-repository scheduled tasks remain inactive.

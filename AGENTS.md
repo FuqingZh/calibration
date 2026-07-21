@@ -24,10 +24,14 @@ python scripts/validate_skills.py
 bash -n install.sh
 CODEX_HOME="$(mktemp -d)" bash install.sh --dry-run
 git diff --check
+git diff --cached --check
+git diff --check origin/main...HEAD
 ```
 
 Use an explicit temporary `CODEX_HOME`; never overwrite the user's active
 Codex installation during validation.
+Run all three diff checks before delivery: the worktree, staged changes, and
+the committed branch range relative to `origin/main` are distinct surfaces.
 
 ## Review Guidelines
 
