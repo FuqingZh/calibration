@@ -2,7 +2,7 @@
 
 Date: 2026-07-20
 
-Status: Accepted
+Status: Accepted ownership boundary
 
 ## Context
 
@@ -78,6 +78,10 @@ tests, deployment checks, observability, and local exceptions.
 Behavior changes must be evaluated separately from this implementation task.
 Adding evaluation cases records hypotheses and acceptance criteria; it does not
 by itself prove that calibration improved.
+
+Pull request #5's behavior candidate and pull request #7's narrow successor
+were rejected by their separate evaluation closeouts. Those results do not
+reverse this ownership decision.
 
 ## Reopen When
 
