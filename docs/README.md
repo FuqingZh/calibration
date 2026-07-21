@@ -14,8 +14,9 @@ implementation plans. Reusable cross-project engineering guidance lives under
    rather than the current optimization agenda.
 4. `decisions/2026-07-21-repository-delivery-feedback-loop.md` for the accepted
    failure-driven repository delivery loop.
-5. `implementation-plan/20260721-v1.4-repository-engineering-capability-adoption-implementation-plan.md`
-   for the current proportional adoption work and its two repository pilots.
+5. `decisions/2026-07-21-repository-engineering-capability-adoption-closeout.md`
+   for the closed proportional adoption pilots, the bounded Symphony `NO-GO`,
+   and the separate `biofetch` CI result.
 
 ## Decision Status
 
@@ -40,14 +41,20 @@ implementation plans. Reusable cross-project engineering guidance lives under
   pull request #7 successor and current staged evaluation record.
 - `decisions/2026-07-21-repository-delivery-feedback-loop.md`: accepted
   failure-driven repository delivery feedback boundary; merged by PR #10.
+- `decisions/2026-07-21-repository-engineering-capability-adoption-closeout.md`:
+  accepted v1.4 proportional adoption behavior with a bounded `bio_plot`
+  Symphony `NO-GO` and a repository-owned `biofetch` CI increment.
 
 ## Current Boundary
 
-The v1.3 repository-delivery feedback loop is accepted and closed. The active
-v1.4 plan adds a proportional repository capability adoption entrypoint, then
-tests it on `bio_plot` as an application/Symphony pilot and on `biofetch` as a
-non-application transfer check.
+The v1.3 repository-delivery feedback loop and v1.4 proportional adoption plan
+are accepted and closed. There is no active calibration implementation plan.
 
-These pilots do not authorize bulk environment provisioning, mandatory
+The `bio_plot` Symphony canary did not run because its predeclared adoption
+gate was incomplete. `biofetch` required only a repository-owned CI increment;
+application runtime and orchestration capabilities remained not applicable.
+
+The closeout does not authorize bulk environment provisioning, mandatory
 per-repository configuration, auto-merge, or project-specific operating rules
-inside calibration.
+inside calibration. Another Symphony canary requires the closeout's explicit
+reopen conditions.
