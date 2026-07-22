@@ -29,12 +29,16 @@ the implementation plan is corrected by this closeout change:
 2. the issue-only tracker/status identity must remain separate from the
    code-push/pull-request identity as well as the staging identity; and
 3. critical or high findings in any dependency executed by readiness checks
-   must stop those checks, with audit occurring before tasks load, compile, or
-   start dependency or application code.
+   must stop those checks, with audit occurring before tasks compile or start
+   dependency or application modules. Resolution and audit necessarily
+   evaluate the project's `mix.exs`.
 
-The delayed review is evidence that a started review is not a terminal review.
-Later delivery loops must wait for a review, comments, inline findings, or a
-no-finding reaction before calling the automatic review complete.
+The delayed review confirms the existing repository delivery loop's rule to
+keep pending work explicit until the owning platform reports a terminal result.
+For this pull request, an `eyes` reaction meant only that Codex accepted the
+work; a submitted review with comments or a no-finding reaction was terminal.
+Those are observations about this GitHub integration, not a new cross-project
+harness rule defined by this closeout.
 
 ## Decision
 
