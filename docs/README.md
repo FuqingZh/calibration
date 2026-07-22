@@ -17,8 +17,11 @@ implementation plans. Reusable cross-project engineering guidance lives under
 5. `decisions/2026-07-21-repository-engineering-capability-adoption-closeout.md`
    for the closed proportional adoption pilots, the bounded Symphony `NO-GO`,
    and the separate `biofetch` CI result.
-6. `implementation-plan/20260722-v1.5-symphony-readiness-and-bounded-canary-implementation-plan.md`
-   for the active, gated host-readiness and bounded Symphony canary.
+6. `decisions/2026-07-22-symphony-readiness-and-bounded-canary-closeout.md`
+   for the current pinned-engine readiness result, dependency and full-suite
+   blockers, and explicit reopen conditions.
+7. `implementation-plan/20260722-v1.5-symphony-readiness-and-bounded-canary-implementation-plan.md`
+   for the closed gate definitions and the post-review safety corrections.
 
 ## Decision Status
 
@@ -46,23 +49,29 @@ implementation plans. Reusable cross-project engineering guidance lives under
 - `decisions/2026-07-21-repository-engineering-capability-adoption-closeout.md`:
   accepted v1.4 proportional adoption behavior with a bounded `bio_plot`
   Symphony `NO-GO` and a repository-owned `biofetch` CI increment.
+- `decisions/2026-07-22-symphony-readiness-and-bounded-canary-closeout.md`:
+  closed v1.5 at Slice 1 after the pinned lock failed dependency audit and the
+  upstream full gate remained red on the current host.
 - `implementation-plan/20260722-v1.5-symphony-readiness-and-bounded-canary-implementation-plan.md`:
-  active successor that reopens only the pinned host-readiness, scratch-repo,
-  and bounded no-product canary gates.
+  closed successor whose later scratch-repo and repository canary slices did
+  not open.
 
 ## Current Boundary
 
 The v1.3 repository-delivery feedback loop and v1.4 proportional adoption plan
 are accepted and closed. The v1.5 Symphony readiness and bounded-canary plan
-is active; it does not change calibration guidance or reopen wider
-orchestration.
+is also closed at Slice 1 with `NO-GO`; it did not change calibration guidance
+or reopen wider orchestration.
 
-The earlier `bio_plot` Symphony canary did not run because its predeclared
-adoption gate was incomplete. Version 1.5 first tests the pinned engine and
-host generically, then a scratch tracker, and only then a repository-owned
-no-product-change canary. E03/E04 remains closed until those gates pass.
+The v1.5 ephemeral probe established narrow source and protocol compatibility,
+but the pinned dependency lock failed security audit and upstream `make all`
+did not pass. It therefore stopped before a scratch tracker, persistent
+installation, or repository-owned no-product-change canary. E03/E04 remains
+closed until the latest closeout's gates pass.
 
 The closeout does not authorize bulk environment provisioning, mandatory
 per-repository configuration, auto-merge, or project-specific operating rules
-inside calibration. Another Symphony canary requires the closeout's explicit
-reopen conditions.
+inside calibration. Another Symphony canary requires the 2026-07-22 closeout's
+explicit host and scratch reopen conditions. A `bio_plot_platform` or E03/E04
+canary additionally requires the cumulative repository gates retained by the
+2026-07-21 adoption closeout.
