@@ -17,6 +17,8 @@ implementation plans. Reusable cross-project engineering guidance lives under
 5. `decisions/2026-07-21-repository-engineering-capability-adoption-closeout.md`
    for the closed proportional adoption pilots, the bounded Symphony `NO-GO`,
    and the separate `biofetch` CI result.
+6. `implementation-plan/20260722-v1.5-symphony-readiness-and-bounded-canary-implementation-plan.md`
+   for the active, gated host-readiness and bounded Symphony canary.
 
 ## Decision Status
 
@@ -44,15 +46,21 @@ implementation plans. Reusable cross-project engineering guidance lives under
 - `decisions/2026-07-21-repository-engineering-capability-adoption-closeout.md`:
   accepted v1.4 proportional adoption behavior with a bounded `bio_plot`
   Symphony `NO-GO` and a repository-owned `biofetch` CI increment.
+- `implementation-plan/20260722-v1.5-symphony-readiness-and-bounded-canary-implementation-plan.md`:
+  active successor that reopens only the pinned host-readiness, scratch-repo,
+  and bounded no-product canary gates.
 
 ## Current Boundary
 
 The v1.3 repository-delivery feedback loop and v1.4 proportional adoption plan
-are accepted and closed. There is no active calibration implementation plan.
+are accepted and closed. The v1.5 Symphony readiness and bounded-canary plan
+is active; it does not change calibration guidance or reopen wider
+orchestration.
 
-The `bio_plot` Symphony canary did not run because its predeclared adoption
-gate was incomplete. `biofetch` required only a repository-owned CI increment;
-application runtime and orchestration capabilities remained not applicable.
+The earlier `bio_plot` Symphony canary did not run because its predeclared
+adoption gate was incomplete. Version 1.5 first tests the pinned engine and
+host generically, then a scratch tracker, and only then a repository-owned
+no-product-change canary. E03/E04 remains closed until those gates pass.
 
 The closeout does not authorize bulk environment provisioning, mandatory
 per-repository configuration, auto-merge, or project-specific operating rules
