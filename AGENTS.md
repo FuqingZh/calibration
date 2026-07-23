@@ -8,6 +8,16 @@
 - First-party skills live under `skills/`; do not change behavioral cases as
   part of an unrelated implementation.
 
+## AO Delivery
+
+This repository has opted into the accepted user-level AO service as
+`calibration`. For conversation-authorized implementation intended to cross a
+pull-request boundary, verify AO health and start a task-specific worker before
+creating the implementation branch or pull request. If a pull request already
+exists, restore its owning worker or claim it with `--no-takeover`. Leave merge
+and risk decisions to the user. If AO is unavailable, use an isolated worktree
+and report that fallback.
+
 ## Validation
 
 Install the locked validation environment with:

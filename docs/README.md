@@ -33,6 +33,10 @@ implementation plans. Reusable cross-project engineering guidance lives under
    local patches, user service, project configuration, verification, and
    recovery contract needed to reproduce the current host capability.
 
+11. `implementation-plan/20260723-v1.7-ao-repository-adoption-contract-implementation-plan.md`
+    for the active repair that separates registration, runtime readiness, and
+    real-event continuation evidence across opted-in repositories.
+
 ## Decision Status
 
 - `decisions/2026-07-01-calibration-rename-and-skill-architecture.md`:
@@ -73,6 +77,9 @@ implementation plans. Reusable cross-project engineering guidance lives under
   separate `NO-GO` remains unchanged.
 - `runbooks/agent-orchestrator-review-continuation.md`: current operational
   source of truth for rebuilding and verifying the user-level AO service.
+- `implementation-plan/20260723-v1.7-ao-repository-adoption-contract-implementation-plan.md`:
+  active stacked successor that makes repository onboarding idempotent and
+  prevents static health from being reported as continuation proof.
 
 ## Current Boundary
 

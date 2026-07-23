@@ -11,6 +11,7 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 
 @dataclass(frozen=True)
 class AdoptionDocuments:
+    agents: str
     harness: str
     skill: str
     docs_readme: str
@@ -24,6 +25,7 @@ def documents() -> AdoptionDocuments:
         return " ".join(path.read_text(encoding="utf-8").split())
 
     return AdoptionDocuments(
+        agents=compact(REPOSITORY_ROOT / "AGENTS.md"),
         harness=compact(
             REPOSITORY_ROOT / "references/engineering/discipline/harness.md"
         ),
@@ -107,3 +109,20 @@ def test_accepted_ao_scope_includes_conversation_authorized_intake(
     assert "task-specific worker start" in documents.ao_decision
     assert "automatic work discovery" in documents.runbook
     assert "1248e3473c86192aa17c48062bf001ea97482d4f" in documents.ao_decision
+
+
+def test_ao_repository_adoption_requires_real_continuation_evidence(
+    documents: AdoptionDocuments,
+) -> None:
+    for authority in (documents.harness, documents.runbook):
+        assert "registered" in authority
+        assert "configured" in authority
+        assert "runtime-ready" in authority
+        assert "continuation-proven" in authority
+
+    assert "Do not report repository adoption as complete" in documents.harness
+    assert "never claims the real event loop has passed" in documents.runbook
+    assert "scripts/adopt_ao_repository.py" in documents.runbook
+    assert "Issue-tracker intake" in documents.runbook
+    assert "AO Delivery" in documents.agents
+    assert "start a task-specific worker before" in documents.agents
