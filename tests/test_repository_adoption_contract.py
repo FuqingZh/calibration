@@ -32,6 +32,24 @@ class RepositoryAdoptionContractTests(unittest.TestCase):
         self.assertIn("one bounded representative task", self.harness)
         self.assertIn("do not turn local labels, deployment topology", self.harness)
 
+    def test_authorized_implementation_uses_an_adopted_orchestrator(self) -> None:
+        self.assertIn("## Implementation Task Intake", self.harness)
+        self.assertIn("execute an accepted plan", self.harness)
+        self.assertIn("route it to that orchestrator without requiring the user", self.harness)
+        self.assertIn("start a task-specific worker", self.harness)
+        self.assertIn("claim or restore the owning worker", self.harness)
+
+    def test_planning_only_does_not_start_implementation(self) -> None:
+        self.assertIn("remains read-only unless it also authorizes the change", self.harness)
+        self.assertIn("Use only an already accepted repository, host, identity", self.harness)
+        self.assertIn("normal isolated-Worktree delivery path", self.harness)
+
+    def test_unreachable_scheduler_is_not_a_server_continuation_substitute(
+        self,
+    ) -> None:
+        self.assertIn("already accepted event-driven continuation orchestrator", self.harness)
+        self.assertIn("do not substitute an unreachable scheduler", self.harness)
+
 
 if __name__ == "__main__":
     unittest.main()

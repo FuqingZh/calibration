@@ -24,8 +24,9 @@ Load only the routers required by the decisions at hand:
   workflow evaluation:
   `../../references/engineering/discipline/README.md`
 - repository capability assessment, minimal adoption, and delivery feedback,
-  including setup discovery, pull-request validation, CI, agent review, cloud
-  execution gaps, and repeated delivery failures:
+  including implementation-task intake for an already adopted orchestrator,
+  setup discovery, pull-request validation, CI, agent review, cloud execution
+  gaps, and repeated delivery failures:
   `../../references/engineering/discipline/harness.md`
 - architecture, module boundaries, interfaces, and abstraction:
   `../../references/engineering/design/README.md`

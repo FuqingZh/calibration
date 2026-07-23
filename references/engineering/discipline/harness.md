@@ -97,6 +97,33 @@ repository has one. Do not copy architecture prose, test matrices, temporary
 task state, generic engineering guidance, or source articles into
 `AGENTS.md`. A repository with no useful local increment may omit it.
 
+## Implementation Task Intake
+
+Treat a repository task as initiated when the user authorizes implementation
+or delivery, for example by asking the agent to implement, modify, fix, execute
+an accepted plan, or publish the resulting change. A request to analyze,
+review, discuss, or write a plan remains read-only unless it also authorizes
+the change.
+
+At intake, discover the repository's current delivery path and whether the
+current host and repository already have an accepted continuation
+orchestrator. When they do, and the authorized task is intended to cross a
+pull-request CI or review boundary, route it to that orchestrator without
+requiring the user to name the tool again:
+
+- start a task-specific worker in an isolated workspace for new work;
+- claim or restore the owning worker when a pull request already exists; and
+- leave merge, risk acceptance, and other human-authority decisions outside
+  the worker.
+
+Use only an already accepted repository, host, identity, and permission
+configuration. Do not silently register every repository, enable
+permissionless execution on another host, or introduce an orchestrator merely
+because implementation was authorized. If the accepted orchestrator is
+unavailable or the repository has not adopted it, continue through the normal
+isolated-Worktree delivery path and report that bounded fallback instead of
+asking the user to diagnose infrastructure.
+
 ## Repository Delivery Feedback Loop
 
 When a repository change is intended to land through a pull request:
@@ -121,9 +148,12 @@ When a repository change is intended to land through a pull request:
    the current commit, return control with the durable PR state instead of
    keeping a foreground conversation open for expected remote waits.
 7. Continue asynchronous CI, review, and deployment waits through the owning
-   platform or a background or scheduled task. Wake the foreground only for
-   actionable feedback, a terminal result, or a decision requiring human
-   authority; keep pending work explicit rather than claiming completion.
+   platform or an already accepted event-driven continuation orchestrator.
+   Use a background or scheduled task only when that control plane can observe
+   the work and resume its owner; do not substitute an unreachable scheduler
+   for server-side continuation. Wake the foreground only for actionable
+   feedback, a terminal result, or a decision requiring human authority;
+   keep pending work explicit rather than claiming completion.
 8. Address mechanical feedback in a bounded background iteration and repeat
    until the declared checks pass. Escalate product intent, tradeoffs, risk, and
    irreversible actions rather than making the user babysit routine polling.
