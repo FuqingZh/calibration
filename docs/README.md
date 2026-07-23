@@ -23,7 +23,7 @@ implementation plans. Reusable cross-project engineering guidance lives under
 7. `implementation-plan/20260722-v1.5-symphony-readiness-and-bounded-canary-implementation-plan.md`
    for the closed gate definitions and the post-review safety corrections.
 8. `implementation-plan/20260723-v1.6-repository-quality-gate-implementation-plan.md`
-   for the active deterministic Python, Markdown, shell, and installer
+   for the closed deterministic Python, Markdown, shell, and installer
    validation convergence.
 9. `decisions/2026-07-23-ao-review-continuation-adoption.md` for the accepted
    narrow AO successor, terminal installed-service canary evidence,
@@ -34,7 +34,7 @@ implementation plans. Reusable cross-project engineering guidance lives under
    recovery contract needed to reproduce the current host capability.
 
 11. `implementation-plan/20260723-v1.7-ao-repository-adoption-contract-implementation-plan.md`
-    for the active repair that separates registration, runtime readiness, and
+    for the closed repair that separates registration, runtime readiness, and
     real-event continuation evidence across opted-in repositories.
 
 ## Decision Status
@@ -70,7 +70,7 @@ implementation plans. Reusable cross-project engineering guidance lives under
   closed successor whose later scratch-repo and repository canary slices did
   not open.
 - `implementation-plan/20260723-v1.6-repository-quality-gate-implementation-plan.md`:
-  active repository-local quality-gate convergence; it does not modify skill
+  closed repository-local quality-gate convergence; it does not modify skill
   behavior or prescribe the same toolchain to other repositories.
 - `decisions/2026-07-23-ao-review-continuation-adoption.md`: current bounded
   adoption decision for the AO review-to-original-worker bridge; Symphony's
@@ -78,9 +78,10 @@ implementation plans. Reusable cross-project engineering guidance lives under
 - `runbooks/agent-orchestrator-review-continuation.md`: current operational
   source of truth for rebuilding and verifying the user-level AO service.
 - `implementation-plan/20260723-v1.7-ao-repository-adoption-contract-implementation-plan.md`:
-  behavior-validated stacked successor that makes repository onboarding
+  closed behavior-validated successor that makes repository onboarding
   idempotent and prevents static health from being reported as continuation
-  proof; delivery remains pending behind pull requests #20 and #21.
+  proof; pull requests #20 and #21 have merged and final `main` validation
+  passed.
 
 ## Current Boundary
 
@@ -113,14 +114,12 @@ worker fix, test, push, CI, thread-resolution, and re-review loop without human
 relay; this is a GO for the tested host topology, not a mandate for bulk
 repository enrollment.
 
-The v1.7 `calibration` adoption candidate has now also completed three real
-Automatic Review repair rounds through its original AO worker. All thirteen
-review threads are resolved, so the representative repository continuation
-mechanism is proven. The repository delivery is not yet closed: the latest
-repair commit still requires its own successful remote check, quality-gate
-pull request #20 must merge first, and stacked pull request #21 must then be
-rebased or retargeted, revalidated, and merged before the initializer becomes
-`main` authority.
+The v1.7 `calibration` adoption completed four real Automatic Review repair
+rounds through its original AO worker. All eighteen review threads are
+resolved, and the final reviewed tree passed `validate-skills`. Quality-gate
+pull request #20 merged first; pull request #21 was then rebased onto the new
+`main`, revalidated, and merged. The merge-result `main` run also passed, so
+the initializer and documentation are now repository authority.
 
 The optional Web Dashboard exploration is also closed without adoption. An
 isolated read-only browser canary rendered live AO state successfully, but the
