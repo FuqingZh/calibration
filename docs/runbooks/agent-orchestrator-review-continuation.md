@@ -237,10 +237,14 @@ be inherited silently.
 
 The command enables and starts the persistent user service, verifies AO status
 and doctor output, creates or reuses the project, merges the required profile
-without removing unrelated project configuration, and validates the repository
-path and configuration readback. It also requires the isolated Codex home,
-configuration, and authentication file to retain private permissions. It stops
-at `runtime-ready`; it never claims the real event loop has passed.
+with configuration fields modeled by the pinned AO CLI, and validates the
+repository path and configuration readback. `ao project set-config` replaces a
+typed whole object, so this initializer does not promise to preserve fields
+outside that CLI schema; inspect an existing project's configuration before
+using it with a newer or plugin-extended AO build. The command also requires the
+isolated Codex home, configuration, and authentication file to retain private
+permissions. It stops at `runtime-ready`.
+It never claims the real event loop has passed.
 
 Before registration, the initializer confirms that `.codex` is absent or a
 real directory in the repository, never a symlink. Its equivalent guard is:
@@ -273,9 +277,10 @@ This repository has opted into the accepted user-level AO service as
 `repository-name`. For conversation-authorized implementation intended to
 cross a pull-request boundary, verify AO health and start a task-specific
 worker before creating the implementation branch or PR. If a PR already
-exists, restore its owning worker or claim it with `--no-takeover`. Leave merge
-and risk decisions to the user. If AO is unavailable, use an isolated worktree
-and report that fallback.
+exists, mark it ready for review if it is a draft, then restore its owning
+worker or claim it with `--no-takeover`. Ready-for-review is only an AO claim
+prerequisite; leave merge and risk decisions to the user. If AO is unavailable,
+use an isolated worktree and report that fallback.
 ```
 
 This entry makes task intake discoverable; it does not itself prove the event

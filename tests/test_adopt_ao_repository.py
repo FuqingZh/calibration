@@ -24,6 +24,7 @@ from scripts.adopt_ao_repository import (
     _merge,
     _project_config,
     _project_get,
+    _reject_bot_review_conflict,
     _reject_tracker_intake,
     _run,
     _validate_codex_home,
@@ -127,7 +128,7 @@ def successful_responses(
     project_get = ("ao", "project", "get", "sample", "--json")
     initial = completed(
         project_get,
-        stdout=project_payload({"unrelated": True}, str(repository.resolve())),
+        stdout=project_payload({"symlinks": ["retained"]}, str(repository.resolve())),
     )
     responses: dict[tuple[str, ...], list[subprocess.CompletedProcess[str]]] = {
         (
@@ -193,7 +194,7 @@ def successful_responses(
         ): [completed(("ao",))],
     }
     merged: dict[str, object] = dict(required)
-    merged["unrelated"] = True
+    merged["symlinks"] = ["retained"]
     responses[
         (
             "ao",
@@ -330,7 +331,7 @@ def test_apply_registers_or_reuses_project_and_verifies_readback(
     assert bool(add_commands) is not existing
 
 
-def test_preserves_nested_existing_configuration() -> None:
+def test_merges_nested_typed_configuration() -> None:
     assert _merge(
         {"env": {"OTHER": "kept"}, "top": True},
         {"env": {"CODEX_HOME": "/tmp/home"}},
@@ -364,6 +365,21 @@ def test_rejects_enabled_tracker_intake() -> None:
     _reject_tracker_intake({"trackerIntake": {"enabled": False}})
     with pytest.raises(AdoptionError, match="trackerIntake.enabled"):
         _reject_tracker_intake({"trackerIntake": {"enabled": True}})
+
+
+def test_rejects_bot_review_denylist_conflict() -> None:
+    author = "chatgpt-codex-connector"
+    _reject_bot_review_conflict({}, author)
+    _reject_bot_review_conflict({"botReviewFeedback": {"denyAuthors": []}}, author)
+    _reject_bot_review_conflict(
+        {"botReviewFeedback": {"denyAuthors": ["different-bot"]}},
+        author,
+    )
+    with pytest.raises(AdoptionError, match="denyAuthors blocks"):
+        _reject_bot_review_conflict(
+            {"botReviewFeedback": {"denyAuthors": [" ChatGPT-Codex-Connector "]}},
+            author,
+        )
 
 
 def test_project_path_must_match_selected_repository(repository: Path) -> None:
@@ -563,6 +579,24 @@ def test_apply_rejects_existing_tracker_intake(repository: Path) -> None:
         ),
     )
     with pytest.raises(AdoptionError, match="trackerIntake.enabled"):
+        adopt_repository(request(repository), apply=True, runner=FakeRunner(responses))
+
+
+def test_apply_rejects_bot_review_denylist_conflict(repository: Path) -> None:
+    responses = successful_responses(repository, existing=True)
+    project_get = ("ao", "project", "get", "sample", "--json")
+    responses[project_get][0] = completed(
+        project_get,
+        stdout=project_payload(
+            {
+                "botReviewFeedback": {
+                    "denyAuthors": ["chatgpt-codex-connector"],
+                }
+            },
+            str(repository.resolve()),
+        ),
+    )
+    with pytest.raises(AdoptionError, match="denyAuthors blocks"):
         adopt_repository(request(repository), apply=True, runner=FakeRunner(responses))
 
 

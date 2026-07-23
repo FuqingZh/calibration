@@ -217,6 +217,26 @@ def _reject_tracker_intake(config: Mapping[str, object]) -> None:
         )
 
 
+def _reject_bot_review_conflict(
+    config: Mapping[str, object],
+    author: str,
+) -> None:
+    feedback = config.get("botReviewFeedback")
+    if not isinstance(feedback, dict):
+        return
+    deny_authors = cast(dict[str, object], feedback).get("denyAuthors")
+    if not isinstance(deny_authors, list):
+        return
+    normalized_author = author.strip().casefold()
+    if any(
+        isinstance(denied, str) and denied.strip().casefold() == normalized_author
+        for denied in cast(list[object], deny_authors)
+    ):
+        raise AdoptionError(
+            f"AO project botReviewFeedback.denyAuthors blocks {author!r}"
+        )
+
+
 def _verify_project_path(project: Mapping[str, object], repository: Path) -> None:
     raw_path = project.get("path")
     if (
@@ -380,6 +400,7 @@ def adopt_repository(
 
     current_config = _project_config(project)
     _reject_tracker_intake(current_config)
+    _reject_bot_review_conflict(current_config, request.bot_review_author)
     merged = _merge(current_config, required)
     _command(
         runner,
@@ -399,6 +420,7 @@ def adopt_repository(
     _verify_project_path(readback, repository)
     readback_config = _project_config(readback)
     _reject_tracker_intake(readback_config)
+    _reject_bot_review_conflict(readback_config, request.bot_review_author)
     configuration_verified = _contains(readback_config, required)
     if not configuration_verified:
         raise AdoptionError("AO project configuration readback did not match request")
