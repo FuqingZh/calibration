@@ -45,9 +45,10 @@ The installed-service canary then exposed three environment requirements:
    Plugins do not add unrelated MCP startup failures;
 2. the user service must carry the host's proxy environment so Codex model
    requests can reach the network; and
-3. tmux's micromamba libraries must be scoped to a tmux wrapper. A service-wide
-   `LD_LIBRARY_PATH` polluted Git/curl certificate discovery and broke an
-   otherwise valid push.
+3. tmux's micromamba libraries must be scoped with the ELF loader's
+   `--library-path`. Exporting `LD_LIBRARY_PATH` even inside a wrapper pollutes
+   the persistent tmux server environment, which is inherited by workers and
+   breaks Git/curl certificate discovery.
 
 ## Decision
 
@@ -117,17 +118,26 @@ The operational source of truth is
 - After replacing the service-wide library path with a tmux-only wrapper,
   private-repository `git ls-remote` succeeded without a certificate override
   and `ao doctor --json` again reported zero failures.
-- The first bounded real-repository intake used
-  [`FuqingZh/biofetch`](https://github.com/FuqingZh/biofetch). After pull
-  request [#5](https://github.com/FuqingZh/biofetch/pull/5) removed an obsolete
-  tracked `.codex` placeholder that blocked hook provisioning, the
-  conversation-authorized `biofetch-1` worker updated three direct patch
-  dependencies and opened pull request
-  [#6](https://github.com/FuqingZh/biofetch/pull/6). Repository validation,
-  `validate-biofetch`, and Automatic Review passed; after explicit human merge
-  authorization, main advanced to
-  `1248e3473c86192aa17c48062bf001ea97482d4f` and AO terminated the worker as
-  `merged`.
+- A later real-repository run showed that exporting the variable inside the
+  wrapper was still insufficient because tmux forwarded it to new panes. The
+  installed wrapper now invokes tmux through
+  `/lib64/ld-linux-x86-64.so.2 --library-path`, and the tmux server's global
+  environment no longer contains `LD_LIBRARY_PATH`.
+- The first real adoption used
+  [`FuqingZh/biofetch`](https://github.com/FuqingZh/biofetch). An obsolete
+  tracked zero-byte `.codex` file initially blocked hook provisioning with
+  `not a directory`; pull request
+  [#5](https://github.com/FuqingZh/biofetch/pull/5) removed that repository
+  compatibility defect through its existing CI and Automatic Review.
+- The restored `biofetch-1` worker then updated three bounded direct patch
+  dependencies, ran the repository test, vet, build, and diff gates, committed
+  `d4d144dbe57c8804ee5d3a64826ae6eebb7fa25a`, pushed, and opened pull request
+  [#6](https://github.com/FuqingZh/biofetch/pull/6) in about three minutes.
+  `validate-biofetch` and Automatic Review (`+1`, zero threads) passed;
+  auto-merge remained disabled. After explicit human merge authorization,
+  main advanced to `1248e3473c86192aa17c48062bf001ea97482d4f`,
+  the main workflow passed, and AO marked the original worker `merged` and
+  terminated it.
 
 The retained patches were replayed from the pinned base in a new Worktree. The
 focused suite passed with tmux 3.5, and both binaries were rebuilt with VCS
@@ -135,8 +145,9 @@ stamping disabled so equivalent patch replay does not depend on new committer
 metadata. Those rebuilt hashes are the installed and documented values.
 
 These observations prove the bounded review-to-worker continuation and current
-host installation. They do not establish AO upstream stability, cross-host
-portability, autonomous merge safety, or effectiveness for every repository.
+host installation, plus one real repository's bounded delivery path. They do
+not establish AO upstream stability, cross-host portability, autonomous merge
+safety, or effectiveness for every repository.
 
 ## Consequences
 

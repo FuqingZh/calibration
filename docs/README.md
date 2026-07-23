@@ -90,8 +90,10 @@ implementation and pull-request delivery. This does not enable unattended
 issue intake or automatic work discovery. The build is a user-level canary
 with two retained local patches, explicitly accepted `bypass-permissions`, and
 auto-merge disabled. A separate disposable repository remains registered only
-as a test fixture. Other repositories adopt AO only after an observed
-recurring continuation need.
+as a test fixture. `biofetch` has completed one bounded real-repository
+dependency task through the same service; this is evidence for that task and
+host, not automatic enrollment of the remaining repositories. Other
+repositories adopt AO only after an observed recurring continuation need.
 The terminal scratch-repository canary completed the full review, original
 worker fix, test, push, CI, thread-resolution, and re-review loop without human
 relay; this is a GO for the tested host topology, not a mandate for bulk
