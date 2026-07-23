@@ -281,6 +281,13 @@ and report that fallback.
 This entry makes task intake discoverable; it does not itself prove the event
 loop or authorize bulk enrollment.
 
+The installed AO build does not claim a GitHub Draft pull request: it returns
+`PR_NOT_OPEN` even though GitHub reports the draft's state as `OPEN`. Keep
+unfinished work draft, then mark it ready for review before AO claim or spawn
+with `--claim-pr`. Ready-for-review triggers CI/review ownership; it does not
+authorize merge. A stacked pull request may be ready while its base remains
+open, provided merge order stays explicit.
+
 ## Verification
 
 Run after installation, restart, configuration, or upgrade:

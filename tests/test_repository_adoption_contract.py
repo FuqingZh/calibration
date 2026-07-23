@@ -124,5 +124,7 @@ def test_ao_repository_adoption_requires_real_continuation_evidence(
     assert "never claims the real event loop has passed" in documents.runbook
     assert "scripts/adopt_ao_repository.py" in documents.runbook
     assert "Issue-tracker intake" in documents.runbook
+    assert "does not claim a GitHub Draft pull request" in documents.runbook
+    assert "Ready-for-review" in documents.runbook
     assert "AO Delivery" in documents.agents
     assert "start a task-specific worker before" in documents.agents
