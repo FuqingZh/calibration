@@ -1,3 +1,7 @@
 .codex
+.venv/
+.pdm-python
+.coverage
+coverage.xml
 __pycache__/
 *.py[cod]

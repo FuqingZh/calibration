@@ -6,8 +6,8 @@ Status: Rejected
 
 ## Context
 
-Draft pull request #7 proposed a narrow successor to the rejected pull request
-#5 behavior candidate. It reduced repeated harness instructions, clarified
+Draft pull request #7 proposed a narrow successor to the rejected behavior
+candidate from pull request #5. It reduced repeated harness instructions, clarified
 documentation authority, compressed harness levels into a proportionality
 rule, and narrowed the calibration skill trigger without changing the frozen
 19 behavior cases.

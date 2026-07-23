@@ -23,6 +23,8 @@ the system itself.
 - `references/engineering/docs/`: reusable long-form specifications and patterns
 - `docs/README.md`: current decision, evaluation, and implementation-plan map
 - `thirdparty/`: vendored optional skills and their source/patch records
+- `pyproject.toml` and `pdm.lock`: locked repository validation environment and
+  the canonical local/CI task entrypoints
 
 ## Install
 
@@ -47,6 +49,27 @@ with the current repository path and symlinks managed first-party skills from
 `skills/` and managed vendored skills from `thirdparty/skills/` into
 `~/.codex/skills/`. Existing `AGENTS.md` content is backed up before
 replacement when it differs.
+
+## Development
+
+Install the locked validation environment:
+
+```bash
+pdm sync --clean
+```
+
+Run the same repository quality gate used by GitHub Actions:
+
+```bash
+pdm lock --check
+pdm run check
+```
+
+The gate runs Ruff, Pyright, rumdl, first-party Markdown link validation,
+ShellCheck, pytest with 100% line coverage for repository-owned Python tools,
+and the skill validator. Installer behavior tests always use isolated temporary
+`CODEX_HOME` directories; the development gate does not modify the active
+Codex installation.
 
 ## Intent
 

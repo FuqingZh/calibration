@@ -10,18 +10,17 @@
 
 ## Validation
 
-Install the validation dependency with:
+Install the locked validation environment with:
 
 ```bash
-python -m pip install --requirement requirements.txt
+pdm sync --clean
 ```
 
 Before delivery, run:
 
 ```bash
-python -m unittest discover --start-directory tests --verbose
-python scripts/validate_skills.py
-bash -n install.sh
+pdm lock --check
+pdm run check
 CODEX_HOME="$(mktemp -d)" bash install.sh --dry-run
 git diff --check
 git diff --cached --check
@@ -29,8 +28,9 @@ git diff --check "${BASE_REF:-main}...HEAD"
 git status --short
 ```
 
-Use an explicit temporary `CODEX_HOME`; never overwrite the user's active
-Codex installation during validation.
+`pdm.lock` is the dependency authority for local and CI validation. Use an
+explicit temporary `CODEX_HOME`; never overwrite the user's active Codex
+installation during validation.
 Run all three diff checks before delivery: the worktree, staged changes, and
 the committed branch range are distinct surfaces. Set `BASE_REF` to the pull
 request base SHA or an available local base branch when `main` is unavailable.
