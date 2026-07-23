@@ -45,6 +45,8 @@ The current host uses:
   that the host's `/usr/bin/tmux` 2.7 does not support;
 - `codex` authenticated for the `fqzhang` user;
 - `gh` authenticated for the repositories AO will observe; and
+- the host proxy variables available to the user service when direct model and
+  GitHub access is unavailable;
 - a functioning `systemd --user` manager with lingering enabled when the
   service must survive logout.
 
@@ -95,6 +97,20 @@ install -D -m 0755 "${AO_BUILD_ROOT}/bin/ao-daemon" \
   /home/fqzhang/.local/bin/ao-daemon
 ```
 
+When tmux 3.5 comes from the current micromamba environment, create the wrapper
+`/home/fqzhang/.local/lib/ao/bin/tmux`:
+
+```sh
+#!/bin/sh
+
+LD_LIBRARY_PATH=/home/fqzhang/micromamba/envs/gwas-cli/lib \
+  exec /home/fqzhang/micromamba/envs/gwas-cli/bin/tmux "$@"
+```
+
+Install it with mode `0755`. Do not put that micromamba `LD_LIBRARY_PATH` on
+the entire AO service: it changes Git/curl certificate discovery and caused a
+real worker push to fail on this host.
+
 Create `/home/fqzhang/.config/systemd/user/agent-orchestrator.service`:
 
 ```ini
@@ -106,8 +122,15 @@ Wants=network-online.target
 [Service]
 Type=simple
 WorkingDirectory=%h
-Environment=PATH=%h/micromamba/envs/gwas-cli/bin:%h/.nvm/versions/node/v22.22.2/bin:%h/.local/bin:/usr/local/bin:/usr/bin:/bin
-Environment=LD_LIBRARY_PATH=%h/micromamba/envs/gwas-cli/lib
+Environment=PATH=%h/.local/lib/ao/bin:%h/.nvm/versions/node/v22.22.2/bin:%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+Environment=HTTP_PROXY=http://127.0.0.1:7897
+Environment=HTTPS_PROXY=http://127.0.0.1:7897
+Environment=ALL_PROXY=http://127.0.0.1:7897
+Environment=NO_PROXY=localhost,127.0.0.1,::1,192.168.0.0/16,192.168.30.202,10.0.0.0/8,172.16.0.0/12
+Environment=http_proxy=http://127.0.0.1:7897
+Environment=https_proxy=http://127.0.0.1:7897
+Environment=all_proxy=http://127.0.0.1:7897
+Environment=no_proxy=localhost,127.0.0.1,::1,192.168.0.0/16,192.168.30.202,10.0.0.0/8,172.16.0.0/12
 ExecStart=%h/.local/bin/ao-daemon
 Restart=on-failure
 RestartSec=3
@@ -124,11 +147,29 @@ systemctl --user daemon-reload
 systemctl --user enable --now agent-orchestrator.service
 ```
 
-The explicit Node path is the current Codex installation path. The micromamba
-prefix supplies tmux 3.5 and its shared libraries because the host tmux 2.7
-cannot create AO sessions. A new host may use a system tmux 3.5 or later and
-omit those two micromamba-specific entries. Update the unit and rerun
-`ao doctor --json` after changing the active Node, Codex, or tmux installation.
+The explicit Node path is the current Codex installation path. The wrapper
+supplies tmux 3.5 and scopes its shared libraries because the host tmux 2.7
+cannot create AO sessions. The proxy values are current-host settings, not
+portable defaults; omit or replace them on a host with different network
+routing. A new host may use a system tmux 3.5 or later and omit the wrapper.
+Update the unit and rerun `ao doctor --json` after changing the active Node,
+Codex, tmux, or network configuration.
+
+## Isolate The AO Codex Home
+
+Create `/home/fqzhang/.ao/codex-home` with mode `0700`, link its `auth.json` to
+the existing `/home/fqzhang/.codex/auth.json`, and create a mode `0600`
+`config.toml`:
+
+```toml
+[features]
+apps = false
+plugins = false
+```
+
+The isolated home reuses authentication but not Desktop-specific Apps,
+Plugins, MCP servers, or unrelated instructions. Without the explicit feature
+settings, Codex defaults can still start Apps and reproduce the timeout.
 
 ## Register Calibration
 
@@ -142,7 +183,7 @@ ao project add \
 
 ao project set-config calibration \
   --config-json \
-  '{"worker":{"agent":"codex","agentConfig":{"permissions":"bypass-permissions"}},"botReviewFeedback":{"allowAuthors":["chatgpt-codex-connector"]}}' \
+  '{"env":{"CODEX_HOME":"/home/fqzhang/.ao/codex-home"},"worker":{"agent":"codex","agentConfig":{"permissions":"bypass-permissions"}},"botReviewFeedback":{"allowAuthors":["chatgpt-codex-connector"]}}' \
   --json
 ```
 
@@ -162,8 +203,7 @@ systemctl --user is-enabled agent-orchestrator.service
 systemctl --user is-active agent-orchestrator.service
 ao status --json
 ao project get calibration --json
-PATH=/home/fqzhang/micromamba/envs/gwas-cli/bin:/home/fqzhang/.nvm/versions/node/v22.22.2/bin:/home/fqzhang/.local/bin:/usr/local/bin:/usr/bin:/bin \
-  LD_LIBRARY_PATH=/home/fqzhang/micromamba/envs/gwas-cli/lib \
+PATH=/home/fqzhang/.local/lib/ao/bin:/home/fqzhang/.nvm/versions/node/v22.22.2/bin:/home/fqzhang/.local/bin:/usr/local/bin:/usr/bin:/bin \
   ao doctor --json
 sha256sum /home/fqzhang/.local/bin/ao \
   /home/fqzhang/.local/bin/ao-daemon
@@ -175,6 +215,7 @@ Expected current readback:
 - run file: `/home/fqzhang/.ao/running.json`;
 - data directory: `/home/fqzhang/.ao/data`;
 - worker agent: `codex`;
+- worker `CODEX_HOME`: `/home/fqzhang/.ao/codex-home`;
 - permissions: `bypass-permissions`;
 - bot review allowlist: `chatgpt-codex-connector`; and
 - `ao doctor --json`: zero failures and tmux 3.5 or later.

@@ -23,8 +23,9 @@ implementation plans. Reusable cross-project engineering guidance lives under
 7. `implementation-plan/20260722-v1.5-symphony-readiness-and-bounded-canary-implementation-plan.md`
    for the closed gate definitions and the post-review safety corrections.
 8. `decisions/2026-07-23-ao-review-continuation-adoption.md` for the accepted
-   narrow AO successor, real-event evidence, permissionless risk decision, and
-   boundaries that keep GitHub/Codex native validation and review in place.
+   narrow AO successor, terminal installed-service canary evidence,
+   permissionless risk decision, and boundaries that keep GitHub/Codex native
+   validation and review in place.
 9. `runbooks/agent-orchestrator-review-continuation.md` for the pinned source,
    local patches, user service, project configuration, verification, and
    recovery contract needed to reproduce the current host capability.
@@ -83,9 +84,14 @@ closed until the latest closeout's gates pass.
 A later, narrower successor did not reopen Symphony. A pinned Agent
 Orchestrator build now supplies only the missing GitHub Automatic Review event
 to original Codex worker continuation on the current host. The build is a
-user-level canary with two retained local patches, one registered repository,
-explicitly accepted `bypass-permissions`, and auto-merge disabled. Other
-repositories adopt it only after an observed recurring continuation need.
+user-level canary with two retained local patches, one intended repository,
+explicitly accepted `bypass-permissions`, and auto-merge disabled. A separate
+disposable repository remains registered only as a test fixture. Other
+repositories adopt AO only after an observed recurring continuation need.
+The terminal scratch-repository canary completed the full review, original
+worker fix, test, push, CI, thread-resolution, and re-review loop without human
+relay; this is a GO for the tested host topology, not a mandate for bulk
+repository enrollment.
 
 The closeout does not authorize bulk environment provisioning, mandatory
 per-repository configuration, auto-merge, or project-specific operating rules
