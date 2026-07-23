@@ -119,14 +119,20 @@ worker pushes. If an older tmux server was launched with the variable, remove
 it before creating another worker:
 
 ```bash
-tmux set-environment -g -u LD_LIBRARY_PATH
+/home/fqzhang/.local/lib/ao/bin/tmux \
+  set-environment -g -u LD_LIBRARY_PATH
 ```
 
 The current `fqzhang` shell also uses tmux 3.5 by linking
 `/home/fqzhang/.local/bin/tmux` to `../lib/ao/bin/tmux`. This is a user
 convenience, not an AO requirement.
 
-Create `/home/fqzhang/.config/systemd/user/agent-orchestrator.service`:
+Create the state directory before systemd opens the append-only log, then
+create `/home/fqzhang/.config/systemd/user/agent-orchestrator.service`:
+
+```bash
+install -d -m 0700 /home/fqzhang/.ao
+```
 
 ```ini
 [Unit]
@@ -214,10 +220,20 @@ surface may display `chatgpt-codex-connector[bot]`.
 Register another repository only after its recurring continuation need and
 validation contract are known. Give it its own project configuration instead
 of assuming the `calibration` permission decision applies automatically.
-Before registration, confirm that `.codex` is absent or a directory. A tracked
-regular file named `.codex` prevents the Codex adapter from creating
-`.codex/hooks.json`; remove an obsolete placeholder through the repository's
-normal pull-request path rather than changing it inside a failed AO worktree.
+Before registration, confirm that `.codex` is absent or a real directory in the
+repository, never a symlink:
+
+```bash
+if [ -L .codex ] || { [ -e .codex ] && [ ! -d .codex ]; }; then
+  echo '.codex must be absent or a non-symlinked directory' >&2
+  exit 1
+fi
+```
+
+A tracked regular file named `.codex` prevents the Codex adapter from creating
+`.codex/hooks.json`; a symlink could make that provisioning write outside the
+worktree. Remove either through the repository's normal pull-request path
+rather than changing it inside a failed AO worktree.
 
 ## Verification
 
@@ -245,9 +261,10 @@ Expected current readback:
 - bot review allowlist: `chatgpt-codex-connector`; and
 - `ao doctor --json`: zero failures and tmux 3.5 or later.
 
-Also confirm that `tmux show-environment -g LD_LIBRARY_PATH` reports an unknown
-variable and that a newly created worker can fetch and push without a
-per-command certificate override.
+Also confirm that
+`/home/fqzhang/.local/lib/ao/bin/tmux show-environment -g LD_LIBRARY_PATH`
+reports an unknown variable and that a newly created worker can fetch and push
+without a per-command certificate override.
 
 A complete behavior revalidation also requires a disposable pull request with
 an anchored Automatic Codex Review finding. Confirm that the finding reaches
