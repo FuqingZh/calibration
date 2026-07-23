@@ -106,15 +106,33 @@ When tmux 3.5 comes from the current micromamba environment, create the wrapper
 ```sh
 #!/bin/sh
 
-LD_LIBRARY_PATH=/home/fqzhang/micromamba/envs/gwas-cli/lib \
-  exec /home/fqzhang/micromamba/envs/gwas-cli/bin/tmux "$@"
+exec /lib64/ld-linux-x86-64.so.2 \
+  --library-path /home/fqzhang/micromamba/envs/gwas-cli/lib \
+  /home/fqzhang/micromamba/envs/gwas-cli/bin/tmux "$@"
 ```
 
-Install it with mode `0755`. Do not put that micromamba `LD_LIBRARY_PATH` on
-the entire AO service: it changes Git/curl certificate discovery and caused a
-real worker push to fail on this host.
+Install it with mode `0755`. The loader flag supplies libraries only to the
+tmux process. Do not export `LD_LIBRARY_PATH` from this wrapper or put it on the
+AO service: a tmux server inherits that variable and forwards it into new
+worker panes, where it changed Git/curl certificate discovery and broke real
+worker pushes. If an older tmux server was launched with the variable, remove
+it before creating another worker:
 
-Create `/home/fqzhang/.config/systemd/user/agent-orchestrator.service`:
+```bash
+/home/fqzhang/.local/lib/ao/bin/tmux \
+  set-environment -g -u LD_LIBRARY_PATH
+```
+
+The current `fqzhang` shell also uses tmux 3.5 by linking
+`/home/fqzhang/.local/bin/tmux` to `../lib/ao/bin/tmux`. This is a user
+convenience, not an AO requirement.
+
+Create the state directory before systemd opens the append-only log, then
+create `/home/fqzhang/.config/systemd/user/agent-orchestrator.service`:
+
+```bash
+install -d -m 0700 /home/fqzhang/.ao
+```
 
 ```ini
 [Unit]
@@ -135,6 +153,8 @@ Environment=https_proxy=http://127.0.0.1:7897
 Environment=all_proxy=http://127.0.0.1:7897
 Environment=no_proxy=localhost,127.0.0.1,::1,192.168.0.0/16,192.168.30.202,10.0.0.0/8,172.16.0.0/12
 ExecStart=%h/.local/bin/ao-daemon
+StandardOutput=append:%h/.ao/daemon.log
+StandardError=append:%h/.ao/daemon.log
 Restart=on-failure
 RestartSec=3
 UMask=0077
@@ -157,6 +177,10 @@ portable defaults; omit or replace them on a host with different network
 routing. A new host may use a system tmux 3.5 or later and omit the wrapper.
 Update the unit and rerun `ao doctor --json` after changing the active Node,
 Codex, tmux, or network configuration.
+
+The append-only user log is the first diagnostic surface for an HTTP
+`INTERNAL_ERROR`. Inspect the matching request id before retrying a failed
+spawn; AO may have rolled back the worktree while leaving an empty branch.
 
 ## Isolate The AO Codex Home
 
@@ -196,6 +220,20 @@ surface may display `chatgpt-codex-connector[bot]`.
 Register another repository only after its recurring continuation need and
 validation contract are known. Give it its own project configuration instead
 of assuming the `calibration` permission decision applies automatically.
+Before registration, confirm that `.codex` is absent or a real directory in the
+repository, never a symlink:
+
+```bash
+if [ -L .codex ] || { [ -e .codex ] && [ ! -d .codex ]; }; then
+  echo '.codex must be absent or a non-symlinked directory' >&2
+  exit 1
+fi
+```
+
+A tracked regular file named `.codex` prevents the Codex adapter from creating
+`.codex/hooks.json`; a symlink could make that provisioning write outside the
+worktree. Remove either through the repository's normal pull-request path
+rather than changing it inside a failed AO worktree.
 
 ## Verification
 
@@ -222,6 +260,11 @@ Expected current readback:
 - permissions: `bypass-permissions`;
 - bot review allowlist: `chatgpt-codex-connector`; and
 - `ao doctor --json`: zero failures and tmux 3.5 or later.
+
+Also confirm that
+`/home/fqzhang/.local/lib/ao/bin/tmux show-environment -g LD_LIBRARY_PATH`
+reports an unknown variable and that a newly created worker can fetch and push
+without a per-command certificate override.
 
 A complete behavior revalidation also requires a disposable pull request with
 an anchored Automatic Codex Review finding. Confirm that the finding reaches
