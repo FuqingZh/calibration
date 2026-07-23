@@ -22,6 +22,12 @@ implementation plans. Reusable cross-project engineering guidance lives under
    blockers, and explicit reopen conditions.
 7. `implementation-plan/20260722-v1.5-symphony-readiness-and-bounded-canary-implementation-plan.md`
    for the closed gate definitions and the post-review safety corrections.
+8. `decisions/2026-07-23-ao-review-continuation-adoption.md` for the accepted
+   narrow AO successor, real-event evidence, permissionless risk decision, and
+   boundaries that keep GitHub/Codex native validation and review in place.
+9. `runbooks/agent-orchestrator-review-continuation.md` for the pinned source,
+   local patches, user service, project configuration, verification, and
+   recovery contract needed to reproduce the current host capability.
 
 ## Decision Status
 
@@ -55,6 +61,11 @@ implementation plans. Reusable cross-project engineering guidance lives under
 - `implementation-plan/20260722-v1.5-symphony-readiness-and-bounded-canary-implementation-plan.md`:
   closed successor whose later scratch-repo and repository canary slices did
   not open.
+- `decisions/2026-07-23-ao-review-continuation-adoption.md`: current bounded
+  adoption decision for the AO review-to-original-worker bridge; Symphony's
+  separate `NO-GO` remains unchanged.
+- `runbooks/agent-orchestrator-review-continuation.md`: current operational
+  source of truth for rebuilding and verifying the user-level AO service.
 
 ## Current Boundary
 
@@ -68,6 +79,13 @@ but the pinned dependency lock failed security audit and upstream `make all`
 did not pass. It therefore stopped before a scratch tracker, persistent
 installation, or repository-owned no-product-change canary. E03/E04 remains
 closed until the latest closeout's gates pass.
+
+A later, narrower successor did not reopen Symphony. A pinned Agent
+Orchestrator build now supplies only the missing GitHub Automatic Review event
+to original Codex worker continuation on the current host. The build is a
+user-level canary with two retained local patches, one registered repository,
+explicitly accepted `bypass-permissions`, and auto-merge disabled. Other
+repositories adopt it only after an observed recurring continuation need.
 
 The closeout does not authorize bulk environment provisioning, mandatory
 per-repository configuration, auto-merge, or project-specific operating rules
