@@ -334,6 +334,33 @@ passes, and auto-merge remains off. Static status readback alone does not prove
 the GitHub event loop. Only after this canary may the repository be called
 `continuation-proven` or fully adopted.
 
+## Headless Dashboard Boundary
+
+The pinned AO `0.10.3` desktop package contains the dashboard renderer, but
+`ao start` fetches and opens an Electron Desktop App. It is not a supported
+command for starting a standalone Web Dashboard on this headless server.
+
+An isolated browser canary unpacked the installed AppImage renderer, served it
+on loopback port `31080`, and connected it through a read-only proxy on
+loopback port `31081`. The board rendered the real AO projects, sessions, pull
+requests, and continuation states. The proxy allowed GET requests and rejected
+POST, PUT, PATCH, and DELETE, including the renderer's automatic agent-refresh
+request. The application processes used approximately 45 MB RSS, or about
+65 MB including the temporary Codex sandbox wrappers, with idle CPU near zero.
+
+The canary also identified an earlier headless AppImage launch with no display
+or listener consuming approximately one CPU core. That process was terminated;
+the AO daemon and API remained healthy. Both temporary Web services were then
+stopped. No Web Dashboard service, listener, proxy, extracted renderer, or
+startup contract was retained.
+
+Do not run `ao start` on this headless host. Use `ao status --json`, project and
+session readback, the loopback AO API, and the owning Codex or GitHub surfaces
+for current status. Reconsider a persistent browser dashboard only when it
+materially reduces attention cost and a maintained AO release exposes a
+supported remote-Web contract; do not promote the isolated extraction into a
+custom production frontend.
+
 ## Stop Or Remove
 
 To stop the service without deleting state:

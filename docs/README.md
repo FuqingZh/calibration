@@ -78,8 +78,9 @@ implementation plans. Reusable cross-project engineering guidance lives under
 - `runbooks/agent-orchestrator-review-continuation.md`: current operational
   source of truth for rebuilding and verifying the user-level AO service.
 - `implementation-plan/20260723-v1.7-ao-repository-adoption-contract-implementation-plan.md`:
-  active stacked successor that makes repository onboarding idempotent and
-  prevents static health from being reported as continuation proof.
+  behavior-validated stacked successor that makes repository onboarding
+  idempotent and prevents static health from being reported as continuation
+  proof; delivery remains pending behind pull requests #20 and #21.
 
 ## Current Boundary
 
@@ -111,6 +112,21 @@ The terminal scratch-repository canary completed the full review, original
 worker fix, test, push, CI, thread-resolution, and re-review loop without human
 relay; this is a GO for the tested host topology, not a mandate for bulk
 repository enrollment.
+
+The v1.7 `calibration` adoption candidate has now also completed three real
+Automatic Review repair rounds through its original AO worker. All thirteen
+review threads are resolved, so the representative repository continuation
+mechanism is proven. The repository delivery is not yet closed: the latest
+repair commit still requires its own successful remote check, quality-gate
+pull request #20 must merge first, and stacked pull request #21 must then be
+rebased or retargeted, revalidated, and merged before the initializer becomes
+`main` authority.
+
+The optional Web Dashboard exploration is also closed without adoption. An
+isolated read-only browser canary rendered live AO state successfully, but the
+pinned package exposes the dashboard as an Electron Desktop App rather than a
+supported headless Web service. The temporary listeners were stopped, and the
+runbook now records that `ao start` must not be used on this headless host.
 
 The closeout does not authorize bulk environment provisioning, mandatory
 per-repository configuration, auto-merge, or project-specific operating rules
