@@ -1,0 +1,109 @@
+From 12559c9245a41b10c7798e9281253032791fafd9 Mon Sep 17 00:00:00 2001
+From: Codex <codex@example.invalid>
+Date: Wed, 22 Jul 2026 17:23:26 +0800
+Subject: [PATCH 1/2] fix: refresh commented review threads on PR updates
+
+---
+ backend/internal/observe/scm/observer.go      | 14 +++++-
+ backend/internal/observe/scm/observer_test.go | 47 +++++++++++++++++++
+ 2 files changed, 59 insertions(+), 2 deletions(-)
+
+diff --git a/backend/internal/observe/scm/observer.go b/backend/internal/observe/scm/observer.go
+index c37a48ed..a7944780 100644
+--- a/backend/internal/observe/scm/observer.go
++++ b/backend/internal/observe/scm/observer.go
+@@ -944,7 +944,11 @@ func (o *Observer) refreshReviews(ctx context.Context, subjects map[string]*subj
+ 		if hasObs && obs.Review.Decision != "" {
+ 			decision = obs.Review.Decision
+ 		}
+-		if !o.needsReviewRefresh(pkey, s.known, decision, hasObs, now) {
++		providerUpdatedAt := time.Time{}
++		if hasObs {
++			providerUpdatedAt = obs.PR.UpdatedAtProvider
++		}
++		if !o.needsReviewRefresh(pkey, s.known, decision, hasObs, providerUpdatedAt, now) {
+ 			continue
+ 		}
+ 		review, err := o.provider.FetchReviewThreads(ctx, ports.SCMPRRef{Repo: s.repo, Number: s.known.Number, URL: s.known.URL})
+@@ -986,13 +990,19 @@ func (o *Observer) refreshReviews(ctx context.Context, subjects map[string]*subj
+ 	}
+ }
+ 
+-func (o *Observer) needsReviewRefresh(key string, local domain.PullRequest, decision string, hasObs bool, now time.Time) bool {
++func (o *Observer) needsReviewRefresh(key string, local domain.PullRequest, decision string, hasObs bool, providerUpdatedAt, now time.Time) bool {
+ 	if o.Cache.ReviewRefreshFailed[key] {
+ 		return true
+ 	}
+ 	if local.ReviewHash == "" {
+ 		return true
+ 	}
++	// COMMENTED reviews do not change GitHub's aggregate review decision, but
++	// they do advance the PR's provider update timestamp. Refresh threads on
++	// that edge so inline feedback is discovered without polling every open PR.
++	if hasObs && !providerUpdatedAt.IsZero() && providerUpdatedAt.After(local.UpdatedAtProvider) {
++		return true
++	}
+ 	if decision == string(domain.ReviewChangesRequest) {
+ 		last := o.Cache.LastReviewPollAt[key]
+ 		return last.IsZero() || now.Sub(last) >= o.reviewInterval
+diff --git a/backend/internal/observe/scm/observer_test.go b/backend/internal/observe/scm/observer_test.go
+index 75ec9f58..89476f77 100644
+--- a/backend/internal/observe/scm/observer_test.go
++++ b/backend/internal/observe/scm/observer_test.go
+@@ -1007,6 +1007,53 @@ func TestPoll_ReviewPollingRespectsInterval(t *testing.T) {
+ 	}
+ }
+ 
++func TestPoll_PRUpdateRefreshesCommentedReviewThreadsWithoutDecisionChange(t *testing.T) {
++	store := testStoreWithSession()
++	local := knownPR(1)
++	local.Review = domain.ReviewNone
++	local.ReviewHash = reviewSemanticHash(ports.SCMReviewObservation{Decision: string(domain.ReviewNone)})
++	local.UpdatedAtProvider = time.Unix(100, 0).UTC()
++	oldObservation := testObs(1)
++	oldObservation.PR.UpdatedAtProvider = local.UpdatedAtProvider
++	local.MetadataHash = metadataSemanticHash(oldObservation)
++	store.prs["p-1"] = []domain.PullRequest{local}
++
++	updatedObservation := testObs(1)
++	updatedObservation.PR.UpdatedAtProvider = time.Unix(200, 0).UTC()
++	provider := &fakeProvider{
++		repoGuards: map[string]ports.SCMGuardResult{prKey(testRepo, 0): {ETag: "repo2"}},
++		observations: map[string]ports.SCMObservation{
++			prKey(testRepo, 1): updatedObservation,
++		},
++		reviews: map[string]ports.SCMReviewObservation{
++			prKey(testRepo, 1): {
++				Decision: string(domain.ReviewNone),
++				Threads: []ports.SCMReviewThreadObservation{{
++					ID: "codex-thread", Path: "f.go", Line: 7, IsBot: true,
++					Comments: []ports.SCMReviewCommentObservation{{
++						ID: "codex-comment", Author: "chatgpt-codex-connector[bot]", Body: "fix this", IsBot: true,
++					}},
++				}},
++			},
++		},
++	}
++	lifecycle := &fakeLifecycle{}
++	observer := newTestObserver(store, provider, lifecycle, time.Unix(210, 0).UTC())
++
++	if err := observer.Poll(context.Background()); err != nil {
++		t.Fatal(err)
++	}
++	if provider.reviewCalls != 1 {
++		t.Fatalf("reviewCalls = %d, want 1 after provider PR update", provider.reviewCalls)
++	}
++	if len(store.writes) == 0 || store.writes[0].reviewMode != ports.ReviewWriteReplace || len(store.writes[0].comments) != 1 {
++		t.Fatalf("updated COMMENTED review was not persisted: %#v", store.writes)
++	}
++	if len(lifecycle.observed) != 1 || len(lifecycle.observed[0].Review.Threads) != 1 {
++		t.Fatalf("updated COMMENTED review was not delivered: %#v", lifecycle.observed)
++	}
++}
++
+ func TestPoll_UnchangedHashesDoNotWriteOrNotify(t *testing.T) {
+ 	store := testStoreWithSession()
+ 	obsValue := testObs(1)
+-- 
+2.27.0
+
