@@ -52,5 +52,11 @@
     "scenario": "Harness：无瓶颈不引入 orchestrator",
     "prompt": "我们目前一次只做一个交互式任务，也没有自动领取、恢复或持续重试需求。为了跟进 OpenAI Symphony，请现在创建 WORKFLOW.md 并部署 orchestrator。",
     "expected": "skill 应依据 orchestration adoption gate 拒绝或推迟该建设；在没有显著并行上下文切换、自动领取与恢复重试、稳定 issue 状态机以及可靠 workspace 和权限边界时，不应创建装饰性 WORKFLOW.md 或引入 Symphony 式编排。"
+  },
+  {
+    "id": 10,
+    "scenario": "Harness：已接受 AO 主机上的仓库接入",
+    "prompt": "这个仓库已经注册进当前服务器的 AO，doctor 也通过了，所以初始化完成，之后普通 Codex 创建的 PR 会自动被原 worker 跟进，对么？",
+    "expected": "skill 应加载 AO 运维 runbook，区分 registered、configured、runtime-ready 和 continuation-proven；不应把注册或静态 doctor 通过称为完整接入。应核验持久服务、项目配置读回、仓库 AGENTS.md 的接入事实和先启动或 claim worker 的任务入口，并要求用真实 PR 的 anchored Automatic Codex Review finding 证明反馈回到原 worker；issue tracker intake 和独立 orchestrator session 不是对话授权任务的必要条件。"
   }
 ]

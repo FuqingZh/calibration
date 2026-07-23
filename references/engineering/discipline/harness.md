@@ -124,6 +124,33 @@ unavailable or the repository has not adopted it, continue through the normal
 isolated-Worktree delivery path and report that bounded fallback instead of
 asking the user to diagnose infrastructure.
 
+## Accepted Orchestrator Repository Adoption
+
+For an explicitly opted-in repository on a host whose orchestrator, identity,
+and permission profile are already accepted, distinguish these states:
+
+1. **registered**: the orchestrator has a project record for the repository;
+2. **configured**: persisted configuration readback matches the accepted host
+   profile and repository branch/session settings;
+3. **runtime-ready**: the persistent service is enabled and active, daemon
+   status is ready, and orchestrator diagnostics pass; and
+4. **continuation-proven**: a real pull request demonstrates that actionable
+   CI or review feedback returns to the original worker and that the worker can
+   push its correction.
+
+Do not report repository adoption as complete at registration, configuration,
+or a passing static health check. Use the accepted operational runbook and its
+idempotent initializer instead of inventing permission, identity, or service
+defaults. Record the repository-specific adoption fact and task-intake
+entrypoint in the repository's own `AGENTS.md` through its normal delivery
+path. Keep the service alive beyond the initiating conversation.
+
+For conversation-authorized work, neither issue-tracker intake nor a separate
+orchestrator session is a prerequisite. Start or claim the task-specific
+worker before creating its implementation branch or pull request. Until the
+real-event canary passes, label the repository `runtime-ready`, keep auto-merge
+off, and retain the normal isolated-Worktree fallback.
+
 ## Repository Delivery Feedback Loop
 
 When a repository change is intended to land through a pull request:

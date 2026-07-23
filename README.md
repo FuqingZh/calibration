@@ -22,6 +22,8 @@ the system itself.
 - `references/engineering/docs_index.md`: navigation for longer specifications
 - `references/engineering/docs/`: reusable long-form specifications and patterns
 - `docs/README.md`: current decision, evaluation, and implementation-plan map
+- `scripts/adopt_ao_repository.py`: explicit plan/apply and readback gate for
+  one repository opting into the accepted AO host
 - `thirdparty/`: vendored optional skills and their source/patch records
 - `pyproject.toml` and `pdm.lock`: locked repository validation environment and
   the canonical local/CI task entrypoints

@@ -198,30 +198,56 @@ The isolated home reuses authentication but not Desktop-specific Apps,
 Plugins, MCP servers, or unrelated instructions. Without the explicit feature
 settings, Codex defaults can still start Apps and reproduce the timeout.
 
-## Register Calibration
+## Adopt An Opted-In Repository
 
-The current persisted project contract is:
+Repository adoption is not a single boolean. Use these states:
+
+1. `registered`: AO has a project record;
+2. `configured`: configuration readback matches the accepted profile;
+3. `runtime-ready`: the persistent service and diagnostics pass; and
+4. `continuation-proven`: a real pull request proves review feedback returns to
+   the original worker, which can push the correction.
+
+The repository-owned initializer validates these boundaries and is
+non-mutating unless `--apply` is present. Run it from the calibration
+checkout:
 
 ```bash
-ao project add \
-  --path /home/fqzhang/project/calibration \
-  --name calibration \
-  --worker-agent codex
-
-ao project set-config calibration \
-  --config-json \
-  '{"env":{"CODEX_HOME":"/home/fqzhang/.ao/codex-home"},"worker":{"agent":"codex","agentConfig":{"permissions":"bypass-permissions"}},"botReviewFeedback":{"allowAuthors":["chatgpt-codex-connector"]}}' \
+cd /home/fqzhang/project/calibration
+python scripts/adopt_ao_repository.py \
+  --path /absolute/path/to/repository \
+  --name repository-name \
+  --default-branch main \
+  --session-prefix repository-name \
+  --codex-home /home/fqzhang/.ao/codex-home \
+  --permission bypass-permissions \
   --json
 ```
+
+Inspect that plan, then add `--apply` to execute the same explicit request.
 
 `chatgpt-codex-connector` is the login AO observes through GraphQL; the REST
 surface may display `chatgpt-codex-connector[bot]`.
 
-Register another repository only after its recurring continuation need and
-validation contract are known. Give it its own project configuration instead
-of assuming the `calibration` permission decision applies automatically.
-Before registration, confirm that `.codex` is absent or a real directory in the
-repository, never a symlink:
+The current single-user host explicitly accepts `bypass-permissions` for
+repositories that opt into this AO service. This is not a portable default:
+another host, owner, or trust boundary must choose its own permission setting.
+The initializer requires the permission argument so that this decision cannot
+be inherited silently.
+
+The command enables and starts the persistent user service, verifies AO status
+and doctor output, creates or reuses the project, merges the required profile
+with configuration fields modeled by the pinned AO CLI, and validates the
+repository path and configuration readback. `ao project set-config` replaces a
+typed whole object, so this initializer does not promise to preserve fields
+outside that CLI schema; inspect an existing project's configuration before
+using it with a newer or plugin-extended AO build. The command also requires the
+isolated Codex home, configuration, and authentication file to retain private
+permissions. It stops at `runtime-ready`.
+It never claims the real event loop has passed.
+
+Before registration, the initializer confirms that `.codex` is absent or a
+real directory in the repository, never a symlink. Its equivalent guard is:
 
 ```bash
 if [ -L .codex ] || { [ -e .codex ] && [ ! -d .codex ]; }; then
@@ -235,6 +261,38 @@ A tracked regular file named `.codex` prevents the Codex adapter from creating
 worktree. Remove either through the repository's normal pull-request path
 rather than changing it inside a failed AO worktree.
 
+After runtime setup, commit a small repository-local `AGENTS.md` increment
+which records that the repository has adopted AO on this host and tells an
+implementation agent to start or claim the task-specific worker before
+creating a branch or pull request. Do not copy this runbook into the target
+repository. Issue-tracker intake and a separate orchestrator session are not
+required for a task authorized in conversation.
+
+Use this shape, replacing the project id:
+
+```markdown
+## AO Delivery
+
+This repository has opted into the accepted user-level AO service as
+`repository-name`. For conversation-authorized implementation intended to
+cross a pull-request boundary, verify AO health and start a task-specific
+worker before creating the implementation branch or PR. If a PR already
+exists, mark it ready for review if it is a draft, then restore its owning
+worker or claim it with `--no-takeover`. Ready-for-review is only an AO claim
+prerequisite; leave merge and risk decisions to the user. If AO is unavailable,
+use an isolated worktree and report that fallback.
+```
+
+This entry makes task intake discoverable; it does not itself prove the event
+loop or authorize bulk enrollment.
+
+The installed AO build does not claim a GitHub Draft pull request: it returns
+`PR_NOT_OPEN` even though GitHub reports the draft's state as `OPEN`. Keep
+unfinished work draft, then mark it ready for review before AO claim or spawn
+with `--claim-pr`. Ready-for-review triggers CI/review ownership; it does not
+authorize merge. A stacked pull request may be ready while its base remains
+open, provided merge order stays explicit.
+
 ## Verification
 
 Run after installation, restart, configuration, or upgrade:
@@ -243,7 +301,7 @@ Run after installation, restart, configuration, or upgrade:
 systemctl --user is-enabled agent-orchestrator.service
 systemctl --user is-active agent-orchestrator.service
 ao status --json
-ao project get calibration --json
+ao project get repository-name --json
 PATH=/home/fqzhang/.local/lib/ao/bin:/home/fqzhang/.nvm/versions/node/v22.22.2/bin:/home/fqzhang/.local/bin:/usr/local/bin:/usr/bin:/bin \
   ao doctor --json
 sha256sum /home/fqzhang/.local/bin/ao \
@@ -261,6 +319,9 @@ Expected current readback:
 - bot review allowlist: `chatgpt-codex-connector`; and
 - `ao doctor --json`: zero failures and tmux 3.5 or later.
 
+Passing this section establishes `runtime-ready`, not
+`continuation-proven`.
+
 Also confirm that
 `/home/fqzhang/.local/lib/ao/bin/tmux show-environment -g LD_LIBRARY_PATH`
 reports an unknown variable and that a newly created worker can fetch and push
@@ -270,7 +331,35 @@ A complete behavior revalidation also requires a disposable pull request with
 an anchored Automatic Codex Review finding. Confirm that the finding reaches
 the original worker, the worker commits the correction, repository validation
 passes, and auto-merge remains off. Static status readback alone does not prove
-the GitHub event loop.
+the GitHub event loop. Only after this canary may the repository be called
+`continuation-proven` or fully adopted.
+
+## Headless Dashboard Boundary
+
+The pinned AO `0.10.3` desktop package contains the dashboard renderer, but
+`ao start` fetches and opens an Electron Desktop App. It is not a supported
+command for starting a standalone Web Dashboard on this headless server.
+
+An isolated browser canary unpacked the installed AppImage renderer, served it
+on loopback port `31080`, and connected it through a read-only proxy on
+loopback port `31081`. The board rendered the real AO projects, sessions, pull
+requests, and continuation states. The proxy allowed GET requests and rejected
+POST, PUT, PATCH, and DELETE, including the renderer's automatic agent-refresh
+request. The application processes used approximately 45 MB RSS, or about
+65 MB including the temporary Codex sandbox wrappers, with idle CPU near zero.
+
+The canary also identified an earlier headless AppImage launch with no display
+or listener consuming approximately one CPU core. That process was terminated;
+the AO daemon and API remained healthy. Both temporary Web services were then
+stopped. No Web Dashboard service, listener, proxy, extracted renderer, or
+startup contract was retained.
+
+Do not run `ao start` on this headless host. Use `ao status --json`, project and
+session readback, the loopback AO API, and the owning Codex or GitHub surfaces
+for current status. Reconsider a persistent browser dashboard only when it
+materially reduces attention cost and a maintained AO release exposes a
+supported remote-Web contract; do not promote the isolated extraction into a
+custom production frontend.
 
 ## Stop Or Remove
 
