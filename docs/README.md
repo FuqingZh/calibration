@@ -82,12 +82,16 @@ installation, or repository-owned no-product-change canary. E03/E04 remains
 closed until the latest closeout's gates pass.
 
 A later, narrower successor did not reopen Symphony. A pinned Agent
-Orchestrator build now supplies only the missing GitHub Automatic Review event
-to original Codex worker continuation on the current host. The build is a
-user-level canary with two retained local patches, one intended repository,
-explicitly accepted `bypass-permissions`, and auto-merge disabled. A separate
-disposable repository remains registered only as a test fixture. Other
-repositories adopt AO only after an observed recurring continuation need.
+Orchestrator build now supplies the missing GitHub Automatic Review event to
+original Codex worker continuation on the current host. For individually
+registered repositories on this accepted single-user host, it may also start
+or claim a task-specific worker after a conversation explicitly authorizes
+implementation and pull-request delivery. This does not enable unattended
+issue intake or automatic work discovery. The build is a user-level canary
+with two retained local patches, explicitly accepted `bypass-permissions`, and
+auto-merge disabled. A separate disposable repository remains registered only
+as a test fixture. Other repositories adopt AO only after an observed
+recurring continuation need.
 The terminal scratch-repository canary completed the full review, original
 worker fix, test, push, CI, thread-resolution, and re-review loop without human
 relay; this is a GO for the tested host topology, not a mandate for bulk

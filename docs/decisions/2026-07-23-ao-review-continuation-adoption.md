@@ -53,8 +53,11 @@ The installed-service canary then exposed three environment requirements:
 
 - Retain GitHub Actions and Automatic Codex Review as the native validation and
   review surfaces.
-- Use a pinned AO build only for the missing event-to-original-worker
-  continuation layer. Do not build a separate scheduler or PR babysitter.
+- Use a pinned AO build for the missing event-to-original-worker continuation
+  layer and, on this accepted single-user host, for task-specific worker start
+  or claim after a conversation explicitly authorizes implementation and
+  pull-request delivery. This does not authorize unattended issue intake,
+  automatic work discovery, a separate scheduler, or a PR babysitter.
 - Run AO as the `fqzhang` user through `systemd --user`; keep its state under
   `/home/fqzhang/.ao` and install its two binaries under
   `/home/fqzhang/.local/bin`.
@@ -114,6 +117,17 @@ The operational source of truth is
 - After replacing the service-wide library path with a tmux-only wrapper,
   private-repository `git ls-remote` succeeded without a certificate override
   and `ao doctor --json` again reported zero failures.
+- The first bounded real-repository intake used
+  [`FuqingZh/biofetch`](https://github.com/FuqingZh/biofetch). After pull
+  request [#5](https://github.com/FuqingZh/biofetch/pull/5) removed an obsolete
+  tracked `.codex` placeholder that blocked hook provisioning, the
+  conversation-authorized `biofetch-1` worker updated three direct patch
+  dependencies and opened pull request
+  [#6](https://github.com/FuqingZh/biofetch/pull/6). Repository validation,
+  `validate-biofetch`, and Automatic Review passed; after explicit human merge
+  authorization, main advanced to
+  `1248e3473c86192aa17c48062bf001ea97482d4f` and AO terminated the worker as
+  `merged`.
 
 The retained patches were replayed from the pinned base in a new Worktree. The
 focused suite passed with tmux 3.5, and both binaries were rebuilt with VCS
@@ -128,6 +142,11 @@ portability, autonomous merge safety, or effectiveness for every repository.
 
 - A review finding can return to the worker that already owns context and the
   isolated Worktree, reducing foreground polling and human relay work.
+- In an individually registered repository on this host, an authorized
+  pull-request implementation task can start or claim its worker without the
+  user repeating the AO tool name. Analysis and planning remain read-only, and
+  AO does not discover or claim new work without a conversation-authorized
+  task.
 - The service is deliberately a pinned canary because AO pull request #2872 is
   still open and its head has advanced beyond the tested commit. Updating to a
   later upstream revision requires rebuilding and rerunning the focused and

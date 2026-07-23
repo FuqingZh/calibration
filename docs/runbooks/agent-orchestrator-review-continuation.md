@@ -8,8 +8,11 @@ Status: Current for the `fqzhang` user on the present Linux host
 
 This runbook reconstructs the pinned AO service that connects an actionable
 GitHub Automatic Codex Review finding to the original AO-managed Codex worker.
-It does not install Symphony, replace GitHub Actions or Automatic Review,
-enable issue intake, register every repository, or enable auto-merge.
+For an individually registered repository, the same service may start or claim
+a task-specific worker after a conversation explicitly authorizes
+implementation and pull-request delivery. It does not install Symphony,
+replace GitHub Actions or Automatic Review, enable unattended issue intake or
+automatic work discovery, register every repository, or enable auto-merge.
 
 The service is intentionally permissionless for the current single-user host.
 AO calls this mode `bypass-permissions`; the Codex adapter emits
