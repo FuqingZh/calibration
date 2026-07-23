@@ -5,6 +5,7 @@ import runpy
 import subprocess
 import sys
 from collections.abc import Sequence
+from dataclasses import replace
 from pathlib import Path
 from typing import cast
 
@@ -23,6 +24,7 @@ from scripts.adopt_ao_repository import (
     _merge,
     _project_config,
     _project_get,
+    _reject_tracker_intake,
     _run,
     _validate_codex_home,
     _verify_project_path,
@@ -42,6 +44,10 @@ def completed(
     stderr: str = "",
 ) -> subprocess.CompletedProcess[str]:
     return subprocess.CompletedProcess(command, returncode, stdout, stderr)
+
+
+def no_sleep(_seconds: float) -> None:
+    pass
 
 
 class FakeRunner:
@@ -68,7 +74,10 @@ def repository(tmp_path: Path) -> Path:
     codex_home = tmp_path / "codex-home"
     codex_home.mkdir(mode=0o700)
     config = codex_home / "config.toml"
-    config.write_text("[features]\napps = false\n", encoding="utf-8")
+    config.write_text(
+        "[features]\napps = false\nplugins = false\n",
+        encoding="utf-8",
+    )
     config.chmod(0o600)
     auth = codex_home / "auth.json"
     auth.write_text("{}\n", encoding="utf-8")
@@ -142,7 +151,21 @@ def successful_responses(
         ): [completed(("systemctl",), stdout="active\n")],
         ("ao", "status", "--json"): [completed(("ao",), stdout='{"state":"ready"}')],
         ("ao", "doctor", "--json"): [
-            completed(("ao",), stdout='{"ok":true,"failures":0}')
+            completed(
+                ("ao",),
+                stdout=json.dumps(
+                    {
+                        "ok": True,
+                        "failures": 0,
+                        "checks": [
+                            {
+                                "name": "tmux",
+                                "message": "/usr/bin/tmux (tmux 3.5)",
+                            }
+                        ],
+                    }
+                ),
+            )
         ],
         project_get: [
             initial if existing else completed(project_get, returncode=1),
@@ -196,6 +219,12 @@ def test_plan_is_read_only_and_reports_unproven_continuation(
     assert report.continuation_proven is False
     assert report.project_registered is False
     assert runner.commands == []
+
+
+def test_rejects_default_codex_permission(repository: Path) -> None:
+    unsafe_request = replace(request(repository), permission="default")
+    with pytest.raises(AdoptionError, match="Codex permission"):
+        adopt_repository(unsafe_request, apply=False)
 
 
 @pytest.mark.parametrize("unsafe", ["file", "symlink"])
@@ -262,6 +291,24 @@ def test_rejects_public_authentication_file(repository: Path) -> None:
         _validate_codex_home(codex_home)
 
 
+@pytest.mark.parametrize(
+    "content",
+    [
+        "unrelated = true\n",
+        "[features]\napps = false\n",
+        "[features]\napps = false\nplugins = true\n",
+        "[features]\napps = true\nplugins = false\n",
+        "invalid = [\n",
+    ],
+)
+def test_rejects_unsafe_codex_features(repository: Path, content: str) -> None:
+    config = repository.parent / "codex-home" / "config.toml"
+    config.write_text(content, encoding="utf-8")
+
+    with pytest.raises(AdoptionError, match="valid TOML|apps = false"):
+        _validate_codex_home(repository.parent / "codex-home")
+
+
 @pytest.mark.parametrize("existing", [False, True])
 def test_apply_registers_or_reuses_project_and_verifies_readback(
     repository: Path,
@@ -310,6 +357,13 @@ def test_project_config_accepts_encoded_json_and_rejects_bad_shapes() -> None:
         _project_config({"config": []})
     with pytest.raises(AdoptionError, match="must be a JSON object"):
         _mapping([], "value")
+
+
+def test_rejects_enabled_tracker_intake() -> None:
+    _reject_tracker_intake({})
+    _reject_tracker_intake({"trackerIntake": {"enabled": False}})
+    with pytest.raises(AdoptionError, match="trackerIntake.enabled"):
+        _reject_tracker_intake({"trackerIntake": {"enabled": True}})
 
 
 def test_project_path_must_match_selected_repository(repository: Path) -> None:
@@ -373,11 +427,64 @@ def test_doctor_retries_one_transient_failure() -> None:
                     returncode=1,
                     stdout='{"ok":false,"failures":1}',
                 ),
-                completed(command, stdout='{"ok":true,"failures":0}'),
+                completed(
+                    command,
+                    stdout=json.dumps(
+                        {
+                            "ok": True,
+                            "failures": 0,
+                            "checks": [{"name": "tmux", "message": "tmux 3.5"}],
+                        }
+                    ),
+                ),
             ]
         }
     )
     assert _doctor_check(runner) is True
+
+
+@pytest.mark.parametrize(
+    ("doctor", "message"),
+    [
+        ({"ok": True, "failures": 0}, "tool checks"),
+        ({"ok": True, "failures": 0, "checks": []}, "exactly one tmux"),
+        (
+            {
+                "ok": True,
+                "failures": 0,
+                "checks": [{"name": "tmux", "message": "tmux 2.7"}],
+            },
+            "3.5 or later",
+        ),
+    ],
+)
+def test_doctor_rejects_missing_or_old_tmux(
+    doctor: dict[str, object],
+    message: str,
+) -> None:
+    runner = FakeRunner(
+        {("ao", "doctor", "--json"): [completed(("ao",), stdout=json.dumps(doctor))]}
+    )
+    with pytest.raises(AdoptionError, match=message):
+        _doctor_check(runner)
+
+
+def test_runtime_polls_until_daemon_is_ready(
+    repository: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    responses = successful_responses(repository, existing=True)
+    responses[("ao", "status", "--json")] = [
+        completed(("ao",), stdout='{"state":"not_ready"}'),
+        completed(("ao",), stdout='{"state":"ready"}'),
+    ]
+    monkeypatch.setattr(adoption.time, "sleep", no_sleep)
+
+    report = adopt_repository(
+        request(repository), apply=True, runner=FakeRunner(responses)
+    )
+
+    assert report.daemon_ready is True
 
 
 @pytest.mark.parametrize(
@@ -410,9 +517,13 @@ def test_apply_rejects_unhealthy_runtime(
     repository: Path,
     overrides: dict[tuple[str, ...], list[subprocess.CompletedProcess[str]]],
     message: str,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     responses = successful_responses(repository, existing=True)
+    if ("ao", "status", "--json") in overrides:
+        overrides[("ao", "status", "--json")] *= adoption.STATUS_ATTEMPTS
     responses.update(overrides)
+    monkeypatch.setattr(adoption.time, "sleep", no_sleep)
 
     with pytest.raises(AdoptionError, match=message):
         adopt_repository(request(repository), apply=True, runner=FakeRunner(responses))
@@ -441,10 +552,37 @@ def test_apply_rejects_registration_or_configuration_readback_failure(
         adopt_repository(request(repository), apply=True, runner=FakeRunner(responses))
 
 
-def test_run_executes_a_command() -> None:
+def test_apply_rejects_existing_tracker_intake(repository: Path) -> None:
+    responses = successful_responses(repository, existing=True)
+    project_get = ("ao", "project", "get", "sample", "--json")
+    responses[project_get][0] = completed(
+        project_get,
+        stdout=project_payload(
+            {"trackerIntake": {"enabled": True}},
+            str(repository.resolve()),
+        ),
+    )
+    with pytest.raises(AdoptionError, match="trackerIntake.enabled"):
+        adopt_repository(request(repository), apply=True, runner=FakeRunner(responses))
+
+
+def test_run_executes_a_command_and_sanitizes_ao_environment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("AO_RUN_FILE", "/tmp/alternate-run.json")
+    monkeypatch.setenv("AO_DATA_DIR", "/tmp/alternate-data")
     result = _run(("printf", "ok"))
     assert result.returncode == 0
     assert result.stdout == "ok"
+
+    result = _run(
+        (
+            sys.executable,
+            "-c",
+            "import os; print('AO_RUN_FILE' in os.environ, 'AO_DATA_DIR' in os.environ)",
+        )
+    )
+    assert result.stdout.strip() == "False False"
 
 
 def test_main_renders_plan_json_and_human_output(
@@ -459,7 +597,7 @@ def test_main_renders_plan_json_and_human_output(
         "--codex-home",
         str(repository.parent / "codex-home"),
         "--permission",
-        "default",
+        "auto",
     ]
     assert main([*args, "--json"]) == 0
     assert '"state": "not-applied"' in capsys.readouterr().out
@@ -493,7 +631,7 @@ def test_main_renders_json_and_human_errors(
         "--codex-home",
         str(repository.parent / "codex-home"),
         "--permission",
-        "default",
+        "auto",
     ]
     assert main([*args, "--json"]) == 1
     assert json.loads(capsys.readouterr().out) == {
@@ -521,7 +659,7 @@ def test_script_entrypoint_exits_with_main_result(
             "--codex-home",
             str(repository.parent / "codex-home"),
             "--permission",
-            "default",
+            "auto",
         ],
     )
     with pytest.raises(SystemExit) as exc_info:

@@ -5,9 +5,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import re
 import stat
 import subprocess
 import sys
+import time
+import tomllib
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -15,7 +19,9 @@ from typing import cast
 
 
 CommandRunner = Callable[[Sequence[str]], subprocess.CompletedProcess[str]]
-PERMISSIONS = ("default", "accept-edits", "auto", "bypass-permissions")
+PERMISSIONS = ("accept-edits", "auto", "bypass-permissions")
+AO_ENVIRONMENT_OVERRIDES = ("AO_DATA_DIR", "AO_RUN_FILE")
+STATUS_ATTEMPTS = 5
 
 
 class AdoptionError(RuntimeError):
@@ -54,10 +60,14 @@ class AdoptionReport:
 
 
 def _run(command: Sequence[str]) -> subprocess.CompletedProcess[str]:
+    environment = os.environ.copy()
+    for name in AO_ENVIRONMENT_OVERRIDES:
+        environment.pop(name, None)
     return subprocess.run(
         list(command),
         check=False,
         capture_output=True,
+        env=environment,
         text=True,
     )
 
@@ -115,6 +125,23 @@ def _validate_codex_home(path: Path) -> Path:
         raise AdoptionError(f"{config} must be a regular file")
     if stat.S_IMODE(config.stat().st_mode) & 0o077:
         raise AdoptionError(f"{config} must not be accessible by group or other")
+    try:
+        parsed_config = tomllib.loads(config.read_text(encoding="utf-8"))
+    except (OSError, tomllib.TOMLDecodeError) as exc:
+        raise AdoptionError(f"{config} must contain valid TOML: {exc}") from exc
+    features = parsed_config.get("features")
+    if not isinstance(features, dict):
+        raise AdoptionError(
+            f"{config} must set [features] apps = false and plugins = false"
+        )
+    feature_config = cast(dict[str, object], features)
+    if (
+        feature_config.get("apps") is not False
+        or feature_config.get("plugins") is not False
+    ):
+        raise AdoptionError(
+            f"{config} must set [features] apps = false and plugins = false"
+        )
 
     auth = codex_home / "auth.json"
     if not auth.is_file():
@@ -179,6 +206,17 @@ def _project_config(project: Mapping[str, object]) -> dict[str, object]:
     return _mapping(raw_config, "AO project config")
 
 
+def _reject_tracker_intake(config: Mapping[str, object]) -> None:
+    tracker_intake = config.get("trackerIntake")
+    if (
+        isinstance(tracker_intake, dict)
+        and cast(dict[str, object], tracker_intake).get("enabled") is True
+    ):
+        raise AdoptionError(
+            "AO project trackerIntake.enabled must not be true for repository adoption"
+        )
+
+
 def _verify_project_path(project: Mapping[str, object], repository: Path) -> None:
     raw_path = project.get("path")
     if (
@@ -213,6 +251,30 @@ def _doctor_check(runner: CommandRunner) -> bool:
                 and doctor.get("failures") == 0
             )
             if doctor_ok:
+                checks = doctor.get("checks")
+                if not isinstance(checks, list):
+                    raise AdoptionError("AO doctor did not report tool checks")
+                check_items = cast(list[object], checks)
+                tmux_checks = [
+                    cast(dict[str, object], item)
+                    for item in check_items
+                    if isinstance(item, dict)
+                    and cast(dict[str, object], item).get("name") == "tmux"
+                ]
+                if len(tmux_checks) != 1:
+                    raise AdoptionError(
+                        "AO doctor did not report exactly one tmux check"
+                    )
+                message = tmux_checks[0].get("message")
+                match = (
+                    re.search(r"\btmux\s+(\d+)\.(\d+)", message)
+                    if isinstance(message, str)
+                    else None
+                )
+                if match is None or tuple(map(int, match.groups())) < (3, 5):
+                    raise AdoptionError(
+                        f"AO requires tmux 3.5 or later; doctor reported {message!r}"
+                    )
                 return True
             last_detail = result.stdout.strip()
         else:
@@ -238,14 +300,17 @@ def _runtime_checks(runner: CommandRunner) -> tuple[bool, bool, bool, bool]:
         ("systemctl", "--user", "is-active", "agent-orchestrator.service"),
         expected="active",
     )
-    status = _mapping(
-        _json_output(
-            _command(runner, ("ao", "status", "--json")),
-            "ao status",
-        ),
-        "AO status",
-    )
-    daemon_ready = status.get("state") in {"ready", "running"}
+    status: dict[str, object] = {}
+    daemon_ready = False
+    for attempt in range(STATUS_ATTEMPTS):
+        result = runner(("ao", "status", "--json"))
+        if result.returncode == 0:
+            status = _mapping(_json_output(result, "ao status"), "AO status")
+            daemon_ready = status.get("state") in {"ready", "running"}
+            if daemon_ready:
+                break
+        if attempt + 1 < STATUS_ATTEMPTS:
+            time.sleep(1)
     if not daemon_ready:
         raise AdoptionError(f"AO daemon is not ready: {status.get('state')!r}")
     doctor_ok = _doctor_check(runner)
@@ -260,6 +325,11 @@ def adopt_repository(
 ) -> AdoptionReport:
     """Plan or apply one repository's accepted AO configuration."""
     repository = _validate_repository(request.path)
+    if request.permission not in PERMISSIONS:
+        raise AdoptionError(
+            f"Codex permission must be one of {', '.join(PERMISSIONS)}; "
+            f"got {request.permission!r}"
+        )
     required = _required_config(request)
     next_evidence = (
         "commit the repository-specific AO adoption increment in AGENTS.md",
@@ -308,7 +378,9 @@ def adopt_repository(
     assert project is not None
     _verify_project_path(project, repository)
 
-    merged = _merge(_project_config(project), required)
+    current_config = _project_config(project)
+    _reject_tracker_intake(current_config)
+    merged = _merge(current_config, required)
     _command(
         runner,
         (
@@ -325,7 +397,9 @@ def adopt_repository(
     if not readback_registered or readback is None:
         raise AdoptionError("AO project was not readable after configuration")
     _verify_project_path(readback, repository)
-    configuration_verified = _contains(_project_config(readback), required)
+    readback_config = _project_config(readback)
+    _reject_tracker_intake(readback_config)
+    configuration_verified = _contains(readback_config, required)
     if not configuration_verified:
         raise AdoptionError("AO project configuration readback did not match request")
 
