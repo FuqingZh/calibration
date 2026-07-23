@@ -39,6 +39,16 @@ The AO candidate still required two observed corrections on this host:
    the tmux runtime must leave that state and submit one carriage return after
    a bounded settle interval.
 
+The installed-service canary then exposed three environment requirements:
+
+1. an AO worker must use a minimal isolated `CODEX_HOME` so Desktop Apps and
+   Plugins do not add unrelated MCP startup failures;
+2. the user service must carry the host's proxy environment so Codex model
+   requests can reach the network; and
+3. tmux's micromamba libraries must be scoped to a tmux wrapper. A service-wide
+   `LD_LIBRARY_PATH` polluted Git/curl certificate discovery and broke an
+   otherwise valid push.
+
 ## Decision
 
 - Retain GitHub Actions and Automatic Codex Review as the native validation and
@@ -52,7 +62,8 @@ The AO candidate still required two observed corrections on this host:
   useful. The persistent host service is reusable across repositories, but its
   presence does not require every repository to adopt AO.
 - For `calibration`, use a Codex worker, allow actionable review findings only
-  from `chatgpt-codex-connector`, and keep auto-merge disabled.
+  from `chatgpt-codex-connector`, use the isolated AO Codex home, and keep
+  auto-merge disabled.
 - Accept the current single-user host risk of AO's `bypass-permissions` mode.
   For Codex this is the permissionless
   `--dangerously-bypass-approvals-and-sandbox` launch mode. The user explicitly
@@ -81,6 +92,16 @@ The operational source of truth is
   implemented, tested, and committed the requested symlink fix as `1bba0e6` on
   [canary pull request #2](https://github.com/FuqingZh/codex-continuation-canary/pull/2).
   `Canary CI / validate` passed and all review threads were resolved.
+- A second installed-service canary exercised the complete native loop on
+  [canary pull request #3](https://github.com/FuqingZh/codex-continuation-canary/pull/3).
+  Automatic Codex Review published an anchored P1 path-traversal finding at
+  `2026-07-23T02:19:26Z`. AO delivered it to the original
+  `codex-continuation-canary-4` worker, which added traversal, absolute-path,
+  and symlink-escape tests, committed `6a2b1a35cfdabd1c5e28d768190d71613fced3f6`,
+  and pushed without a human comment or relay. `Canary CI / validate` passed,
+  the thread became resolved and outdated, and Automatic Review returned `+1`
+  at `2026-07-23T02:22:15Z`. Auto-merge remained disabled and the canary pull
+  request remained open.
 - After user-level installation, `ao doctor --json` reported 13 passing checks
   and zero failures. Restart readback reported the service `enabled`, `active`,
   and `ready`, with the persisted `calibration` project configuration.
@@ -90,6 +111,9 @@ The operational source of truth is
   available tmux 3.5 runtime, so the service and runbook now select that
   version explicitly.
 - Installed binary SHA-256 values are recorded in the runbook.
+- After replacing the service-wide library path with a tmux-only wrapper,
+  private-repository `git ls-remote` succeeded without a certificate override
+  and `ao doctor --json` again reported zero failures.
 
 The retained patches were replayed from the pinned base in a new Worktree. The
 focused suite passed with tmux 3.5, and both binaries were rebuilt with VCS
