@@ -24,6 +24,7 @@ from scripts.adopt_ao_repository import (
     _merge,
     _project_config,
     _project_get,
+    _reject_auto_merge,
     _reject_bot_review_conflict,
     _reject_tracker_intake,
     _run,
@@ -299,6 +300,8 @@ def test_rejects_public_authentication_file(repository: Path) -> None:
         "[features]\napps = false\n",
         "[features]\napps = false\nplugins = true\n",
         "[features]\napps = true\nplugins = false\n",
+        "[features]\napps = false\nplugins = false\n[mcp_servers.example]\n",
+        "[features]\napps = false\nplugins = false\nextra = false\n",
         "invalid = [\n",
     ],
 )
@@ -380,6 +383,25 @@ def test_rejects_bot_review_denylist_conflict() -> None:
             {"botReviewFeedback": {"denyAuthors": [" ChatGPT-Codex-Connector "]}},
             author,
         )
+
+
+@pytest.mark.parametrize(
+    "config",
+    [
+        {"autoMerge": True},
+        {"reactions": {"approved": {"action": "auto-merge"}}},
+        {"rules": [{"auto_merge": "enabled"}]},
+    ],
+)
+def test_rejects_auto_merge_configuration(config: dict[str, object]) -> None:
+    with pytest.raises(AdoptionError, match="must not enable auto-merge"):
+        _reject_auto_merge(config)
+
+
+def test_accepts_configuration_without_auto_merge() -> None:
+    _reject_auto_merge({})
+    _reject_auto_merge({"autoMerge": False})
+    _reject_auto_merge({"reactions": [{"action": "notify"}]})
 
 
 def test_project_path_must_match_selected_repository(repository: Path) -> None:
@@ -600,11 +622,26 @@ def test_apply_rejects_bot_review_denylist_conflict(repository: Path) -> None:
         adopt_repository(request(repository), apply=True, runner=FakeRunner(responses))
 
 
+def test_apply_rejects_existing_auto_merge_configuration(repository: Path) -> None:
+    responses = successful_responses(repository, existing=True)
+    project_get = ("ao", "project", "get", "sample", "--json")
+    responses[project_get][0] = completed(
+        project_get,
+        stdout=project_payload(
+            {"reactions": {"approved": {"action": "auto-merge"}}},
+            str(repository.resolve()),
+        ),
+    )
+    with pytest.raises(AdoptionError, match="must not enable auto-merge"):
+        adopt_repository(request(repository), apply=True, runner=FakeRunner(responses))
+
+
 def test_run_executes_a_command_and_sanitizes_ao_environment(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("AO_RUN_FILE", "/tmp/alternate-run.json")
     monkeypatch.setenv("AO_DATA_DIR", "/tmp/alternate-data")
+    monkeypatch.setenv("AO_PORT", "9876")
     result = _run(("printf", "ok"))
     assert result.returncode == 0
     assert result.stdout == "ok"
@@ -613,10 +650,11 @@ def test_run_executes_a_command_and_sanitizes_ao_environment(
         (
             sys.executable,
             "-c",
-            "import os; print('AO_RUN_FILE' in os.environ, 'AO_DATA_DIR' in os.environ)",
+            "import os; print(*[name in os.environ for name in "
+            "('AO_RUN_FILE', 'AO_DATA_DIR', 'AO_PORT')])",
         )
     )
-    assert result.stdout.strip() == "False False"
+    assert result.stdout.strip() == "False False False"
 
 
 def test_main_renders_plan_json_and_human_output(

@@ -20,7 +20,7 @@ from typing import cast
 
 CommandRunner = Callable[[Sequence[str]], subprocess.CompletedProcess[str]]
 PERMISSIONS = ("accept-edits", "auto", "bypass-permissions")
-AO_ENVIRONMENT_OVERRIDES = ("AO_DATA_DIR", "AO_RUN_FILE")
+AO_ENVIRONMENT_OVERRIDES = ("AO_DATA_DIR", "AO_PORT", "AO_RUN_FILE")
 STATUS_ATTEMPTS = 5
 
 
@@ -136,7 +136,9 @@ def _validate_codex_home(path: Path) -> Path:
         )
     feature_config = cast(dict[str, object], features)
     if (
-        feature_config.get("apps") is not False
+        set(parsed_config) != {"features"}
+        or set(feature_config) != {"apps", "plugins"}
+        or feature_config.get("apps") is not False
         or feature_config.get("plugins") is not False
     ):
         raise AdoptionError(
@@ -235,6 +237,31 @@ def _reject_bot_review_conflict(
         raise AdoptionError(
             f"AO project botReviewFeedback.denyAuthors blocks {author!r}"
         )
+
+
+def _reject_auto_merge(value: object) -> None:
+    if isinstance(value, dict):
+        mapping = cast(dict[str, object], value)
+        for key, nested in mapping.items():
+            normalized_key = key.replace("-", "").replace("_", "").casefold()
+            if (
+                normalized_key == "automerge"
+                and nested is not False
+                and nested is not None
+                and nested != ""
+            ):
+                raise AdoptionError(
+                    "AO project configuration must not enable auto-merge"
+                )
+            if key.casefold() == "action" and isinstance(nested, str):
+                if nested.strip().casefold() == "auto-merge":
+                    raise AdoptionError(
+                        "AO project configuration must not enable auto-merge"
+                    )
+            _reject_auto_merge(nested)
+    elif isinstance(value, list):
+        for nested in cast(list[object], value):
+            _reject_auto_merge(nested)
 
 
 def _verify_project_path(project: Mapping[str, object], repository: Path) -> None:
@@ -401,6 +428,7 @@ def adopt_repository(
     current_config = _project_config(project)
     _reject_tracker_intake(current_config)
     _reject_bot_review_conflict(current_config, request.bot_review_author)
+    _reject_auto_merge(current_config)
     merged = _merge(current_config, required)
     _command(
         runner,
@@ -421,6 +449,7 @@ def adopt_repository(
     readback_config = _project_config(readback)
     _reject_tracker_intake(readback_config)
     _reject_bot_review_conflict(readback_config, request.bot_review_author)
+    _reject_auto_merge(readback_config)
     configuration_verified = _contains(readback_config, required)
     if not configuration_verified:
         raise AdoptionError("AO project configuration readback did not match request")
