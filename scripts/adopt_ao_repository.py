@@ -79,12 +79,18 @@ def _command(
     expected: str | None = None,
 ) -> subprocess.CompletedProcess[str]:
     result = runner(command)
+    display_command = list(command)
+    if "--config-json" in display_command:
+        value_index = display_command.index("--config-json") + 1
+        if value_index < len(display_command):
+            display_command[value_index] = "<redacted>"
+    rendered_command = " ".join(display_command)
     if result.returncode != 0:
         detail = result.stderr.strip() or result.stdout.strip() or "no output"
-        raise AdoptionError(f"{' '.join(command)} failed: {detail}")
+        raise AdoptionError(f"{rendered_command} failed: {detail}")
     if expected is not None and result.stdout.strip() != expected:
         raise AdoptionError(
-            f"{' '.join(command)} returned {result.stdout.strip()!r}; "
+            f"{rendered_command} returned {result.stdout.strip()!r}; "
             f"expected {expected!r}"
         )
     return result
@@ -151,6 +157,26 @@ def _validate_codex_home(path: Path) -> Path:
     if stat.S_IMODE(auth.stat().st_mode) & 0o077:
         raise AdoptionError(f"{auth} must not be accessible by group or other")
     return codex_home
+
+
+def _validate_codex_home_location(codex_home: Path, repository: Path) -> None:
+    if codex_home == repository or codex_home.is_relative_to(repository):
+        raise AdoptionError(
+            f"{codex_home} must be outside the selected repository {repository}"
+        )
+
+
+def _validate_codex_login(runner: CommandRunner, codex_home: Path) -> None:
+    _command(
+        runner,
+        (
+            "env",
+            f"CODEX_HOME={codex_home}",
+            "codex",
+            "login",
+            "status",
+        ),
+    )
 
 
 def _required_config(request: AdoptionRequest) -> dict[str, object]:
@@ -282,8 +308,19 @@ def _project_get(
     if result.returncode != 0:
         return False, None
     payload = _mapping(_json_output(result, "ao project get"), "AO project response")
-    project = payload.get("project", payload)
-    return True, _mapping(project, "AO project")
+    wrapped_project = payload.get("project")
+    if wrapped_project is not None:
+        if payload.get("status") != "ok":
+            raise AdoptionError(
+                f"AO project status must be 'ok'; got {payload.get('status')!r}"
+            )
+        project = _mapping(wrapped_project, "AO project")
+    else:
+        project = payload
+    resolve_error = project.get("resolveError")
+    if isinstance(resolve_error, str) and resolve_error.strip():
+        raise AdoptionError(f"AO project is degraded: {resolve_error}")
+    return True, project
 
 
 def _doctor_check(runner: CommandRunner) -> bool:
@@ -302,6 +339,24 @@ def _doctor_check(runner: CommandRunner) -> bool:
                 if not isinstance(checks, list):
                     raise AdoptionError("AO doctor did not report tool checks")
                 check_items = cast(list[object], checks)
+                required_checks = {
+                    "codex",
+                    "codex-launch-flags",
+                    "github-token",
+                    "tmux",
+                }
+                passing_checks = {
+                    cast(dict[str, object], item).get("name")
+                    for item in check_items
+                    if isinstance(item, dict)
+                    and cast(dict[str, object], item).get("level") == "PASS"
+                }
+                missing_checks = required_checks - passing_checks
+                if missing_checks:
+                    raise AdoptionError(
+                        "AO doctor required checks did not pass: "
+                        + ", ".join(sorted(missing_checks))
+                    )
                 tmux_checks = [
                     cast(dict[str, object], item)
                     for item in check_items
@@ -399,7 +454,9 @@ def adopt_repository(
             next_evidence=next_evidence,
         )
 
-    _validate_codex_home(request.codex_home)
+    codex_home = _validate_codex_home(request.codex_home)
+    _validate_codex_home_location(codex_home, repository)
+    _validate_codex_login(runner, codex_home)
     service_enabled, service_active, daemon_ready, doctor_ok = _runtime_checks(runner)
     registered, project = _project_get(runner, request.name)
     if not registered:

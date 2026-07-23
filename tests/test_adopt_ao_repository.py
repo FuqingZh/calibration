@@ -29,6 +29,8 @@ from scripts.adopt_ao_repository import (
     _reject_tracker_intake,
     _run,
     _validate_codex_home,
+    _validate_codex_home_location,
+    _validate_codex_login,
     _verify_project_path,
     adopt_repository,
     main,
@@ -133,6 +135,13 @@ def successful_responses(
     )
     responses: dict[tuple[str, ...], list[subprocess.CompletedProcess[str]]] = {
         (
+            "env",
+            f"CODEX_HOME={(repository.parent / 'codex-home').resolve()}",
+            "codex",
+            "login",
+            "status",
+        ): [completed(("codex",), stdout="Logged in using ChatGPT\n")],
+        (
             "systemctl",
             "--user",
             "enable",
@@ -160,10 +169,14 @@ def successful_responses(
                         "ok": True,
                         "failures": 0,
                         "checks": [
+                            {"name": "codex", "level": "PASS"},
+                            {"name": "codex-launch-flags", "level": "PASS"},
+                            {"name": "github-token", "level": "PASS"},
                             {
                                 "name": "tmux",
+                                "level": "PASS",
                                 "message": "/usr/bin/tmux (tmux 3.5)",
-                            }
+                            },
                         ],
                     }
                 ),
@@ -291,6 +304,29 @@ def test_rejects_public_authentication_file(repository: Path) -> None:
     auth.chmod(0o644)
     with pytest.raises(AdoptionError, match="auth.json.*group or other"):
         _validate_codex_home(codex_home)
+
+
+def test_rejects_codex_home_inside_repository(repository: Path) -> None:
+    external_home = repository.parent / "codex-home"
+    _validate_codex_home_location(external_home, repository.resolve())
+    with pytest.raises(AdoptionError, match="outside the selected repository"):
+        _validate_codex_home_location(repository / ".codex-home", repository.resolve())
+
+
+def test_rejects_invalid_codex_login(repository: Path) -> None:
+    codex_home = repository.parent / "codex-home"
+    command = (
+        "env",
+        f"CODEX_HOME={codex_home}",
+        "codex",
+        "login",
+        "status",
+    )
+    runner = FakeRunner(
+        {command: [completed(command, returncode=1, stderr="Not logged in")]}
+    )
+    with pytest.raises(AdoptionError, match="Not logged in"):
+        _validate_codex_login(runner, codex_home)
 
 
 @pytest.mark.parametrize(
@@ -434,6 +470,31 @@ def test_project_get_accepts_wrapped_and_legacy_bare_payloads() -> None:
     assert project is None
 
 
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {
+            "status": "degraded",
+            "project": {"id": "sample", "config": {}},
+        },
+        {
+            "status": "ok",
+            "project": {
+                "id": "sample",
+                "config": {},
+                "resolveError": "cannot resolve repository",
+            },
+        },
+    ],
+)
+def test_project_get_rejects_degraded_readback(payload: dict[str, object]) -> None:
+    with pytest.raises(AdoptionError, match="status must be 'ok'|is degraded"):
+        _project_get(
+            lambda received: completed(received, stdout=json.dumps(payload)),
+            "sample",
+        )
+
+
 def test_command_and_json_error_messages_include_external_failure() -> None:
     with pytest.raises(AdoptionError, match="failure detail"):
         _command(
@@ -455,6 +516,24 @@ def test_command_and_json_error_messages_include_external_failure() -> None:
         _json_output(completed(("ao",), stdout="{"), "ao status")
 
 
+def test_command_redacts_config_json_from_failures() -> None:
+    command = (
+        "ao",
+        "project",
+        "set-config",
+        "sample",
+        "--config-json",
+        '{"env":{"TOKEN":"secret"}}',
+    )
+    with pytest.raises(AdoptionError) as exc_info:
+        _command(
+            lambda received: completed(received, returncode=1, stderr="rejected"),
+            command,
+        )
+    assert "secret" not in str(exc_info.value)
+    assert "--config-json <redacted>" in str(exc_info.value)
+
+
 def test_doctor_retries_one_transient_failure() -> None:
     command = ("ao", "doctor", "--json")
     runner = FakeRunner(
@@ -471,7 +550,16 @@ def test_doctor_retries_one_transient_failure() -> None:
                         {
                             "ok": True,
                             "failures": 0,
-                            "checks": [{"name": "tmux", "message": "tmux 3.5"}],
+                            "checks": [
+                                {"name": "codex", "level": "PASS"},
+                                {"name": "codex-launch-flags", "level": "PASS"},
+                                {"name": "github-token", "level": "PASS"},
+                                {
+                                    "name": "tmux",
+                                    "level": "PASS",
+                                    "message": "tmux 3.5",
+                                },
+                            ],
                         }
                     ),
                 ),
@@ -485,12 +573,44 @@ def test_doctor_retries_one_transient_failure() -> None:
     ("doctor", "message"),
     [
         ({"ok": True, "failures": 0}, "tool checks"),
-        ({"ok": True, "failures": 0, "checks": []}, "exactly one tmux"),
+        ({"ok": True, "failures": 0, "checks": []}, "required checks"),
         (
             {
                 "ok": True,
                 "failures": 0,
-                "checks": [{"name": "tmux", "message": "tmux 2.7"}],
+                "checks": [
+                    {"name": "codex", "level": "WARN"},
+                    {"name": "codex-launch-flags", "level": "PASS"},
+                    {"name": "github-token", "level": "PASS"},
+                    {"name": "tmux", "level": "PASS", "message": "tmux 3.5"},
+                ],
+            },
+            "required checks",
+        ),
+        (
+            {
+                "ok": True,
+                "failures": 0,
+                "checks": [
+                    {"name": "codex", "level": "PASS"},
+                    {"name": "codex-launch-flags", "level": "PASS"},
+                    {"name": "github-token", "level": "PASS"},
+                    {"name": "tmux", "level": "PASS", "message": "tmux 3.5"},
+                    {"name": "tmux", "level": "PASS", "message": "tmux 3.5"},
+                ],
+            },
+            "exactly one tmux",
+        ),
+        (
+            {
+                "ok": True,
+                "failures": 0,
+                "checks": [
+                    {"name": "codex", "level": "PASS"},
+                    {"name": "codex-launch-flags", "level": "PASS"},
+                    {"name": "github-token", "level": "PASS"},
+                    {"name": "tmux", "level": "PASS", "message": "tmux 2.7"},
+                ],
             },
             "3.5 or later",
         ),
