@@ -1,0 +1,75 @@
+[project]
+name = "calibration"
+version = "0.0.0"
+description = "Development and validation tooling for the calibration repository"
+requires-python = ">=3.12"
+dependencies = [
+  "PyYAML==6.0.3",
+]
+
+[tool.pdm]
+distribution = false
+
+[dependency-groups]
+dev = [
+  "pyright",
+  "pytest>=9",
+  "pytest-cov",
+  "ruff",
+  "rumdl",
+  "shellcheck-py",
+]
+
+[tool.pdm.scripts]
+test = "pytest"
+test-coverage = "pytest --cov=scripts --cov-report=term-missing --cov-report=xml --cov-fail-under=100"
+typecheck = "pyright"
+lint-python = "ruff check scripts tests"
+format-check = "ruff format --check scripts tests"
+lint-markdown = "rumdl check README.md AGENTS.md docs references skills codex"
+validate-markdown-links = "python scripts/validate_markdown_links.py"
+validate-skills = "python scripts/validate_skills.py"
+lint-shell = "shellcheck install.sh"
+check-shell-syntax = "bash -n install.sh"
+check = { composite = [
+  "lint-python",
+  "format-check",
+  "typecheck",
+  "lint-markdown",
+  "validate-markdown-links",
+  "lint-shell",
+  "check-shell-syntax",
+  "test-coverage",
+  "validate-skills",
+] }
+
+[tool.pytest]
+minversion = "9.0"
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = [
+  "-ra",
+  "--strict-config",
+  "--strict-markers",
+]
+
+[tool.pyright]
+include = ["scripts", "tests"]
+exclude = ["thirdparty", ".venv"]
+pythonVersion = "3.12"
+pythonPlatform = "Linux"
+typeCheckingMode = "strict"
+executionEnvironments = [
+  { root = "tests", extraPaths = ["."], reportPrivateUsage = false },
+  { root = "scripts" },
+]
+
+[tool.coverage.run]
+source = ["scripts"]
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 100
+
+[tool.ruff]
+target-version = "py312"

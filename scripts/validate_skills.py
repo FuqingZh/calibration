@@ -9,8 +9,9 @@ import re
 import shlex
 import sys
 from collections import deque
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Any
+from typing import cast
 from urllib.parse import unquote, urlsplit
 
 import yaml
@@ -41,15 +42,15 @@ def discover_skills(root: Path) -> list[Path]:
     return sorted(skill_dirs)
 
 
-def _load_yaml(path: Path, label: str, errors: list[str]) -> Any | None:
+def _load_yaml(path: Path, label: str, errors: list[str]) -> object | None:
     try:
-        return yaml.safe_load(path.read_text(encoding="utf-8"))
+        return cast(object, yaml.safe_load(path.read_text(encoding="utf-8")))
     except (OSError, UnicodeError, yaml.YAMLError) as exc:
         errors.append(f"{path}: invalid {label}: {exc}")
         return None
 
 
-def _frontmatter(path: Path, errors: list[str]) -> dict[str, Any] | None:
+def _frontmatter(path: Path, errors: list[str]) -> dict[str, object] | None:
     try:
         lines = path.read_text(encoding="utf-8").splitlines()
     except (OSError, UnicodeError) as exc:
@@ -66,26 +67,29 @@ def _frontmatter(path: Path, errors: list[str]) -> dict[str, Any] | None:
         return None
 
     try:
-        data = yaml.safe_load("\n".join(lines[1:closing]))
+        data = cast(object, yaml.safe_load("\n".join(lines[1:closing])))
     except yaml.YAMLError as exc:
         errors.append(f"{path}: invalid SKILL.md frontmatter: {exc}")
         return None
     if not isinstance(data, dict):
         errors.append(f"{path}: SKILL.md frontmatter must be a mapping")
         return None
-    return data
+    return cast(dict[str, object], data)
 
 
-def _contains_key(value: Any, key: str) -> bool:
+def _contains_key(value: object, key: str) -> bool:
     if isinstance(value, dict):
-        return key in value or any(_contains_key(item, key) for item in value.values())
+        mapping = cast(dict[object, object], value)
+        return key in mapping or any(
+            _contains_key(item, key) for item in mapping.values()
+        )
     if isinstance(value, list):
-        return any(_contains_key(item, key) for item in value)
+        return any(_contains_key(item, key) for item in cast(list[object], value))
     return False
 
 
 def _required_string(
-    mapping: dict[str, Any], key: str, path: Path, errors: list[str]
+    mapping: Mapping[str, object], key: str, path: Path, errors: list[str]
 ) -> str | None:
     value = mapping.get(key)
     if not isinstance(value, str) or not value.strip():
@@ -95,7 +99,7 @@ def _required_string(
 
 
 def _validate_frontmatter(
-    skill_dir: Path, data: dict[str, Any], errors: list[str]
+    skill_dir: Path, data: dict[str, object], errors: list[str]
 ) -> tuple[str | None, str | None]:
     path = skill_dir / "SKILL.md"
     name = _required_string(data, "name", path, errors)
@@ -107,7 +111,9 @@ def _validate_frontmatter(
                 f"{path}: name must be at most 64 lowercase letters, digits, or hyphens"
             )
         if name != skill_dir.name:
-            errors.append(f"{path}: name {name!r} must match directory {skill_dir.name!r}")
+            errors.append(
+                f"{path}: name {name!r} must match directory {skill_dir.name!r}"
+            )
     if description is not None and len(description) > 1024:
         errors.append(f"{path}: description must be at most 1024 characters")
     if _contains_key(data, RETIRED_FIELD):
@@ -126,22 +132,27 @@ def _validate_openai_metadata(
     if not path.is_file():
         errors.append(f"{path}: missing required OpenAI skill metadata")
         return
-    data = _load_yaml(path, "OpenAI skill metadata", errors)
-    if data is None:
+    raw_data = _load_yaml(path, "OpenAI skill metadata", errors)
+    if raw_data is None:
         return
-    if not isinstance(data, dict):
+    if not isinstance(raw_data, dict):
         errors.append(f"{path}: OpenAI skill metadata must be a mapping")
         return
+    data = cast(dict[str, object], raw_data)
     if _contains_key(data, RETIRED_FIELD):
         errors.append(f"{path}: retired field {RETIRED_FIELD!r} is not allowed")
 
     interface = data.get("interface")
     if not isinstance(interface, dict):
         errors.append(f"{path}: interface must be a mapping")
-        interface = {}
-    display_name = _required_string(interface, "display_name", path, errors)
-    short_description = _required_string(interface, "short_description", path, errors)
-    default_prompt = _required_string(interface, "default_prompt", path, errors)
+        interface_data: dict[str, object] = {}
+    else:
+        interface_data = cast(dict[str, object], interface)
+    display_name = _required_string(interface_data, "display_name", path, errors)
+    short_description = _required_string(
+        interface_data, "short_description", path, errors
+    )
+    default_prompt = _required_string(interface_data, "default_prompt", path, errors)
     if display_name is not None and len(display_name) > 64:
         errors.append(f"{path}: display_name must be at most 64 characters")
     if short_description is not None and not 25 <= len(short_description) <= 64:
@@ -155,8 +166,10 @@ def _validate_openai_metadata(
     policy = data.get("policy")
     if not isinstance(policy, dict):
         errors.append(f"{path}: policy must be a mapping")
-        policy = {}
-    implicit = policy.get("allow_implicit_invocation")
+        policy_data: dict[str, object] = {}
+    else:
+        policy_data = cast(dict[str, object], policy)
+    implicit = policy_data.get("allow_implicit_invocation")
     if not isinstance(implicit, bool):
         errors.append(f"{path}: allow_implicit_invocation must be an explicit boolean")
     elif description is not None:
@@ -176,7 +189,7 @@ def _validate_test_prompts(skill_dir: Path, errors: list[str]) -> None:
     if not path.exists():
         return
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
+        data = cast(object, json.loads(path.read_text(encoding="utf-8")))
     except (OSError, UnicodeError, json.JSONDecodeError) as exc:
         errors.append(f"{path}: invalid behavioral test prompts: {exc}")
         return
@@ -184,12 +197,14 @@ def _validate_test_prompts(skill_dir: Path, errors: list[str]) -> None:
         errors.append(f"{path}: behavioral test prompts must be a non-empty list")
         return
 
+    cases = cast(list[object], data)
     seen_ids: set[str | int] = set()
-    for index, case in enumerate(data):
+    for index, raw_case in enumerate(cases):
         label = f"{path}: case {index + 1}"
-        if not isinstance(case, dict):
+        if not isinstance(raw_case, dict):
             errors.append(f"{label} must be a mapping")
             continue
+        case = cast(dict[str, object], raw_case)
         for key in ("id", "scenario", "prompt", "expected"):
             if key not in case:
                 errors.append(f"{label} is missing {key!r}")
@@ -231,7 +246,9 @@ def _installer_skills(root: Path, errors: list[str]) -> list[Path]:
         for name in names:
             skill_dir = source_root / name
             if not (skill_dir / "SKILL.md").is_file():
-                errors.append(f"{path}: active skill {name!r} has no SKILL.md at {skill_dir}")
+                errors.append(
+                    f"{path}: active skill {name!r} has no SKILL.md at {skill_dir}"
+                )
             else:
                 active.append(skill_dir)
     return active
@@ -243,7 +260,9 @@ def _reference_targets(text: str, include_code_paths: bool) -> set[str]:
         for match in MARKDOWN_LINK_PATTERN.finditer(text)
     }
     if include_code_paths:
-        targets.update(match.group(1).strip() for match in CODE_PATH_PATTERN.finditer(text))
+        targets.update(
+            match.group(1).strip() for match in CODE_PATH_PATTERN.finditer(text)
+        )
     return targets
 
 
@@ -269,7 +288,9 @@ def _resolve_local_reference(root: Path, source: Path, target: str) -> Path | No
 def _validate_active_references(
     root: Path, active: list[Path], errors: list[str]
 ) -> None:
-    queue: deque[tuple[Path, bool]] = deque((path / "SKILL.md", True) for path in active)
+    queue: deque[tuple[Path, bool]] = deque(
+        (path / "SKILL.md", True) for path in active
+    )
     visited: set[Path] = set()
     while queue:
         source, include_code_paths = queue.popleft()
@@ -287,7 +308,9 @@ def _validate_active_references(
             if resolved is None:
                 continue
             if not resolved.exists():
-                errors.append(f"{source}: missing repository-local reference {target!r}")
+                errors.append(
+                    f"{source}: missing repository-local reference {target!r}"
+                )
                 continue
             if resolved.suffix.lower() == ".md":
                 queue.append((resolved, False))

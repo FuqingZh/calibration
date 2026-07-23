@@ -1,0 +1,5 @@
+[global]
+exclude = ["thirdparty/**"]
+
+[MD013]
+enabled = false

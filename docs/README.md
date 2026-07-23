@@ -22,11 +22,14 @@ implementation plans. Reusable cross-project engineering guidance lives under
    blockers, and explicit reopen conditions.
 7. `implementation-plan/20260722-v1.5-symphony-readiness-and-bounded-canary-implementation-plan.md`
    for the closed gate definitions and the post-review safety corrections.
-8. `decisions/2026-07-23-ao-review-continuation-adoption.md` for the accepted
+8. `implementation-plan/20260723-v1.6-repository-quality-gate-implementation-plan.md`
+   for the active deterministic Python, Markdown, shell, and installer
+   validation convergence.
+9. `decisions/2026-07-23-ao-review-continuation-adoption.md` for the accepted
    narrow AO successor, terminal installed-service canary evidence,
    permissionless risk decision, and boundaries that keep GitHub/Codex native
    validation and review in place.
-9. `runbooks/agent-orchestrator-review-continuation.md` for the pinned source,
+10. `runbooks/agent-orchestrator-review-continuation.md` for the pinned source,
    local patches, user service, project configuration, verification, and
    recovery contract needed to reproduce the current host capability.
 
@@ -62,6 +65,9 @@ implementation plans. Reusable cross-project engineering guidance lives under
 - `implementation-plan/20260722-v1.5-symphony-readiness-and-bounded-canary-implementation-plan.md`:
   closed successor whose later scratch-repo and repository canary slices did
   not open.
+- `implementation-plan/20260723-v1.6-repository-quality-gate-implementation-plan.md`:
+  active repository-local quality-gate convergence; it does not modify skill
+  behavior or prescribe the same toolchain to other repositories.
 - `decisions/2026-07-23-ao-review-continuation-adoption.md`: current bounded
   adoption decision for the AO review-to-original-worker bridge; Symphony's
   separate `NO-GO` remains unchanged.
