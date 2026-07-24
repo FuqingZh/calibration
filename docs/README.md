@@ -36,6 +36,9 @@ implementation plans. Reusable cross-project engineering guidance lives under
 11. `implementation-plan/20260723-v1.7-ao-repository-adoption-contract-implementation-plan.md`
     for the closed repair that separates registration, runtime readiness, and
     real-event continuation evidence across opted-in repositories.
+12. `decisions/2026-07-24-minimal-native-agent-pr-delivery.md` for the accepted
+    native Linear, Codex, and GitHub ownership boundary, five-pull-request
+    pilot, explicit smoke gates, and pending fresh verification evidence.
 
 ## Decision Status
 
@@ -82,6 +85,10 @@ implementation plans. Reusable cross-project engineering guidance lives under
   idempotent and prevents static health from being reported as continuation
   proof; pull requests #20 and #21 have merged and final `main` validation
   passed.
+- `decisions/2026-07-24-minimal-native-agent-pr-delivery.md`: current accepted
+  minimum for cloud-reproducible agent delivery; the `calibration` and
+  `biofetch` five-pull-request pilot has not started counting because fresh
+  Linear and GitHub settings evidence is still pending.
 
 ## Current Boundary
 
@@ -120,6 +127,18 @@ resolved, and the final reviewed tree passed `validate-skills`. Quality-gate
 pull request #20 merged first; pull request #21 was then rebased onto the new
 `main`, revalidated, and merged. The merge-result `main` run also passed, so
 the initializer and documentation are now repository authority.
+
+The accepted 2026-07-24 successor makes native delivery the default for
+cloud-reproducible work. Linear owns intent, human assignment, and agent
+delegation; Linear Coding Sessions with Codex own the preferred coding path;
+Linear's native GitHub integration owns issue-to-pull-request status
+projection; and GitHub rulesets plus native auto-merge own merge gates and
+gate-satisfied execution. Existing AO is now only the exception for
+host-coupled repositories and proven review continuation. The first pilot is
+bounded to five real pull requests across `calibration` and `biofetch`, each
+with one independent human approval. Its smoke gates and reserved evidence
+section are recorded in the decision. No Linear or GitHub setting is claimed
+enabled until fresh readback evidence is added there.
 
 The optional Web Dashboard exploration is also closed without adoption. An
 isolated read-only browser canary rendered live AO state successfully, but the
