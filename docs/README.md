@@ -128,19 +128,21 @@ pull request #20 merged first; pull request #21 was then rebased onto the new
 `main`, revalidated, and merged. The merge-result `main` run also passed, so
 the initializer and documentation are now repository authority.
 
-The accepted 2026-07-24 successor defines native delivery as the intended
-default for cloud-reproducible work after its activation gates pass. Linear
-owns intent, human assignment, and agent delegation; Linear Coding Sessions
-with Codex own the preferred coding path; Linear's native GitHub integration
-owns issue-to-pull-request status projection; and GitHub rulesets plus native
-auto-merge are the intended owners of merge gates and gate-satisfied
-execution. Existing `AGENTS.md` AO Delivery instructions and the no-auto-merge
-boundary remain authoritative until repository routing is updated and
-validated and the user accepts a separate auto-merge risk decision. The first
-pilot is bounded to five real pull requests across `calibration` and
-`biofetch`, each with one independent human approval. Its smoke gates and
-reserved evidence section are recorded in the decision. No Linear or GitHub
-setting is claimed enabled until fresh readback evidence is added there.
+The accepted 2026-07-24 successor makes native delivery the default for
+cloud-reproducible work. Linear owns intent, human assignment, and agent
+delegation; Linear Coding Sessions with Codex own the preferred coding path;
+Linear's native GitHub integration owns issue-to-pull-request status
+projection; and GitHub rulesets plus native auto-merge own merge gates and
+gate-satisfied execution. Existing AO remains required only for host-coupled
+repositories and proven review continuation. The first pilot is bounded to
+five explicitly enrolled real pull requests across `calibration` and
+`biofetch`, each with fresh effective ruleset readback, required checks,
+unresolved-thread enforcement, and one independent human approval. The
+decision is the risk authorization for native auto-merge only within that
+pilot; outside it, merge remains a user decision. Pull request #24 used AO
+under the prior policy, is not a pilot pull request, and must not use
+auto-merge. No Linear or GitHub setting is claimed enabled until fresh
+readback evidence is added to the decision.
 
 The optional Web Dashboard exploration is also closed without adoption. An
 isolated read-only browser canary rendered live AO state successfully, but the
@@ -148,9 +150,10 @@ pinned package exposes the dashboard as an Electron Desktop App rather than a
 supported headless Web service. The temporary listeners were stopped, and the
 runbook now records that `ao start` must not be used on this headless host.
 
-The closeout does not authorize bulk environment provisioning, mandatory
-per-repository configuration, auto-merge, or project-specific operating rules
-inside calibration. Another Symphony canary requires the 2026-07-22 closeout's
-explicit host and scratch reopen conditions. A `bio_plot_platform` or E03/E04
-canary additionally requires the cumulative repository gates retained by the
-2026-07-21 adoption closeout.
+The earlier closeout does not authorize bulk environment provisioning,
+mandatory per-repository configuration, auto-merge outside the explicitly
+enrolled 2026-07-24 five-pull-request pilot, or project-specific operating
+rules inside calibration. Another Symphony canary requires the 2026-07-22
+closeout's explicit host and scratch reopen conditions. A `bio_plot_platform`
+or E03/E04 canary additionally requires the cumulative repository gates
+retained by the 2026-07-21 adoption closeout.

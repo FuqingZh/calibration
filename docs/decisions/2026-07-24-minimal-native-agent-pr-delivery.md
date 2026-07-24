@@ -27,19 +27,20 @@ does not prove that any required Linear or GitHub setting is enabled.
   Sessions with Codex. A host worker is not the default for such work.
 - Existing AO remains available only for host-coupled repositories and for
   review continuation that has been proven on the accepted host. This decision
-  does not expand AO enrollment or its authority. This native default becomes
-  operative only after repository agent-routing instructions are updated and
-  validated; until then, the current `AGENTS.md` AO Delivery instructions
-  remain authoritative for `calibration`.
+  does not expand AO enrollment or its authority.
 - GitHub rulesets own required checks and approval requirements. GitHub's
-  native auto-merge is the intended owner of the final merge action after those
-  gates pass. This ownership decision does not authorize enabling or selecting
-  auto-merge: the existing no-auto-merge boundary remains in force until the
-  user accepts a separate repository risk decision and the effective settings
-  pass the smoke gates below.
+  native auto-merge owns the final merge action after those gates pass. This
+  decision is the bounded risk authorization to select native auto-merge only
+  for pull requests explicitly enrolled in this five-pull-request pilot and
+  only after fresh effective ruleset readback proves the gates below. Outside
+  the pilot, merge and risk decisions remain with the user.
 - The first pilot covers `calibration` and `biofetch` across five real pull
   requests. Every pilot pull request requires one approval from an independent
   human before merge.
+- Pull request #24 configures this policy. It used AO under the prior
+  repository rule, is not enrolled in the pilot, must not have native
+  auto-merge enabled or selected during this smoke, and does not count toward
+  the five pilot pull requests.
 
 ## MVP Boundaries
 
@@ -71,43 +72,37 @@ can add one of these surfaces.
 
 ## Smoke Gates
 
-Before counting the first pilot pull request, obtain fresh readback evidence
-for all of the following:
+Before enrolling each pilot pull request, obtain fresh effective readback
+evidence for all of the following:
 
-1. Repository agent-routing instructions have been updated and behaviorally
-   validated so cloud-reproducible pilot work selects the native path without
-   starting or claiming an AO worker.
-2. The user has accepted a separate repository auto-merge risk decision that
-   preserves one independent human approval and authorizes native auto-merge
-   for the bounded pilot.
-3. `calibration` and `biofetch` are addressable from the intended Linear
+1. `calibration` and `biofetch` are addressable from the intended Linear
    workspace without creating a separate Linear project for each repository.
-4. Linear's native GitHub integration links a test or pilot issue to its pull
+2. Linear's native GitHub integration links a test or pilot issue to its pull
    request and projects pull-request status into the issue.
-5. An explicitly delegated Linear Coding Session starts Codex against the
-   intended repository and branch with sufficient repository instructions and
-   a reproducible validation path.
-6. Each repository's GitHub ruleset requires its declared checks and one
-   independent human approval, with no actor or agent path that bypasses those
-   requirements.
-7. GitHub native auto-merge can be selected for an eligible pilot pull request
-   and does not merge until the required checks and independent approval are
-   satisfied.
-8. AO remains unselected for cloud-reproducible pilot work and no repository
-   is newly or bulk enrolled in AO.
+3. The target repository's effective GitHub ruleset requires its declared
+   checks, resolution of all review threads, and one independent human
+   approval, with no actor or agent path that bypasses those requirements.
+4. GitHub native auto-merge is available to the enrolled pull request and
+   cannot merge it until the required checks, unresolved-thread enforcement,
+   and independent approval requirements are satisfied.
+5. The pull request is explicitly identified as one of the five pilot pull
+   requests before auto-merge is selected.
 
 For each of the five real pilot pull requests, retain evidence that:
 
 1. a Linear issue recorded intent, human ownership, and explicit agent
    delegation;
-2. the coding session and resulting pull request targeted the intended
-   repository and branch;
-3. repository-owned validation passed;
-4. the native integration projected the pull-request state into Linear;
-5. an independent human approved the final reviewed head;
-6. required GitHub gates passed before native auto-merge merged the pull
+2. an explicitly delegated Linear Coding Session started Codex against the
+   intended repository and isolated task branch without starting or claiming
+   an AO worker;
+3. the resulting pull request targeted the intended repository and branch;
+4. repository-owned validation passed;
+5. the native integration projected the pull-request state into Linear;
+6. all review threads were resolved and an independent human approved the
+   final reviewed head;
+7. required GitHub gates passed before native auto-merge merged the pull
    request; and
-7. the merge result and final Linear status were read back from their owning
+8. the merge result and final Linear status were read back from their owning
    systems.
 
 A failed gate stops the affected pilot pull request from being counted. Record
@@ -122,8 +117,10 @@ No fresh Linear or GitHub control-plane evidence has been supplied yet.
 Therefore this record does **not** claim that the native GitHub integration,
 Coding Sessions, repository rulesets, approval requirements, or native
 auto-merge are currently enabled or correctly configured. Repository routing
-has not yet been changed, and no separate auto-merge risk authorization has
-been recorded, so the native pilot is not yet active.
+now selects the native path for cloud-reproducible work, but no pull request
+can be enrolled or have auto-merge selected until its fresh effective readback
+passes every smoke gate. Pull request #24 is excluded from the pilot and from
+this authorization.
 
 When evidence is available, append it here with the observation date, owning
 surface, repository and pull-request or issue identifier, observed state, and
@@ -138,6 +135,8 @@ screenshots that do not show the effective state.
   an independent human approval remains a merge gate.
 - Native auto-merge is mechanical execution after policy gates, not permission
   for an agent to approve or merge its own work.
+- Outside an explicitly enrolled pilot pull request, merge remains a user
+  decision.
 - AO remains a narrow exception for topology already shown to need it, rather
   than the standard route for new repositories.
 - The five-pull-request sample is evidence for deciding whether this boundary
