@@ -12,18 +12,22 @@
 
 For conversation-authorized implementation intended to cross a pull-request
 boundary, keep execution isolated in a task-specific coding session, branch,
-or worktree. Cloud-reproducible work defaults to the accepted native Linear
-Coding Sessions with Codex and GitHub delivery path. Work explicitly enrolled
-in the Linear project `2026 Q3 Agent PR 闭环试点` must use that native path
-without starting or claiming an AO worker.
+or worktree. Cloud-reproducible work moves to the accepted native Linear Coding
+Sessions with Codex and GitHub delivery path only after the decision's fresh
+readback marks every relevant smoke gate passed, including native Linear
+projection, Coding Session delegation, and `allow_auto_merge: true`. Work
+explicitly enrolled in the Linear project `2026 Q3 Agent PR 闭环试点` must use
+that native path without starting or claiming an AO worker only after those
+activation gates pass.
 
 This repository remains opted into the accepted user-level AO service as
-`calibration`, but AO is required only for host-coupled work or for review
-continuation already proven on the accepted host. For those cases, verify AO
-health and start a task-specific worker before creating the implementation
-branch or pull request. If a pull request already exists, mark it ready for
-review if it is a draft, then restore its owning worker or claim it with
-`--no-takeover`; do not create a replacement branch or pull request.
+`calibration`. AO is required for host-coupled work, for review continuation
+already proven on the accepted host, and as the fallback for cloud-reproducible
+work while any native activation gate remains pending or failed. For those
+cases, verify AO health and start a task-specific worker before creating the
+implementation branch or pull request. If a pull request already exists, mark
+it ready for review if it is a draft, then restore its owning worker or claim
+it with `--no-takeover`; do not create a replacement branch or pull request.
 Ready-for-review is only an AO claim prerequisite. If AO is required but
 unavailable, use an isolated worktree and report that fallback.
 
