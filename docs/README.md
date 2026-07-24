@@ -133,16 +133,18 @@ cloud-reproducible work. Linear owns intent, human assignment, and agent
 delegation; Linear Coding Sessions with Codex own the preferred coding path;
 Linear's native GitHub integration owns issue-to-pull-request status
 projection; and GitHub rulesets plus native auto-merge own merge gates and
-gate-satisfied execution. Existing AO remains required only for host-coupled
-repositories and proven review continuation. The first pilot is bounded to
-five explicitly enrolled real pull requests across `calibration` and
-`biofetch`, each with fresh effective ruleset readback, required checks,
-unresolved-thread enforcement, and one independent human approval. The
-decision is the risk authorization for native auto-merge only within that
-pilot; outside it, merge remains a user decision. Pull request #24 used AO
-under the prior policy, is not a pilot pull request, and must not use
-auto-merge. No Linear or GitHub setting is claimed enabled until fresh
-readback evidence is added to the decision.
+gate-satisfied execution. Cloud-reproducible work explicitly enrolled in the
+shared Linear project `2026 Q3 Agent PR 闭环试点` uses that native path without
+AO. Existing AO remains required only for host-coupled repositories and proven
+review continuation. The first pilot is bounded to five explicitly enrolled
+real pull requests across `calibration` and `biofetch`, each with fresh
+effective ruleset readback proving required checks, unresolved-thread
+enforcement, stale-approval behavior, no bypass, and one independent human
+approval. The user's 2026-07-24 acceptance is the risk authorization for native
+auto-merge only within that pilot; outside it, merge remains a user decision.
+Pull request #24 used AO under the prior policy, is not a pilot pull request,
+and must not enable or select auto-merge or merge. No Linear or GitHub control
+is claimed verified until fresh readback evidence is added to the decision.
 
 The optional Web Dashboard exploration is also closed without adoption. An
 isolated read-only browser canary rendered live AO state successfully, but the

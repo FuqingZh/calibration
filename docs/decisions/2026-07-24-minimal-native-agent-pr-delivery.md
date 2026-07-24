@@ -24,16 +24,19 @@ does not prove that any required Linear or GitHub setting is enabled.
 - Linear's native GitHub integration owns projection of issue-to-pull-request
   status back into Linear.
 - Work that is reproducible in a cloud environment should prefer Linear Coding
-  Sessions with Codex. A host worker is not the default for such work.
+  Sessions with Codex. Work explicitly enrolled in the Linear project
+  `2026 Q3 Agent PR 闭环试点` uses that native path without starting or claiming
+  AO. A host worker is not the default for such work.
 - Existing AO remains available only for host-coupled repositories and for
   review continuation that has been proven on the accepted host. This decision
   does not expand AO enrollment or its authority.
 - GitHub rulesets own required checks and approval requirements. GitHub's
   native auto-merge owns the final merge action after those gates pass. This
-  decision is the bounded risk authorization to select native auto-merge only
-  for pull requests explicitly enrolled in this five-pull-request pilot and
-  only after fresh effective ruleset readback proves the gates below. Outside
-  the pilot, merge and risk decisions remain with the user.
+  record captures the user's 2026-07-24 acceptance as the bounded risk
+  authorization to select native auto-merge only for pull requests explicitly
+  enrolled in this five-pull-request pilot and only after fresh effective
+  ruleset readback proves the gates below. Outside the pilot, merge and risk
+  decisions remain with the user.
 - The first pilot covers `calibration` and `biofetch` across five real pull
   requests. Every pilot pull request requires one approval from an independent
   human before merge.
@@ -75,16 +78,19 @@ can add one of these surfaces.
 Before enrolling each pilot pull request, obtain fresh effective readback
 evidence for all of the following:
 
-1. `calibration` and `biofetch` are addressable from the intended Linear
-   workspace without creating a separate Linear project for each repository.
+1. The intended work is explicitly enrolled in the shared Linear project
+   `2026 Q3 Agent PR 闭环试点`; `calibration` and `biofetch` are addressable
+   there without creating a separate Linear project for each repository.
 2. Linear's native GitHub integration links a test or pilot issue to its pull
    request and projects pull-request status into the issue.
 3. The target repository's effective GitHub ruleset requires its declared
-   checks, resolution of all review threads, and one independent human
+   checks, resolution of all review threads, dismissal or invalidation of
+   approvals when the approved head becomes stale, and one independent human
    approval, with no actor or agent path that bypasses those requirements.
 4. GitHub native auto-merge is available to the enrolled pull request and
    cannot merge it until the required checks, unresolved-thread enforcement,
-   and independent approval requirements are satisfied.
+   stale-approval behavior, no-bypass policy, and independent approval
+   requirements are satisfied.
 5. The pull request is explicitly identified as one of the five pilot pull
    requests before auto-merge is selected.
 
@@ -98,8 +104,9 @@ For each of the five real pilot pull requests, retain evidence that:
 3. the resulting pull request targeted the intended repository and branch;
 4. repository-owned validation passed;
 5. the native integration projected the pull-request state into Linear;
-6. all review threads were resolved and an independent human approved the
-   final reviewed head;
+6. all review threads were resolved, any approval on a stale head was
+   dismissed or invalidated, no bypass was used, and an independent human
+   approved the final reviewed head;
 7. required GitHub gates passed before native auto-merge merged the pull
    request; and
 8. the merge result and final Linear status were read back from their owning
@@ -116,11 +123,12 @@ Reserved for dated readback and representative pilot evidence.
 No fresh Linear or GitHub control-plane evidence has been supplied yet.
 Therefore this record does **not** claim that the native GitHub integration,
 Coding Sessions, repository rulesets, approval requirements, or native
-auto-merge are currently enabled or correctly configured. Repository routing
-now selects the native path for cloud-reproducible work, but no pull request
-can be enrolled or have auto-merge selected until its fresh effective readback
-passes every smoke gate. Pull request #24 is excluded from the pilot and from
-this authorization.
+auto-merge are currently enabled or correctly configured. It also does not
+claim that the shared Linear project or its repository routing has been
+verified. Repository policy now selects the native path for explicitly
+enrolled cloud-reproducible work, but no pull request can be counted or have
+auto-merge selected until its fresh effective readback passes every smoke
+gate. Pull request #24 is excluded from the pilot and from this authorization.
 
 When evidence is available, append it here with the observation date, owning
 surface, repository and pull-request or issue identifier, observed state, and

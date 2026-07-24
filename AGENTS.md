@@ -13,7 +13,9 @@
 For conversation-authorized implementation intended to cross a pull-request
 boundary, keep execution isolated in a task-specific coding session, branch,
 or worktree. Cloud-reproducible work defaults to the accepted native Linear
-Coding Sessions with Codex and GitHub delivery path.
+Coding Sessions with Codex and GitHub delivery path. Work explicitly enrolled
+in the Linear project `2026 Q3 Agent PR 闭环试点` must use that native path
+without starting or claiming an AO worker.
 
 This repository remains opted into the accepted user-level AO service as
 `calibration`, but AO is required only for host-coupled work or for review
@@ -27,8 +29,11 @@ unavailable, use an isolated worktree and report that fallback.
 
 The 2026-07-24 decision authorizes GitHub native auto-merge only for pull
 requests explicitly enrolled in its five-pull-request pilot and only after its
-fresh effective-settings gates pass. Outside that pilot, merge and risk
-decisions remain with the user.
+fresh effective-ruleset readback proves required checks, unresolved-thread
+enforcement, stale-approval behavior, no bypass, and one independent human
+approval. Outside that pilot, merge and risk decisions remain with the user.
+Pull request #24 was created under the previous AO rule, is not a counted pilot
+pull request, and must not enable or select auto-merge or merge.
 
 ## Validation
 
