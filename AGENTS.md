@@ -10,14 +10,35 @@
 
 ## AO Delivery
 
-This repository has opted into the accepted user-level AO service as
-`calibration`. For conversation-authorized implementation intended to cross a
-pull-request boundary, verify AO health and start a task-specific worker before
-creating the implementation branch or pull request. If a pull request already
-exists, mark it ready for review if it is a draft, then restore its owning
-worker or claim it with `--no-takeover`. Ready-for-review is only an AO claim
-prerequisite; leave merge and risk decisions to the user. If AO is unavailable,
-use an isolated worktree and report that fallback.
+For conversation-authorized implementation intended to cross a pull-request
+boundary, keep execution isolated in a task-specific coding session, branch,
+or worktree. Cloud-reproducible work moves to the accepted native Linear Coding
+Sessions with Codex and GitHub delivery path only after the decision's fresh
+readback marks every relevant smoke gate passed, including native Linear
+projection, Coding Session delegation, and `allow_auto_merge: true`. Work
+explicitly enrolled in the Linear project `2026 Q3 Agent PR 闭环试点` must use
+that native path without starting or claiming an AO worker only after those
+activation gates pass.
+
+This repository remains opted into the accepted user-level AO service as
+`calibration`. AO is required for host-coupled work, for review continuation
+already proven on the accepted host, and as the fallback for cloud-reproducible
+work while any native activation gate remains pending or failed. For those
+cases, verify AO health and start a task-specific worker before creating the
+implementation branch or pull request. If a pull request already exists, mark
+it ready for review if it is a draft, then restore its owning worker or claim
+it with `--no-takeover`; do not create a replacement branch or pull request.
+Ready-for-review is only an AO claim prerequisite. If AO is required but
+unavailable, use an isolated worktree and report that fallback.
+
+The 2026-07-24 decision authorizes GitHub native auto-merge only for pull
+requests explicitly enrolled in its five-pull-request pilot and only after its
+fresh effective-ruleset readback proves required checks, unresolved-thread
+enforcement, validation against the current base, stale-approval behavior, no
+bypass, and one independent human approval. Outside that pilot, merge and risk
+decisions remain with the user. Pull request #24 was created under the previous
+AO rule, is not a counted pilot pull request, and must not enable or select
+auto-merge or merge.
 
 ## Validation
 

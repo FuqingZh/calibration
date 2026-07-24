@@ -36,6 +36,9 @@ implementation plans. Reusable cross-project engineering guidance lives under
 11. `implementation-plan/20260723-v1.7-ao-repository-adoption-contract-implementation-plan.md`
     for the closed repair that separates registration, runtime readiness, and
     real-event continuation evidence across opted-in repositories.
+12. `decisions/2026-07-24-minimal-native-agent-pr-delivery.md` for the accepted
+    native Linear, Codex, and GitHub ownership boundary, five-pull-request
+    pilot, explicit smoke gates, and dated setup and FUQ-8 post-change evidence.
 
 ## Decision Status
 
@@ -82,6 +85,12 @@ implementation plans. Reusable cross-project engineering guidance lives under
   idempotent and prevents static health from being reported as continuation
   proof; pull requests #20 and #21 have merged and final `main` validation
   passed.
+- `decisions/2026-07-24-minimal-native-agent-pr-delivery.md`: current accepted
+  minimum for cloud-reproducible agent delivery; `seqevi` is the first active
+  repository, its GitHub configuration gates now pass, and FUQ-9 records the
+  first-sample admission boundary. The five-pull-request count remains zero
+  because the current local baseline is not cloud-visible and native Linear
+  projection and Coding Session delegation remain pending.
 
 ## Current Boundary
 
@@ -121,15 +130,37 @@ pull request #20 merged first; pull request #21 was then rebased onto the new
 `main`, revalidated, and merged. The merge-result `main` run also passed, so
 the initializer and documentation are now repository authority.
 
+The accepted 2026-07-24 successor makes native delivery the default for
+cloud-reproducible work. Linear owns intent, human assignment, and agent
+delegation; Linear Coding Sessions with Codex own the preferred coding path;
+Linear's native GitHub integration owns issue-to-pull-request status
+projection; and GitHub rulesets plus native auto-merge own merge gates and
+gate-satisfied execution. Cloud-reproducible work explicitly enrolled in the
+shared Linear project `2026 Q3 Agent PR 闭环试点` uses that native path without
+AO only after all activation gates pass. The FUQ-8 readback verifies
+`calibration` and `biofetch`; the later FUQ-9 preflight makes actively
+developed `seqevi` the first repository and verifies its equivalent strict,
+integration-bound checks, conversation resolution, stale-approval behavior,
+one approval, empty bypass list, and native auto-merge availability. Its
+current execution-profile baseline exists only in the local working tree, so
+it is not a cloud-session input or a counted sample. Native Linear projection
+and Coding Session delegation remain pending, AO remains the proven fallback,
+and the pilot count is `0/5`. The user's 2026-07-24 acceptance is the risk
+authorization for native auto-merge only within the five-PR pilot; outside it,
+merge remains a user decision. Pull request #24 used AO under the prior policy,
+is not a pilot pull request, and must not select auto-merge or merge. The
+decision records the exact verified readbacks and pending gates.
+
 The optional Web Dashboard exploration is also closed without adoption. An
 isolated read-only browser canary rendered live AO state successfully, but the
 pinned package exposes the dashboard as an Electron Desktop App rather than a
 supported headless Web service. The temporary listeners were stopped, and the
 runbook now records that `ao start` must not be used on this headless host.
 
-The closeout does not authorize bulk environment provisioning, mandatory
-per-repository configuration, auto-merge, or project-specific operating rules
-inside calibration. Another Symphony canary requires the 2026-07-22 closeout's
-explicit host and scratch reopen conditions. A `bio_plot_platform` or E03/E04
-canary additionally requires the cumulative repository gates retained by the
-2026-07-21 adoption closeout.
+The earlier closeout does not authorize bulk environment provisioning,
+mandatory per-repository configuration, auto-merge outside the explicitly
+enrolled 2026-07-24 five-pull-request pilot, or project-specific operating
+rules inside calibration. Another Symphony canary requires the 2026-07-22
+closeout's explicit host and scratch reopen conditions. A `bio_plot_platform`
+or E03/E04 canary additionally requires the cumulative repository gates
+retained by the 2026-07-21 adoption closeout.
