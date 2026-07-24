@@ -118,22 +118,96 @@ new decision; do not fill the gap with an MVP-excluded service.
 
 ## Fresh Verification Evidence
 
-Reserved for dated readback and representative pilot evidence.
+### 2026-07-24 Setup Smoke
 
-No fresh Linear or GitHub control-plane evidence has been supplied yet.
-Therefore this record does **not** claim that the native GitHub integration,
-Coding Sessions, repository rulesets, approval requirements, or native
-auto-merge are currently enabled or correctly configured. It also does not
-claim that the shared Linear project or its repository routing has been
-verified. Repository policy now selects the native path for explicitly
-enrolled cloud-reproducible work, but no pull request can be counted or have
-auto-merge selected until its fresh effective readback passes every smoke
-gate. Pull request #24 is excluded from the pilot and from this authorization.
+GitHub was read through read-only `gh api` repository, ruleset, effective
+branch-rule, pull-request, check-run, and GraphQL review-thread queries at
+`2026-07-24T09:39:58+08:00`.
 
-When evidence is available, append it here with the observation date, owning
-surface, repository and pull-request or issue identifier, observed state, and
-readback method. Keep acceptance evidence distinct from configuration plans or
-screenshots that do not show the effective state.
+#### Linear Readback
+
+- The one shared project `2026 Q3 Agent PR 闭环试点`, ID
+  `f3dcf706-6df3-479c-8dd2-0592300370a5`, was confirmed `In Progress`, `High`,
+  on team `FuqingZh`, spanning `calibration` and `biofetch`.
+- `FUQ-6` was `In Review`, assigned to the user, and had pull request #24
+  attached. The pull-request body contained `Refs FUQ-6`. `FUQ-7` and `FUQ-8`
+  were `Todo` and assigned to the user.
+- The `FUQ-6` status and pull-request attachment were written explicitly
+  during setup. They do not prove automatic status or attachment projection by
+  Linear's native GitHub integration.
+- No Linear Coding Session was delegated during this smoke.
+- The old observation project, ID
+  `b2043b72-183a-4896-a01a-93802ce63a27`, was confirmed `Canceled` with
+  `canceledAt` `2026-07-24T01:38:07.935Z`; `FUQ-1` through `FUQ-5` were each
+  confirmed `Canceled`.
+
+#### GitHub Effective Readback
+
+`FuqingZh/calibration` reported default branch `main` and
+`allow_auto_merge: false`. Its only repository ruleset applicable to `main`
+was active branch ruleset ID `19191911`, name `default-branch-pr-gate`, with
+condition `include: ["~DEFAULT_BRANCH"]`, `exclude: []`, and
+`bypass_actors: []`. Its effective rules were:
+
+- `required_status_checks`: context `validate-skills`,
+  `strict_required_status_checks_policy: false`, and
+  `do_not_enforce_on_create: false`;
+- `pull_request`: `required_approving_review_count: 0`,
+  `dismiss_stale_reviews_on_push: false`,
+  `require_last_push_approval: false`,
+  `required_review_thread_resolution: true`,
+  `require_code_owner_review: false`, `required_reviewers: []`, and merge
+  methods `merge`, `squash`, and `rebase`;
+- `deletion` and `non_fast_forward`.
+
+`FuqingZh/biofetch` reported default branch `main` and
+`allow_auto_merge: false`. Its only repository ruleset applicable to `main`
+was active branch ruleset ID `19191969`, name `default-branch-pr-gate`, with
+condition `include: ["~DEFAULT_BRANCH"]`, `exclude: []`, and
+`bypass_actors: []`. Its effective rules matched `calibration` except that the
+required status-check context was `validate-biofetch`.
+
+The ruleset responses exposed conversation resolution and stale-review
+settings as the values above. They did not expose a separate stale-approval
+field beyond `dismiss_stale_reviews_on_push` and
+`require_last_push_approval`, or an app/integration binding for either required
+status-check context; those additional properties were unobservable in this
+readback.
+
+Pull request #24 was open and ready for review, targeting `main` at base
+`a4a9a711fbfc50ee093242091af85074341480e9` from head
+`01a2938574381e594159e1553be70a6f125d60ed` on
+`codex/docs/calibration-native-agent-pr-pilot`. GitHub reported it
+`MERGEABLE` with merge state `CLEAN`. Check run ID `89378145562`,
+`validate-skills`, completed `success`. All four review threads were resolved
+and outdated. `auto_merge` and `autoMergeRequest` were both `null`.
+
+Pull request #24 remains excluded from the pilot because it was created under
+the previous AO rule. It was not enrolled, auto-merge was not enabled or
+selected, and it was not merged during this smoke.
+
+#### Gate Result
+
+| Gate | Result | Evidence |
+| --- | --- | --- |
+| Shared Linear project and repository scope | Pass | The named project, ID, state, priority, team, and both-repository scope were read back. |
+| Native issue-to-pull-request status projection | Pending | `FUQ-6` status and attachment were explicit setup writes, not an observed automatic projection. |
+| Linear Coding Session delegation and native routing | Pending | No Coding Session was delegated; no pilot pull request was enrolled. |
+| Required repository status checks | Pass | The applicable active rulesets require `validate-skills` and `validate-biofetch`, respectively. |
+| Unresolved-thread enforcement | Pass | Both applicable rulesets report `required_review_thread_resolution: true`. |
+| One independent human approval | Fail | Both applicable rulesets report `required_approving_review_count: 0`. |
+| Stale-approval behavior | Fail | Both report `dismiss_stale_reviews_on_push: false` and `require_last_push_approval: false`. |
+| No bypass | Pass | Both applicable rulesets report `bypass_actors: []`. |
+| Native auto-merge availability | Fail | Both repositories report `allow_auto_merge: false`. |
+| Explicit five-PR enrollment before auto-merge | Pending | No pilot pull request was enrolled; pull request #24 is explicitly excluded. |
+
+Because the approval, stale-approval, and auto-merge gates failed, the pilot is
+not ready to enroll its first pull request. No Linear or GitHub control is
+claimed verified beyond the exact readbacks above. Future evidence must record
+the observation date, owning surface, repository and pull-request or issue
+identifier, observed state, and readback method. Keep acceptance evidence
+distinct from configuration plans or screenshots that do not show effective
+state.
 
 ## Consequences
 
