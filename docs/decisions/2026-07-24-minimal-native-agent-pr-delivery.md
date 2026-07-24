@@ -26,10 +26,11 @@ does not prove that any required Linear or GitHub setting is enabled.
 - Work that is reproducible in a cloud environment should prefer Linear Coding
   Sessions with Codex. Work explicitly enrolled in the Linear project
   `2026 Q3 Agent PR 闭环试点` uses that native path without starting or claiming
-  AO. A host worker is not the default for such work.
-- Existing AO remains available only for host-coupled repositories and for
-  review continuation that has been proven on the accepted host. This decision
-  does not expand AO enrollment or its authority.
+  AO only after fresh evidence passes every activation gate below.
+- Existing AO remains required for host-coupled repositories, for review
+  continuation proven on the accepted host, and as the fallback while any
+  native activation gate is pending or failed. This decision does not expand
+  AO enrollment or its authority.
 - GitHub rulesets own required checks and approval requirements. GitHub's
   native auto-merge owns the final merge action after those gates pass. This
   record captures the user's 2026-07-24 acceptance as the bounded risk
@@ -42,8 +43,8 @@ does not prove that any required Linear or GitHub setting is enabled.
   human before merge.
 - Pull request #24 configures this policy. It used AO under the prior
   repository rule, is not enrolled in the pilot, must not have native
-  auto-merge enabled or selected during this smoke, and does not count toward
-  the five pilot pull requests.
+  auto-merge selected or be merged, and does not count toward the five pilot
+  pull requests.
 
 ## MVP Boundaries
 
@@ -209,6 +210,72 @@ evidence must record the observation date, owning surface, repository and
 pull-request or issue identifier, observed state, and readback method. Keep
 acceptance evidence distinct from configuration plans or screenshots that do
 not show effective state.
+
+### 2026-07-24 FUQ-8 Post-change Readback
+
+At `2026-07-24T10:43:10+08:00`, reversible GitHub settings changes authorized
+by FUQ-8 were complete and read back through repository, ruleset-detail, and
+effective `main` branch-rule endpoints. The captured pre-change payloads were
+retained before the sequential writes; no rollback was needed.
+
+Successful check run ID `89173737622`, context `validate-skills`, check suite
+ID `81271001424`, and successful check run ID `89373776787`, context
+`validate-biofetch`, check suite ID `81449099637`, both identified their
+producing GitHub App as ID `15368`, slug `github-actions`, name
+`GitHub Actions`. That observed App ID, rather than a guessed value, was used
+as each required check's `integration_id`.
+
+`FuqingZh/calibration` read back default branch `main` and
+`allow_auto_merge: true`. Active ruleset ID `19191911`, name
+`default-branch-pr-gate`, retained target `branch`, condition
+`include: ["~DEFAULT_BRANCH"]`, `exclude: []`, `bypass_actors: []`,
+`deletion`, `non_fast_forward`, and allowed merge methods `merge`, `squash`,
+and `rebase`. Its detail and effective `main` rules both reported:
+
+- required context `validate-skills`, `integration_id: 15368`,
+  `strict_required_status_checks_policy: true`, and
+  `do_not_enforce_on_create: false`;
+- `required_approving_review_count: 1`,
+  `dismiss_stale_reviews_on_push: true`,
+  `require_last_push_approval: false`,
+  `required_review_thread_resolution: true`,
+  `require_code_owner_review: false`, and `required_reviewers: []`.
+
+`FuqingZh/biofetch` read back default branch `main` and
+`allow_auto_merge: true`. Active ruleset ID `19191969`, also named
+`default-branch-pr-gate`, retained the same enforcement, target, conditions,
+bypass list, deletion and non-fast-forward rules, pull-request parameters, and
+merge methods. Its detail and effective `main` rules reported required context
+`validate-biofetch` bound to `integration_id: 15368`, with strict checks and
+the same approval, stale-review, and conversation-resolution parameters.
+
+Pull request #24 was separately read back at head
+`bc6dec80cc9caa0d45876f2fdc46cfb3921ae174`, base
+`a4a9a711fbfc50ee093242091af85074341480e9`, open and ready for review.
+GitHub reported it `MERGEABLE` and `BLOCKED`; `validate-skills` check run ID
+`89380197932` was `success`. Three then-current review threads remained open.
+`autoMergeRequest` was `null`. Pull request #24 remained excluded, was not
+enrolled, did not have auto-merge selected, and was not merged.
+
+#### Post-change Gate Result
+
+| Gate | Result | Evidence |
+| --- | --- | --- |
+| Shared Linear project and repository scope | Pass | The prior dated readback remains the current evidence. |
+| Native issue-to-pull-request status projection | Pending | No automatic projection has been observed; the FUQ-6 setup writes are not proof. |
+| Linear Coding Session delegation and native routing | Pending | No Coding Session has been delegated, so AO remains the active fallback and no pilot pull request is enrolled. |
+| Required checks on the current base | Pass | Both effective rulesets require strict checks bound to observed GitHub Actions App ID `15368`. |
+| Unresolved-thread enforcement | Pass | Both effective rulesets report `required_review_thread_resolution: true`. |
+| One independent human approval | Pass | Both effective rulesets report `required_approving_review_count: 1`. |
+| Stale-approval behavior | Pass | Both effective rulesets report `dismiss_stale_reviews_on_push: true`. |
+| No bypass | Pass | Both effective rulesets report `bypass_actors: []`. |
+| Native auto-merge availability | Pass | Both repositories report `allow_auto_merge: true`. |
+| Explicit five-PR enrollment before auto-merge | Pending | No counted pilot pull request is enrolled; pull request #24 remains excluded. |
+
+GitHub configuration gates now pass exactly as read back above. Native Linear
+projection and Coding Session delegation remain pending, so native routing is
+not active, no pull request is enrolled or counted, and AO remains the proven
+fallback. This evidence does not claim those pending Linear gates.
 
 ## Consequences
 
