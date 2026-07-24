@@ -128,17 +128,19 @@ pull request #20 merged first; pull request #21 was then rebased onto the new
 `main`, revalidated, and merged. The merge-result `main` run also passed, so
 the initializer and documentation are now repository authority.
 
-The accepted 2026-07-24 successor makes native delivery the default for
-cloud-reproducible work. Linear owns intent, human assignment, and agent
-delegation; Linear Coding Sessions with Codex own the preferred coding path;
-Linear's native GitHub integration owns issue-to-pull-request status
-projection; and GitHub rulesets plus native auto-merge own merge gates and
-gate-satisfied execution. Existing AO is now only the exception for
-host-coupled repositories and proven review continuation. The first pilot is
-bounded to five real pull requests across `calibration` and `biofetch`, each
-with one independent human approval. Its smoke gates and reserved evidence
-section are recorded in the decision. No Linear or GitHub setting is claimed
-enabled until fresh readback evidence is added there.
+The accepted 2026-07-24 successor defines native delivery as the intended
+default for cloud-reproducible work after its activation gates pass. Linear
+owns intent, human assignment, and agent delegation; Linear Coding Sessions
+with Codex own the preferred coding path; Linear's native GitHub integration
+owns issue-to-pull-request status projection; and GitHub rulesets plus native
+auto-merge are the intended owners of merge gates and gate-satisfied
+execution. Existing `AGENTS.md` AO Delivery instructions and the no-auto-merge
+boundary remain authoritative until repository routing is updated and
+validated and the user accepts a separate auto-merge risk decision. The first
+pilot is bounded to five real pull requests across `calibration` and
+`biofetch`, each with one independent human approval. Its smoke gates and
+reserved evidence section are recorded in the decision. No Linear or GitHub
+setting is claimed enabled until fresh readback evidence is added there.
 
 The optional Web Dashboard exploration is also closed without adoption. An
 isolated read-only browser canary rendered live AO state successfully, but the
