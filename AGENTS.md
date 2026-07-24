@@ -30,10 +30,11 @@ unavailable, use an isolated worktree and report that fallback.
 The 2026-07-24 decision authorizes GitHub native auto-merge only for pull
 requests explicitly enrolled in its five-pull-request pilot and only after its
 fresh effective-ruleset readback proves required checks, unresolved-thread
-enforcement, stale-approval behavior, no bypass, and one independent human
-approval. Outside that pilot, merge and risk decisions remain with the user.
-Pull request #24 was created under the previous AO rule, is not a counted pilot
-pull request, and must not enable or select auto-merge or merge.
+enforcement, validation against the current base, stale-approval behavior, no
+bypass, and one independent human approval. Outside that pilot, merge and risk
+decisions remain with the user. Pull request #24 was created under the previous
+AO rule, is not a counted pilot pull request, and must not enable or select
+auto-merge or merge.
 
 ## Validation
 

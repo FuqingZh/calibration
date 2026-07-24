@@ -84,13 +84,14 @@ evidence for all of the following:
 2. Linear's native GitHub integration links a test or pilot issue to its pull
    request and projects pull-request status into the issue.
 3. The target repository's effective GitHub ruleset requires its declared
-   checks, resolution of all review threads, dismissal or invalidation of
-   approvals when the approved head becomes stale, and one independent human
-   approval, with no actor or agent path that bypasses those requirements.
+   checks on a branch updated against the current base, resolution of all
+   review threads, dismissal or invalidation of approvals when the approved
+   head becomes stale, and one independent human approval, with no actor or
+   agent path that bypasses those requirements.
 4. GitHub native auto-merge is available to the enrolled pull request and
    cannot merge it until the required checks, unresolved-thread enforcement,
-   stale-approval behavior, no-bypass policy, and independent approval
-   requirements are satisfied.
+   current-base validation, stale-approval behavior, no-bypass policy, and
+   independent approval requirements are satisfied.
 5. The pull request is explicitly identified as one of the five pilot pull
    requests before auto-merge is selected.
 
@@ -193,7 +194,7 @@ selected, and it was not merged during this smoke.
 | Shared Linear project and repository scope | Pass | The named project, ID, state, priority, team, and both-repository scope were read back. |
 | Native issue-to-pull-request status projection | Pending | `FUQ-6` status and attachment were explicit setup writes, not an observed automatic projection. |
 | Linear Coding Session delegation and native routing | Pending | No Coding Session was delegated; no pilot pull request was enrolled. |
-| Required repository status checks | Pass | The applicable active rulesets require `validate-skills` and `validate-biofetch`, respectively. |
+| Required checks on the current base | Fail | The rulesets name `validate-skills` and `validate-biofetch`, but both report `strict_required_status_checks_policy: false`; without the MVP-excluded merge queue, neither requires an enrolled branch to be current before merge. |
 | Unresolved-thread enforcement | Pass | Both applicable rulesets report `required_review_thread_resolution: true`. |
 | One independent human approval | Fail | Both applicable rulesets report `required_approving_review_count: 0`. |
 | Stale-approval behavior | Fail | Both report `dismiss_stale_reviews_on_push: false` and `require_last_push_approval: false`. |
@@ -201,13 +202,13 @@ selected, and it was not merged during this smoke.
 | Native auto-merge availability | Fail | Both repositories report `allow_auto_merge: false`. |
 | Explicit five-PR enrollment before auto-merge | Pending | No pilot pull request was enrolled; pull request #24 is explicitly excluded. |
 
-Because the approval, stale-approval, and auto-merge gates failed, the pilot is
-not ready to enroll its first pull request. No Linear or GitHub control is
-claimed verified beyond the exact readbacks above. Future evidence must record
-the observation date, owning surface, repository and pull-request or issue
-identifier, observed state, and readback method. Keep acceptance evidence
-distinct from configuration plans or screenshots that do not show effective
-state.
+Because the current-base check, approval, stale-approval, and auto-merge gates
+failed, the pilot is not ready to enroll its first pull request. No Linear or
+GitHub control is claimed verified beyond the exact readbacks above. Future
+evidence must record the observation date, owning surface, repository and
+pull-request or issue identifier, observed state, and readback method. Keep
+acceptance evidence distinct from configuration plans or screenshots that do
+not show effective state.
 
 ## Consequences
 
