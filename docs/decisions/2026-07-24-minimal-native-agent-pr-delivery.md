@@ -27,9 +27,16 @@ does not prove that any required Linear or GitHub setting is enabled.
   Sessions with Codex. A host worker is not the default for such work.
 - Existing AO remains available only for host-coupled repositories and for
   review continuation that has been proven on the accepted host. This decision
-  does not expand AO enrollment or its authority.
+  does not expand AO enrollment or its authority. This native default becomes
+  operative only after repository agent-routing instructions are updated and
+  validated; until then, the current `AGENTS.md` AO Delivery instructions
+  remain authoritative for `calibration`.
 - GitHub rulesets own required checks and approval requirements. GitHub's
-  native auto-merge owns the final merge action after those gates pass.
+  native auto-merge is the intended owner of the final merge action after those
+  gates pass. This ownership decision does not authorize enabling or selecting
+  auto-merge: the existing no-auto-merge boundary remains in force until the
+  user accepts a separate repository risk decision and the effective settings
+  pass the smoke gates below.
 - The first pilot covers `calibration` and `biofetch` across five real pull
   requests. Every pilot pull request requires one approval from an independent
   human before merge.
@@ -67,20 +74,26 @@ can add one of these surfaces.
 Before counting the first pilot pull request, obtain fresh readback evidence
 for all of the following:
 
-1. `calibration` and `biofetch` are addressable from the intended Linear
+1. Repository agent-routing instructions have been updated and behaviorally
+   validated so cloud-reproducible pilot work selects the native path without
+   starting or claiming an AO worker.
+2. The user has accepted a separate repository auto-merge risk decision that
+   preserves one independent human approval and authorizes native auto-merge
+   for the bounded pilot.
+3. `calibration` and `biofetch` are addressable from the intended Linear
    workspace without creating a separate Linear project for each repository.
-2. Linear's native GitHub integration links a test or pilot issue to its pull
+4. Linear's native GitHub integration links a test or pilot issue to its pull
    request and projects pull-request status into the issue.
-3. An explicitly delegated Linear Coding Session starts Codex against the
+5. An explicitly delegated Linear Coding Session starts Codex against the
    intended repository and branch with sufficient repository instructions and
    a reproducible validation path.
-4. Each repository's GitHub ruleset requires its declared checks and one
+6. Each repository's GitHub ruleset requires its declared checks and one
    independent human approval, with no actor or agent path that bypasses those
    requirements.
-5. GitHub native auto-merge can be selected for an eligible pilot pull request
+7. GitHub native auto-merge can be selected for an eligible pilot pull request
    and does not merge until the required checks and independent approval are
    satisfied.
-6. AO remains unselected for cloud-reproducible pilot work and no repository
+8. AO remains unselected for cloud-reproducible pilot work and no repository
    is newly or bulk enrolled in AO.
 
 For each of the five real pilot pull requests, retain evidence that:
@@ -108,7 +121,9 @@ Reserved for dated readback and representative pilot evidence.
 No fresh Linear or GitHub control-plane evidence has been supplied yet.
 Therefore this record does **not** claim that the native GitHub integration,
 Coding Sessions, repository rulesets, approval requirements, or native
-auto-merge are currently enabled or correctly configured.
+auto-merge are currently enabled or correctly configured. Repository routing
+has not yet been changed, and no separate auto-merge risk authorization has
+been recorded, so the native pilot is not yet active.
 
 When evidence is available, append it here with the observation date, owning
 surface, repository and pull-request or issue identifier, observed state, and
