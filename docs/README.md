@@ -86,10 +86,11 @@ implementation plans. Reusable cross-project engineering guidance lives under
   proof; pull requests #20 and #21 have merged and final `main` validation
   passed.
 - `decisions/2026-07-24-minimal-native-agent-pr-delivery.md`: current accepted
-  minimum for cloud-reproducible agent delivery; the `calibration` and
-  `biofetch` GitHub configuration gates now pass, but the five-pull-request
-  pilot has not started because native Linear projection and Coding Session
-  delegation remain pending.
+  minimum for cloud-reproducible agent delivery; `seqevi` is the first active
+  repository, its GitHub configuration gates now pass, and FUQ-9 records the
+  first-sample admission boundary. The five-pull-request count remains zero
+  because the current local baseline is not cloud-visible and native Linear
+  projection and Coding Session delegation remain pending.
 
 ## Current Boundary
 
@@ -136,12 +137,15 @@ Linear's native GitHub integration owns issue-to-pull-request status
 projection; and GitHub rulesets plus native auto-merge own merge gates and
 gate-satisfied execution. Cloud-reproducible work explicitly enrolled in the
 shared Linear project `2026 Q3 Agent PR 闭环试点` uses that native path without
-AO only after all activation gates pass. The FUQ-8 readback verifies both
-repositories' strict, integration-bound checks, conversation resolution,
-stale-approval behavior, one approval, empty bypass lists, and native
-auto-merge availability. Native Linear projection and Coding Session
-delegation remain pending, so AO remains the proven fallback and no counted
-pilot pull request is enrolled. The user's 2026-07-24 acceptance is the risk
+AO only after all activation gates pass. The FUQ-8 readback verifies
+`calibration` and `biofetch`; the later FUQ-9 preflight makes actively
+developed `seqevi` the first repository and verifies its equivalent strict,
+integration-bound checks, conversation resolution, stale-approval behavior,
+one approval, empty bypass list, and native auto-merge availability. Its
+current execution-profile baseline exists only in the local working tree, so
+it is not a cloud-session input or a counted sample. Native Linear projection
+and Coding Session delegation remain pending, AO remains the proven fallback,
+and the pilot count is `0/5`. The user's 2026-07-24 acceptance is the risk
 authorization for native auto-merge only within the five-PR pilot; outside it,
 merge remains a user decision. Pull request #24 used AO under the prior policy,
 is not a pilot pull request, and must not select auto-merge or merge. The

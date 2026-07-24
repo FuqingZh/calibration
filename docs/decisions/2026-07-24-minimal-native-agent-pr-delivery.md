@@ -2,7 +2,7 @@
 
 Date: 2026-07-24
 
-Status: Accepted for a bounded pilot; external settings not yet verified
+Status: Accepted for a bounded pilot; GitHub gates verified, Linear gates pending
 
 ## Context
 
@@ -38,9 +38,10 @@ does not prove that any required Linear or GitHub setting is enabled.
   enrolled in this five-pull-request pilot and only after fresh effective
   ruleset readback proves the gates below. Outside the pilot, merge and risk
   decisions remain with the user.
-- The first pilot covers `calibration` and `biofetch` across five real pull
-  requests. Every pilot pull request requires one approval from an independent
-  human before merge.
+- The first active pilot repository is `seqevi`; `calibration` and `biofetch`
+  remain later candidates across the same five-real-pull-request sample. Every
+  pilot pull request requires one approval from an independent human before
+  merge.
 - Pull request #24 configures this policy. It used AO under the prior
   repository rule, is not enrolled in the pilot, must not have native
   auto-merge selected or be merged, and does not count toward the five pilot
@@ -80,8 +81,9 @@ Before enrolling each pilot pull request, obtain fresh effective readback
 evidence for all of the following:
 
 1. The intended work is explicitly enrolled in the shared Linear project
-   `2026 Q3 Agent PR 闭环试点`; `calibration` and `biofetch` are addressable
-   there without creating a separate Linear project for each repository.
+   `2026 Q3 Agent PR 闭环试点`; the active `seqevi` pilot and later repository
+   candidates are addressable there without creating a separate Linear
+   project for each repository.
 2. Linear's native GitHub integration links a test or pilot issue to its pull
    request and projects pull-request status into the issue.
 3. The target repository's effective GitHub ruleset requires its declared
@@ -276,6 +278,53 @@ GitHub configuration gates now pass exactly as read back above. Native Linear
 projection and Coding Session delegation remain pending, so native routing is
 not active, no pull request is enrolled or counted, and AO remains the proven
 fallback. This evidence does not claim those pending Linear gates.
+
+### 2026-07-24 `seqevi` First-Pilot Preflight
+
+The user selected the actively developed private repository
+[`FuqingZh/seqevi`](https://github.com/FuqingZh/seqevi) as the first pilot
+repository. Linear project `2026 Q3 Agent PR 闭环试点` was updated to make
+`seqevi` the active repository while retaining `calibration` and `biofetch` as
+later candidates. Linear issue
+[`FUQ-9`](https://linear.app/fuqingzhang/issue/FUQ-9/以-seqevi-完成第-1-个原生-agent-pr-闭环样本)
+records the first-sample intent, human owner, repository links, candidate
+task, admission gates, and explicit `0/5` count.
+
+Fresh local inspection found that `seqevi`'s `main` was twelve commits ahead
+of `origin/main` and contained an uncommitted execution-profile contract,
+implementation, documentation, and tests. The repository-owned
+`pdm run check` completed successfully across formatting, Ruff, Pyright, and
+123 collected tests. That evidence establishes a healthy local baseline, but
+the dirty local tree is not visible to a Linear Coding Session. Existing pull
+request
+[`seqevi#1`](https://github.com/FuqingZh/seqevi/pull/1) ends before the local
+InterPro parity and execution-profile work, so neither that pull request nor
+the local baseline is retroactively counted as a native pilot sample.
+
+The first candidate sample is therefore a separate repository-local Stage 2
+profile authoring or inspection increment after the current execution-profile
+baseline reaches a GitHub branch that a cloud session can clone. It must not
+depend on the accepted host's external annotation databases, 217-node runtime,
+or uncommitted files.
+
+GitHub repository and ruleset detail were read back after configuration:
+
+- `allow_auto_merge: true`; no pull request has an `autoMergeRequest`;
+- active ruleset ID `19322798`, `default-branch-pr-gate`, applies to
+  `~DEFAULT_BRANCH` with `bypass_actors: []`;
+- required contexts `test (3.12)` and `test (3.13)` are bound to the observed
+  GitHub Actions App `integration_id: 15368`;
+- `strict_required_status_checks_policy: true`;
+- `required_approving_review_count: 1`;
+- `dismiss_stale_reviews_on_push: true`; and
+- `required_review_thread_resolution: true`.
+
+Existing `seqevi` pull request #1 remained open, ready for review, mergeable,
+and `BLOCKED`, with successful existing check runs, no approval, and no
+auto-merge request. It was not modified, enrolled, or merged. Linear Coding
+Session delegation and native pull-request status projection remain pending
+until the GitHub-visible baseline admission gate passes, so the pilot count
+remains `0/5`.
 
 ## Consequences
 
