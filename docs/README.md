@@ -38,7 +38,7 @@ implementation plans. Reusable cross-project engineering guidance lives under
     real-event continuation evidence across opted-in repositories.
 12. `decisions/2026-07-24-minimal-native-agent-pr-delivery.md` for the accepted
     native Linear, Codex, and GitHub ownership boundary, five-pull-request
-    pilot, explicit smoke gates, and pending fresh verification evidence.
+    pilot, explicit smoke gates, and dated setup-smoke evidence.
 
 ## Decision Status
 
@@ -87,8 +87,9 @@ implementation plans. Reusable cross-project engineering guidance lives under
   passed.
 - `decisions/2026-07-24-minimal-native-agent-pr-delivery.md`: current accepted
   minimum for cloud-reproducible agent delivery; the `calibration` and
-  `biofetch` five-pull-request pilot has not started counting because fresh
-  Linear and GitHub settings evidence is still pending.
+  `biofetch` five-pull-request pilot has not started because approval,
+  stale-approval, and auto-merge gates fail, while native Linear projection and
+  Coding Session delegation remain pending.
 
 ## Current Boundary
 
@@ -143,8 +144,9 @@ enforcement, stale-approval behavior, no bypass, and one independent human
 approval. The user's 2026-07-24 acceptance is the risk authorization for native
 auto-merge only within that pilot; outside it, merge remains a user decision.
 Pull request #24 used AO under the prior policy, is not a pilot pull request,
-and must not enable or select auto-merge or merge. No Linear or GitHub control
-is claimed verified until fresh readback evidence is added to the decision.
+and must not enable or select auto-merge or merge. The decision records dated
+setup-smoke evidence; only the exact Linear and GitHub readbacks stated there
+are verified.
 
 The optional Web Dashboard exploration is also closed without adoption. An
 isolated read-only browser canary rendered live AO state successfully, but the
