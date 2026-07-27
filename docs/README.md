@@ -17,6 +17,7 @@ Read the smallest source that owns the decision:
 | Completion and external-result evidence | `../references/engineering/discipline/verification.md` |
 | Agent and workflow comparison | `../references/engineering/discipline/evaluation.md` |
 | Durable implementation-plan contract | `../references/engineering/docs/document-types/implementation-plan.md` |
+| Native agent pull-request pilot | `decisions/2026-07-24-minimal-native-agent-pr-delivery.md` |
 | Current AI-native direction | `decisions/2026-07-27-ai-native-calibration-review.md` |
 | Writable comparative evidence | `decisions/2026-07-27-ai-native-writable-implementation-evaluation-closeout.md` |
 | Five-phase convergence result | `decisions/2026-07-27-ai-native-calibration-convergence-closeout.md` |
@@ -69,8 +70,20 @@ AO is an environment adapter, not a default part of ordinary engineering
 judgment. Repositories opt in individually after an observed continuation need.
 An explicit conversation-authorized implementation may start a task-specific
 worker in an already accepted repository. This is not automatic work discovery
-or unattended issue intake. Auto-merge, bulk enrollment, and wider
-orchestration remain outside the accepted boundary.
+or unattended issue intake. Auto-merge remains outside the AO boundary; the
+separate bounded native pilot owns its explicit five-pull-request risk
+authorization. Bulk enrollment and wider orchestration remain outside the
+accepted boundary.
+
+### Native pull-request pilot
+
+`decisions/2026-07-24-minimal-native-agent-pr-delivery.md` records the accepted
+Linear, Codex, and GitHub ownership boundary and its dated control-plane
+readbacks. `seqevi` is the first active repository; its GitHub configuration
+gates pass, but its current baseline is not cloud-visible and native Linear
+projection and Coding Session delegation remain pending. No pull request is
+enrolled, the count remains `0/5`, and AO remains the proven fallback until all
+activation gates pass.
 
 ## Open Evidence Gaps
 
@@ -141,6 +154,9 @@ reading path.
   AO successor on the current host.
 - `implementation-plan/20260723-v1.7-ao-repository-adoption-contract-implementation-plan.md`:
   closed behavior-validated adoption contract.
+- `decisions/2026-07-24-minimal-native-agent-pr-delivery.md`: accepted bounded
+  native pull-request pilot; `seqevi` is the first active repository and the
+  count remains `0/5`.
 
 ### Current convergence history
 
