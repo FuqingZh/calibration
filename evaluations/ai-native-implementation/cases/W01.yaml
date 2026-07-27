@@ -1,0 +1,12 @@
+id: W01
+title: Direct local repair
+fixture: W01
+prompt: >-
+  Fix the normalization regression in this repository and verify the result.
+  Keep the change local and do not alter the public function signature.
+verify:
+  - [python, -m, unittest, -q]
+allowed_changes:
+  - src/normalize.py
+required_changes:
+  - src/normalize.py

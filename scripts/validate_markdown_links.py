@@ -14,6 +14,7 @@ MARKDOWN_ROOTS = (
     Path("README.md"),
     Path("AGENTS.md"),
     Path("docs"),
+    Path("evaluations"),
     Path("references"),
     Path("skills"),
     Path("codex"),
