@@ -2,7 +2,7 @@
 
 Date: 2026-07-27
 
-Status: Deployed on the current host; operational boundary retained
+Status: Reproducible binary deployed; Linear credential activation disabled
 
 ## Context
 
@@ -18,8 +18,8 @@ automation boundary.
 - Fork: `https://github.com/FuqingZh/agent-orchestrator.git`
 - Deployed fork `main` commit:
   `7238619cbab019081fff2c683df45ed32f89d13a`
-- Canonical cutover executable: `/home/fqzhang/.local/bin/ao`
-- Final installed SHA-256 after the reproducible cutover:
+- Current pre-security-fix executable: `/home/fqzhang/.local/bin/ao`
+- Current installed SHA-256:
   `2fbd3af959a1135c7d0b3cefeb0c5597b3f68a53c39e5102c418f5db302f9a16`
 - Pre-reproducible Phase 3 installed SHA-256, retained as rollback evidence:
   `ec19ff3a87a15a04eb3d9d647397c2cc32a820da19448cc93b6fe4f423cc4016`
@@ -31,30 +31,39 @@ automation boundary.
   `/home/fqzhang/.local/lib/ao/bin/ao-daemon-with-linear`, mode `0755`
 - Credential wrapper SHA-256:
   `0531d973a0cd690b03b52530388cf138e5a4b54899167a341ca0d1a5ff88d2d7`
-- Service drop-in:
-  `/home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf`,
+- Recoverably disabled service drop-in:
+  `/home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf.disabled`,
   mode `0644`, inside a mode `0700` drop-in directory
 
 The wrapper reads the credential at process start, rejects a missing, unreadable,
 or empty file, exports it only to the daemon process as `AO_LINEAR_API_KEY`,
-and executes `/home/fqzhang/.local/bin/ao daemon`. The drop-in clears the base
-unit's `ExecStart` and replaces it with the wrapper. The credential value is
-not present in the unit, drop-in, wrapper, repository, or this decision. The
-complete managed wrapper source is
+and executes `/home/fqzhang/.local/bin/ao daemon`. When enabled as
+`linear.conf`, the drop-in clears the base unit's `ExecStart` and replaces it
+with the wrapper. It is currently named `linear.conf.disabled`, so systemd does
+not load it. The credential value is not present in the unit, disabled drop-in,
+wrapper, repository, or this decision. The complete managed wrapper source is
 [`../runbooks/artifacts/ao-daemon-with-linear`](../runbooks/artifacts/ao-daemon-with-linear).
 
 The wrapper-to-daemon credential handoff is not sufficient to protect worker
 environments by itself. The deployed AO build must filter both
 `AO_LINEAR_API_KEY` and `AO_LINEAR_OAUTH_TOKEN` before creating tmux panes.
-The AO-side candidate is
-[`2757dd6e1d4a8491f805efebbc228331d3dda617`](https://github.com/FuqingZh/agent-orchestrator/commit/2757dd6e1d4a8491f805efebbc228331d3dda617)
+The current AO-side candidate is
+[`4c241b1447b4c5c303593ac0a94386cc3dfd3261`](https://github.com/FuqingZh/agent-orchestrator/commit/4c241b1447b4c5c303593ac0a94386cc3dfd3261)
 in agent-orchestrator
 [pull request #10](https://github.com/FuqingZh/agent-orchestrator/pull/10).
-It is based on `7238619cbab019081fff2c683df45ed32f89d13a` but was not
-merged to fork `main` or present in the installed `2fbd3af9...` binary at this
-closeout update. Deployment and the new-pane verification remain acceptance
-gates; until both pass, do not claim the Linear deployment has closed its
-worker-secret boundary.
+Its focused, race, full lint, vet, Linux build, and Windows build validation
+passed; fresh Automatic Review reported no major issues and its two P1 threads
+were resolved. The pull request remains open and unmerged. Its code is not
+present in the installed `2fbd3af9...` binary.
+
+As immediate mitigation, `linear.conf` was moved to `linear.conf.disabled`,
+then the user manager was reloaded and the service restarted. Effective
+`ExecStart` is `/home/fqzhang/.local/bin/ao daemon`, `DropInPaths` is empty,
+AO is ready, `ao doctor --json` reports zero failures, and the existing worker
+pane PIDs were unchanged. Linear credential activation and the P1/documentation
+closeout remain blocked until PR #10 is merged, the merged commit is built and
+deployed with a recorded reproducible hash, and a new-pane acceptance check
+passes.
 
 ## Reproducible Build And Source Sync
 
@@ -91,11 +100,11 @@ drop-in, and the service's actual environment. A shell-only invocation,
 different user, or differently constructed environment does not verify the
 installed service. Read back the effective unit with `systemctl --user cat`
 and `systemctl --user show`, then verify the active daemon and installed hash
-using the commands in the AO runbook. After cutover,
+using the commands in the AO runbook. The current pre-security-fix binary
 `sha256sum /home/fqzhang/.local/bin/ao` must report
 `2fbd3af959a1135c7d0b3cefeb0c5597b3f68a53c39e5102c418f5db302f9a16`;
-the earlier `ec19ff3a...` result identifies the pre-reproducible binary, not
-the completed cutover.
+this is not the final security-fix hash. The earlier `ec19ff3a...` result
+identifies the pre-reproducible binary.
 
 The Phase 3 smoke establishes that the deployed binary can load the read-only
 Linear configuration and exercise the bounded smoke path. It is not a real
