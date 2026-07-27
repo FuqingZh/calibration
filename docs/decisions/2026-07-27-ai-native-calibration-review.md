@@ -2,8 +2,8 @@
 
 Version: v1.1
 Date: 2026-07-27
-Status: accepted direction; candidate regression-accepted by
-`2026-07-27-ai-native-calibration-evaluation-closeout.md`
+Status: accepted direction; bounded writable comparative improvement established
+by `2026-07-27-ai-native-writable-implementation-evaluation-closeout.md`
 
 ## Decision
 
@@ -138,9 +138,10 @@ Adding parseable cases defines the evaluation surface. Static validation alone
 does not prove an improvement; a later representative model-backed comparison
 is required for that claim.
 
-The comparison is now complete. It supports regression acceptance but not
-comparative improvement; see
-`2026-07-27-ai-native-calibration-evaluation-closeout.md`.
+The first read-only comparison supported regression acceptance but not
+comparative improvement. The successor writable comparison preserved the
+complete operating context and met the predeclared comparative gate; see
+`2026-07-27-ai-native-writable-implementation-evaluation-closeout.md`.
 
 ## Compatibility And Risks
 

@@ -2,7 +2,8 @@
 
 Version: v1.0
 Date: 2026-07-27
-Status: regression accepted; comparative improvement not established
+Status: historical read-only regression acceptance; succeeded by
+`2026-07-27-ai-native-writable-implementation-evaluation-closeout.md`
 
 ## Decision
 

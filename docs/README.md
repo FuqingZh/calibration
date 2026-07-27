@@ -1,152 +1,156 @@
 # Calibration Documentation
 
-This directory records calibration-specific decisions, evaluations, and active
-implementation plans. Reusable cross-project engineering guidance lives under
-`references/engineering/`.
+This directory records calibration-specific decisions, evaluations, active
+plans, and current-host runbooks. Reusable cross-project engineering guidance
+lives under `../references/engineering/`.
 
-## Read First
+## Current Authority
 
-1. `../README.md` for the active repository surface and installer contract.
-2. `decisions/2026-07-20-agent-harness-and-evaluation-ownership.md` for the
-   accepted repository-harness and behavior-evaluation ownership boundary.
-3. `decisions/2026-07-21-harness-successor-evaluation-closeout.md` for the
-   rejected v1.2 candidate and why its result remains historical evidence
-   rather than the current optimization agenda.
-4. `decisions/2026-07-21-repository-delivery-feedback-loop.md` for the accepted
-   failure-driven repository delivery loop.
-5. `decisions/2026-07-21-repository-engineering-capability-adoption-closeout.md`
-   for the closed proportional adoption pilots, the bounded Symphony `NO-GO`,
-   and the separate `biofetch` CI result.
-6. `decisions/2026-07-22-symphony-readiness-and-bounded-canary-closeout.md`
-   for the current pinned-engine readiness result, dependency and full-suite
-   blockers, and explicit reopen conditions.
-7. `implementation-plan/20260722-v1.5-symphony-readiness-and-bounded-canary-implementation-plan.md`
-   for the closed gate definitions and the post-review safety corrections.
-8. `implementation-plan/20260723-v1.6-repository-quality-gate-implementation-plan.md`
-   for the closed deterministic Python, Markdown, shell, and installer
-   validation convergence.
-9. `decisions/2026-07-23-ao-review-continuation-adoption.md` for the accepted
-   narrow AO successor, terminal installed-service canary evidence,
-   permissionless risk decision, and boundaries that keep GitHub/Codex native
-   validation and review in place.
-10. `runbooks/agent-orchestrator-review-continuation.md` for the pinned source,
-   local patches, user service, project configuration, verification, and
-   recovery contract needed to reproduce the current host capability.
+Read the smallest source that owns the decision:
 
-11. `implementation-plan/20260723-v1.7-ao-repository-adoption-contract-implementation-plan.md`
-    for the closed repair that separates registration, runtime readiness, and
-    real-event continuation evidence across opted-in repositories.
-12. `decisions/2026-07-27-ai-native-calibration-review.md` for the accepted
-    outcome-autonomy baseline, narrower calibration trigger, and lightweight
-    autonomous behavior evaluation slice.
-13. `decisions/2026-07-27-ai-native-calibration-evaluation-closeout.md` for the
-    completed 48-session blind comparison, regression acceptance, and the
-    decision not to claim comparative improvement.
-14. `implementation-plan/20260727-v1.8-ai-native-calibration-convergence-implementation-plan.md`
-    for the accepted five-phase convergence plan, mandatory writable
-    implementation evaluation, and evidence gates for later rule removal.
+| Need | Current authority |
+| --- | --- |
+| Repository and installer contract | `../README.md` |
+| Cross-project judgment defaults | `../references/engineering/principles.md` |
+| Calibration routing | `../skills/calibration/SKILL.md` |
+| Repository capability and delivery placement | `../references/engineering/discipline/harness.md` |
+| Completion and external-result evidence | `../references/engineering/discipline/verification.md` |
+| Agent and workflow comparison | `../references/engineering/discipline/evaluation.md` |
+| Durable implementation-plan contract | `../references/engineering/docs/document-types/implementation-plan.md` |
+| Current AI-native direction | `decisions/2026-07-27-ai-native-calibration-review.md` |
+| Writable comparative evidence | `decisions/2026-07-27-ai-native-writable-implementation-evaluation-closeout.md` |
+| Five-phase convergence result | `decisions/2026-07-27-ai-native-calibration-convergence-closeout.md` |
 
-## Decision Status
+The current default is outcome autonomy within repository-local, reversible
+boundaries. Repository rules and executable feedback choose and revise the
+implementation path. Calibration remains the judgment layer for cross-project
+decisions, non-local design, compatibility-sensitive contracts, unclear
+verification, harness and evaluation work, and durable engineering
+documentation.
+
+## Current Operational Surface
+
+### Repository validation
+
+`pdm.lock` is the dependency authority. The repository completion gate is:
+
+```bash
+pdm lock --check
+pdm run check
+CODEX_HOME="$(mktemp -d)" bash install.sh --dry-run
+git diff --check
+git diff --cached --check
+git diff --check "${BASE_REF:-main}...HEAD"
+git status --short
+```
+
+Use an explicit temporary `CODEX_HOME`; validation must not overwrite an active
+Codex installation.
+
+### Writable behavior evaluation
+
+`../evaluations/ai-native-implementation/README.md` owns the isolated writable
+fixture protocol and runner commands. The current result is comparative
+improvement on W01-W03: candidate 9/9 deterministic passes and six of nine
+blind preferences versus baseline 8/9 and three preferences.
+
+Raw trajectories, isolated homes, workspaces, arm maps, and blind judge
+packages remain private temporary evidence. Commit only fixtures, protocol,
+reviewed findings, and reconstructable hashes.
+
+### AO review continuation
+
+`runbooks/agent-orchestrator-review-continuation.md` is the current-host
+installation, service, permission, recovery, and repository-adoption contract.
+`decisions/2026-07-23-ao-review-continuation-adoption.md` records the accepted
+narrow review-to-original-worker bridge.
+
+AO is an environment adapter, not a default part of ordinary engineering
+judgment. Repositories opt in individually after an observed continuation need.
+An explicit conversation-authorized implementation may start a task-specific
+worker in an already accepted repository. This is not automatic work discovery
+or unattended issue intake. Auto-merge, bulk enrollment, and wider
+orchestration remain outside the accepted boundary.
+
+## Open Evidence Gaps
+
+- The writable comparison covers small dependency-free Python repositories,
+  one model, one reasoning effort, and local verification. It does not
+  establish the same result for dependency-heavy, multi-language, production,
+  or pull-request delivery tasks.
+- W01 still showed variable pre-edit failure reproduction. Reopen the candidate
+  if repeated real work skips executable feedback where it materially changes
+  diagnosis or safety.
+- No repeated writable evidence supports changing the durable
+  implementation-plan contract. Phase 3 therefore closed `NO-CHANGE`.
+- No writable case loaded irrelevant host AO details or failed an
+  orchestration gate. Phase 4 therefore closed `NO-CHANGE`.
+- Detailed debugging, verification, harness, evaluation, and AO layers have
+  scoped owners, but their deletion still requires a representative ablation
+  or real-task replacement capability.
+- The Symphony readiness path remains closed at its 2026-07-22 `NO-GO` until
+  its pinned dependency and full-suite reopen conditions pass.
+
+## Historical Decisions
+
+These files preserve why the current authority exists. They are not the default
+reading path.
+
+### Architecture and documentation
 
 - `decisions/2026-07-01-calibration-rename-and-skill-architecture.md`:
-  implemented historical architecture decision.
+  implemented initial architecture.
 - `decisions/2026-07-01-calibration-follow-up-batches.md`: superseded batch
   record.
 - `decisions/2026-07-01-document-types-retrospect-and-evaluation.md`: partially
-  superseded historical decision.
+  superseded document-type decision.
 - `decisions/2026-07-03-writing-docstrings-skill-design.md`: superseded by
   `writing-code-docs`.
+
+### Harness and evaluation
+
 - `decisions/2026-07-20-skill-optimization-evaluation-closeout.md`: accepted
-  prior skill baseline and earlier evaluation limitations.
+  earlier skill baseline and evaluation limitations.
 - `decisions/2026-07-20-agent-contribution-and-task-isolation.md`: current
-  collaboration decision.
-- `decisions/2026-07-20-agent-harness-and-evaluation-ownership.md`: current
-  accepted harness and evaluation ownership boundary; the pull request #5 and
-  #7 behavior candidates were rejected separately.
+  collaboration boundary.
+- `decisions/2026-07-20-agent-harness-and-evaluation-ownership.md`: accepted
+  harness and evaluation ownership.
 - `decisions/2026-07-20-agent-harness-and-evaluation-closeout.md`: rejected
-  Slice 2 behavior candidate and current Slice 3 evaluation record.
+  Slice 2 candidate and retained Slice 3 evidence.
 - `decisions/2026-07-21-harness-successor-evaluation-closeout.md`: rejected
-  pull request #7 successor and current staged evaluation record.
-- `decisions/2026-07-21-repository-delivery-feedback-loop.md`: accepted
-  failure-driven repository delivery feedback boundary; merged by PR #10.
-- `decisions/2026-07-21-repository-engineering-capability-adoption-closeout.md`:
-  accepted v1.4 proportional adoption behavior with a bounded `bio_plot`
-  Symphony `NO-GO` and a repository-owned `biofetch` CI increment.
-- `decisions/2026-07-22-symphony-readiness-and-bounded-canary-closeout.md`:
-  closed v1.5 at Slice 1 after the pinned lock failed dependency audit and the
-  upstream full gate remained red on the current host.
-- `implementation-plan/20260722-v1.5-symphony-readiness-and-bounded-canary-implementation-plan.md`:
-  closed successor whose later scratch-repo and repository canary slices did
-  not open.
-- `implementation-plan/20260723-v1.6-repository-quality-gate-implementation-plan.md`:
-  closed repository-local quality-gate convergence; it does not modify skill
-  behavior or prescribe the same toolchain to other repositories.
-- `decisions/2026-07-23-ao-review-continuation-adoption.md`: current bounded
-  adoption decision for the AO review-to-original-worker bridge; Symphony's
-  separate `NO-GO` remains unchanged.
-- `runbooks/agent-orchestrator-review-continuation.md`: current operational
-  source of truth for rebuilding and verifying the user-level AO service.
-- `implementation-plan/20260723-v1.7-ao-repository-adoption-contract-implementation-plan.md`:
-  closed behavior-validated successor that makes repository onboarding
-  idempotent and prevents static health from being reported as continuation
-  proof; pull requests #20 and #21 have merged and final `main` validation
-  passed.
-- `decisions/2026-07-27-ai-native-calibration-review.md`: current accepted
-  calibration entry and autonomy direction.
+  v1.2 successor.
 - `decisions/2026-07-27-ai-native-calibration-evaluation-closeout.md`:
-  regression-accepted candidate with equal critical and required-behavior
-  results; blind preference did not establish comparative improvement.
+  historical read-only regression acceptance that motivated the writable
+  comparison.
+- `decisions/2026-07-27-ai-native-writable-implementation-evaluation-closeout.md`:
+  current writable comparative result.
+
+### Repository delivery and orchestration
+
+- `decisions/2026-07-21-repository-delivery-feedback-loop.md`: accepted
+  failure-driven delivery loop.
+- `decisions/2026-07-21-repository-engineering-capability-adoption-closeout.md`:
+  closed proportional adoption pilots and bounded Symphony `NO-GO`.
+- `decisions/2026-07-22-symphony-readiness-and-bounded-canary-closeout.md`:
+  closed readiness plan at Slice 1.
+- `implementation-plan/20260722-v1.5-symphony-readiness-and-bounded-canary-implementation-plan.md`:
+  closed Symphony plan and reopen gates.
+- `implementation-plan/20260723-v1.6-repository-quality-gate-implementation-plan.md`:
+  closed repository-local validation convergence.
+- `decisions/2026-07-23-ao-review-continuation-adoption.md`: accepted bounded
+  AO successor on the current host.
+- `implementation-plan/20260723-v1.7-ao-repository-adoption-contract-implementation-plan.md`:
+  closed behavior-validated adoption contract.
+
+### Current convergence history
+
+- `decisions/2026-07-27-ai-native-calibration-review.md`: accepted trigger and
+  outcome-autonomy direction.
 - `implementation-plan/20260727-v1.8-ai-native-calibration-convergence-implementation-plan.md`:
-  active staged convergence plan; Phase 2 is mandatory, while plan-contract
-  and environment-routing changes require their declared evidence gates.
+  implemented five-phase plan.
+- `decisions/2026-07-27-ai-native-calibration-convergence-closeout.md`: final
+  phase decisions, retirement ledger, and reopen conditions.
 
-## Current Boundary
-
-The v1.3 repository-delivery feedback loop and v1.4 proportional adoption plan
-are accepted and closed. The v1.5 Symphony readiness and bounded-canary plan
-is also closed at Slice 1 with `NO-GO`; it did not change calibration guidance
-or reopen wider orchestration.
-
-The v1.5 ephemeral probe established narrow source and protocol compatibility,
-but the pinned dependency lock failed security audit and upstream `make all`
-did not pass. It therefore stopped before a scratch tracker, persistent
-installation, or repository-owned no-product-change canary. E03/E04 remains
-closed until the latest closeout's gates pass.
-
-A later, narrower successor did not reopen Symphony. A pinned Agent
-Orchestrator build now supplies the missing GitHub Automatic Review event to
-original Codex worker continuation on the current host. For individually
-registered repositories on this accepted single-user host, it may also start
-or claim a task-specific worker after a conversation explicitly authorizes
-implementation and pull-request delivery. This does not enable unattended
-issue intake or automatic work discovery. The build is a user-level canary
-with two retained local patches, explicitly accepted `bypass-permissions`, and
-auto-merge disabled. A separate disposable repository remains registered only
-as a test fixture. `biofetch` has completed one bounded real-repository
-dependency task through the same service; this is evidence for that task and
-host, not automatic enrollment of the remaining repositories. Other
-repositories adopt AO only after an observed recurring continuation need.
-The terminal scratch-repository canary completed the full review, original
-worker fix, test, push, CI, thread-resolution, and re-review loop without human
-relay; this is a GO for the tested host topology, not a mandate for bulk
-repository enrollment.
-
-The v1.7 `calibration` adoption completed four real Automatic Review repair
-rounds through its original AO worker. All eighteen review threads are
-resolved, and the final reviewed tree passed `validate-skills`. Quality-gate
-pull request #20 merged first; pull request #21 was then rebased onto the new
-`main`, revalidated, and merged. The merge-result `main` run also passed, so
-the initializer and documentation are now repository authority.
-
-The optional Web Dashboard exploration is also closed without adoption. An
-isolated read-only browser canary rendered live AO state successfully, but the
-pinned package exposes the dashboard as an Electron Desktop App rather than a
-supported headless Web service. The temporary listeners were stopped, and the
-runbook now records that `ao start` must not be used on this headless host.
-
-The closeout does not authorize bulk environment provisioning, mandatory
-per-repository configuration, auto-merge, or project-specific operating rules
-inside calibration. Another Symphony canary requires the 2026-07-22 closeout's
-explicit host and scratch reopen conditions. A `bio_plot_platform` or E03/E04
-canary additionally requires the cumulative repository gates retained by the
-2026-07-21 adoption closeout.
+Historical files remain in place. Repair a historical document only when a
+fact or link is broken; record current interpretation in a new decision or the
+current authority map. Do not add a `README.html` mirror.
