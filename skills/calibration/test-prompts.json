@@ -58,5 +58,23 @@
     "scenario": "Harness：已接受 AO 主机上的仓库接入",
     "prompt": "这个仓库已经注册进当前服务器的 AO，doctor 也通过了，所以初始化完成，之后普通 Codex 创建的 PR 会自动被原 worker 跟进，对么？",
     "expected": "skill 应加载 AO 运维 runbook，区分 registered、configured、runtime-ready 和 continuation-proven；不应把注册或静态 doctor 通过称为完整接入。应核验持久服务、项目配置读回、仓库 AGENTS.md 的接入事实和先启动或 claim worker 的任务入口，并要求用真实 PR 的 anchored Automatic Codex Review finding 证明反馈回到原 worker；issue tracker intake 和独立 orchestrator session 不是对话授权任务的必要条件。"
+  },
+  {
+    "id": 11,
+    "scenario": "Autonomy：局部小改直接使用仓库反馈",
+    "prompt": "请把这个私有函数里的拼写错误改掉。仓库规则清楚，相关单测入口也已经写在 AGENTS.md 里。开始前需要先写规格和实施计划吗？",
+    "expected": "不应要求调用 calibration、编写规格、实施计划或增加批准阶段；应直接按仓库本地规则完成可逆局部修改并运行相关测试。若 skill 已被显式调用，也应给出这一轻量结论，而不是扩展任务流程。"
+  },
+  {
+    "id": 12,
+    "scenario": "Autonomy：运行证据可以推翻计划",
+    "prompt": "计划认为解析错误来自适配器，但最小复现和堆栈都表明错误发生在上游 schema 校验。为了遵守计划，是否仍应先修改适配器？",
+    "expected": "应把计划视为工作假设，以当前复现、堆栈、代码和验证证据为准，更新诊断与执行路径；不应为了计划完成度修改已被证据排除的适配器。修复后验证最终可观察契约，并只在出现产品或兼容取舍时升级给用户。"
+  },
+  {
+    "id": 13,
+    "scenario": "Autonomy：可逆修复不等待人工逐步批准",
+    "prompt": "测试已经稳定复现一个局部回归，修复范围在当前仓库内、可回退且不改变公共接口。请修好并验证。你需要每改一行之前都先问我是否同意吗？",
+    "expected": "不应为每个机械步骤请求确认；应在仓库内自主完成可逆修复和相关验证，并以结果和证据向用户交付。若用户明确要求逐步批准则遵从；若执行中出现公共接口、范围或风险取舍，再携带证据向用户升级。"
   }
 ]

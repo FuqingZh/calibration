@@ -1,7 +1,11 @@
 # Global AGENTS.md
 
-For coding, refactoring, architecture, interfaces, naming, APIs, CLIs, schemas,
-testing, validation, or durable documentation, use `$calibration` before making
-substantive changes. Load only the references it routes for the current task.
+Use `$calibration` before substantive changes that require cross-project
+engineering judgment, non-local architecture or refactoring, public or
+compatibility-sensitive contract decisions, unclear validation, repository
+harness changes, agent or workflow evaluation, or durable engineering
+documentation. For ordinary local implementation with clear repository rules
+and executable feedback, work directly from those sources without adding a
+calibration step. Load only the references routed for the current task.
 
 In WSL, the skill source is available at `{{CALIBRATION_ROOT}}/skills`.

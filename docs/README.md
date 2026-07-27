@@ -36,6 +36,15 @@ implementation plans. Reusable cross-project engineering guidance lives under
 11. `implementation-plan/20260723-v1.7-ao-repository-adoption-contract-implementation-plan.md`
     for the closed repair that separates registration, runtime readiness, and
     real-event continuation evidence across opted-in repositories.
+12. `decisions/2026-07-27-ai-native-calibration-review.md` for the accepted
+    outcome-autonomy baseline, narrower calibration trigger, and lightweight
+    autonomous behavior evaluation slice.
+13. `decisions/2026-07-27-ai-native-calibration-evaluation-closeout.md` for the
+    completed 48-session blind comparison, regression acceptance, and the
+    decision not to claim comparative improvement.
+14. `implementation-plan/20260727-v1.8-ai-native-calibration-convergence-implementation-plan.md`
+    for the accepted five-phase convergence plan, mandatory writable
+    implementation evaluation, and evidence gates for later rule removal.
 
 ## Decision Status
 
@@ -82,6 +91,14 @@ implementation plans. Reusable cross-project engineering guidance lives under
   idempotent and prevents static health from being reported as continuation
   proof; pull requests #20 and #21 have merged and final `main` validation
   passed.
+- `decisions/2026-07-27-ai-native-calibration-review.md`: current accepted
+  calibration entry and autonomy direction.
+- `decisions/2026-07-27-ai-native-calibration-evaluation-closeout.md`:
+  regression-accepted candidate with equal critical and required-behavior
+  results; blind preference did not establish comparative improvement.
+- `implementation-plan/20260727-v1.8-ai-native-calibration-convergence-implementation-plan.md`:
+  active staged convergence plan; Phase 2 is mandatory, while plan-contract
+  and environment-routing changes require their declared evidence gates.
 
 ## Current Boundary
 

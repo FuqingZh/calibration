@@ -10,6 +10,20 @@ topics.
 - Prefer a corrected problem statement over a polished solution to the wrong
   problem.
 
+## Outcome Autonomy And Feedback
+
+- Prefer explicit outcomes, invariants, boundaries, and executable acceptance
+  feedback over prescribed implementation steps.
+- Within reversible repository-local boundaries, let the agent choose and
+  revise its execution path from current code, runtime evidence, and validation
+  results.
+- Treat plans as working hypotheses rather than implementation authority. When
+  repository or runtime evidence disproves a planned path, update the path
+  instead of preserving the plan.
+- Add durable process artifacts only when coordination, risk, interruption, or
+  repeated failure makes them useful. Do not require plans, specifications, or
+  approval stages merely because a task changes code.
+
 ## Native Abstractions and Data Flow
 
 - Prefer the installed domain library's native bulk abstractions over

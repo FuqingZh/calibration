@@ -1,6 +1,6 @@
 ---
 name: calibration
-description: Use for cross-project engineering decisions about coding, refactoring, architecture, interfaces, naming, APIs, CLIs, schemas, testing, validation, repository harnesses, agent or workflow evaluation, and durable documentation.
+description: Use for substantive cross-project engineering judgment, non-local architecture or refactoring, public or compatibility-sensitive contracts, unclear validation, repository harnesses, agent or workflow evaluation, and durable engineering documentation. Ordinary local implementation with clear repository rules and executable feedback does not require this skill.
 ---
 
 # Calibration
@@ -10,6 +10,11 @@ of truth.
 
 Apply direct user instructions first, then the most specific repository-local
 rules, then shared defaults. Name any conflict that changes the outcome.
+
+Prefer outcome constraints and executable feedback over prescribed
+implementation steps. Within reversible repository-local boundaries, let the
+agent choose and revise its path from current evidence. Do not require a plan,
+specification, or approval stage merely because a task changes code.
 
 ## Baseline
 

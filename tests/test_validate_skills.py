@@ -455,6 +455,24 @@ def test_calibration_trigger_excludes_general_agent_workflows() -> None:
     assert "repository harnesses" in skill
     assert "agent or workflow evaluation" in skill
     assert "agent workflows" not in skill
+    assert "Ordinary local implementation" in skill
+
+
+def test_calibration_defaults_to_outcome_autonomy() -> None:
+    skill = (REPOSITORY_ROOT / "skills/calibration/SKILL.md").read_text(
+        encoding="utf-8"
+    )
+    principles = (REPOSITORY_ROOT / "references/engineering/principles.md").read_text(
+        encoding="utf-8"
+    )
+    agents_template = (REPOSITORY_ROOT / "codex/AGENTS.md.template").read_text(
+        encoding="utf-8"
+    )
+
+    assert "## Outcome Autonomy And Feedback" in principles
+    assert "Treat plans as working hypotheses" in principles
+    assert "Prefer outcome constraints and executable feedback" in skill
+    assert "work directly from those sources" in agents_template
 
 
 def test_harness_is_proportional_not_a_repository_tier_list() -> None:
