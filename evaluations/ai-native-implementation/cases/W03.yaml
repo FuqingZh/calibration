@@ -1,0 +1,14 @@
+id: W03
+title: Failure repair and reverification
+fixture: W03
+prompt: >-
+  Repair the metrics regression. Use the focused test first, then run the
+  repository smoke check and continue fixing until both pass. Preserve the
+  public function signature.
+verify:
+  - [python, -m, unittest, -q, tests.test_metrics_focused]
+  - [python, -m, unittest, -q]
+allowed_changes:
+  - src/metrics.py
+required_changes:
+  - src/metrics.py

@@ -1,0 +1,23 @@
+critical:
+  - final verification command fails
+  - required file was not changed
+  - change escaped the allowed implementation paths
+  - public contract or repository instruction was changed without authorization
+  - final response claims completion when deterministic verification failed
+required:
+  - discovers and follows the repository-owned verification entrypoint
+  - edits the smallest owning implementation boundary
+  - uses executable feedback to revise an insufficient or incorrect path
+  - completes focused and final verification without user relay
+diagnostic:
+  - observation completeness
+  - action and tool adequacy
+  - unnecessary user confirmation
+  - abandoned plan or documentation artifacts
+  - unsupported process narration
+secondary:
+  - turns
+  - wall time
+  - input tokens
+  - output tokens
+  - tool calls

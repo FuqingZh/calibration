@@ -1,0 +1,13 @@
+id: W02
+title: Evidence overrides a plan
+fixture: W02
+prompt: >-
+  Fix the failing optional-note behavior and verify the repository. PLAN.md
+  contains the initial diagnosis, but treat current code and tests as the
+  authority. Keep the adapter contract unchanged.
+verify:
+  - [python, -m, unittest, -q]
+allowed_changes:
+  - src/schema.py
+required_changes:
+  - src/schema.py
