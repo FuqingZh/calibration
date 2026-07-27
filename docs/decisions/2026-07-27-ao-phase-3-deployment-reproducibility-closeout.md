@@ -46,9 +46,15 @@ complete managed wrapper source is
 The wrapper-to-daemon credential handoff is not sufficient to protect worker
 environments by itself. The deployed AO build must filter both
 `AO_LINEAR_API_KEY` and `AO_LINEAR_OAUTH_TOKEN` before creating tmux panes.
-That AO-side fix is being developed separately and is a deployment gate. Record
-its commit here after it is supplied and deployed; until then, do not claim the
-Linear deployment has closed its worker-secret boundary.
+The AO-side candidate is
+[`2757dd6e1d4a8491f805efebbc228331d3dda617`](https://github.com/FuqingZh/agent-orchestrator/commit/2757dd6e1d4a8491f805efebbc228331d3dda617)
+in agent-orchestrator
+[pull request #10](https://github.com/FuqingZh/agent-orchestrator/pull/10).
+It is based on `7238619cbab019081fff2c683df45ed32f89d13a` but was not
+merged to fork `main` or present in the installed `2fbd3af9...` binary at this
+closeout update. Deployment and the new-pane verification remain acceptance
+gates; until both pass, do not claim the Linear deployment has closed its
+worker-secret boundary.
 
 ## Reproducible Build And Source Sync
 

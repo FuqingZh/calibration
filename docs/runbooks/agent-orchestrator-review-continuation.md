@@ -287,10 +287,14 @@ deployment does not authorize writes to Linear.
 
 The wrapper necessarily supplies the credential to the daemon process. AO must
 filter both `AO_LINEAR_API_KEY` and `AO_LINEAR_OAUTH_TOKEN` from every tmux pane
-environment before this deployment is accepted. That fix belongs to the AO
-repository and is being implemented separately. Add its commit to this runbook
-after the user supplies it and the fixed binary is deployed; do not represent
-the wrapper alone as closing the worker-secret boundary.
+environment before this deployment is accepted. The AO-side candidate is
+[`2757dd6e1d4a8491f805efebbc228331d3dda617`](https://github.com/FuqingZh/agent-orchestrator/commit/2757dd6e1d4a8491f805efebbc228331d3dda617)
+in agent-orchestrator
+[pull request #10](https://github.com/FuqingZh/agent-orchestrator/pull/10).
+It is based on the pinned fork commit but was not merged to fork `main` or
+present in the installed `2fbd3af9...` binary at this update. Do not represent
+the wrapper or the uninstalled candidate alone as closing the worker-secret
+boundary.
 
 The append-only user log is the first diagnostic surface for an HTTP
 `INTERNAL_ERROR`. Inspect the matching request id before retrying a failed
@@ -529,8 +533,10 @@ host wiring are active.
 
 ### Worker environment secret gate
 
-After deploying the pending AO-side environment-filtering fix, create a new
-disposable AO worker so AO creates the tmux pane. In that new pane run:
+After merging and deploying AO fix
+`2757dd6e1d4a8491f805efebbc228331d3dda617` or a reviewed descendant with the
+same filtering behavior, create a new disposable AO worker so AO creates the
+tmux pane. In that new pane run:
 
 ```bash
 env | sed -n 's/=.*//p' |
@@ -543,8 +549,9 @@ the check. Also verify a new pane after restarting the tmux server, because an
 already-running server can hide daemon-to-server inheritance defects.
 
 Do not accept the Linear deployment while this check fails or before the
-AO-side filtering fix is deployed. Once the user supplies the fix commit,
-record that exact commit and the deployed binary hash here.
+AO-side filtering fix is deployed. After cutover, replace the pre-fix
+`2fbd3af9...` installed-hash evidence with the reproducible hash of the deployed
+fixed commit and retain the prior binary as rollback evidence.
 
 Also confirm that
 `/home/fqzhang/.local/lib/ao/bin/tmux show-environment -g LD_LIBRARY_PATH`
