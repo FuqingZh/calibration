@@ -232,6 +232,7 @@ def test_build_codex_command_contains_frozen_controls(tmp_path: Path) -> None:
     )
     assert command[0:2] == ["codex", "exec"]
     assert "--ephemeral" in command
+    assert command.count("--disable") == 2
     assert "workspace-write" in command
     assert 'model_reasoning_effort="high"' in command
     assert command[-1] == "do work"
