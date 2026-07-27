@@ -25,6 +25,11 @@ Freeze:
 - one model, reasoning effort, sandbox, prompt, and step budget; and
 - one fresh workspace and Codex home per run.
 
+The isolated Codex home contains only the selected arm and authentication.
+Ignore unrelated user configuration and disable Apps and Plugins, but retain
+the arm's installed rules and the fixture repository's `AGENTS.md`; they are
+part of the operating combination being compared.
+
 Run every arm and case once. Continue to three repetitions only if all six
 smoke runs pass their critical gates.
 

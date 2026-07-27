@@ -190,7 +190,6 @@ def build_codex_command(
         "exec",
         "--ephemeral",
         "--ignore-user-config",
-        "--ignore-rules",
         "--disable",
         "apps",
         "--disable",
