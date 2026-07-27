@@ -88,7 +88,9 @@ Both readbacks must report
 
 ```bash
 AO_BUILD_ROOT="$(mktemp -d)"
-git worktree add --detach "${AO_BUILD_ROOT}/source" \
+git clone --no-checkout https://github.com/FuqingZh/agent-orchestrator.git \
+  "${AO_BUILD_ROOT}/source"
+git -C "${AO_BUILD_ROOT}/source" checkout --detach \
   7238619cbab019081fff2c683df45ed32f89d13a
 cd "${AO_BUILD_ROOT}/source/backend"
 go test ./...
@@ -104,9 +106,28 @@ Source tree `e9505779` produced different hashes from two worktrees when built
 with only `-buildvcs=false`; adding `-trimpath` made both builds produce this
 same hash. Both flags are therefore part of the canonical deployment command.
 
-### Original patched canary
+Install the verified artifact as `fqzhang`, preserving the currently installed
+binary first:
 
-Run from a clean checkout of this calibration repository:
+```bash
+AO_CUTOVER_BACKUP="/home/fqzhang/.ao/backups/phase3-trimpath-$(date +%Y%m%d%H%M%S)"
+install -d -m 0700 "${AO_CUTOVER_BACKUP}"
+install -m 0755 /home/fqzhang/.local/bin/ao \
+  "${AO_CUTOVER_BACKUP}/ao-pre-reproducible"
+install -m 0755 "${AO_BUILD_ROOT}/bin/ao" /home/fqzhang/.local/bin/ao
+sha256sum /home/fqzhang/.local/bin/ao
+systemctl --user restart agent-orchestrator.service
+```
+
+The installed hash must match the expected value above. Then run every
+host-context, wrapper, worker-environment, and Linear smoke check in
+Verification before accepting the cutover.
+
+### Rollback-only original patched canary
+
+This procedure reconstructs the superseded upstream canary only. Do not use it
+to rebuild the current Phase 3 fork. Run from a clean checkout of this
+calibration repository when rollback requires that historical artifact:
 
 ```bash
 AO_BUILD_ROOT="$(mktemp -d)"
@@ -234,13 +255,21 @@ unit or repository. Store the credential only at
 the mode `0700` directory `/home/fqzhang/.config/agent-orchestrator`.
 
 The mode `0755` wrapper
-`/home/fqzhang/.local/lib/ao/bin/ao-daemon-with-linear` reads exactly one line
-from that file, fails closed when it is missing, unreadable, or empty, exports
-the value as `AO_LINEAR_API_KEY` to the daemon process, and then executes:
+`/home/fqzhang/.local/lib/ao/bin/ao-daemon-with-linear` is managed from
+[`artifacts/ao-daemon-with-linear`](artifacts/ao-daemon-with-linear). Install
+the exact repository artifact:
 
-```sh
-exec /home/fqzhang/.local/bin/ao daemon
+```bash
+install -D -m 0755 \
+  docs/runbooks/artifacts/ao-daemon-with-linear \
+  /home/fqzhang/.local/lib/ao/bin/ao-daemon-with-linear
+sha256sum /home/fqzhang/.local/lib/ao/bin/ao-daemon-with-linear
 ```
+
+The expected wrapper SHA-256 is
+`0531d973a0cd690b03b52530388cf138e5a4b54899167a341ca0d1a5ff88d2d7`.
+The complete source is retained rather than described only in prose so
+reconstruction and audit use identical fail-closed behavior.
 
 The mode `0644` drop-in
 `/home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf`
@@ -255,6 +284,13 @@ ExecStart=%h/.local/lib/ao/bin/ao-daemon-with-linear
 Do not record the credential value in Git, shell transcripts, the systemd
 unit, or diagnostic output. The file is read-only operational input; this
 deployment does not authorize writes to Linear.
+
+The wrapper necessarily supplies the credential to the daemon process. AO must
+filter both `AO_LINEAR_API_KEY` and `AO_LINEAR_OAUTH_TOKEN` from every tmux pane
+environment before this deployment is accepted. That fix belongs to the AO
+repository and is being implemented separately. Add its commit to this runbook
+after the user supplies it and the fixed binary is deployed; do not represent
+the wrapper alone as closing the worker-secret boundary.
 
 The append-only user log is the first diagnostic surface for an HTTP
 `INTERNAL_ERROR`. Inspect the matching request id before retrying a failed
@@ -412,10 +448,13 @@ stat -c '%A %a %U:%G %n' \
   /home/fqzhang/.local/lib/ao/bin/ao-daemon-with-linear \
   /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d \
   /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf
+sha256sum /home/fqzhang/.local/lib/ao/bin/ao-daemon-with-linear
 ```
 
 A check run as another user, outside the user manager, or with a separately
 constructed environment does not verify the deployed service context.
+The wrapper hash must be
+`0531d973a0cd690b03b52530388cf138e5a4b54899167a341ca0d1a5ff88d2d7`.
 
 Expected current readback:
 
@@ -437,6 +476,75 @@ configuration and exercise the smoke path. It does not prove sustained polling,
 durable claims, issue-to-worker creation, restart recovery, or complete
 processing of a real Linear issue. Require a separately authorized real-project
 canary before describing Linear intake as end-to-end proven.
+
+### Bounded read-only Linear smoke
+
+Inputs:
+
+- the mode `0600` credential file
+  `/home/fqzhang/.config/agent-orchestrator/linear-api-key`;
+- network access to `https://api.linear.app/graphql`; and
+- `curl` plus Python 3.
+
+Run this non-mutating identity query. The command never prints the credential:
+
+```bash
+LINEAR_SMOKE_RESPONSE="$(mktemp)"
+trap 'rm -f "${LINEAR_SMOKE_RESPONSE}"' EXIT
+LINEAR_SMOKE_KEY=
+IFS= read -r LINEAR_SMOKE_KEY < \
+  /home/fqzhang/.config/agent-orchestrator/linear-api-key ||
+  [ -n "${LINEAR_SMOKE_KEY}" ]
+printf 'header = "Authorization: %s"\n' "${LINEAR_SMOKE_KEY}" |
+  curl --config - --fail-with-body --silent --show-error \
+  --connect-timeout 10 --max-time 30 \
+  -H 'Content-Type: application/json' \
+  --data '{"query":"query AOViewer { viewer { id } }"}' \
+  https://api.linear.app/graphql > "${LINEAR_SMOKE_RESPONSE}"
+unset LINEAR_SMOKE_KEY
+python - "${LINEAR_SMOKE_RESPONSE}" <<'PY'
+import json
+import pathlib
+import sys
+
+payload = json.loads(pathlib.Path(sys.argv[1]).read_text())
+assert not payload.get("errors"), "Linear returned GraphQL errors"
+viewer_id = payload.get("data", {}).get("viewer", {}).get("id", "")
+assert isinstance(viewer_id, str) and viewer_id.strip(), "missing Linear viewer id"
+print("linear-read-only-smoke: PASS")
+PY
+rm -f "${LINEAR_SMOKE_RESPONSE}"
+trap - EXIT
+```
+
+Success requires HTTP success, valid JSON, no GraphQL `errors`, a non-empty
+`data.viewer.id`, and the final line `linear-read-only-smoke: PASS`. The query
+has no mutation and does not enable tracker intake, create a worker, or alter a
+Linear object. Failure at any step blocks the deployment claim.
+
+This verifies the credential and read-only Linear API path. The installed AO
+hash, effective service command, wrapper hash, daemon readiness, and
+worker-environment checks separately verify that the intended AO artifact and
+host wiring are active.
+
+### Worker environment secret gate
+
+After deploying the pending AO-side environment-filtering fix, create a new
+disposable AO worker so AO creates the tmux pane. In that new pane run:
+
+```bash
+env | sed -n 's/=.*//p' |
+  grep -E '^AO_LINEAR_(API_KEY|OAUTH_TOKEN)$'
+```
+
+Success is exit status `1` with no output: neither variable name may be present.
+This command emits names only, never values. Kill the disposable worker after
+the check. Also verify a new pane after restarting the tmux server, because an
+already-running server can hide daemon-to-server inheritance defects.
+
+Do not accept the Linear deployment while this check fails or before the
+AO-side filtering fix is deployed. Once the user supplies the fix commit,
+record that exact commit and the deployed binary hash here.
 
 Also confirm that
 `/home/fqzhang/.local/lib/ao/bin/tmux show-environment -g LD_LIBRARY_PATH`
@@ -504,6 +612,10 @@ The cutover backup must also preserve the pre-reproducible Phase 3 binary with
 SHA-256
 `ec19ff3a87a15a04eb3d9d647397c2cc32a820da19448cc93b6fe4f423cc4016`.
 
+The retained service in this immediate set starts
+`/home/fqzhang/.local/bin/ao daemon`, so the retained `ao` is its matching
+executable and no `ao-daemon` copy is required for this set.
+
 The earlier upstream-canary set is retained under
 `/home/fqzhang/.local/lib/ao/backups/20260726-upstream-9f8c085f/`:
 
@@ -511,6 +623,12 @@ The earlier upstream-canary set is retained under
 - `ao-daemon`
 - `ao.db`
 - `agent-orchestrator.service`
+
+This earlier service starts `/home/fqzhang/.local/bin/ao-daemon`. Restore it
+only with the matching
+`/home/fqzhang/.local/lib/ao/backups/20260726-upstream-9f8c085f/ao-daemon`,
+whose SHA-256 is
+`5bd25fd1647c4c6eb2e22b35aa9f257c0d76d23c5ed0fa42c5bed32745e290e8`.
 
 To roll back, stop the service, preserve the current binary, database, base
 unit, wrapper, and drop-in in a new dated backup, then restore one internally

@@ -29,6 +29,8 @@ automation boundary.
   `/home/fqzhang/.config/agent-orchestrator`
 - Credential wrapper:
   `/home/fqzhang/.local/lib/ao/bin/ao-daemon-with-linear`, mode `0755`
+- Credential wrapper SHA-256:
+  `0531d973a0cd690b03b52530388cf138e5a4b54899167a341ca0d1a5ff88d2d7`
 - Service drop-in:
   `/home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf`,
   mode `0644`, inside a mode `0700` drop-in directory
@@ -37,7 +39,16 @@ The wrapper reads the credential at process start, rejects a missing, unreadable
 or empty file, exports it only to the daemon process as `AO_LINEAR_API_KEY`,
 and executes `/home/fqzhang/.local/bin/ao daemon`. The drop-in clears the base
 unit's `ExecStart` and replaces it with the wrapper. The credential value is
-not present in the unit, drop-in, wrapper, repository, or this decision.
+not present in the unit, drop-in, wrapper, repository, or this decision. The
+complete managed wrapper source is
+[`../runbooks/artifacts/ao-daemon-with-linear`](../runbooks/artifacts/ao-daemon-with-linear).
+
+The wrapper-to-daemon credential handoff is not sufficient to protect worker
+environments by itself. The deployed AO build must filter both
+`AO_LINEAR_API_KEY` and `AO_LINEAR_OAUTH_TOKEN` before creating tmux panes.
+That AO-side fix is being developed separately and is a deployment gate. Record
+its commit here after it is supplied and deployed; until then, do not claim the
+Linear deployment has closed its worker-secret boundary.
 
 ## Reproducible Build And Source Sync
 
@@ -88,6 +99,11 @@ processing of a real Linear issue. Do not describe the deployment as a proven
 production Linear intake service until a separately authorized real-project
 canary exercises those behaviors.
 
+The bounded smoke must also remain read-only: authenticate a `viewer` GraphQL
+query using the credential file, require a non-empty viewer id and no GraphQL
+errors, and make no project, issue, comment, or workflow mutation. The runbook
+owns the executable command and full success criteria.
+
 ## Rollback
 
 The immediate pre-Phase-3 artifacts are retained under
@@ -102,6 +118,11 @@ The pre-reproducible Phase 3 binary with SHA-256
 `ec19ff3a87a15a04eb3d9d647397c2cc32a820da19448cc93b6fe4f423cc4016`
 must also remain recoverable in the cutover backup. It is rollback evidence,
 not the canonical reproducible deployment artifact.
+
+This immediate set is internally consistent because its retained base unit
+starts `ao daemon`; it does not require the separate `ao-daemon` executable.
+The older base unit that starts `ao-daemon` must be restored only with the
+matching retained executable under the earlier upstream-canary backup.
 
 The earlier upstream-canary artifacts are retained under
 `/home/fqzhang/.local/lib/ao/backups/20260726-upstream-9f8c085f/`:
