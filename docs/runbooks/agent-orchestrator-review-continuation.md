@@ -21,6 +21,19 @@ host without explicit risk acceptance from its owner.
 
 ## Pinned Inputs
 
+- Current deployed fork:
+  `https://github.com/FuqingZh/agent-orchestrator.git`
+- Current deployed fork `main` commit:
+  `7238619cbab019081fff2c683df45ed32f89d13a`
+- Canonical `/home/fqzhang/.local/bin/ao` SHA-256 after cutover:
+  `2fbd3af959a1135c7d0b3cefeb0c5597b3f68a53c39e5102c418f5db302f9a16`
+- Pre-reproducible Phase 3 `/home/fqzhang/.local/bin/ao` SHA-256:
+  `ec19ff3a87a15a04eb3d9d647397c2cc32a820da19448cc93b6fe4f423cc4016`
+
+The current deployment supersedes the original patched canary artifact below.
+Retain the older inputs and the pre-reproducible Phase 3 binary for
+reconstruction and rollback evidence.
+
 - Repository: `https://github.com/AgentWrapper/agent-orchestrator.git`
 - Tested upstream commit:
   `04841344c82f213b8fc0e34b713e2442f8793d2b`
@@ -58,6 +71,41 @@ existing user authentication at runtime.
 
 ## Rebuild
 
+### Current Phase 3 fork
+
+Synchronize the durable remote-tracking ref explicitly. On this checkout,
+`git fetch origin main` updated only `FETCH_HEAD`; it did not update
+`refs/remotes/origin/main`.
+
+```bash
+git fetch origin refs/heads/main:refs/remotes/origin/main
+git rev-parse refs/remotes/origin/main
+git ls-remote origin refs/heads/main
+```
+
+Both readbacks must report
+`7238619cbab019081fff2c683df45ed32f89d13a`. Then build from that commit:
+
+```bash
+AO_BUILD_ROOT="$(mktemp -d)"
+git worktree add --detach "${AO_BUILD_ROOT}/source" \
+  7238619cbab019081fff2c683df45ed32f89d13a
+cd "${AO_BUILD_ROOT}/source/backend"
+go test ./...
+mkdir -p "${AO_BUILD_ROOT}/bin"
+go build -trimpath -buildvcs=false \
+  -o "${AO_BUILD_ROOT}/bin/ao" ./cmd/ao
+sha256sum "${AO_BUILD_ROOT}/bin/ao"
+```
+
+The expected SHA-256 is
+`2fbd3af959a1135c7d0b3cefeb0c5597b3f68a53c39e5102c418f5db302f9a16`.
+Source tree `e9505779` produced different hashes from two worktrees when built
+with only `-buildvcs=false`; adding `-trimpath` made both builds produce this
+same hash. Both flags are therefore part of the canonical deployment command.
+
+### Original patched canary
+
 Run from a clean checkout of this calibration repository:
 
 ```bash
@@ -77,17 +125,17 @@ go test ./internal/adapters/runtime/tmux \
   ./internal/domain \
   ./internal/adapters/scm/github
 mkdir -p "${AO_BUILD_ROOT}/bin"
-go build -buildvcs=false -o "${AO_BUILD_ROOT}/bin/ao" ./cmd/ao
-go build -buildvcs=false -o "${AO_BUILD_ROOT}/bin/ao-daemon" .
+go build -trimpath -buildvcs=false -o "${AO_BUILD_ROOT}/bin/ao" ./cmd/ao
+go build -trimpath -buildvcs=false -o "${AO_BUILD_ROOT}/bin/ao-daemon" .
 sha256sum "${AO_BUILD_ROOT}/bin/ao" \
   "${AO_BUILD_ROOT}/bin/ao-daemon"
 ```
 
 VCS stamping is disabled because replaying mail patches creates equivalent
-trees with new committer metadata. Go build IDs can still make hashes
-toolchain-specific. On a different supported toolchain, a hash difference
-requires source, patch, test, and launch review; it is not by itself proof of a
-behavior change.
+trees with new committer metadata. `-trimpath` removes worktree paths from the
+artifact. Go build IDs can still make hashes toolchain-specific. On a different
+supported toolchain, a hash difference requires source, patch, test, and launch
+review; it is not by itself proof of a behavior change.
 
 ## Install
 
@@ -177,6 +225,36 @@ portable defaults; omit or replace them on a host with different network
 routing. A new host may use a system tmux 3.5 or later and omit the wrapper.
 Update the unit and rerun `ao doctor --json` after changing the active Node,
 Codex, tmux, or network configuration.
+
+### Phase 3 Linear credential override
+
+The current host adds Linear access without placing a credential in the base
+unit or repository. Store the credential only at
+`/home/fqzhang/.config/agent-orchestrator/linear-api-key`, mode `0600`, inside
+the mode `0700` directory `/home/fqzhang/.config/agent-orchestrator`.
+
+The mode `0755` wrapper
+`/home/fqzhang/.local/lib/ao/bin/ao-daemon-with-linear` reads exactly one line
+from that file, fails closed when it is missing, unreadable, or empty, exports
+the value as `AO_LINEAR_API_KEY` to the daemon process, and then executes:
+
+```sh
+exec /home/fqzhang/.local/bin/ao daemon
+```
+
+The mode `0644` drop-in
+`/home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf`
+is held inside a mode `0700` directory and replaces the base unit command:
+
+```ini
+[Service]
+ExecStart=
+ExecStart=%h/.local/lib/ao/bin/ao-daemon-with-linear
+```
+
+Do not record the credential value in Git, shell transcripts, the systemd
+unit, or diagnostic output. The file is read-only operational input; this
+deployment does not authorize writes to Linear.
 
 The append-only user log is the first diagnostic surface for an HTTP
 `INTERNAL_ERROR`. Inspect the matching request id before retrying a failed
@@ -308,6 +386,37 @@ sha256sum /home/fqzhang/.local/bin/ao \
   /home/fqzhang/.local/bin/ao-daemon
 ```
 
+After the reproducible Phase 3 cutover,
+`/home/fqzhang/.local/bin/ao` must report:
+
+```text
+2fbd3af959a1135c7d0b3cefeb0c5597b3f68a53c39e5102c418f5db302f9a16
+```
+
+The SHA-256
+`ec19ff3a87a15a04eb3d9d647397c2cc32a820da19448cc93b6fe4f423cc4016`
+identifies the pre-reproducible Phase 3 binary and belongs in rollback
+evidence, not the final deployment readback.
+
+Run these checks as `fqzhang` through the same `systemd --user` manager used by
+the deployment. Confirm the effective wrapper and drop-in rather than relying
+on a shell invocation:
+
+```bash
+systemctl --user cat agent-orchestrator.service
+systemctl --user show agent-orchestrator.service \
+  -p FragmentPath -p DropInPaths -p ExecStart -p ActiveState -p UnitFileState
+stat -c '%A %a %U:%G %n' \
+  /home/fqzhang/.config/agent-orchestrator \
+  /home/fqzhang/.config/agent-orchestrator/linear-api-key \
+  /home/fqzhang/.local/lib/ao/bin/ao-daemon-with-linear \
+  /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d \
+  /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf
+```
+
+A check run as another user, outside the user manager, or with a separately
+constructed environment does not verify the deployed service context.
+
 Expected current readback:
 
 - service: `enabled`, `active`, and daemon `ready`;
@@ -321,6 +430,13 @@ Expected current readback:
 
 Passing this section establishes `runtime-ready`, not
 `continuation-proven`.
+
+A passing Phase 3 Linear smoke is also narrower than a real Linear intake
+loop. It shows that the installed binary can load the read-only tracker
+configuration and exercise the smoke path. It does not prove sustained polling,
+durable claims, issue-to-worker creation, restart recovery, or complete
+processing of a real Linear issue. Require a separately authorized real-project
+canary before describing Linear intake as end-to-end proven.
 
 Also confirm that
 `/home/fqzhang/.local/lib/ao/bin/tmux show-environment -g LD_LIBRARY_PATH`
@@ -373,6 +489,36 @@ Do not remove `/home/fqzhang/.ao` as part of an ordinary upgrade. It contains
 the SQLite project and session state needed for diagnosis and continuation.
 Delete that state only as an explicit destructive cleanup after inspecting
 active sessions and preserving any required worktree or pull-request state.
+
+## Phase 3 Rollback Artifacts
+
+The immediate pre-Phase-3 set is retained under
+`/home/fqzhang/.ao/backups/phase3-c5ed22df/`:
+
+- `ao`
+- `ao-phase3-before-typed-nil-fix`
+- `ao.db`
+- `agent-orchestrator.service`
+
+The cutover backup must also preserve the pre-reproducible Phase 3 binary with
+SHA-256
+`ec19ff3a87a15a04eb3d9d647397c2cc32a820da19448cc93b6fe4f423cc4016`.
+
+The earlier upstream-canary set is retained under
+`/home/fqzhang/.local/lib/ao/backups/20260726-upstream-9f8c085f/`:
+
+- `ao`
+- `ao-daemon`
+- `ao.db`
+- `agent-orchestrator.service`
+
+To roll back, stop the service, preserve the current binary, database, base
+unit, wrapper, and drop-in in a new dated backup, then restore one internally
+consistent retained set. Remove or disable the Linear drop-in when restoring a
+build that does not support Linear, reload the user manager, restart the
+service, and repeat the host-context verification above. Do not delete or
+revoke the Linear credential as an incidental rollback step; that is a
+separate explicit security action.
 
 ## Upgrade Rule
 

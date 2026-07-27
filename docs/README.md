@@ -20,6 +20,7 @@ Read the smallest source that owns the decision:
 | Current AI-native direction | `decisions/2026-07-27-ai-native-calibration-review.md` |
 | Writable comparative evidence | `decisions/2026-07-27-ai-native-writable-implementation-evaluation-closeout.md` |
 | Five-phase convergence result | `decisions/2026-07-27-ai-native-calibration-convergence-closeout.md` |
+| Current-host AO Phase 3 deployment | `decisions/2026-07-27-ao-phase-3-deployment-reproducibility-closeout.md` |
 
 The current default is outcome autonomy within repository-local, reversible
 boundaries. Repository rules and executable feedback choose and revise the
@@ -64,6 +65,9 @@ reviewed findings, and reconstructable hashes.
 installation, service, permission, recovery, and repository-adoption contract.
 `decisions/2026-07-23-ao-review-continuation-adoption.md` records the accepted
 narrow review-to-original-worker bridge.
+`decisions/2026-07-27-ao-phase-3-deployment-reproducibility-closeout.md`
+records the deployed fork revision, installed artifact, read-only Linear
+credential boundary, service override, and rollback evidence.
 
 AO is an environment adapter, not a default part of ordinary engineering
 judgment. Repositories opt in individually after an observed continuation need.
@@ -139,6 +143,9 @@ reading path.
   closed repository-local validation convergence.
 - `decisions/2026-07-23-ao-review-continuation-adoption.md`: accepted bounded
   AO successor on the current host.
+- `decisions/2026-07-27-ao-phase-3-deployment-reproducibility-closeout.md`:
+  records the current-host Phase 3 Linear deployment and its verification
+  boundary.
 - `implementation-plan/20260723-v1.7-ao-repository-adoption-contract-implementation-plan.md`:
   closed behavior-validated adoption contract.
 
