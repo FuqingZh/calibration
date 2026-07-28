@@ -21,6 +21,7 @@ Read the smallest source that owns the decision:
 | Writable comparative evidence | `decisions/2026-07-27-ai-native-writable-implementation-evaluation-closeout.md` |
 | Five-phase convergence result | `decisions/2026-07-27-ai-native-calibration-convergence-closeout.md` |
 | Current-host AO Phase 3 deployment | `decisions/2026-07-27-ao-phase-3-deployment-reproducibility-closeout.md` |
+| Pending bounded Linear intake rollout | `implementation-plan/20260728-v1.9-persistent-linear-intake-and-no-product-canary-implementation-plan.md` |
 
 The current default is outcome autonomy within repository-local, reversible
 boundaries. Repository rules and executable feedback choose and revise the
@@ -72,9 +73,15 @@ credential boundary, service override, and rollback evidence.
 AO is an environment adapter, not a default part of ordinary engineering
 judgment. Repositories opt in individually after an observed continuation need.
 An explicit conversation-authorized implementation may start a task-specific
-worker in an already accepted repository. This is not automatic work discovery
-or unattended issue intake. Auto-merge, bulk enrollment, and wider
-orchestration remain outside the accepted boundary.
+worker in an already accepted repository.
+
+FUQ-14 adds a repository-owned `WORKFLOW.md` and a pending plan for one
+label-gated, project-scoped Linear intake lane. The contract does not itself
+enable host intake. Persistent enablement and acceptance require the plan's
+post-merge configuration readback and controlled documentation-only live
+canary. Until every canary acceptance row passes, automatic work discovery and
+unattended issue intake remain unaccepted. Auto-merge, bulk enrollment, and
+wider orchestration remain outside the accepted boundary.
 
 ## Open Evidence Gaps
 
@@ -148,6 +155,9 @@ reading path.
   boundary.
 - `implementation-plan/20260723-v1.7-ao-repository-adoption-contract-implementation-plan.md`:
   closed behavior-validated adoption contract.
+- `implementation-plan/20260728-v1.9-persistent-linear-intake-and-no-product-canary-implementation-plan.md`:
+  pending FUQ-14 repository contract, enable/readback/rollback procedure, and
+  controlled documentation-only Linear canary.
 
 ### Current convergence history
 
