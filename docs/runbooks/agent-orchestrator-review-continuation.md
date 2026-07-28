@@ -91,12 +91,20 @@ git -C "${AO_BUILD_ROOT}/source" fetch \
   origin refs/heads/main:refs/remotes/origin/main
 git -C "${AO_BUILD_ROOT}/source" rev-parse refs/remotes/origin/main
 git -C "${AO_BUILD_ROOT}/source" ls-remote origin refs/heads/main
+AO_DEPLOYED_COMMIT=68496903141232718c23b8f13f4efede2d6f7b58
+git -C "${AO_BUILD_ROOT}/source" cat-file -e \
+  "${AO_DEPLOYED_COMMIT}^{commit}"
+git -C "${AO_BUILD_ROOT}/source" merge-base --is-ancestor \
+  "${AO_DEPLOYED_COMMIT}" refs/remotes/origin/main
 ```
 
 On the observed checkout, `git fetch origin main` updated only `FETCH_HEAD`;
 the explicit refspec above durably updates `refs/remotes/origin/main`.
-Both readbacks must report
-`68496903141232718c23b8f13f4efede2d6f7b58`. Then build from that commit:
+At cutover, both remote readbacks reported
+`68496903141232718c23b8f13f4efede2d6f7b58`. On a later rebuild, fork `main`
+may have advanced; the gates are that the exact deployed commit remains
+available from the fork and is an ancestor of its current `main`, not that
+`main` still equals the historical deployment. Then build the pinned commit:
 
 ```bash
 git -C "${AO_BUILD_ROOT}/source" checkout --detach \
