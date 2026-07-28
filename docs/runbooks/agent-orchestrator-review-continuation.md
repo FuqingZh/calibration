@@ -799,16 +799,25 @@ Do not reuse the current Phase 3 hash or wrapper expectations for a rollback.
 Every path snapshots the complete worker-session readback before stopping the
 daemon. A binary-only rollback retains the current database and uses that
 snapshot for post-restart reconciliation. A rollback that restores historical
-`ao.db` is stricter: its precondition exits nonzero while any worker is
-nonterminated. Preserve each worker's Git/worktree and pull-request state,
-terminate it through AO, and rerun the block before replacing the database.
+`ao.db` is stricter: after stopping the daemon, it queries the now-stable
+current database read-only and exits nonzero while any worker is nonterminated.
+Preserve each worker's Git/worktree and pull-request state, terminate it through
+AO, and rerun the block before replacing the database.
 
 For the immediate pre-security-fix binary, disable the Linear drop-in, restore
 the retained executable, and verify the base service:
 
 ```bash
 set -euo pipefail
-CURRENT_SESSION_STATE="$(ao session ls --include-terminated --json)"
+ROLLBACK_AO=/home/fqzhang/.ao/backups/phase3-runtimeenv-68496903/ao-before-runtimeenv
+printf '%s  %s\n' \
+  2fbd3af959a1135c7d0b3cefeb0c5597b3f68a53c39e5102c418f5db302f9a16 \
+  "${ROLLBACK_AO}" |
+  sha256sum --check -
+SESSION_SNAPSHOT="$(mktemp)"
+POST_SESSION_STATE="$(mktemp)"
+trap 'rm -f "${SESSION_SNAPSHOT}" "${POST_SESSION_STATE}"' EXIT
+ao session ls --include-terminated --json > "${SESSION_SNAPSHOT}"
 systemctl --user stop agent-orchestrator.service
 if systemctl --user is-active --quiet agent-orchestrator.service; then
   echo "agent-orchestrator.service remained active after stop" >&2
@@ -816,33 +825,64 @@ if systemctl --user is-active --quiet agent-orchestrator.service; then
 fi
 ROLLBACK_SAVE="/home/fqzhang/.ao/backups/rollback-$(date +%Y%m%d%H%M%S)"
 install -d -m 0700 "${ROLLBACK_SAVE}"
-printf '%s\n' "${CURRENT_SESSION_STATE}" \
-  > "${ROLLBACK_SAVE}/session-state.json"
+install -m 0600 "${SESSION_SNAPSHOT}" \
+  "${ROLLBACK_SAVE}/session-state.json"
 install -m 0600 /home/fqzhang/.ao/data/ao.db "${ROLLBACK_SAVE}/ao.db"
 install -m 0755 /home/fqzhang/.local/bin/ao "${ROLLBACK_SAVE}/ao"
 install -m 0600 \
   /home/fqzhang/.config/systemd/user/agent-orchestrator.service \
   "${ROLLBACK_SAVE}/agent-orchestrator.service"
-install -m 0755 \
-  /home/fqzhang/.local/lib/ao/bin/ao-daemon-with-linear \
-  "${ROLLBACK_SAVE}/ao-daemon-with-linear"
-install -m 0644 \
-  /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf \
-  "${ROLLBACK_SAVE}/linear.conf"
-install -m 0755 \
-  /home/fqzhang/.ao/backups/phase3-runtimeenv-68496903/ao-before-runtimeenv \
-  /home/fqzhang/.local/bin/ao
+if [ -e /home/fqzhang/.local/lib/ao/bin/ao-daemon-with-linear ]; then
+  install -m 0755 \
+    /home/fqzhang/.local/lib/ao/bin/ao-daemon-with-linear \
+    "${ROLLBACK_SAVE}/ao-daemon-with-linear"
+fi
 if [ -e /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf ]; then
+  install -m 0644 \
+    /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf \
+    "${ROLLBACK_SAVE}/linear.conf"
   mv \
     /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf \
     /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf.disabled
 fi
+install -m 0755 "${ROLLBACK_AO}" /home/fqzhang/.local/bin/ao
+printf '%s  %s\n' \
+  2fbd3af959a1135c7d0b3cefeb0c5597b3f68a53c39e5102c418f5db302f9a16 \
+  /home/fqzhang/.local/bin/ao |
+  sha256sum --check -
 systemctl --user daemon-reload
 systemctl --user start agent-orchestrator.service
-sha256sum /home/fqzhang/.local/bin/ao
+ao session ls --include-terminated --json > "${POST_SESSION_STATE}"
+python - "${SESSION_SNAPSHOT}" "${POST_SESSION_STATE}" <<'PY'
+import json
+import sys
+
+keys = (
+    "id",
+    "projectId",
+    "role",
+    "harness",
+    "isTerminated",
+    "status",
+    "createdAt",
+)
+
+def normalized(path):
+    with open(path, encoding="utf-8") as stream:
+        payload = json.load(stream)
+    return sorted(
+        [{key: session.get(key) for key in keys} for session in payload["data"]],
+        key=lambda session: session["id"],
+    )
+
+if normalized(sys.argv[1]) != normalized(sys.argv[2]):
+    raise SystemExit("post-rollback worker-session readback differs from snapshot")
+PY
 systemctl --user show agent-orchestrator.service \
   -p DropInPaths -p ExecStart -p ActiveState
 ao status --json
+rm -f "${SESSION_SNAPSHOT}" "${POST_SESSION_STATE}"
+trap - EXIT
 ```
 
 Expected results are binary SHA-256
@@ -857,65 +897,90 @@ keep the Linear drop-in disabled, then verify:
 
 ```bash
 set -euo pipefail
-CURRENT_SESSION_STATE="$(ao session ls --include-terminated --json)"
-CURRENT_SESSION_STATE="${CURRENT_SESSION_STATE}" python - <<'PY'
-import json
-import os
+ROLLBACK_ROOT=/home/fqzhang/.ao/backups/phase3-c5ed22df
+printf '%s  %s\n%s  %s\n%s  %s\n' \
+  4e23bde24054b18a4c443f463542e50fde11ac2e11ff552209b62ba269674981 \
+  "${ROLLBACK_ROOT}/ao" \
+  57134ffb27f203f7ae8528e8d7a9816374239941d6a075217c5c0a9441d85f0a \
+  "${ROLLBACK_ROOT}/ao.db" \
+  7946749c60bfb423bcc0863142ed0612ffd4083eb0fb780f242a0a61a3c1fb6b \
+  "${ROLLBACK_ROOT}/agent-orchestrator.service" |
+  sha256sum --check -
+SESSION_SNAPSHOT="$(mktemp)"
+trap 'rm -f "${SESSION_SNAPSHOT}"' EXIT
+ao session ls --include-terminated --json > "${SESSION_SNAPSHOT}"
+systemctl --user stop agent-orchestrator.service
+if systemctl --user is-active --quiet agent-orchestrator.service; then
+  echo "agent-orchestrator.service remained active after stop" >&2
+  exit 1
+fi
+python - /home/fqzhang/.ao/data/ao.db <<'PY'
+import sqlite3
+import sys
 
-payload = json.loads(os.environ["CURRENT_SESSION_STATE"])
-active = [
-    session["id"]
-    for session in payload.get("data", [])
-    if not session.get("isTerminated", False)
-]
+with sqlite3.connect(f"file:{sys.argv[1]}?mode=ro", uri=True) as database:
+    active = [
+        row[0]
+        for row in database.execute(
+            "SELECT id FROM sessions "
+            "WHERE kind = 'worker' AND is_terminated = 0 ORDER BY id"
+        )
+    ]
 if active:
     raise SystemExit(
         "drain and preserve nonterminated workers before database rollback: "
         + ", ".join(active)
     )
 PY
-systemctl --user stop agent-orchestrator.service
-if systemctl --user is-active --quiet agent-orchestrator.service; then
-  echo "agent-orchestrator.service remained active after stop" >&2
-  exit 1
-fi
 ROLLBACK_SAVE="/home/fqzhang/.ao/backups/rollback-$(date +%Y%m%d%H%M%S)"
 install -d -m 0700 "${ROLLBACK_SAVE}"
-printf '%s\n' "${CURRENT_SESSION_STATE}" \
-  > "${ROLLBACK_SAVE}/session-state.json"
+install -m 0600 "${SESSION_SNAPSHOT}" \
+  "${ROLLBACK_SAVE}/session-state.json"
 install -m 0600 /home/fqzhang/.ao/data/ao.db "${ROLLBACK_SAVE}/ao.db"
 install -m 0755 /home/fqzhang/.local/bin/ao "${ROLLBACK_SAVE}/ao"
 install -m 0600 \
   /home/fqzhang/.config/systemd/user/agent-orchestrator.service \
   "${ROLLBACK_SAVE}/agent-orchestrator.service"
-install -m 0755 \
-  /home/fqzhang/.local/lib/ao/bin/ao-daemon-with-linear \
-  "${ROLLBACK_SAVE}/ao-daemon-with-linear"
-install -m 0644 \
-  /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf \
-  "${ROLLBACK_SAVE}/linear.conf"
+if [ -e /home/fqzhang/.local/lib/ao/bin/ao-daemon-with-linear ]; then
+  install -m 0755 \
+    /home/fqzhang/.local/lib/ao/bin/ao-daemon-with-linear \
+    "${ROLLBACK_SAVE}/ao-daemon-with-linear"
+fi
 if [ -e /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf ]; then
+  install -m 0644 \
+    /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf \
+    "${ROLLBACK_SAVE}/linear.conf"
   mv \
     /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf \
     /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf.disabled
 fi
-install -m 0755 /home/fqzhang/.ao/backups/phase3-c5ed22df/ao \
-  /home/fqzhang/.local/bin/ao
-install -m 0600 /home/fqzhang/.ao/backups/phase3-c5ed22df/ao.db \
-  /home/fqzhang/.ao/data/ao.db
-install -m 0600 \
-  /home/fqzhang/.ao/backups/phase3-c5ed22df/agent-orchestrator.service \
+install -m 0755 "${ROLLBACK_ROOT}/ao" /home/fqzhang/.local/bin/ao
+install -m 0600 "${ROLLBACK_ROOT}/ao.db" /home/fqzhang/.ao/data/ao.db
+install -m 0600 "${ROLLBACK_ROOT}/agent-orchestrator.service" \
   /home/fqzhang/.config/systemd/user/agent-orchestrator.service
+printf '%s  %s\n%s  %s\n%s  %s\n' \
+  4e23bde24054b18a4c443f463542e50fde11ac2e11ff552209b62ba269674981 \
+  /home/fqzhang/.local/bin/ao \
+  57134ffb27f203f7ae8528e8d7a9816374239941d6a075217c5c0a9441d85f0a \
+  /home/fqzhang/.ao/data/ao.db \
+  7946749c60bfb423bcc0863142ed0612ffd4083eb0fb780f242a0a61a3c1fb6b \
+  /home/fqzhang/.config/systemd/user/agent-orchestrator.service |
+  sha256sum --check -
 systemctl --user daemon-reload
 systemctl --user start agent-orchestrator.service
-sha256sum /home/fqzhang/.local/bin/ao
 systemctl --user show agent-orchestrator.service \
   -p DropInPaths -p ExecStart -p ActiveState
 ao status --json
+rm -f "${SESSION_SNAPSHOT}"
+trap - EXIT
 ```
 
 Expected results are binary SHA-256
 `4e23bde24054b18a4c443f463542e50fde11ac2e11ff552209b62ba269674981`,
+database SHA-256
+`57134ffb27f203f7ae8528e8d7a9816374239941d6a075217c5c0a9441d85f0a`,
+base-unit SHA-256
+`7946749c60bfb423bcc0863142ed0612ffd4083eb0fb780f242a0a61a3c1fb6b`,
 empty `DropInPaths`, effective `ExecStart` ending in `ao daemon`, active
 service state, and ready AO status.
 
@@ -924,32 +989,47 @@ matching unit:
 
 ```bash
 set -euo pipefail
-CURRENT_SESSION_STATE="$(ao session ls --include-terminated --json)"
-CURRENT_SESSION_STATE="${CURRENT_SESSION_STATE}" python - <<'PY'
-import json
-import os
+ROLLBACK_ROOT=/home/fqzhang/.local/lib/ao/backups/20260726-upstream-9f8c085f
+printf '%s  %s\n%s  %s\n%s  %s\n%s  %s\n' \
+  25fab37d7279e72d0e3c2295630c1eb47ed4ff4f54c08b02e4125ca3b9efcdeb \
+  "${ROLLBACK_ROOT}/ao" \
+  5bd25fd1647c4c6eb2e22b35aa9f257c0d76d23c5ed0fa42c5bed32745e290e8 \
+  "${ROLLBACK_ROOT}/ao-daemon" \
+  7beffe130d21409160b226ad543df64876d277511c847b9907e519855a3e15dd \
+  "${ROLLBACK_ROOT}/ao.db" \
+  f79d3908773ff8ddbe799b2f9e32256caa1ceb33f0910acfa2c7a038c2ac332c \
+  "${ROLLBACK_ROOT}/agent-orchestrator.service" |
+  sha256sum --check -
+SESSION_SNAPSHOT="$(mktemp)"
+trap 'rm -f "${SESSION_SNAPSHOT}"' EXIT
+ao session ls --include-terminated --json > "${SESSION_SNAPSHOT}"
+systemctl --user stop agent-orchestrator.service
+if systemctl --user is-active --quiet agent-orchestrator.service; then
+  echo "agent-orchestrator.service remained active after stop" >&2
+  exit 1
+fi
+python - /home/fqzhang/.ao/data/ao.db <<'PY'
+import sqlite3
+import sys
 
-payload = json.loads(os.environ["CURRENT_SESSION_STATE"])
-active = [
-    session["id"]
-    for session in payload.get("data", [])
-    if not session.get("isTerminated", False)
-]
+with sqlite3.connect(f"file:{sys.argv[1]}?mode=ro", uri=True) as database:
+    active = [
+        row[0]
+        for row in database.execute(
+            "SELECT id FROM sessions "
+            "WHERE kind = 'worker' AND is_terminated = 0 ORDER BY id"
+        )
+    ]
 if active:
     raise SystemExit(
         "drain and preserve nonterminated workers before database rollback: "
         + ", ".join(active)
     )
 PY
-systemctl --user stop agent-orchestrator.service
-if systemctl --user is-active --quiet agent-orchestrator.service; then
-  echo "agent-orchestrator.service remained active after stop" >&2
-  exit 1
-fi
 ROLLBACK_SAVE="/home/fqzhang/.ao/backups/rollback-$(date +%Y%m%d%H%M%S)"
 install -d -m 0700 "${ROLLBACK_SAVE}"
-printf '%s\n' "${CURRENT_SESSION_STATE}" \
-  > "${ROLLBACK_SAVE}/session-state.json"
+install -m 0600 "${SESSION_SNAPSHOT}" \
+  "${ROLLBACK_SAVE}/session-state.json"
 install -m 0600 /home/fqzhang/.ao/data/ao.db "${ROLLBACK_SAVE}/ao.db"
 install -m 0755 /home/fqzhang/.local/bin/ao "${ROLLBACK_SAVE}/ao"
 if [ -e /home/fqzhang/.local/bin/ao-daemon ]; then
@@ -959,44 +1039,54 @@ fi
 install -m 0600 \
   /home/fqzhang/.config/systemd/user/agent-orchestrator.service \
   "${ROLLBACK_SAVE}/agent-orchestrator.service"
-install -m 0755 \
-  /home/fqzhang/.local/lib/ao/bin/ao-daemon-with-linear \
-  "${ROLLBACK_SAVE}/ao-daemon-with-linear"
-install -m 0644 \
-  /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf \
-  "${ROLLBACK_SAVE}/linear.conf"
+if [ -e /home/fqzhang/.local/lib/ao/bin/ao-daemon-with-linear ]; then
+  install -m 0755 \
+    /home/fqzhang/.local/lib/ao/bin/ao-daemon-with-linear \
+    "${ROLLBACK_SAVE}/ao-daemon-with-linear"
+fi
 if [ -e /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf ]; then
+  install -m 0644 \
+    /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf \
+    "${ROLLBACK_SAVE}/linear.conf"
   mv \
     /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf \
     /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf.disabled
 fi
-install -m 0755 \
-  /home/fqzhang/.local/lib/ao/backups/20260726-upstream-9f8c085f/ao \
-  /home/fqzhang/.local/bin/ao
-install -m 0755 \
-  /home/fqzhang/.local/lib/ao/backups/20260726-upstream-9f8c085f/ao-daemon \
+install -m 0755 "${ROLLBACK_ROOT}/ao" /home/fqzhang/.local/bin/ao
+install -m 0755 "${ROLLBACK_ROOT}/ao-daemon" \
   /home/fqzhang/.local/bin/ao-daemon
-install -m 0600 \
-  /home/fqzhang/.local/lib/ao/backups/20260726-upstream-9f8c085f/ao.db \
-  /home/fqzhang/.ao/data/ao.db
-install -m 0600 \
-  /home/fqzhang/.local/lib/ao/backups/20260726-upstream-9f8c085f/agent-orchestrator.service \
+install -m 0600 "${ROLLBACK_ROOT}/ao.db" /home/fqzhang/.ao/data/ao.db
+install -m 0600 "${ROLLBACK_ROOT}/agent-orchestrator.service" \
   /home/fqzhang/.config/systemd/user/agent-orchestrator.service
+printf '%s  %s\n%s  %s\n%s  %s\n%s  %s\n' \
+  25fab37d7279e72d0e3c2295630c1eb47ed4ff4f54c08b02e4125ca3b9efcdeb \
+  /home/fqzhang/.local/bin/ao \
+  5bd25fd1647c4c6eb2e22b35aa9f257c0d76d23c5ed0fa42c5bed32745e290e8 \
+  /home/fqzhang/.local/bin/ao-daemon \
+  7beffe130d21409160b226ad543df64876d277511c847b9907e519855a3e15dd \
+  /home/fqzhang/.ao/data/ao.db \
+  f79d3908773ff8ddbe799b2f9e32256caa1ceb33f0910acfa2c7a038c2ac332c \
+  /home/fqzhang/.config/systemd/user/agent-orchestrator.service |
+  sha256sum --check -
 systemctl --user daemon-reload
 systemctl --user start agent-orchestrator.service
-sha256sum /home/fqzhang/.local/bin/ao \
-  /home/fqzhang/.local/bin/ao-daemon
 systemctl --user show agent-orchestrator.service \
   -p DropInPaths -p ExecStart -p ActiveState
 ao status --json
+rm -f "${SESSION_SNAPSHOT}"
+trap - EXIT
 ```
 
 Expected hashes are
 `25fab37d7279e72d0e3c2295630c1eb47ed4ff4f54c08b02e4125ca3b9efcdeb`
 for `ao` and
 `5bd25fd1647c4c6eb2e22b35aa9f257c0d76d23c5ed0fa42c5bed32745e290e8`
-for `ao-daemon`. `DropInPaths` must be empty, effective `ExecStart` must end in
-`ao-daemon`, the service must be active, and AO status must be ready.
+for `ao-daemon`, with database SHA-256
+`7beffe130d21409160b226ad543df64876d277511c847b9907e519855a3e15dd`
+and base-unit SHA-256
+`f79d3908773ff8ddbe799b2f9e32256caa1ceb33f0910acfa2c7a038c2ac332c`.
+`DropInPaths` must be empty, effective `ExecStart` must end in `ao-daemon`, the
+service must be active, and AO status must be ready.
 
 To roll back, stop the service, preserve the current binary, database, base
 unit, wrapper, and drop-in in a new dated backup, then restore one internally
