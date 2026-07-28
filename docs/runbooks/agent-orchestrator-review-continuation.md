@@ -21,6 +21,25 @@ host without explicit risk acceptance from its owner.
 
 ## Pinned Inputs
 
+- Current deployed fork:
+  `https://github.com/FuqingZh/agent-orchestrator.git`
+- Current deployed fork `main` commit:
+  `68496903141232718c23b8f13f4efede2d6f7b58`
+- Merged worker-environment fix head:
+  `4c241b1447b4c5c303593ac0a94386cc3dfd3261`
+- Current `/home/fqzhang/.local/bin/ao` SHA-256:
+  `ce2df0db2e6ad7f1eb65906a04b900620941ba716d0ad1b14378db9db1387d91`
+- Pre-reproducible Phase 3 `/home/fqzhang/.local/bin/ao` SHA-256:
+  `ec19ff3a87a15a04eb3d9d647397c2cc32a820da19448cc93b6fe4f423cc4016`
+- Pre-security-fix rollback:
+  `/home/fqzhang/.ao/backups/phase3-runtimeenv-68496903/ao-before-runtimeenv`,
+  SHA-256
+  `2fbd3af959a1135c7d0b3cefeb0c5597b3f68a53c39e5102c418f5db302f9a16`
+
+The current deployment supersedes the original patched canary artifact below.
+Retain the older inputs and the pre-reproducible Phase 3 binary for
+reconstruction and rollback evidence.
+
 - Repository: `https://github.com/AgentWrapper/agent-orchestrator.git`
 - Tested upstream commit:
   `04841344c82f213b8fc0e34b713e2442f8793d2b`
@@ -58,7 +77,86 @@ existing user authentication at runtime.
 
 ## Rebuild
 
-Run from a clean checkout of this calibration repository:
+### Current Phase 3 fork
+
+Start from the calibration checkout, preserve its root for later managed
+artifact installation, then clone the AO fork:
+
+```bash
+set -euo pipefail
+CALIBRATION_ROOT="$(git rev-parse --show-toplevel)"
+AO_BUILD_ROOT="$(mktemp -d)"
+git clone --no-checkout https://github.com/FuqingZh/agent-orchestrator.git \
+  "${AO_BUILD_ROOT}/source"
+git -C "${AO_BUILD_ROOT}/source" fetch \
+  origin refs/heads/main:refs/remotes/origin/main
+git -C "${AO_BUILD_ROOT}/source" rev-parse refs/remotes/origin/main
+git -C "${AO_BUILD_ROOT}/source" ls-remote origin refs/heads/main
+AO_DEPLOYED_COMMIT=68496903141232718c23b8f13f4efede2d6f7b58
+git -C "${AO_BUILD_ROOT}/source" cat-file -e \
+  "${AO_DEPLOYED_COMMIT}^{commit}"
+git -C "${AO_BUILD_ROOT}/source" merge-base --is-ancestor \
+  "${AO_DEPLOYED_COMMIT}" refs/remotes/origin/main
+```
+
+On the observed checkout, `git fetch origin main` updated only `FETCH_HEAD`;
+the explicit refspec above durably updates `refs/remotes/origin/main`.
+At cutover, both remote readbacks reported
+`68496903141232718c23b8f13f4efede2d6f7b58`. On a later rebuild, fork `main`
+may have advanced; the gates are that the exact deployed commit remains
+available from the fork and is an ancestor of its current `main`, not that
+`main` still equals the historical deployment. Then build the pinned commit:
+
+```bash
+set -euo pipefail
+git -C "${AO_BUILD_ROOT}/source" checkout --detach \
+  68496903141232718c23b8f13f4efede2d6f7b58
+cd "${AO_BUILD_ROOT}/source/backend"
+go test ./...
+mkdir -p "${AO_BUILD_ROOT}/bin"
+go build -trimpath -buildvcs=false \
+  -o "${AO_BUILD_ROOT}/bin/ao" ./cmd/ao
+printf '%s  %s\n' \
+  ce2df0db2e6ad7f1eb65906a04b900620941ba716d0ad1b14378db9db1387d91 \
+  "${AO_BUILD_ROOT}/bin/ao" |
+  sha256sum --check -
+```
+
+With Go 1.26.4 on `linux/amd64`, the expected SHA-256 is
+`ce2df0db2e6ad7f1eb65906a04b900620941ba716d0ad1b14378db9db1387d91`.
+Two independent builds from the merge commit produced this same hash with
+`-trimpath -buildvcs=false`. Earlier source tree `e9505779` demonstrated that
+`-buildvcs=false` alone retained worktree-dependent output. Both flags are
+therefore part of the canonical deployment command. Another supported Go
+toolchain or target may produce a different hash and requires its own
+toolchain-qualified build, test, and installed-hash evidence.
+
+Install the verified artifact as `fqzhang`, preserving the currently installed
+binary first:
+
+```bash
+set -euo pipefail
+AO_CUTOVER_BACKUP="/home/fqzhang/.ao/backups/phase3-trimpath-$(date +%Y%m%d%H%M%S)"
+install -d -m 0700 "${AO_CUTOVER_BACKUP}"
+install -m 0755 /home/fqzhang/.local/bin/ao \
+  "${AO_CUTOVER_BACKUP}/ao-pre-reproducible"
+install -m 0755 "${AO_BUILD_ROOT}/bin/ao" /home/fqzhang/.local/bin/ao
+printf '%s  %s\n' \
+  ce2df0db2e6ad7f1eb65906a04b900620941ba716d0ad1b14378db9db1387d91 \
+  /home/fqzhang/.local/bin/ao |
+  sha256sum --check -
+systemctl --user restart agent-orchestrator.service
+```
+
+The installed hash must match the expected value above. Then run every
+host-context, wrapper, worker-environment, and Linear smoke check in
+Verification before accepting the cutover.
+
+### Rollback-only original patched canary
+
+This procedure reconstructs the superseded upstream canary only. Do not use it
+to rebuild the current Phase 3 fork. Run from a clean checkout of this
+calibration repository when rollback requires that historical artifact:
 
 ```bash
 AO_BUILD_ROOT="$(mktemp -d)"
@@ -83,22 +181,24 @@ sha256sum "${AO_BUILD_ROOT}/bin/ao" \
   "${AO_BUILD_ROOT}/bin/ao-daemon"
 ```
 
-VCS stamping is disabled because replaying mail patches creates equivalent
-trees with new committer metadata. Go build IDs can still make hashes
-toolchain-specific. On a different supported toolchain, a hash difference
-requires source, patch, test, and launch review; it is not by itself proof of a
-behavior change.
+These historical commands intentionally retain the original
+`-buildvcs=false`-only flags used for the recorded
+`25fab37d...`/`5bd25fd...` canary artifacts. Adding `-trimpath` produces
+different binaries and must not be used when comparing against those hashes.
+The retained installed artifacts are the hash authority; rebuilding on another
+path or toolchain requires separate source, patch, test, and launch review.
 
-## Install
+### No standalone canary binary install
 
-Install as the `fqzhang` user:
+Rebuilding the historical canary does not authorize replacing either installed
+binary by itself. To restore that canary, use the complete earlier-upstream
+procedure under [Rollback verification](#rollback-verification). That procedure
+first stops and verifies deactivation of the service, preserves the active
+deployment locally, disables the Linear drop-in, restores the matching
+binary/database/unit set, reloads systemd, and verifies rollback-specific
+hashes and service state.
 
-```bash
-install -D -m 0755 "${AO_BUILD_ROOT}/bin/ao" \
-  /home/fqzhang/.local/bin/ao
-install -D -m 0755 "${AO_BUILD_ROOT}/bin/ao-daemon" \
-  /home/fqzhang/.local/bin/ao-daemon
-```
+## Host Runtime Install
 
 When tmux 3.5 comes from the current micromamba environment, create the wrapper
 `/home/fqzhang/.local/lib/ao/bin/tmux`:
@@ -152,7 +252,7 @@ Environment=http_proxy=http://127.0.0.1:7897
 Environment=https_proxy=http://127.0.0.1:7897
 Environment=all_proxy=http://127.0.0.1:7897
 Environment=no_proxy=localhost,127.0.0.1,::1,192.168.0.0/16,192.168.30.202,10.0.0.0/8,172.16.0.0/12
-ExecStart=%h/.local/bin/ao-daemon
+ExecStart=%h/.local/bin/ao daemon
 StandardOutput=append:%h/.ao/daemon.log
 StandardError=append:%h/.ao/daemon.log
 Restart=on-failure
@@ -177,6 +277,108 @@ portable defaults; omit or replace them on a host with different network
 routing. A new host may use a system tmux 3.5 or later and omit the wrapper.
 Update the unit and rerun `ao doctor --json` after changing the active Node,
 Codex, tmux, or network configuration.
+
+### Phase 3 Linear credential override
+
+The current host adds Linear access without placing a credential in the base
+unit or repository. Store the credential only at
+`/home/fqzhang/.config/agent-orchestrator/linear-api-key`, mode `0600`, inside
+the mode `0700` directory `/home/fqzhang/.config/agent-orchestrator`.
+
+The mode `0755` wrapper
+`/home/fqzhang/.local/lib/ao/bin/ao-daemon-with-linear` is managed from
+[`artifacts/ao-daemon-with-linear`](artifacts/ao-daemon-with-linear). Install
+it together with the managed drop-in only after both repository artifacts pass
+their recorded digest checks:
+
+```bash
+set -euo pipefail
+CALIBRATION_ROOT="$(git rev-parse --show-toplevel)"
+WRAPPER_SOURCE="${CALIBRATION_ROOT}/docs/runbooks/artifacts/ao-daemon-with-linear"
+DROPIN_SOURCE="${CALIBRATION_ROOT}/docs/runbooks/artifacts/linear.conf"
+WRAPPER_TARGET=/home/fqzhang/.local/lib/ao/bin/ao-daemon-with-linear
+DROPIN_TARGET=/home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf
+printf '%s  %s\n%s  %s\n' \
+  bb5421301d09df0c3fa9176dffb1fbb5170cb02d897610b0137a155cb4c08090 \
+  "${WRAPPER_SOURCE}" \
+  be96ac3b7e948656c7c747e641201d7d989dbc3eec4886d16b548a7bc9c685df \
+  "${DROPIN_SOURCE}" |
+  sha256sum --check -
+install -D -m 0755 \
+  "${WRAPPER_SOURCE}" "${WRAPPER_TARGET}"
+install -d -m 0700 \
+  /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d
+install -m 0644 "${DROPIN_SOURCE}" "${DROPIN_TARGET}"
+printf '%s  %s\n%s  %s\n' \
+  bb5421301d09df0c3fa9176dffb1fbb5170cb02d897610b0137a155cb4c08090 \
+  "${WRAPPER_TARGET}" \
+  be96ac3b7e948656c7c747e641201d7d989dbc3eec4886d16b548a7bc9c685df \
+  "${DROPIN_TARGET}" |
+  sha256sum --check -
+systemctl --user daemon-reload
+systemctl --user restart agent-orchestrator.service
+```
+
+The expected wrapper SHA-256 is
+`bb5421301d09df0c3fa9176dffb1fbb5170cb02d897610b0137a155cb4c08090`.
+The complete source is retained rather than described only in prose so
+reconstruction and audit use identical fail-closed behavior.
+The wrapper clears `AO_LINEAR_OAUTH_TOKEN` before exec so the reviewed
+file-backed `AO_LINEAR_API_KEY` is the only active Linear credential source.
+Root installed this exact artifact. The previous wrapper is retained at
+`/home/fqzhang/.ao/backups/wrapper-6635e31/ao-daemon-with-linear.before`,
+with SHA-256
+`0531d973a0cd690b03b52530388cf138e5a4b54899167a341ca0d1a5ff88d2d7`.
+After restart, AO reported ready and healthy at PID `3727219`, doctor reported
+zero failures, effective `ExecStart` named the wrapper, `DropInPaths` named the
+active `linear.conf`, and all nine pre-existing tmux pane PIDs were unchanged.
+The installed wrapper, AO binary, and drop-in hashes matched the documented
+values. A values-never-printed daemon environment-name boolean check reported
+exactly `API_KEY_PRESENT=yes` and `OAUTH_TOKEN_PRESENT=no`.
+
+The active mode `0644` drop-in is managed from
+[`artifacts/linear.conf`](artifacts/linear.conf) and installed at
+`/home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf`
+inside a mode `0700` directory.
+
+The expected drop-in SHA-256 is
+`be96ac3b7e948656c7c747e641201d7d989dbc3eec4886d16b548a7bc9c685df`.
+The combined transaction above checks both source and installed hashes before
+the reload and restart activate the credential wrapper.
+
+Do not record the credential value in Git, shell transcripts, the systemd
+unit, or diagnostic output. The file is read-only operational input; this
+deployment does not authorize writes to Linear.
+
+The wrapper necessarily supplies the credential to the daemon process. AO must
+filter both `AO_LINEAR_API_KEY` and `AO_LINEAR_OAUTH_TOKEN` from every tmux pane
+environment. The AO-side fix head was
+[`4c241b1447b4c5c303593ac0a94386cc3dfd3261`](https://github.com/FuqingZh/agent-orchestrator/commit/4c241b1447b4c5c303593ac0a94386cc3dfd3261)
+in agent-orchestrator
+[pull request #10](https://github.com/FuqingZh/agent-orchestrator/pull/10).
+Its focused, race, full lint, vet, Linux build, and Windows build validation
+passed; fresh Automatic Review reported no major issues and its two P1 threads
+were resolved. PR #10 merged as
+`68496903141232718c23b8f13f4efede2d6f7b58`.
+
+Two independent builds from the merge commit matched at SHA-256
+`ce2df0db2e6ad7f1eb65906a04b900620941ba716d0ad1b14378db9db1387d91`,
+and that binary is installed. After restoring the drop-in and restarting,
+effective unit readback named the wrapper, AO was ready and healthy, doctor had
+zero failures, and all nine pre-existing tmux pane PIDs were unchanged. A fresh
+AO worker pane ran a boolean presence check that never printed values, reported
+exactly `LINEAR_ENV_CLEAN`, and was terminated. This is the accepted evidence
+that both Linear credential variables are absent from a newly AO-created
+pane's ambient environment.
+
+This is environment-hygiene evidence, not worker-secret isolation. AO and its
+workers run as the same `fqzhang` user with `bypass-permissions`; a worker with
+that authority can read the mode `0600` credential file or inspect same-user
+process state through host interfaces allowed by the operating system. True
+isolation from workers requires privilege separation: run the credentialed
+daemon under a distinct account or security boundary that workers cannot read
+or inspect. Do not claim the current single-user deployment prevents a
+malicious or fully privileged worker from obtaining the credential.
 
 The append-only user log is the first diagnostic surface for an HTTP
 `INTERNAL_ERROR`. Inspect the matching request id before retrying a failed
@@ -303,14 +505,61 @@ systemctl --user is-active agent-orchestrator.service
 ao status --json
 ao project get repository-name --json
 PATH=/home/fqzhang/.local/lib/ao/bin:/home/fqzhang/.nvm/versions/node/v22.22.2/bin:/home/fqzhang/.local/bin:/usr/local/bin:/usr/bin:/bin \
-  ao doctor --json
-sha256sum /home/fqzhang/.local/bin/ao \
-  /home/fqzhang/.local/bin/ao-daemon
+ao doctor --json
+sha256sum \
+  /home/fqzhang/.local/bin/ao \
+  /home/fqzhang/.local/lib/ao/bin/ao-daemon-with-linear \
+  /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf
 ```
+
+After the final Phase 3 security-fix cutover,
+`/home/fqzhang/.local/bin/ao` must report:
+
+```text
+ce2df0db2e6ad7f1eb65906a04b900620941ba716d0ad1b14378db9db1387d91
+```
+
+The SHA-256
+`2fbd3af959a1135c7d0b3cefeb0c5597b3f68a53c39e5102c418f5db302f9a16`
+identifies the pre-security-fix Phase 3 binary, while `ec19ff3a...` identifies
+the pre-reproducible binary. Both belong in rollback evidence.
+
+Run these checks as `fqzhang` through the same `systemd --user` manager used by
+the deployment. Confirm the effective wrapper and drop-in rather than relying
+on a shell invocation:
+
+```bash
+systemctl --user cat agent-orchestrator.service
+systemctl --user show agent-orchestrator.service \
+  -p FragmentPath -p DropInPaths -p ExecStart -p ActiveState -p UnitFileState
+stat -c '%A %a %U:%G %n' \
+  /home/fqzhang/.config/agent-orchestrator \
+  /home/fqzhang/.config/agent-orchestrator/linear-api-key \
+  /home/fqzhang/.local/lib/ao/bin/ao-daemon-with-linear \
+  /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d \
+  /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf
+sha256sum \
+  /home/fqzhang/.local/lib/ao/bin/ao-daemon-with-linear \
+  /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf
+```
+
+A check run as another user, outside the user manager, or with a separately
+constructed environment does not verify the deployed service context.
+The wrapper hash must be
+`bb5421301d09df0c3fa9176dffb1fbb5170cb02d897610b0137a155cb4c08090`.
+The enabled drop-in hash must be
+`be96ac3b7e948656c7c747e641201d7d989dbc3eec4886d16b548a7bc9c685df`.
 
 Expected current readback:
 
 - service: `enabled`, `active`, and daemon `ready`;
+- effective `ExecStart`:
+  `/home/fqzhang/.local/lib/ao/bin/ao-daemon-with-linear`;
+- `DropInPaths`:
+  `/home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf`;
+- active drop-in:
+  `/home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf`,
+  mode `0644`;
 - run file: `/home/fqzhang/.ao/running.json`;
 - data directory: `/home/fqzhang/.ao/data`;
 - worker agent: `codex`;
@@ -321,6 +570,129 @@ Expected current readback:
 
 Passing this section establishes `runtime-ready`, not
 `continuation-proven`.
+
+A passing Phase 3 Linear smoke is also narrower than a real Linear intake
+loop. The bounded smoke below validates only the credential and read-only
+Linear API identity path; it does not exercise AO's tracker adapter. The
+installed binary hash, effective service wiring, AO health, focused AO tests,
+and fresh-worker environment acceptance are separate evidence. None of these
+proves sustained polling, durable claims, issue-to-worker creation, restart
+recovery, or complete processing of a real Linear issue. Require a separately
+authorized real-project canary before describing Linear intake as end-to-end
+proven.
+
+### Bounded read-only Linear smoke
+
+Inputs:
+
+- the mode `0600` credential file
+  `/home/fqzhang/.config/agent-orchestrator/linear-api-key`;
+- network access to `https://api.linear.app/graphql`; and
+- `curl` plus Python 3.
+
+Run this non-mutating identity query. The command never prints the credential:
+
+```bash
+set +x
+set -euo pipefail
+LINEAR_SMOKE_RESPONSE="$(mktemp)"
+trap 'rm -f "${LINEAR_SMOKE_RESPONSE}"' EXIT
+LINEAR_SMOKE_KEY=
+IFS= read -r LINEAR_SMOKE_KEY < \
+  /home/fqzhang/.config/agent-orchestrator/linear-api-key ||
+  [ -n "${LINEAR_SMOKE_KEY}" ]
+printf 'header = "Authorization: %s"\n' "${LINEAR_SMOKE_KEY}" |
+  curl -q --config - --fail-with-body --silent --show-error \
+  --connect-timeout 10 --max-time 30 \
+  -H 'Content-Type: application/json' \
+  --data '{"query":"query AOViewer { viewer { id } }"}' \
+  https://api.linear.app/graphql > "${LINEAR_SMOKE_RESPONSE}"
+unset LINEAR_SMOKE_KEY
+python - "${LINEAR_SMOKE_RESPONSE}" <<'PY'
+import json
+import pathlib
+import sys
+
+payload = json.loads(pathlib.Path(sys.argv[1]).read_text())
+if payload.get("errors"):
+    raise SystemExit("Linear returned GraphQL errors")
+viewer_id = payload.get("data", {}).get("viewer", {}).get("id", "")
+if not isinstance(viewer_id, str) or not viewer_id.strip():
+    raise SystemExit("missing Linear viewer id")
+print("linear-read-only-smoke: PASS")
+PY
+rm -f "${LINEAR_SMOKE_RESPONSE}"
+trap - EXIT
+```
+
+Success requires HTTP success, valid JSON, no GraphQL `errors`, a non-empty
+`data.viewer.id`, and the final line `linear-read-only-smoke: PASS`. The query
+has no mutation and does not enable tracker intake, create a worker, or alter a
+Linear object. Strict shell mode makes any missing credential, transport
+failure, invalid JSON, or explicit validation failure return nonzero and block the
+deployment claim.
+
+This verifies the credential and read-only Linear API path. The installed AO
+hash, effective service command, wrapper hash, daemon readiness, and
+worker-environment checks separately verify that the intended AO artifact and
+host wiring are active.
+
+### Worker environment secret gate
+
+After installing or upgrading, create a new disposable AO worker so AO creates
+the tmux pane:
+
+```bash
+ao spawn \
+  --project calibration \
+  --name linear-env-smoke \
+  --harness codex \
+  --prompt 'Run only this boolean environment check without printing values:
+if env | sed -n "s/=.*//p" |
+  grep -Eq "^AO_LINEAR_(API_KEY|OAUTH_TOKEN)$"; then
+  echo LINEAR_ENV_LEAK
+else
+  echo LINEAR_ENV_CLEAN
+fi
+Report the single result line and stop.'
+```
+
+Record the returned session id, confirm the worker reports exactly
+`LINEAR_ENV_CLEAN`, then read back and terminate it:
+
+```bash
+ao session get SESSION_ID --project calibration --json
+ao session kill SESSION_ID --project calibration
+```
+
+The check prints only a boolean result, never variable values. It verifies
+ambient environment hygiene, not privilege separation or credential
+inaccessibility. The accepted test ran while the active wrapper supplied the
+real credential to the daemon, so it exercised filtering rather than passing
+against an uncredentialed service. The fresh worker reported exactly
+`LINEAR_ENV_CLEAN` and was terminated.
+
+The pane-only result was not sufficient to establish server-start hygiene:
+the pane launch command also unsets both variables, so it can mask a credential
+retained by the persistent tmux server. Recovery from a later shared-server
+loss supplied the required fresh-server sample without another restart. The
+wrapper-credentialed daemon remained PID `3727219`, started
+`2026-07-28 10:04:17 +08:00`; its values-never-printed environment-name check
+reported only `AO_LINEAR_API_KEY`. The first restoring tmux client created the
+default server at `2026-07-28 10:53:15 +08:00`, PID `4012975`, socket
+`/tmp/tmux-1009/default`. Its process environment and `show-environment -g`
+persistent environment both reported no
+`AO_LINEAR_API_KEY` or `AO_LINEAR_OAUTH_TOKEN`. The server contained only
+session `calibration-8` (`$0`, tmux creation time
+`2026-07-28T10:53:16+08:00`), with one pane, PID `4012976`; that pane's
+environment also reported neither name. No variable values were printed.
+
+This closes the current fresh-server ambient and persistent-environment gate.
+It also confirms the deployed fork's tmux-client environment filtering, not
+only its pane-command scrubbing. Do not restart the shared tmux server merely
+to repeat this check. Revalidate from an observed fresh server after an AO or
+tmux upgrade, or during a separately authorized maintenance window after all
+workers are drained and their Git state is preserved.
 
 Also confirm that
 `/home/fqzhang/.local/lib/ao/bin/tmux show-environment -g LD_LIBRARY_PATH`
@@ -373,6 +745,398 @@ Do not remove `/home/fqzhang/.ao` as part of an ordinary upgrade. It contains
 the SQLite project and session state needed for diagnosis and continuation.
 Delete that state only as an explicit destructive cleanup after inspecting
 active sessions and preserving any required worktree or pull-request state.
+
+## Phase 3 Rollback Artifacts
+
+The previous credential wrapper is retained at
+`/home/fqzhang/.ao/backups/wrapper-6635e31/ao-daemon-with-linear.before`.
+Its SHA-256 is
+`0531d973a0cd690b03b52530388cf138e5a4b54899167a341ca0d1a5ff88d2d7`.
+It does not clear `AO_LINEAR_OAUTH_TOKEN`; restoring it requires separately
+ensuring that variable is absent and rerunning daemon and worker environment
+checks.
+
+The immediate pre-security-fix binary is retained at
+`/home/fqzhang/.ao/backups/phase3-runtimeenv-68496903/ao-before-runtimeenv`.
+Its SHA-256 is
+`2fbd3af959a1135c7d0b3cefeb0c5597b3f68a53c39e5102c418f5db302f9a16`.
+Restoring it also requires disabling the Linear drop-in because that binary
+does not contain the accepted worker-environment filtering fix.
+
+The immediate pre-Phase-3 set is retained under
+`/home/fqzhang/.ao/backups/phase3-c5ed22df/`:
+
+- `ao`
+- `ao-phase3-before-typed-nil-fix`
+- `ao.db`
+- `agent-orchestrator.service`
+
+The concrete pre-reproducible Phase 3 binary is retained at
+`/home/fqzhang/.ao/backups/phase3-repro-7238619/ao-before-trimpath`, with
+verified SHA-256
+`ec19ff3a87a15a04eb3d9d647397c2cc32a820da19448cc93b6fe4f423cc4016`.
+
+The retained service in this immediate set starts
+`/home/fqzhang/.local/bin/ao daemon`, so the retained `ao` is its matching
+executable and no `ao-daemon` copy is required for this set.
+
+The earlier upstream-canary set is retained under
+`/home/fqzhang/.local/lib/ao/backups/20260726-upstream-9f8c085f/`:
+
+- `ao`
+- `ao-daemon`
+- `ao.db`
+- `agent-orchestrator.service`
+
+This earlier service starts `/home/fqzhang/.local/bin/ao-daemon`. Restore it
+only with the matching
+`/home/fqzhang/.local/lib/ao/backups/20260726-upstream-9f8c085f/ao-daemon`,
+whose SHA-256 is
+`5bd25fd1647c4c6eb2e22b35aa9f257c0d76d23c5ed0fa42c5bed32745e290e8`.
+
+### Rollback verification
+
+Do not reuse the current Phase 3 hash or wrapper expectations for a rollback.
+Every path snapshots the complete worker-session readback before stopping the
+daemon. A binary-only rollback retains the current database and uses that
+snapshot for post-restart reconciliation. A rollback that restores historical
+`ao.db` is stricter: after stopping the daemon, it queries the now-stable
+current and retained databases read-only and rejects nonterminated workers in
+either one. A rejected check restarts the unchanged current service so AO
+remains available for remediation. Preserve each current worker's Git/worktree
+and pull-request state, terminate it through AO, and rerun the block. A retained
+database with nonterminated ownership requires an explicitly reviewed
+reconciliation copy; do not install it as-is.
+
+For the immediate pre-security-fix binary, disable the Linear drop-in, restore
+the retained executable, and verify the base service:
+
+```bash
+set -euo pipefail
+ROLLBACK_AO=/home/fqzhang/.ao/backups/phase3-runtimeenv-68496903/ao-before-runtimeenv
+printf '%s  %s\n' \
+  2fbd3af959a1135c7d0b3cefeb0c5597b3f68a53c39e5102c418f5db302f9a16 \
+  "${ROLLBACK_AO}" |
+  sha256sum --check -
+SESSION_SNAPSHOT="$(mktemp)"
+POST_SESSION_STATE="$(mktemp)"
+trap 'rm -f "${SESSION_SNAPSHOT}" "${POST_SESSION_STATE}"' EXIT
+ao session ls --include-terminated --json > "${SESSION_SNAPSHOT}"
+systemctl --user stop agent-orchestrator.service
+if systemctl --user is-active --quiet agent-orchestrator.service; then
+  echo "agent-orchestrator.service remained active after stop" >&2
+  exit 1
+fi
+ROLLBACK_SAVE="/home/fqzhang/.ao/backups/rollback-$(date +%Y%m%d%H%M%S)"
+install -d -m 0700 "${ROLLBACK_SAVE}"
+install -m 0600 "${SESSION_SNAPSHOT}" \
+  "${ROLLBACK_SAVE}/session-state.json"
+install -m 0600 /home/fqzhang/.ao/data/ao.db "${ROLLBACK_SAVE}/ao.db"
+install -m 0755 /home/fqzhang/.local/bin/ao "${ROLLBACK_SAVE}/ao"
+install -m 0600 \
+  /home/fqzhang/.config/systemd/user/agent-orchestrator.service \
+  "${ROLLBACK_SAVE}/agent-orchestrator.service"
+if [ -e /home/fqzhang/.local/lib/ao/bin/ao-daemon-with-linear ]; then
+  install -m 0755 \
+    /home/fqzhang/.local/lib/ao/bin/ao-daemon-with-linear \
+    "${ROLLBACK_SAVE}/ao-daemon-with-linear"
+fi
+if [ -e /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf ]; then
+  install -m 0644 \
+    /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf \
+    "${ROLLBACK_SAVE}/linear.conf"
+  mv \
+    /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf \
+    /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf.disabled
+fi
+install -m 0755 "${ROLLBACK_AO}" /home/fqzhang/.local/bin/ao
+printf '%s  %s\n' \
+  2fbd3af959a1135c7d0b3cefeb0c5597b3f68a53c39e5102c418f5db302f9a16 \
+  /home/fqzhang/.local/bin/ao |
+  sha256sum --check -
+systemctl --user daemon-reload
+systemctl --user start agent-orchestrator.service
+ao session ls --include-terminated --json > "${POST_SESSION_STATE}"
+python - "${SESSION_SNAPSHOT}" "${POST_SESSION_STATE}" <<'PY'
+import json
+import sys
+
+keys = (
+    "id",
+    "projectId",
+    "role",
+    "harness",
+    "isTerminated",
+    "status",
+    "createdAt",
+)
+
+def normalized(path):
+    with open(path, encoding="utf-8") as stream:
+        payload = json.load(stream)
+    return sorted(
+        [{key: session.get(key) for key in keys} for session in payload["data"]],
+        key=lambda session: session["id"],
+    )
+
+if normalized(sys.argv[1]) != normalized(sys.argv[2]):
+    raise SystemExit("post-rollback worker-session readback differs from snapshot")
+PY
+systemctl --user show agent-orchestrator.service \
+  -p DropInPaths -p ExecStart -p ActiveState
+ao status --json
+rm -f "${SESSION_SNAPSHOT}" "${POST_SESSION_STATE}"
+trap - EXIT
+```
+
+Expected results are binary SHA-256
+`2fbd3af959a1135c7d0b3cefeb0c5597b3f68a53c39e5102c418f5db302f9a16`,
+empty `DropInPaths`, effective `ExecStart` ending in `ao daemon`, active
+service state, and ready AO status. This is a binary-only rollback: no matching
+database was retained in `phase3-runtimeenv-68496903`, so it deliberately keeps
+the current database after preserving a recovery copy.
+
+For the immediate pre-Phase-3 set, restore its matching `ao` and base unit,
+keep the Linear drop-in disabled, then verify:
+
+```bash
+set -euo pipefail
+ROLLBACK_ROOT=/home/fqzhang/.ao/backups/phase3-c5ed22df
+printf '%s  %s\n%s  %s\n%s  %s\n' \
+  4e23bde24054b18a4c443f463542e50fde11ac2e11ff552209b62ba269674981 \
+  "${ROLLBACK_ROOT}/ao" \
+  57134ffb27f203f7ae8528e8d7a9816374239941d6a075217c5c0a9441d85f0a \
+  "${ROLLBACK_ROOT}/ao.db" \
+  7946749c60bfb423bcc0863142ed0612ffd4083eb0fb780f242a0a61a3c1fb6b \
+  "${ROLLBACK_ROOT}/agent-orchestrator.service" |
+  sha256sum --check -
+SESSION_SNAPSHOT="$(mktemp)"
+trap 'rm -f "${SESSION_SNAPSHOT}"' EXIT
+ao session ls --include-terminated --json > "${SESSION_SNAPSHOT}"
+systemctl --user stop agent-orchestrator.service
+if systemctl --user is-active --quiet agent-orchestrator.service; then
+  echo "agent-orchestrator.service remained active after stop" >&2
+  exit 1
+fi
+if ! python - /home/fqzhang/.ao/data/ao.db "${ROLLBACK_ROOT}/ao.db" <<'PY'; then
+import sqlite3
+import sys
+
+def active_workers(path):
+    with sqlite3.connect(f"file:{path}?mode=ro", uri=True) as database:
+        return [
+            row[0]
+            for row in database.execute(
+                "SELECT id FROM sessions "
+                "WHERE kind = 'worker' AND is_terminated = 0 ORDER BY id"
+            )
+        ]
+
+current_active = active_workers(sys.argv[1])
+retained_active = active_workers(sys.argv[2])
+failures = []
+if current_active:
+    failures.append(
+        "drain current nonterminated workers through AO: "
+        + ", ".join(current_active)
+    )
+if retained_active:
+    failures.append(
+        "retained database has nonterminated ownership and requires "
+        "an explicitly reviewed reconciliation copy: "
+        + ", ".join(retained_active)
+    )
+if failures:
+    raise SystemExit("; ".join(failures))
+PY
+  systemctl --user start agent-orchestrator.service
+  echo "rollback rejected; unchanged current AO service restarted" >&2
+  exit 1
+fi
+ROLLBACK_SAVE="/home/fqzhang/.ao/backups/rollback-$(date +%Y%m%d%H%M%S)"
+install -d -m 0700 "${ROLLBACK_SAVE}"
+install -m 0600 "${SESSION_SNAPSHOT}" \
+  "${ROLLBACK_SAVE}/session-state.json"
+install -m 0600 /home/fqzhang/.ao/data/ao.db "${ROLLBACK_SAVE}/ao.db"
+install -m 0755 /home/fqzhang/.local/bin/ao "${ROLLBACK_SAVE}/ao"
+install -m 0600 \
+  /home/fqzhang/.config/systemd/user/agent-orchestrator.service \
+  "${ROLLBACK_SAVE}/agent-orchestrator.service"
+if [ -e /home/fqzhang/.local/lib/ao/bin/ao-daemon-with-linear ]; then
+  install -m 0755 \
+    /home/fqzhang/.local/lib/ao/bin/ao-daemon-with-linear \
+    "${ROLLBACK_SAVE}/ao-daemon-with-linear"
+fi
+if [ -e /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf ]; then
+  install -m 0644 \
+    /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf \
+    "${ROLLBACK_SAVE}/linear.conf"
+  mv \
+    /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf \
+    /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf.disabled
+fi
+install -m 0755 "${ROLLBACK_ROOT}/ao" /home/fqzhang/.local/bin/ao
+install -m 0600 "${ROLLBACK_ROOT}/ao.db" /home/fqzhang/.ao/data/ao.db
+install -m 0600 "${ROLLBACK_ROOT}/agent-orchestrator.service" \
+  /home/fqzhang/.config/systemd/user/agent-orchestrator.service
+printf '%s  %s\n%s  %s\n%s  %s\n' \
+  4e23bde24054b18a4c443f463542e50fde11ac2e11ff552209b62ba269674981 \
+  /home/fqzhang/.local/bin/ao \
+  57134ffb27f203f7ae8528e8d7a9816374239941d6a075217c5c0a9441d85f0a \
+  /home/fqzhang/.ao/data/ao.db \
+  7946749c60bfb423bcc0863142ed0612ffd4083eb0fb780f242a0a61a3c1fb6b \
+  /home/fqzhang/.config/systemd/user/agent-orchestrator.service |
+  sha256sum --check -
+systemctl --user daemon-reload
+systemctl --user start agent-orchestrator.service
+systemctl --user show agent-orchestrator.service \
+  -p DropInPaths -p ExecStart -p ActiveState
+ao status --json
+rm -f "${SESSION_SNAPSHOT}"
+trap - EXIT
+```
+
+Expected results are binary SHA-256
+`4e23bde24054b18a4c443f463542e50fde11ac2e11ff552209b62ba269674981`,
+database SHA-256
+`57134ffb27f203f7ae8528e8d7a9816374239941d6a075217c5c0a9441d85f0a`,
+base-unit SHA-256
+`7946749c60bfb423bcc0863142ed0612ffd4083eb0fb780f242a0a61a3c1fb6b`,
+empty `DropInPaths`, effective `ExecStart` ending in `ao daemon`, active
+service state, and ready AO status.
+The retained database currently contains six nonterminated worker rows, so the
+unmodified historical set intentionally fails its retained-ownership gate and
+must not be installed without an explicitly reviewed reconciliation copy.
+
+For the earlier upstream canary, restore both historical binaries and its
+matching unit:
+
+```bash
+set -euo pipefail
+ROLLBACK_ROOT=/home/fqzhang/.local/lib/ao/backups/20260726-upstream-9f8c085f
+printf '%s  %s\n%s  %s\n%s  %s\n%s  %s\n' \
+  25fab37d7279e72d0e3c2295630c1eb47ed4ff4f54c08b02e4125ca3b9efcdeb \
+  "${ROLLBACK_ROOT}/ao" \
+  5bd25fd1647c4c6eb2e22b35aa9f257c0d76d23c5ed0fa42c5bed32745e290e8 \
+  "${ROLLBACK_ROOT}/ao-daemon" \
+  7beffe130d21409160b226ad543df64876d277511c847b9907e519855a3e15dd \
+  "${ROLLBACK_ROOT}/ao.db" \
+  f79d3908773ff8ddbe799b2f9e32256caa1ceb33f0910acfa2c7a038c2ac332c \
+  "${ROLLBACK_ROOT}/agent-orchestrator.service" |
+  sha256sum --check -
+SESSION_SNAPSHOT="$(mktemp)"
+trap 'rm -f "${SESSION_SNAPSHOT}"' EXIT
+ao session ls --include-terminated --json > "${SESSION_SNAPSHOT}"
+systemctl --user stop agent-orchestrator.service
+if systemctl --user is-active --quiet agent-orchestrator.service; then
+  echo "agent-orchestrator.service remained active after stop" >&2
+  exit 1
+fi
+if ! python - /home/fqzhang/.ao/data/ao.db "${ROLLBACK_ROOT}/ao.db" <<'PY'; then
+import sqlite3
+import sys
+
+def active_workers(path):
+    with sqlite3.connect(f"file:{path}?mode=ro", uri=True) as database:
+        return [
+            row[0]
+            for row in database.execute(
+                "SELECT id FROM sessions "
+                "WHERE kind = 'worker' AND is_terminated = 0 ORDER BY id"
+            )
+        ]
+
+current_active = active_workers(sys.argv[1])
+retained_active = active_workers(sys.argv[2])
+failures = []
+if current_active:
+    failures.append(
+        "drain current nonterminated workers through AO: "
+        + ", ".join(current_active)
+    )
+if retained_active:
+    failures.append(
+        "retained database has nonterminated ownership and requires "
+        "an explicitly reviewed reconciliation copy: "
+        + ", ".join(retained_active)
+    )
+if failures:
+    raise SystemExit("; ".join(failures))
+PY
+  systemctl --user start agent-orchestrator.service
+  echo "rollback rejected; unchanged current AO service restarted" >&2
+  exit 1
+fi
+ROLLBACK_SAVE="/home/fqzhang/.ao/backups/rollback-$(date +%Y%m%d%H%M%S)"
+install -d -m 0700 "${ROLLBACK_SAVE}"
+install -m 0600 "${SESSION_SNAPSHOT}" \
+  "${ROLLBACK_SAVE}/session-state.json"
+install -m 0600 /home/fqzhang/.ao/data/ao.db "${ROLLBACK_SAVE}/ao.db"
+install -m 0755 /home/fqzhang/.local/bin/ao "${ROLLBACK_SAVE}/ao"
+if [ -e /home/fqzhang/.local/bin/ao-daemon ]; then
+  install -m 0755 /home/fqzhang/.local/bin/ao-daemon \
+    "${ROLLBACK_SAVE}/ao-daemon"
+fi
+install -m 0600 \
+  /home/fqzhang/.config/systemd/user/agent-orchestrator.service \
+  "${ROLLBACK_SAVE}/agent-orchestrator.service"
+if [ -e /home/fqzhang/.local/lib/ao/bin/ao-daemon-with-linear ]; then
+  install -m 0755 \
+    /home/fqzhang/.local/lib/ao/bin/ao-daemon-with-linear \
+    "${ROLLBACK_SAVE}/ao-daemon-with-linear"
+fi
+if [ -e /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf ]; then
+  install -m 0644 \
+    /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf \
+    "${ROLLBACK_SAVE}/linear.conf"
+  mv \
+    /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf \
+    /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf.disabled
+fi
+install -m 0755 "${ROLLBACK_ROOT}/ao" /home/fqzhang/.local/bin/ao
+install -m 0755 "${ROLLBACK_ROOT}/ao-daemon" \
+  /home/fqzhang/.local/bin/ao-daemon
+install -m 0600 "${ROLLBACK_ROOT}/ao.db" /home/fqzhang/.ao/data/ao.db
+install -m 0600 "${ROLLBACK_ROOT}/agent-orchestrator.service" \
+  /home/fqzhang/.config/systemd/user/agent-orchestrator.service
+printf '%s  %s\n%s  %s\n%s  %s\n%s  %s\n' \
+  25fab37d7279e72d0e3c2295630c1eb47ed4ff4f54c08b02e4125ca3b9efcdeb \
+  /home/fqzhang/.local/bin/ao \
+  5bd25fd1647c4c6eb2e22b35aa9f257c0d76d23c5ed0fa42c5bed32745e290e8 \
+  /home/fqzhang/.local/bin/ao-daemon \
+  7beffe130d21409160b226ad543df64876d277511c847b9907e519855a3e15dd \
+  /home/fqzhang/.ao/data/ao.db \
+  f79d3908773ff8ddbe799b2f9e32256caa1ceb33f0910acfa2c7a038c2ac332c \
+  /home/fqzhang/.config/systemd/user/agent-orchestrator.service |
+  sha256sum --check -
+systemctl --user daemon-reload
+systemctl --user start agent-orchestrator.service
+systemctl --user show agent-orchestrator.service \
+  -p DropInPaths -p ExecStart -p ActiveState
+ao status --json
+rm -f "${SESSION_SNAPSHOT}"
+trap - EXIT
+```
+
+Expected hashes are
+`25fab37d7279e72d0e3c2295630c1eb47ed4ff4f54c08b02e4125ca3b9efcdeb`
+for `ao` and
+`5bd25fd1647c4c6eb2e22b35aa9f257c0d76d23c5ed0fa42c5bed32745e290e8`
+for `ao-daemon`, with database SHA-256
+`7beffe130d21409160b226ad543df64876d277511c847b9907e519855a3e15dd`
+and base-unit SHA-256
+`f79d3908773ff8ddbe799b2f9e32256caa1ceb33f0910acfa2c7a038c2ac332c`.
+`DropInPaths` must be empty, effective `ExecStart` must end in `ao-daemon`, the
+service must be active, and AO status must be ready.
+The retained upstream database currently contains three nonterminated worker
+rows, so this unmodified set also intentionally fails before installation.
+
+To roll back, stop the service, preserve the current binary, database, base
+unit, wrapper, and drop-in in a new dated backup, then restore one internally
+consistent retained set. Remove or disable the Linear drop-in when restoring a
+build that does not support Linear and run the matching rollback verification
+above. Do not delete or revoke the Linear credential as an incidental rollback
+step; that is a separate explicit security action.
 
 ## Upgrade Rule
 
