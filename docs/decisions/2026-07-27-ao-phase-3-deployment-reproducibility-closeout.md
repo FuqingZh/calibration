@@ -2,7 +2,7 @@
 
 Date: 2026-07-27
 
-Status: Deployed and host-verified
+Status: Binary deployed; wrapper hardening pending host parity
 
 ## Context
 
@@ -36,7 +36,7 @@ automation boundary.
 - Credential wrapper:
   `/home/fqzhang/.local/lib/ao/bin/ao-daemon-with-linear`, mode `0755`
 - Credential wrapper SHA-256:
-  `0531d973a0cd690b03b52530388cf138e5a4b54899167a341ca0d1a5ff88d2d7`
+  `bb5421301d09df0c3fa9176dffb1fbb5170cb02d897610b0137a155cb4c08090`
 - Active service drop-in:
   `/home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf`,
   mode `0644`, inside a mode `0700` drop-in directory
@@ -48,6 +48,10 @@ base unit's `ExecStart` and replaces it with the wrapper. The credential value
 is not present in the unit, drop-in, wrapper, repository, or this decision. The
 complete managed wrapper source is
 [`../runbooks/artifacts/ao-daemon-with-linear`](../runbooks/artifacts/ao-daemon-with-linear).
+The managed artifact unsets `AO_LINEAR_OAUTH_TOKEN` before exec so only the
+reviewed file-backed API key is active. This hash is the repository target;
+root still must install the exact artifact, restart, and provide live
+effective-unit, health, and hash evidence before final host parity is claimed.
 
 The wrapper-to-daemon credential handoff is not sufficient to protect worker
 environments by itself. The deployed AO build must filter both

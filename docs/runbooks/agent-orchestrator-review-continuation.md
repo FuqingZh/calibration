@@ -290,9 +290,14 @@ sha256sum /home/fqzhang/.local/lib/ao/bin/ao-daemon-with-linear
 ```
 
 The expected wrapper SHA-256 is
-`0531d973a0cd690b03b52530388cf138e5a4b54899167a341ca0d1a5ff88d2d7`.
+`bb5421301d09df0c3fa9176dffb1fbb5170cb02d897610b0137a155cb4c08090`.
 The complete source is retained rather than described only in prose so
 reconstruction and audit use identical fail-closed behavior.
+The wrapper clears `AO_LINEAR_OAUTH_TOKEN` before exec so the reviewed
+file-backed `AO_LINEAR_API_KEY` is the only active Linear credential source.
+This artifact hash is the repository target; final host parity requires root to
+install this exact file, restart the service, and repeat effective-unit, health,
+and hash verification.
 
 The active mode `0644` drop-in is managed from
 [`artifacts/linear.conf`](artifacts/linear.conf) and installed at
@@ -515,7 +520,7 @@ sha256sum \
 A check run as another user, outside the user manager, or with a separately
 constructed environment does not verify the deployed service context.
 The wrapper hash must be
-`0531d973a0cd690b03b52530388cf138e5a4b54899167a341ca0d1a5ff88d2d7`.
+`bb5421301d09df0c3fa9176dffb1fbb5170cb02d897610b0137a155cb4c08090`.
 The enabled drop-in hash must be
 `be96ac3b7e948656c7c747e641201d7d989dbc3eec4886d16b548a7bc9c685df`.
 
@@ -562,6 +567,7 @@ Inputs:
 Run this non-mutating identity query. The command never prints the credential:
 
 ```bash
+set +x
 set -euo pipefail
 LINEAR_SMOKE_RESPONSE="$(mktemp)"
 trap 'rm -f "${LINEAR_SMOKE_RESPONSE}"' EXIT
@@ -737,13 +743,92 @@ only with the matching
 whose SHA-256 is
 `5bd25fd1647c4c6eb2e22b35aa9f257c0d76d23c5ed0fa42c5bed32745e290e8`.
 
+### Rollback verification
+
+Do not reuse the current Phase 3 hash or wrapper expectations for a rollback.
+For the immediate pre-security-fix binary, disable the Linear drop-in, restore
+the retained executable, and verify the base service:
+
+```bash
+systemctl --user stop agent-orchestrator.service
+install -m 0755 \
+  /home/fqzhang/.ao/backups/phase3-runtimeenv-68496903/ao-before-runtimeenv \
+  /home/fqzhang/.local/bin/ao
+mv \
+  /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf \
+  /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf.disabled
+systemctl --user daemon-reload
+systemctl --user start agent-orchestrator.service
+sha256sum /home/fqzhang/.local/bin/ao
+systemctl --user show agent-orchestrator.service \
+  -p DropInPaths -p ExecStart -p ActiveState
+ao status --json
+```
+
+Expected results are binary SHA-256
+`2fbd3af959a1135c7d0b3cefeb0c5597b3f68a53c39e5102c418f5db302f9a16`,
+empty `DropInPaths`, effective `ExecStart` ending in `ao daemon`, active
+service state, and ready AO status.
+
+For the immediate pre-Phase-3 set, restore its matching `ao` and base unit,
+keep the Linear drop-in disabled, then verify:
+
+```bash
+systemctl --user stop agent-orchestrator.service
+install -m 0755 /home/fqzhang/.ao/backups/phase3-c5ed22df/ao \
+  /home/fqzhang/.local/bin/ao
+install -m 0600 \
+  /home/fqzhang/.ao/backups/phase3-c5ed22df/agent-orchestrator.service \
+  /home/fqzhang/.config/systemd/user/agent-orchestrator.service
+systemctl --user daemon-reload
+systemctl --user start agent-orchestrator.service
+sha256sum /home/fqzhang/.local/bin/ao
+systemctl --user show agent-orchestrator.service \
+  -p DropInPaths -p ExecStart -p ActiveState
+ao status --json
+```
+
+Expected results are binary SHA-256
+`4e23bde24054b18a4c443f463542e50fde11ac2e11ff552209b62ba269674981`,
+empty `DropInPaths`, effective `ExecStart` ending in `ao daemon`, active
+service state, and ready AO status.
+
+For the earlier upstream canary, restore both historical binaries and its
+matching unit:
+
+```bash
+systemctl --user stop agent-orchestrator.service
+install -m 0755 \
+  /home/fqzhang/.local/lib/ao/backups/20260726-upstream-9f8c085f/ao \
+  /home/fqzhang/.local/bin/ao
+install -m 0755 \
+  /home/fqzhang/.local/lib/ao/backups/20260726-upstream-9f8c085f/ao-daemon \
+  /home/fqzhang/.local/bin/ao-daemon
+install -m 0600 \
+  /home/fqzhang/.local/lib/ao/backups/20260726-upstream-9f8c085f/agent-orchestrator.service \
+  /home/fqzhang/.config/systemd/user/agent-orchestrator.service
+systemctl --user daemon-reload
+systemctl --user start agent-orchestrator.service
+sha256sum /home/fqzhang/.local/bin/ao \
+  /home/fqzhang/.local/bin/ao-daemon
+systemctl --user show agent-orchestrator.service \
+  -p DropInPaths -p ExecStart -p ActiveState
+ao status --json
+```
+
+Expected hashes are
+`25fab37d7279e72d0e3c2295630c1eb47ed4ff4f54c08b02e4125ca3b9efcdeb`
+for `ao` and
+`5bd25fd1647c4c6eb2e22b35aa9f257c0d76d23c5ed0fa42c5bed32745e290e8`
+for `ao-daemon`. `DropInPaths` must be empty, effective `ExecStart` must end in
+`ao-daemon`, the service must be active, and AO status must be ready.
+
 To roll back, stop the service, preserve the current binary, database, base
 unit, wrapper, and drop-in in a new dated backup, then restore one internally
 consistent retained set. Remove or disable the Linear drop-in when restoring a
-build that does not support Linear, reload the user manager, restart the
-service, and repeat the host-context verification above. Do not delete or
-revoke the Linear credential as an incidental rollback step; that is a
-separate explicit security action.
+build that does not support Linear and run the matching rollback verification
+above. Do not delete or revoke the Linear credential as an incidental rollback
+step; that is a separate explicit security action.
 
 ## Upgrade Rule
 

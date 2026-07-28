@@ -15,4 +15,5 @@ if [ -z "$AO_LINEAR_API_KEY" ]; then
 fi
 
 export AO_LINEAR_API_KEY
+unset AO_LINEAR_OAUTH_TOKEN
 exec /home/fqzhang/.local/bin/ao daemon
