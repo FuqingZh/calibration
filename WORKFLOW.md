@@ -18,6 +18,10 @@ polling:
 agent:
   max_concurrent_agents: 1
 ---
+Issue {{ issue.identifier }}: {{ issue.title }}
+
+{{ issue.description }}
+
 Follow the repository's AGENTS.md instructions.
 Implement the issue, validate the result with the repository-owned validation
 contract, and open or update a pull request for the completed change.
