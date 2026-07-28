@@ -65,7 +65,9 @@ were resolved. PR #10 merged as
 Two independent builds from the merge commit with
 `-trimpath -buildvcs=false` produced the same SHA-256,
 `ce2df0db2e6ad7f1eb65906a04b900620941ba716d0ad1b14378db9db1387d91`.
-That binary is installed. The Linear drop-in is restored and effective
+This canonical hash is qualified to Go 1.26.4 on `linux/amd64`; another
+supported toolchain or target requires its own recorded hash. That binary is
+installed. The Linear drop-in is restored and effective
 `ExecStart` is `/home/fqzhang/.local/lib/ao/bin/ao-daemon-with-linear`.
 After restart, AO reported ready and healthy, doctor reported zero failures,
 and all nine pre-existing tmux pane PIDs were unchanged.
@@ -116,13 +118,14 @@ using the commands in the AO runbook. The installed security-fix binary
 The earlier `2fbd3af9...` and `ec19ff3a...` results identify retained rollback
 artifacts.
 
-The Phase 3 smoke establishes that the deployed binary can load the read-only
-Linear configuration and exercise the bounded smoke path. It is not a real
-Linear intake loop: it does not prove sustained polling, durable claim
-coordination, issue-to-worker creation, restart recovery, or end-to-end
-processing of a real Linear issue. Do not describe the deployment as a proven
-production Linear intake service until a separately authorized real-project
-canary exercises those behaviors.
+The Phase 3 smoke validates the credential and read-only Linear API identity
+path; it does not exercise AO's tracker adapter and is not a real Linear intake
+loop. The installed binary hash, service wiring, AO health, focused AO tests,
+and fresh-worker environment check are separate evidence. They do not prove
+sustained polling, durable claim coordination, issue-to-worker creation,
+restart recovery, or end-to-end processing of a real Linear issue. Do not
+describe the deployment as a proven production Linear intake service until a
+separately authorized real-project canary exercises those behaviors.
 
 The bounded smoke must also remain read-only: authenticate a `viewer` GraphQL
 query using the credential file, require a non-empty viewer id and no GraphQL

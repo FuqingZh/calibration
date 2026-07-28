@@ -79,23 +79,26 @@ existing user authentication at runtime.
 
 ### Current Phase 3 fork
 
-Synchronize the durable remote-tracking ref explicitly. On this checkout,
-`git fetch origin main` updated only `FETCH_HEAD`; it did not update
-`refs/remotes/origin/main`.
+Start from the calibration checkout, preserve its root for later managed
+artifact installation, then clone the AO fork:
 
 ```bash
-git fetch origin refs/heads/main:refs/remotes/origin/main
-git rev-parse refs/remotes/origin/main
-git ls-remote origin refs/heads/main
+CALIBRATION_ROOT="$(git rev-parse --show-toplevel)"
+AO_BUILD_ROOT="$(mktemp -d)"
+git clone --no-checkout https://github.com/FuqingZh/agent-orchestrator.git \
+  "${AO_BUILD_ROOT}/source"
+git -C "${AO_BUILD_ROOT}/source" fetch \
+  origin refs/heads/main:refs/remotes/origin/main
+git -C "${AO_BUILD_ROOT}/source" rev-parse refs/remotes/origin/main
+git -C "${AO_BUILD_ROOT}/source" ls-remote origin refs/heads/main
 ```
 
+On the observed checkout, `git fetch origin main` updated only `FETCH_HEAD`;
+the explicit refspec above durably updates `refs/remotes/origin/main`.
 Both readbacks must report
 `68496903141232718c23b8f13f4efede2d6f7b58`. Then build from that commit:
 
 ```bash
-AO_BUILD_ROOT="$(mktemp -d)"
-git clone --no-checkout https://github.com/FuqingZh/agent-orchestrator.git \
-  "${AO_BUILD_ROOT}/source"
 git -C "${AO_BUILD_ROOT}/source" checkout --detach \
   68496903141232718c23b8f13f4efede2d6f7b58
 cd "${AO_BUILD_ROOT}/source/backend"
@@ -106,12 +109,14 @@ go build -trimpath -buildvcs=false \
 sha256sum "${AO_BUILD_ROOT}/bin/ao"
 ```
 
-The expected SHA-256 is
+With Go 1.26.4 on `linux/amd64`, the expected SHA-256 is
 `ce2df0db2e6ad7f1eb65906a04b900620941ba716d0ad1b14378db9db1387d91`.
 Two independent builds from the merge commit produced this same hash with
 `-trimpath -buildvcs=false`. Earlier source tree `e9505779` demonstrated that
 `-buildvcs=false` alone retained worktree-dependent output. Both flags are
-therefore part of the canonical deployment command.
+therefore part of the canonical deployment command. Another supported Go
+toolchain or target may produce a different hash and requires its own
+toolchain-qualified build, test, and installed-hash evidence.
 
 Install the verified artifact as `fqzhang`, preserving the currently installed
 binary first:
@@ -165,9 +170,10 @@ artifact. Go build IDs can still make hashes toolchain-specific. On a different
 supported toolchain, a hash difference requires source, patch, test, and launch
 review; it is not by itself proof of a behavior change.
 
-## Install
+### Rollback-only canary binary install
 
-Install as the `fqzhang` user:
+Install these two historical binaries only when deliberately restoring the
+original patched canary:
 
 ```bash
 install -D -m 0755 "${AO_BUILD_ROOT}/bin/ao" \
@@ -175,6 +181,8 @@ install -D -m 0755 "${AO_BUILD_ROOT}/bin/ao" \
 install -D -m 0755 "${AO_BUILD_ROOT}/bin/ao-daemon" \
   /home/fqzhang/.local/bin/ao-daemon
 ```
+
+## Host Runtime Install
 
 When tmux 3.5 comes from the current micromamba environment, create the wrapper
 `/home/fqzhang/.local/lib/ao/bin/tmux`:
@@ -228,7 +236,7 @@ Environment=http_proxy=http://127.0.0.1:7897
 Environment=https_proxy=http://127.0.0.1:7897
 Environment=all_proxy=http://127.0.0.1:7897
 Environment=no_proxy=localhost,127.0.0.1,::1,192.168.0.0/16,192.168.30.202,10.0.0.0/8,172.16.0.0/12
-ExecStart=%h/.local/bin/ao-daemon
+ExecStart=%h/.local/bin/ao daemon
 StandardOutput=append:%h/.ao/daemon.log
 StandardError=append:%h/.ao/daemon.log
 Restart=on-failure
@@ -268,9 +276,11 @@ the exact repository artifact:
 
 ```bash
 install -D -m 0755 \
-  docs/runbooks/artifacts/ao-daemon-with-linear \
+  "${CALIBRATION_ROOT}/docs/runbooks/artifacts/ao-daemon-with-linear" \
   /home/fqzhang/.local/lib/ao/bin/ao-daemon-with-linear
 sha256sum /home/fqzhang/.local/lib/ao/bin/ao-daemon-with-linear
+sha256sum \
+  /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf
 ```
 
 The expected wrapper SHA-256 is
@@ -278,15 +288,26 @@ The expected wrapper SHA-256 is
 The complete source is retained rather than described only in prose so
 reconstruction and audit use identical fail-closed behavior.
 
-The active mode `0644` drop-in is
+The active mode `0644` drop-in is managed from
+[`artifacts/linear.conf`](artifacts/linear.conf) and installed at
 `/home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf`
-inside a mode `0700` directory. It replaces the base unit command:
+inside a mode `0700` directory:
 
-```ini
-[Service]
-ExecStart=
-ExecStart=%h/.local/lib/ao/bin/ao-daemon-with-linear
+```bash
+install -d -m 0700 \
+  /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d
+install -m 0644 \
+  "${CALIBRATION_ROOT}/docs/runbooks/artifacts/linear.conf" \
+  /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf
+sha256sum \
+  /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf
+systemctl --user daemon-reload
+systemctl --user restart agent-orchestrator.service
 ```
+
+The expected drop-in SHA-256 is
+`be96ac3b7e948656c7c747e641201d7d989dbc3eec4886d16b548a7bc9c685df`.
+The reload and restart are required so effective `ExecStart` uses the wrapper.
 
 Do not record the credential value in Git, shell transcripts, the systemd
 unit, or diagnostic output. The file is read-only operational input; this
@@ -437,9 +458,8 @@ systemctl --user is-active agent-orchestrator.service
 ao status --json
 ao project get repository-name --json
 PATH=/home/fqzhang/.local/lib/ao/bin:/home/fqzhang/.nvm/versions/node/v22.22.2/bin:/home/fqzhang/.local/bin:/usr/local/bin:/usr/bin:/bin \
-  ao doctor --json
-sha256sum /home/fqzhang/.local/bin/ao \
-  /home/fqzhang/.local/bin/ao-daemon
+ao doctor --json
+sha256sum /home/fqzhang/.local/bin/ao
 ```
 
 After the final Phase 3 security-fix cutover,
@@ -475,6 +495,8 @@ A check run as another user, outside the user manager, or with a separately
 constructed environment does not verify the deployed service context.
 The wrapper hash must be
 `0531d973a0cd690b03b52530388cf138e5a4b54899167a341ca0d1a5ff88d2d7`.
+The enabled drop-in hash must be
+`be96ac3b7e948656c7c747e641201d7d989dbc3eec4886d16b548a7bc9c685df`.
 
 Expected current readback:
 
@@ -498,11 +520,14 @@ Passing this section establishes `runtime-ready`, not
 `continuation-proven`.
 
 A passing Phase 3 Linear smoke is also narrower than a real Linear intake
-loop. It shows that the installed binary can load the read-only tracker
-configuration and exercise the smoke path. It does not prove sustained polling,
-durable claims, issue-to-worker creation, restart recovery, or complete
-processing of a real Linear issue. Require a separately authorized real-project
-canary before describing Linear intake as end-to-end proven.
+loop. The bounded smoke below validates only the credential and read-only
+Linear API identity path; it does not exercise AO's tracker adapter. The
+installed binary hash, effective service wiring, AO health, focused AO tests,
+and fresh-worker environment acceptance are separate evidence. None of these
+proves sustained polling, durable claims, issue-to-worker creation, restart
+recovery, or complete processing of a real Linear issue. Require a separately
+authorized real-project canary before describing Linear intake as end-to-end
+proven.
 
 ### Bounded read-only Linear smoke
 
@@ -516,6 +541,7 @@ Inputs:
 Run this non-mutating identity query. The command never prints the credential:
 
 ```bash
+set -euo pipefail
 LINEAR_SMOKE_RESPONSE="$(mktemp)"
 trap 'rm -f "${LINEAR_SMOKE_RESPONSE}"' EXIT
 LINEAR_SMOKE_KEY=
@@ -547,7 +573,9 @@ trap - EXIT
 Success requires HTTP success, valid JSON, no GraphQL `errors`, a non-empty
 `data.viewer.id`, and the final line `linear-read-only-smoke: PASS`. The query
 has no mutation and does not enable tracker intake, create a worker, or alter a
-Linear object. Failure at any step blocks the deployment claim.
+Linear object. Strict shell mode makes any missing credential, transport
+failure, invalid JSON, or assertion failure return nonzero and block the
+deployment claim.
 
 This verifies the credential and read-only Linear API path. The installed AO
 hash, effective service command, wrapper hash, daemon readiness, and
@@ -557,20 +585,42 @@ host wiring are active.
 ### Worker environment secret gate
 
 After installing or upgrading, create a new disposable AO worker so AO creates
-the tmux pane. In that new pane run a values-never-printed boolean presence
-check equivalent to:
+the tmux pane:
 
 ```bash
-env | sed -n 's/=.*//p' |
-  grep -E '^AO_LINEAR_(API_KEY|OAUTH_TOKEN)$'
+ao spawn \
+  --project calibration \
+  --name linear-env-smoke \
+  --harness codex \
+  --prompt 'Run only this boolean environment check without printing values:
+if env | sed -n "s/=.*//p" |
+  grep -Eq "^AO_LINEAR_(API_KEY|OAUTH_TOKEN)$"; then
+  echo LINEAR_ENV_LEAK
+else
+  echo LINEAR_ENV_CLEAN
+fi
+Report the single result line and stop.'
 ```
 
-Success is exit status `1` with no output: neither variable name may be present.
-This command emits names only, never values. The accepted fresh worker reported
-exactly `LINEAR_ENV_CLEAN` from the equivalent boolean check and was then
-terminated. Repeat this acceptance after an AO or tmux upgrade, including with
-a newly started tmux server, because an already-running server can hide
-daemon-to-server inheritance defects.
+Record the returned session id, confirm the worker reports exactly
+`LINEAR_ENV_CLEAN`, then read back and terminate it:
+
+```bash
+ao session get SESSION_ID --project calibration --json
+ao session kill SESSION_ID --project calibration
+```
+
+The check prints only a boolean result, never variable values. The accepted
+test ran while the active wrapper supplied the real credential to the daemon,
+so it exercised filtering rather than passing against an uncredentialed
+service. The fresh worker reported exactly `LINEAR_ENV_CLEAN` and was
+terminated.
+
+Do not restart the shared tmux server while other workers are active. A
+server-start inheritance recheck requires either a maintenance window after
+all workers are drained and their Git state is preserved, or an isolated AO
+canary with its own data directory and tmux socket. Repeat that isolated or
+drained check after an AO or tmux upgrade.
 
 Also confirm that
 `/home/fqzhang/.local/lib/ao/bin/tmux show-environment -g LD_LIBRARY_PATH`
