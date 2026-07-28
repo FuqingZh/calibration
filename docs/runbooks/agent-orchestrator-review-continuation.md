@@ -179,17 +179,15 @@ different binaries and must not be used when comparing against those hashes.
 The retained installed artifacts are the hash authority; rebuilding on another
 path or toolchain requires separate source, patch, test, and launch review.
 
-### Rollback-only canary binary install
+### No standalone canary binary install
 
-Install these two historical binaries only when deliberately restoring the
-original patched canary:
-
-```bash
-install -D -m 0755 "${AO_BUILD_ROOT}/bin/ao" \
-  /home/fqzhang/.local/bin/ao
-install -D -m 0755 "${AO_BUILD_ROOT}/bin/ao-daemon" \
-  /home/fqzhang/.local/bin/ao-daemon
-```
+Rebuilding the historical canary does not authorize replacing either installed
+binary by itself. To restore that canary, use the complete earlier-upstream
+procedure under [Rollback verification](#rollback-verification). That procedure
+first stops and verifies deactivation of the service, preserves the active
+deployment locally, disables the Linear drop-in, restores the matching
+binary/database/unit set, reloads systemd, and verifies rollback-specific
+hashes and service state.
 
 ## Host Runtime Install
 
@@ -767,10 +765,19 @@ For the immediate pre-security-fix binary, disable the Linear drop-in, restore
 the retained executable, and verify the base service:
 
 ```bash
+set -euo pipefail
 systemctl --user stop agent-orchestrator.service
+if systemctl --user is-active --quiet agent-orchestrator.service; then
+  echo "agent-orchestrator.service remained active after stop" >&2
+  exit 1
+fi
 ROLLBACK_SAVE="/home/fqzhang/.ao/backups/rollback-$(date +%Y%m%d%H%M%S)"
 install -d -m 0700 "${ROLLBACK_SAVE}"
 install -m 0600 /home/fqzhang/.ao/data/ao.db "${ROLLBACK_SAVE}/ao.db"
+install -m 0755 /home/fqzhang/.local/bin/ao "${ROLLBACK_SAVE}/ao"
+install -m 0600 \
+  /home/fqzhang/.config/systemd/user/agent-orchestrator.service \
+  "${ROLLBACK_SAVE}/agent-orchestrator.service"
 install -m 0755 \
   /home/fqzhang/.ao/backups/phase3-runtimeenv-68496903/ao-before-runtimeenv \
   /home/fqzhang/.local/bin/ao
@@ -798,10 +805,19 @@ For the immediate pre-Phase-3 set, restore its matching `ao` and base unit,
 keep the Linear drop-in disabled, then verify:
 
 ```bash
+set -euo pipefail
 systemctl --user stop agent-orchestrator.service
+if systemctl --user is-active --quiet agent-orchestrator.service; then
+  echo "agent-orchestrator.service remained active after stop" >&2
+  exit 1
+fi
 ROLLBACK_SAVE="/home/fqzhang/.ao/backups/rollback-$(date +%Y%m%d%H%M%S)"
 install -d -m 0700 "${ROLLBACK_SAVE}"
 install -m 0600 /home/fqzhang/.ao/data/ao.db "${ROLLBACK_SAVE}/ao.db"
+install -m 0755 /home/fqzhang/.local/bin/ao "${ROLLBACK_SAVE}/ao"
+install -m 0600 \
+  /home/fqzhang/.config/systemd/user/agent-orchestrator.service \
+  "${ROLLBACK_SAVE}/agent-orchestrator.service"
 if [ -e /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf ]; then
   mv \
     /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf \
@@ -831,10 +847,23 @@ For the earlier upstream canary, restore both historical binaries and its
 matching unit:
 
 ```bash
+set -euo pipefail
 systemctl --user stop agent-orchestrator.service
+if systemctl --user is-active --quiet agent-orchestrator.service; then
+  echo "agent-orchestrator.service remained active after stop" >&2
+  exit 1
+fi
 ROLLBACK_SAVE="/home/fqzhang/.ao/backups/rollback-$(date +%Y%m%d%H%M%S)"
 install -d -m 0700 "${ROLLBACK_SAVE}"
 install -m 0600 /home/fqzhang/.ao/data/ao.db "${ROLLBACK_SAVE}/ao.db"
+install -m 0755 /home/fqzhang/.local/bin/ao "${ROLLBACK_SAVE}/ao"
+if [ -e /home/fqzhang/.local/bin/ao-daemon ]; then
+  install -m 0755 /home/fqzhang/.local/bin/ao-daemon \
+    "${ROLLBACK_SAVE}/ao-daemon"
+fi
+install -m 0600 \
+  /home/fqzhang/.config/systemd/user/agent-orchestrator.service \
+  "${ROLLBACK_SAVE}/agent-orchestrator.service"
 if [ -e /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf ]; then
   mv \
     /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf \
