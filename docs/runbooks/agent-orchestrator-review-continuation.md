@@ -293,6 +293,7 @@ their recorded digest checks:
 
 ```bash
 set -euo pipefail
+CALIBRATION_ROOT="$(git rev-parse --show-toplevel)"
 WRAPPER_SOURCE="${CALIBRATION_ROOT}/docs/runbooks/artifacts/ao-daemon-with-linear"
 DROPIN_SOURCE="${CALIBRATION_ROOT}/docs/runbooks/artifacts/linear.conf"
 WRAPPER_TARGET=/home/fqzhang/.local/lib/ao/bin/ao-daemon-with-linear
@@ -800,9 +801,12 @@ Every path snapshots the complete worker-session readback before stopping the
 daemon. A binary-only rollback retains the current database and uses that
 snapshot for post-restart reconciliation. A rollback that restores historical
 `ao.db` is stricter: after stopping the daemon, it queries the now-stable
-current database read-only and exits nonzero while any worker is nonterminated.
-Preserve each worker's Git/worktree and pull-request state, terminate it through
-AO, and rerun the block before replacing the database.
+current and retained databases read-only and rejects nonterminated workers in
+either one. A rejected check restarts the unchanged current service so AO
+remains available for remediation. Preserve each current worker's Git/worktree
+and pull-request state, terminate it through AO, and rerun the block. A retained
+database with nonterminated ownership requires an explicitly reviewed
+reconciliation copy; do not install it as-is.
 
 For the immediate pre-security-fix binary, disable the Linear drop-in, restore
 the retained executable, and verify the base service:
@@ -914,24 +918,41 @@ if systemctl --user is-active --quiet agent-orchestrator.service; then
   echo "agent-orchestrator.service remained active after stop" >&2
   exit 1
 fi
-python - /home/fqzhang/.ao/data/ao.db <<'PY'
+if ! python - /home/fqzhang/.ao/data/ao.db "${ROLLBACK_ROOT}/ao.db" <<'PY'; then
 import sqlite3
 import sys
 
-with sqlite3.connect(f"file:{sys.argv[1]}?mode=ro", uri=True) as database:
-    active = [
-        row[0]
-        for row in database.execute(
-            "SELECT id FROM sessions "
-            "WHERE kind = 'worker' AND is_terminated = 0 ORDER BY id"
-        )
-    ]
-if active:
-    raise SystemExit(
-        "drain and preserve nonterminated workers before database rollback: "
-        + ", ".join(active)
+def active_workers(path):
+    with sqlite3.connect(f"file:{path}?mode=ro", uri=True) as database:
+        return [
+            row[0]
+            for row in database.execute(
+                "SELECT id FROM sessions "
+                "WHERE kind = 'worker' AND is_terminated = 0 ORDER BY id"
+            )
+        ]
+
+current_active = active_workers(sys.argv[1])
+retained_active = active_workers(sys.argv[2])
+failures = []
+if current_active:
+    failures.append(
+        "drain current nonterminated workers through AO: "
+        + ", ".join(current_active)
     )
+if retained_active:
+    failures.append(
+        "retained database has nonterminated ownership and requires "
+        "an explicitly reviewed reconciliation copy: "
+        + ", ".join(retained_active)
+    )
+if failures:
+    raise SystemExit("; ".join(failures))
 PY
+  systemctl --user start agent-orchestrator.service
+  echo "rollback rejected; unchanged current AO service restarted" >&2
+  exit 1
+fi
 ROLLBACK_SAVE="/home/fqzhang/.ao/backups/rollback-$(date +%Y%m%d%H%M%S)"
 install -d -m 0700 "${ROLLBACK_SAVE}"
 install -m 0600 "${SESSION_SNAPSHOT}" \
@@ -983,6 +1004,9 @@ base-unit SHA-256
 `7946749c60bfb423bcc0863142ed0612ffd4083eb0fb780f242a0a61a3c1fb6b`,
 empty `DropInPaths`, effective `ExecStart` ending in `ao daemon`, active
 service state, and ready AO status.
+The retained database currently contains six nonterminated worker rows, so the
+unmodified historical set intentionally fails its retained-ownership gate and
+must not be installed without an explicitly reviewed reconciliation copy.
 
 For the earlier upstream canary, restore both historical binaries and its
 matching unit:
@@ -1008,24 +1032,41 @@ if systemctl --user is-active --quiet agent-orchestrator.service; then
   echo "agent-orchestrator.service remained active after stop" >&2
   exit 1
 fi
-python - /home/fqzhang/.ao/data/ao.db <<'PY'
+if ! python - /home/fqzhang/.ao/data/ao.db "${ROLLBACK_ROOT}/ao.db" <<'PY'; then
 import sqlite3
 import sys
 
-with sqlite3.connect(f"file:{sys.argv[1]}?mode=ro", uri=True) as database:
-    active = [
-        row[0]
-        for row in database.execute(
-            "SELECT id FROM sessions "
-            "WHERE kind = 'worker' AND is_terminated = 0 ORDER BY id"
-        )
-    ]
-if active:
-    raise SystemExit(
-        "drain and preserve nonterminated workers before database rollback: "
-        + ", ".join(active)
+def active_workers(path):
+    with sqlite3.connect(f"file:{path}?mode=ro", uri=True) as database:
+        return [
+            row[0]
+            for row in database.execute(
+                "SELECT id FROM sessions "
+                "WHERE kind = 'worker' AND is_terminated = 0 ORDER BY id"
+            )
+        ]
+
+current_active = active_workers(sys.argv[1])
+retained_active = active_workers(sys.argv[2])
+failures = []
+if current_active:
+    failures.append(
+        "drain current nonterminated workers through AO: "
+        + ", ".join(current_active)
     )
+if retained_active:
+    failures.append(
+        "retained database has nonterminated ownership and requires "
+        "an explicitly reviewed reconciliation copy: "
+        + ", ".join(retained_active)
+    )
+if failures:
+    raise SystemExit("; ".join(failures))
 PY
+  systemctl --user start agent-orchestrator.service
+  echo "rollback rejected; unchanged current AO service restarted" >&2
+  exit 1
+fi
 ROLLBACK_SAVE="/home/fqzhang/.ao/backups/rollback-$(date +%Y%m%d%H%M%S)"
 install -d -m 0700 "${ROLLBACK_SAVE}"
 install -m 0600 "${SESSION_SNAPSHOT}" \
@@ -1087,6 +1128,8 @@ and base-unit SHA-256
 `f79d3908773ff8ddbe799b2f9e32256caa1ceb33f0910acfa2c7a038c2ac332c`.
 `DropInPaths` must be empty, effective `ExecStart` must end in `ao-daemon`, the
 service must be active, and AO status must be ready.
+The retained upstream database currently contains three nonterminated worker
+rows, so this unmodified set also intentionally fails before installation.
 
 To roll back, stop the service, preserve the current binary, database, base
 unit, wrapper, and drop-in in a new dated backup, then restore one internally
