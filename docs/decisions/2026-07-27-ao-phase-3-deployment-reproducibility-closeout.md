@@ -96,6 +96,18 @@ credential values and reported exactly `LINEAR_ENV_CLEAN`; the disposable
 worker was then terminated. This closes the ambient-environment acceptance gate
 for removing `AO_LINEAR_API_KEY` and `AO_LINEAR_OAUTH_TOKEN` from new panes.
 
+A later recovery-created default tmux server closed the distinct server-start
+inheritance gate. The credentialed daemon remained PID `3727219`, started
+`2026-07-28 10:04:17 +08:00`, and its environment-name-only check reported
+`AO_LINEAR_API_KEY` present and `AO_LINEAR_OAUTH_TOKEN` absent. The restoring
+tmux client freshly created server PID `4012975` at
+`2026-07-28 10:53:15 +08:00` on `/tmp/tmux-1009/default`. Values-never-printed
+checks found neither Linear variable in that server's process environment or
+persistent global environment. Its only session was `calibration-8` (`$0`,
+created `2026-07-28T10:53:16+08:00`), with pane PID `4012976`; the pane also
+contained neither variable. This evidence verifies both the tmux-client
+process boundary and the pane-command boundary under the active wrapper.
+
 It does not establish worker-secret isolation. The daemon and workers share the
 `fqzhang` account and workers use `bypass-permissions`, so a worker with that
 authority may read the mode `0600` credential file or inspect same-user process

@@ -114,7 +114,10 @@ go test ./...
 mkdir -p "${AO_BUILD_ROOT}/bin"
 go build -trimpath -buildvcs=false \
   -o "${AO_BUILD_ROOT}/bin/ao" ./cmd/ao
-sha256sum "${AO_BUILD_ROOT}/bin/ao"
+printf '%s  %s\n' \
+  ce2df0db2e6ad7f1eb65906a04b900620941ba716d0ad1b14378db9db1387d91 \
+  "${AO_BUILD_ROOT}/bin/ao" |
+  sha256sum --check -
 ```
 
 With Go 1.26.4 on `linux/amd64`, the expected SHA-256 is
@@ -652,11 +655,27 @@ real credential to the daemon, so it exercised filtering rather than passing
 against an uncredentialed service. The fresh worker reported exactly
 `LINEAR_ENV_CLEAN` and was terminated.
 
-Do not restart the shared tmux server while other workers are active. A
-server-start inheritance recheck requires either a maintenance window after
-all workers are drained and their Git state is preserved, or an isolated AO
-canary with its own data directory and tmux socket. Repeat that isolated or
-drained check after an AO or tmux upgrade.
+The pane-only result was not sufficient to establish server-start hygiene:
+the pane launch command also unsets both variables, so it can mask a credential
+retained by the persistent tmux server. Recovery from a later shared-server
+loss supplied the required fresh-server sample without another restart. The
+wrapper-credentialed daemon remained PID `3727219`, started
+`2026-07-28 10:04:17 +08:00`; its values-never-printed environment-name check
+reported only `AO_LINEAR_API_KEY`. The first restoring tmux client created the
+default server at `2026-07-28 10:53:15 +08:00`, PID `4012975`, socket
+`/tmp/tmux-1009/default`. Its process environment and `show-environment -g`
+persistent environment both reported no
+`AO_LINEAR_API_KEY` or `AO_LINEAR_OAUTH_TOKEN`. The server contained only
+session `calibration-8` (`$0`, tmux creation time
+`2026-07-28T10:53:16+08:00`), with one pane, PID `4012976`; that pane's
+environment also reported neither name. No variable values were printed.
+
+This closes the current fresh-server ambient and persistent-environment gate.
+It also confirms the deployed fork's tmux-client environment filtering, not
+only its pane-command scrubbing. Do not restart the shared tmux server merely
+to repeat this check. Revalidate from an observed fresh server after an AO or
+tmux upgrade, or during a separately authorized maintenance window after all
+workers are drained and their Git state is preserved.
 
 Also confirm that
 `/home/fqzhang/.local/lib/ao/bin/tmux show-environment -g LD_LIBRARY_PATH`
@@ -779,6 +798,12 @@ install -m 0600 \
   /home/fqzhang/.config/systemd/user/agent-orchestrator.service \
   "${ROLLBACK_SAVE}/agent-orchestrator.service"
 install -m 0755 \
+  /home/fqzhang/.local/lib/ao/bin/ao-daemon-with-linear \
+  "${ROLLBACK_SAVE}/ao-daemon-with-linear"
+install -m 0644 \
+  /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf \
+  "${ROLLBACK_SAVE}/linear.conf"
+install -m 0755 \
   /home/fqzhang/.ao/backups/phase3-runtimeenv-68496903/ao-before-runtimeenv \
   /home/fqzhang/.local/bin/ao
 if [ -e /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf ]; then
@@ -818,6 +843,12 @@ install -m 0755 /home/fqzhang/.local/bin/ao "${ROLLBACK_SAVE}/ao"
 install -m 0600 \
   /home/fqzhang/.config/systemd/user/agent-orchestrator.service \
   "${ROLLBACK_SAVE}/agent-orchestrator.service"
+install -m 0755 \
+  /home/fqzhang/.local/lib/ao/bin/ao-daemon-with-linear \
+  "${ROLLBACK_SAVE}/ao-daemon-with-linear"
+install -m 0644 \
+  /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf \
+  "${ROLLBACK_SAVE}/linear.conf"
 if [ -e /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf ]; then
   mv \
     /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf \
@@ -864,6 +895,12 @@ fi
 install -m 0600 \
   /home/fqzhang/.config/systemd/user/agent-orchestrator.service \
   "${ROLLBACK_SAVE}/agent-orchestrator.service"
+install -m 0755 \
+  /home/fqzhang/.local/lib/ao/bin/ao-daemon-with-linear \
+  "${ROLLBACK_SAVE}/ao-daemon-with-linear"
+install -m 0644 \
+  /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf \
+  "${ROLLBACK_SAVE}/linear.conf"
 if [ -e /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf ]; then
   mv \
     /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf \
