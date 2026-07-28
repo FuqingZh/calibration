@@ -2,7 +2,7 @@
 
 Date: 2026-07-27
 
-Status: Binary deployed; wrapper hardening pending host parity
+Status: Deployed and host-verified
 
 ## Context
 
@@ -49,9 +49,24 @@ is not present in the unit, drop-in, wrapper, repository, or this decision. The
 complete managed wrapper source is
 [`../runbooks/artifacts/ao-daemon-with-linear`](../runbooks/artifacts/ao-daemon-with-linear).
 The managed artifact unsets `AO_LINEAR_OAUTH_TOKEN` before exec so only the
-reviewed file-backed API key is active. This hash is the repository target;
-root still must install the exact artifact, restart, and provide live
-effective-unit, health, and hash evidence before final host parity is claimed.
+reviewed file-backed API key is active. Root installed the exact artifact and
+backed up the previous wrapper at
+`/home/fqzhang/.ao/backups/wrapper-6635e31/ao-daemon-with-linear.before`,
+SHA-256
+`0531d973a0cd690b03b52530388cf138e5a4b54899167a341ca0d1a5ff88d2d7`.
+After restart, AO was ready and healthy at PID `3727219`, doctor reported zero
+failures, effective `ExecStart` named the wrapper, `DropInPaths` named the
+active `linear.conf`, and all nine pre-existing tmux pane PIDs were unchanged.
+Installed hashes were the managed wrapper
+`bb5421301d09df0c3fa9176dffb1fbb5170cb02d897610b0137a155cb4c08090`,
+AO binary
+`ce2df0db2e6ad7f1eb65906a04b900620941ba716d0ad1b14378db9db1387d91`,
+and drop-in
+`be96ac3b7e948656c7c747e641201d7d989dbc3eec4886d16b548a7bc9c685df`.
+
+A values-never-printed daemon environment-name check reported exactly
+`API_KEY_PRESENT=yes` and `OAUTH_TOKEN_PRESENT=no`, confirming that the wrapper
+selected only the reviewed file-backed API key in the daemon environment.
 
 The wrapper-to-daemon credential handoff is not sufficient to protect worker
 environments by itself. The deployed AO build must filter both

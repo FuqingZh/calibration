@@ -295,9 +295,16 @@ The complete source is retained rather than described only in prose so
 reconstruction and audit use identical fail-closed behavior.
 The wrapper clears `AO_LINEAR_OAUTH_TOKEN` before exec so the reviewed
 file-backed `AO_LINEAR_API_KEY` is the only active Linear credential source.
-This artifact hash is the repository target; final host parity requires root to
-install this exact file, restart the service, and repeat effective-unit, health,
-and hash verification.
+Root installed this exact artifact. The previous wrapper is retained at
+`/home/fqzhang/.ao/backups/wrapper-6635e31/ao-daemon-with-linear.before`,
+with SHA-256
+`0531d973a0cd690b03b52530388cf138e5a4b54899167a341ca0d1a5ff88d2d7`.
+After restart, AO reported ready and healthy at PID `3727219`, doctor reported
+zero failures, effective `ExecStart` named the wrapper, `DropInPaths` named the
+active `linear.conf`, and all nine pre-existing tmux pane PIDs were unchanged.
+The installed wrapper, AO binary, and drop-in hashes matched the documented
+values. A values-never-printed daemon environment-name boolean check reported
+exactly `API_KEY_PRESENT=yes` and `OAUTH_TOKEN_PRESENT=no`.
 
 The active mode `0644` drop-in is managed from
 [`artifacts/linear.conf`](artifacts/linear.conf) and installed at
@@ -705,6 +712,14 @@ Delete that state only as an explicit destructive cleanup after inspecting
 active sessions and preserving any required worktree or pull-request state.
 
 ## Phase 3 Rollback Artifacts
+
+The previous credential wrapper is retained at
+`/home/fqzhang/.ao/backups/wrapper-6635e31/ao-daemon-with-linear.before`.
+Its SHA-256 is
+`0531d973a0cd690b03b52530388cf138e5a4b54899167a341ca0d1a5ff88d2d7`.
+It does not clear `AO_LINEAR_OAUTH_TOKEN`; restoring it requires separately
+ensuring that variable is absent and rerunning daemon and worker environment
+checks.
 
 The immediate pre-security-fix binary is retained at
 `/home/fqzhang/.ao/backups/phase3-runtimeenv-68496903/ao-before-runtimeenv`.
