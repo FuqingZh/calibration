@@ -127,9 +127,11 @@ git rev-parse refs/remotes/origin/main
 git ls-remote origin refs/heads/main
 ```
 
-Both readbacks must report
-`68496903141232718c23b8f13f4efede2d6f7b58` before building the cutover
-artifact.
+At cutover, both readbacks reported
+`68496903141232718c23b8f13f4efede2d6f7b58`. Fork `main` may advance later;
+reconstruction requires the exact deployed commit to remain available from the
+fork and to be an ancestor of its current `main`, not permanent equality with
+the historical cutover.
 
 ## Verification Boundary
 
@@ -177,10 +179,11 @@ The immediate pre-Phase-3 artifacts are retained under
 - `ao.db`
 - `agent-orchestrator.service`
 
-The pre-reproducible Phase 3 binary with SHA-256
+The pre-reproducible Phase 3 binary is retained at
+`/home/fqzhang/.ao/backups/phase3-repro-7238619/ao-before-trimpath`, with
+verified SHA-256
 `ec19ff3a87a15a04eb3d9d647397c2cc32a820da19448cc93b6fe4f423cc4016`
-must also remain recoverable in the cutover backup. It is rollback evidence,
-not the canonical reproducible deployment artifact.
+and is rollback evidence, not the canonical reproducible deployment artifact.
 
 This immediate set is internally consistent because its retained base unit
 starts `ao daemon`; it does not require the separate `ao-daemon` executable.

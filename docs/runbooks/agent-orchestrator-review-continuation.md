@@ -166,17 +166,18 @@ go test ./internal/adapters/runtime/tmux \
   ./internal/domain \
   ./internal/adapters/scm/github
 mkdir -p "${AO_BUILD_ROOT}/bin"
-go build -trimpath -buildvcs=false -o "${AO_BUILD_ROOT}/bin/ao" ./cmd/ao
-go build -trimpath -buildvcs=false -o "${AO_BUILD_ROOT}/bin/ao-daemon" .
+go build -buildvcs=false -o "${AO_BUILD_ROOT}/bin/ao" ./cmd/ao
+go build -buildvcs=false -o "${AO_BUILD_ROOT}/bin/ao-daemon" .
 sha256sum "${AO_BUILD_ROOT}/bin/ao" \
   "${AO_BUILD_ROOT}/bin/ao-daemon"
 ```
 
-VCS stamping is disabled because replaying mail patches creates equivalent
-trees with new committer metadata. `-trimpath` removes worktree paths from the
-artifact. Go build IDs can still make hashes toolchain-specific. On a different
-supported toolchain, a hash difference requires source, patch, test, and launch
-review; it is not by itself proof of a behavior change.
+These historical commands intentionally retain the original
+`-buildvcs=false`-only flags used for the recorded
+`25fab37d...`/`5bd25fd...` canary artifacts. Adding `-trimpath` produces
+different binaries and must not be used when comparing against those hashes.
+The retained installed artifacts are the hash authority; rebuilding on another
+path or toolchain requires separate source, patch, test, and launch review.
 
 ### Rollback-only canary binary install
 
@@ -736,8 +737,9 @@ The immediate pre-Phase-3 set is retained under
 - `ao.db`
 - `agent-orchestrator.service`
 
-The cutover backup must also preserve the pre-reproducible Phase 3 binary with
-SHA-256
+The concrete pre-reproducible Phase 3 binary is retained at
+`/home/fqzhang/.ao/backups/phase3-repro-7238619/ao-before-trimpath`, with
+verified SHA-256
 `ec19ff3a87a15a04eb3d9d647397c2cc32a820da19448cc93b6fe4f423cc4016`.
 
 The retained service in this immediate set starts
@@ -766,12 +768,17 @@ the retained executable, and verify the base service:
 
 ```bash
 systemctl --user stop agent-orchestrator.service
+ROLLBACK_SAVE="/home/fqzhang/.ao/backups/rollback-$(date +%Y%m%d%H%M%S)"
+install -d -m 0700 "${ROLLBACK_SAVE}"
+install -m 0600 /home/fqzhang/.ao/data/ao.db "${ROLLBACK_SAVE}/ao.db"
 install -m 0755 \
   /home/fqzhang/.ao/backups/phase3-runtimeenv-68496903/ao-before-runtimeenv \
   /home/fqzhang/.local/bin/ao
-mv \
-  /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf \
-  /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf.disabled
+if [ -e /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf ]; then
+  mv \
+    /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf \
+    /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf.disabled
+fi
 systemctl --user daemon-reload
 systemctl --user start agent-orchestrator.service
 sha256sum /home/fqzhang/.local/bin/ao
@@ -783,15 +790,27 @@ ao status --json
 Expected results are binary SHA-256
 `2fbd3af959a1135c7d0b3cefeb0c5597b3f68a53c39e5102c418f5db302f9a16`,
 empty `DropInPaths`, effective `ExecStart` ending in `ao daemon`, active
-service state, and ready AO status.
+service state, and ready AO status. This is a binary-only rollback: no matching
+database was retained in `phase3-runtimeenv-68496903`, so it deliberately keeps
+the current database after preserving a recovery copy.
 
 For the immediate pre-Phase-3 set, restore its matching `ao` and base unit,
 keep the Linear drop-in disabled, then verify:
 
 ```bash
 systemctl --user stop agent-orchestrator.service
+ROLLBACK_SAVE="/home/fqzhang/.ao/backups/rollback-$(date +%Y%m%d%H%M%S)"
+install -d -m 0700 "${ROLLBACK_SAVE}"
+install -m 0600 /home/fqzhang/.ao/data/ao.db "${ROLLBACK_SAVE}/ao.db"
+if [ -e /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf ]; then
+  mv \
+    /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf \
+    /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf.disabled
+fi
 install -m 0755 /home/fqzhang/.ao/backups/phase3-c5ed22df/ao \
   /home/fqzhang/.local/bin/ao
+install -m 0600 /home/fqzhang/.ao/backups/phase3-c5ed22df/ao.db \
+  /home/fqzhang/.ao/data/ao.db
 install -m 0600 \
   /home/fqzhang/.ao/backups/phase3-c5ed22df/agent-orchestrator.service \
   /home/fqzhang/.config/systemd/user/agent-orchestrator.service
@@ -813,12 +832,23 @@ matching unit:
 
 ```bash
 systemctl --user stop agent-orchestrator.service
+ROLLBACK_SAVE="/home/fqzhang/.ao/backups/rollback-$(date +%Y%m%d%H%M%S)"
+install -d -m 0700 "${ROLLBACK_SAVE}"
+install -m 0600 /home/fqzhang/.ao/data/ao.db "${ROLLBACK_SAVE}/ao.db"
+if [ -e /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf ]; then
+  mv \
+    /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf \
+    /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf.disabled
+fi
 install -m 0755 \
   /home/fqzhang/.local/lib/ao/backups/20260726-upstream-9f8c085f/ao \
   /home/fqzhang/.local/bin/ao
 install -m 0755 \
   /home/fqzhang/.local/lib/ao/backups/20260726-upstream-9f8c085f/ao-daemon \
   /home/fqzhang/.local/bin/ao-daemon
+install -m 0600 \
+  /home/fqzhang/.local/lib/ao/backups/20260726-upstream-9f8c085f/ao.db \
+  /home/fqzhang/.ao/data/ao.db
 install -m 0600 \
   /home/fqzhang/.local/lib/ao/backups/20260726-upstream-9f8c085f/agent-orchestrator.service \
   /home/fqzhang/.config/systemd/user/agent-orchestrator.service
