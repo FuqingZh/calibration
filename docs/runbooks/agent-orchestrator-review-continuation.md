@@ -24,11 +24,17 @@ host without explicit risk acceptance from its owner.
 - Current deployed fork:
   `https://github.com/FuqingZh/agent-orchestrator.git`
 - Current deployed fork `main` commit:
-  `7238619cbab019081fff2c683df45ed32f89d13a`
-- Current pre-security-fix `/home/fqzhang/.local/bin/ao` SHA-256:
-  `2fbd3af959a1135c7d0b3cefeb0c5597b3f68a53c39e5102c418f5db302f9a16`
+  `68496903141232718c23b8f13f4efede2d6f7b58`
+- Merged worker-environment fix head:
+  `4c241b1447b4c5c303593ac0a94386cc3dfd3261`
+- Current `/home/fqzhang/.local/bin/ao` SHA-256:
+  `ce2df0db2e6ad7f1eb65906a04b900620941ba716d0ad1b14378db9db1387d91`
 - Pre-reproducible Phase 3 `/home/fqzhang/.local/bin/ao` SHA-256:
   `ec19ff3a87a15a04eb3d9d647397c2cc32a820da19448cc93b6fe4f423cc4016`
+- Pre-security-fix rollback:
+  `/home/fqzhang/.ao/backups/phase3-runtimeenv-68496903/ao-before-runtimeenv`,
+  SHA-256
+  `2fbd3af959a1135c7d0b3cefeb0c5597b3f68a53c39e5102c418f5db302f9a16`
 
 The current deployment supersedes the original patched canary artifact below.
 Retain the older inputs and the pre-reproducible Phase 3 binary for
@@ -84,14 +90,14 @@ git ls-remote origin refs/heads/main
 ```
 
 Both readbacks must report
-`7238619cbab019081fff2c683df45ed32f89d13a`. Then build from that commit:
+`68496903141232718c23b8f13f4efede2d6f7b58`. Then build from that commit:
 
 ```bash
 AO_BUILD_ROOT="$(mktemp -d)"
 git clone --no-checkout https://github.com/FuqingZh/agent-orchestrator.git \
   "${AO_BUILD_ROOT}/source"
 git -C "${AO_BUILD_ROOT}/source" checkout --detach \
-  7238619cbab019081fff2c683df45ed32f89d13a
+  68496903141232718c23b8f13f4efede2d6f7b58
 cd "${AO_BUILD_ROOT}/source/backend"
 go test ./...
 mkdir -p "${AO_BUILD_ROOT}/bin"
@@ -101,10 +107,11 @@ sha256sum "${AO_BUILD_ROOT}/bin/ao"
 ```
 
 The expected SHA-256 is
-`2fbd3af959a1135c7d0b3cefeb0c5597b3f68a53c39e5102c418f5db302f9a16`.
-Source tree `e9505779` produced different hashes from two worktrees when built
-with only `-buildvcs=false`; adding `-trimpath` made both builds produce this
-same hash. Both flags are therefore part of the canonical deployment command.
+`ce2df0db2e6ad7f1eb65906a04b900620941ba716d0ad1b14378db9db1387d91`.
+Two independent builds from the merge commit produced this same hash with
+`-trimpath -buildvcs=false`. Earlier source tree `e9505779` demonstrated that
+`-buildvcs=false` alone retained worktree-dependent output. Both flags are
+therefore part of the canonical deployment command.
 
 Install the verified artifact as `fqzhang`, preserving the currently installed
 binary first:
@@ -247,7 +254,7 @@ routing. A new host may use a system tmux 3.5 or later and omit the wrapper.
 Update the unit and rerun `ao doctor --json` after changing the active Node,
 Codex, tmux, or network configuration.
 
-### Phase 3 Linear credential override: temporarily disabled
+### Phase 3 Linear credential override
 
 The current host adds Linear access without placing a credential in the base
 unit or repository. Store the credential only at
@@ -271,10 +278,9 @@ The expected wrapper SHA-256 is
 The complete source is retained rather than described only in prose so
 reconstruction and audit use identical fail-closed behavior.
 
-The mode `0644` drop-in is retained at the recoverable disabled path
-`/home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf.disabled`
-inside a mode `0700` directory. Systemd does not load the `.disabled` file.
-When restored as `linear.conf`, it replaces the base unit command:
+The active mode `0644` drop-in is
+`/home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf`
+inside a mode `0700` directory. It replaces the base unit command:
 
 ```ini
 [Service]
@@ -286,49 +292,25 @@ Do not record the credential value in Git, shell transcripts, the systemd
 unit, or diagnostic output. The file is read-only operational input; this
 deployment does not authorize writes to Linear.
 
-The disabled drop-in is the immediate mitigation for the worker-environment
-leak: effective `ExecStart` is `/home/fqzhang/.local/bin/ao daemon` and
-`DropInPaths` is empty, so the service does not load the Linear credential.
-After disabling it, the user manager was reloaded, the service restarted, AO
-reported ready, `ao doctor --json` reported zero failures, and all existing
-worker pane PIDs remained unchanged.
-
 The wrapper necessarily supplies the credential to the daemon process. AO must
 filter both `AO_LINEAR_API_KEY` and `AO_LINEAR_OAUTH_TOKEN` from every tmux pane
-environment before credential activation is restored. The current AO-side
-candidate is
+environment. The AO-side fix head was
 [`4c241b1447b4c5c303593ac0a94386cc3dfd3261`](https://github.com/FuqingZh/agent-orchestrator/commit/4c241b1447b4c5c303593ac0a94386cc3dfd3261)
 in agent-orchestrator
 [pull request #10](https://github.com/FuqingZh/agent-orchestrator/pull/10).
 Its focused, race, full lint, vet, Linux build, and Windows build validation
 passed; fresh Automatic Review reported no major issues and its two P1 threads
-were resolved. It remains open and unmerged and is not present in the installed
-`2fbd3af9...` binary. Do not represent the wrapper or the uninstalled candidate
-alone as closing the worker-secret boundary.
+were resolved. PR #10 merged as
+`68496903141232718c23b8f13f4efede2d6f7b58`.
 
-Restore credential activation only after all of these gates pass:
-
-1. PR #10 is merged and the merged commit is recorded here.
-2. That merged commit is rebuilt with `-trimpath -buildvcs=false`, deployed,
-   and its installed SHA-256 is recorded here.
-3. Focused and repository validation for the merged commit pass.
-4. The disabled drop-in is restored, followed by `daemon-reload` and restart:
-
-   ```bash
-   mv \
-     /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf.disabled \
-     /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf
-   systemctl --user daemon-reload
-   systemctl --user restart agent-orchestrator.service
-   ```
-
-5. Effective unit readback names the wrapper drop-in, AO is ready, doctor has
-   zero failures, and the bounded Linear smoke passes.
-6. A newly AO-created pane, including one created after restarting the tmux
-   server, omits both Linear credential variables.
-
-Until all gates pass, keep `linear.conf.disabled` in place and keep the
-P1/documentation closeout blocked.
+Two independent builds from the merge commit matched at SHA-256
+`ce2df0db2e6ad7f1eb65906a04b900620941ba716d0ad1b14378db9db1387d91`,
+and that binary is installed. After restoring the drop-in and restarting,
+effective unit readback named the wrapper, AO was ready and healthy, doctor had
+zero failures, and all nine pre-existing tmux pane PIDs were unchanged. A fresh
+AO worker pane ran a boolean presence check that never printed values, reported
+exactly `LINEAR_ENV_CLEAN`, and was terminated. This is the accepted evidence
+that both Linear credential variables are absent from a newly AO-created pane.
 
 The append-only user log is the first diagnostic surface for an HTTP
 `INTERNAL_ERROR`. Inspect the matching request id before retrying a failed
@@ -460,17 +442,17 @@ sha256sum /home/fqzhang/.local/bin/ao \
   /home/fqzhang/.local/bin/ao-daemon
 ```
 
-After the reproducible Phase 3 cutover,
+After the final Phase 3 security-fix cutover,
 `/home/fqzhang/.local/bin/ao` must report:
 
 ```text
-2fbd3af959a1135c7d0b3cefeb0c5597b3f68a53c39e5102c418f5db302f9a16
+ce2df0db2e6ad7f1eb65906a04b900620941ba716d0ad1b14378db9db1387d91
 ```
 
 The SHA-256
-`ec19ff3a87a15a04eb3d9d647397c2cc32a820da19448cc93b6fe4f423cc4016`
-identifies the pre-reproducible Phase 3 binary and belongs in rollback
-evidence, not the final deployment readback.
+`2fbd3af959a1135c7d0b3cefeb0c5597b3f68a53c39e5102c418f5db302f9a16`
+identifies the pre-security-fix Phase 3 binary, while `ec19ff3a...` identifies
+the pre-reproducible binary. Both belong in rollback evidence.
 
 Run these checks as `fqzhang` through the same `systemd --user` manager used by
 the deployment. Confirm the effective wrapper and drop-in rather than relying
@@ -485,7 +467,7 @@ stat -c '%A %a %U:%G %n' \
   /home/fqzhang/.config/agent-orchestrator/linear-api-key \
   /home/fqzhang/.local/lib/ao/bin/ao-daemon-with-linear \
   /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d \
-  /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf.disabled
+  /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf
 sha256sum /home/fqzhang/.local/lib/ao/bin/ao-daemon-with-linear
 ```
 
@@ -494,13 +476,15 @@ constructed environment does not verify the deployed service context.
 The wrapper hash must be
 `0531d973a0cd690b03b52530388cf138e5a4b54899167a341ca0d1a5ff88d2d7`.
 
-Expected current mitigated readback:
+Expected current readback:
 
 - service: `enabled`, `active`, and daemon `ready`;
-- effective `ExecStart`: `/home/fqzhang/.local/bin/ao daemon`;
-- `DropInPaths`: empty;
-- disabled drop-in:
-  `/home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf.disabled`,
+- effective `ExecStart`:
+  `/home/fqzhang/.local/lib/ao/bin/ao-daemon-with-linear`;
+- `DropInPaths`:
+  `/home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf`;
+- active drop-in:
+  `/home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf`,
   mode `0644`;
 - run file: `/home/fqzhang/.ao/running.json`;
 - data directory: `/home/fqzhang/.ao/data`;
@@ -572,8 +556,9 @@ host wiring are active.
 
 ### Worker environment secret gate
 
-After merging and deploying PR #10, create a new disposable AO worker so AO
-creates the tmux pane. In that new pane run:
+After installing or upgrading, create a new disposable AO worker so AO creates
+the tmux pane. In that new pane run a values-never-printed boolean presence
+check equivalent to:
 
 ```bash
 env | sed -n 's/=.*//p' |
@@ -581,15 +566,11 @@ env | sed -n 's/=.*//p' |
 ```
 
 Success is exit status `1` with no output: neither variable name may be present.
-This command emits names only, never values. Kill the disposable worker after
-the check. Also verify a new pane after restarting the tmux server, because an
-already-running server can hide daemon-to-server inheritance defects.
-
-Do not accept the Linear deployment while this check fails or before the
-AO-side filtering fix is deployed. Do not enable `linear.conf` before it passes.
-After cutover, replace the pre-fix
-`2fbd3af9...` installed-hash evidence with the reproducible hash of the deployed
-fixed commit and retain the prior binary as rollback evidence.
+This command emits names only, never values. The accepted fresh worker reported
+exactly `LINEAR_ENV_CLEAN` from the equivalent boolean check and was then
+terminated. Repeat this acceptance after an AO or tmux upgrade, including with
+a newly started tmux server, because an already-running server can hide
+daemon-to-server inheritance defects.
 
 Also confirm that
 `/home/fqzhang/.local/lib/ao/bin/tmux show-environment -g LD_LIBRARY_PATH`
@@ -644,6 +625,13 @@ Delete that state only as an explicit destructive cleanup after inspecting
 active sessions and preserving any required worktree or pull-request state.
 
 ## Phase 3 Rollback Artifacts
+
+The immediate pre-security-fix binary is retained at
+`/home/fqzhang/.ao/backups/phase3-runtimeenv-68496903/ao-before-runtimeenv`.
+Its SHA-256 is
+`2fbd3af959a1135c7d0b3cefeb0c5597b3f68a53c39e5102c418f5db302f9a16`.
+Restoring it also requires disabling the Linear drop-in because that binary
+does not contain the accepted worker-environment filtering fix.
 
 The immediate pre-Phase-3 set is retained under
 `/home/fqzhang/.ao/backups/phase3-c5ed22df/`:
