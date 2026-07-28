@@ -83,6 +83,7 @@ Start from the calibration checkout, preserve its root for later managed
 artifact installation, then clone the AO fork:
 
 ```bash
+set -euo pipefail
 CALIBRATION_ROOT="$(git rev-parse --show-toplevel)"
 AO_BUILD_ROOT="$(mktemp -d)"
 git clone --no-checkout https://github.com/FuqingZh/agent-orchestrator.git \
@@ -107,6 +108,7 @@ available from the fork and is an ancestor of its current `main`, not that
 `main` still equals the historical deployment. Then build the pinned commit:
 
 ```bash
+set -euo pipefail
 git -C "${AO_BUILD_ROOT}/source" checkout --detach \
   68496903141232718c23b8f13f4efede2d6f7b58
 cd "${AO_BUILD_ROOT}/source/backend"
@@ -133,12 +135,16 @@ Install the verified artifact as `fqzhang`, preserving the currently installed
 binary first:
 
 ```bash
+set -euo pipefail
 AO_CUTOVER_BACKUP="/home/fqzhang/.ao/backups/phase3-trimpath-$(date +%Y%m%d%H%M%S)"
 install -d -m 0700 "${AO_CUTOVER_BACKUP}"
 install -m 0755 /home/fqzhang/.local/bin/ao \
   "${AO_CUTOVER_BACKUP}/ao-pre-reproducible"
 install -m 0755 "${AO_BUILD_ROOT}/bin/ao" /home/fqzhang/.local/bin/ao
-sha256sum /home/fqzhang/.local/bin/ao
+printf '%s  %s\n' \
+  ce2df0db2e6ad7f1eb65906a04b900620941ba716d0ad1b14378db9db1387d91 \
+  /home/fqzhang/.local/bin/ao |
+  sha256sum --check -
 systemctl --user restart agent-orchestrator.service
 ```
 
@@ -282,13 +288,34 @@ the mode `0700` directory `/home/fqzhang/.config/agent-orchestrator`.
 The mode `0755` wrapper
 `/home/fqzhang/.local/lib/ao/bin/ao-daemon-with-linear` is managed from
 [`artifacts/ao-daemon-with-linear`](artifacts/ao-daemon-with-linear). Install
-the exact repository artifact:
+it together with the managed drop-in only after both repository artifacts pass
+their recorded digest checks:
 
 ```bash
+set -euo pipefail
+WRAPPER_SOURCE="${CALIBRATION_ROOT}/docs/runbooks/artifacts/ao-daemon-with-linear"
+DROPIN_SOURCE="${CALIBRATION_ROOT}/docs/runbooks/artifacts/linear.conf"
+WRAPPER_TARGET=/home/fqzhang/.local/lib/ao/bin/ao-daemon-with-linear
+DROPIN_TARGET=/home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf
+printf '%s  %s\n%s  %s\n' \
+  bb5421301d09df0c3fa9176dffb1fbb5170cb02d897610b0137a155cb4c08090 \
+  "${WRAPPER_SOURCE}" \
+  be96ac3b7e948656c7c747e641201d7d989dbc3eec4886d16b548a7bc9c685df \
+  "${DROPIN_SOURCE}" |
+  sha256sum --check -
 install -D -m 0755 \
-  "${CALIBRATION_ROOT}/docs/runbooks/artifacts/ao-daemon-with-linear" \
-  /home/fqzhang/.local/lib/ao/bin/ao-daemon-with-linear
-sha256sum /home/fqzhang/.local/lib/ao/bin/ao-daemon-with-linear
+  "${WRAPPER_SOURCE}" "${WRAPPER_TARGET}"
+install -d -m 0700 \
+  /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d
+install -m 0644 "${DROPIN_SOURCE}" "${DROPIN_TARGET}"
+printf '%s  %s\n%s  %s\n' \
+  bb5421301d09df0c3fa9176dffb1fbb5170cb02d897610b0137a155cb4c08090 \
+  "${WRAPPER_TARGET}" \
+  be96ac3b7e948656c7c747e641201d7d989dbc3eec4886d16b548a7bc9c685df \
+  "${DROPIN_TARGET}" |
+  sha256sum --check -
+systemctl --user daemon-reload
+systemctl --user restart agent-orchestrator.service
 ```
 
 The expected wrapper SHA-256 is
@@ -311,23 +338,12 @@ exactly `API_KEY_PRESENT=yes` and `OAUTH_TOKEN_PRESENT=no`.
 The active mode `0644` drop-in is managed from
 [`artifacts/linear.conf`](artifacts/linear.conf) and installed at
 `/home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf`
-inside a mode `0700` directory:
-
-```bash
-install -d -m 0700 \
-  /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d
-install -m 0644 \
-  "${CALIBRATION_ROOT}/docs/runbooks/artifacts/linear.conf" \
-  /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf
-sha256sum \
-  /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf
-systemctl --user daemon-reload
-systemctl --user restart agent-orchestrator.service
-```
+inside a mode `0700` directory.
 
 The expected drop-in SHA-256 is
 `be96ac3b7e948656c7c747e641201d7d989dbc3eec4886d16b548a7bc9c685df`.
-The reload and restart are required so effective `ExecStart` uses the wrapper.
+The combined transaction above checks both source and installed hashes before
+the reload and restart activate the credential wrapper.
 
 Do not record the credential value in Git, shell transcripts, the systemd
 unit, or diagnostic output. The file is read-only operational input; this
@@ -780,11 +796,19 @@ whose SHA-256 is
 ### Rollback verification
 
 Do not reuse the current Phase 3 hash or wrapper expectations for a rollback.
+Every path snapshots the complete worker-session readback before stopping the
+daemon. A binary-only rollback retains the current database and uses that
+snapshot for post-restart reconciliation. A rollback that restores historical
+`ao.db` is stricter: its precondition exits nonzero while any worker is
+nonterminated. Preserve each worker's Git/worktree and pull-request state,
+terminate it through AO, and rerun the block before replacing the database.
+
 For the immediate pre-security-fix binary, disable the Linear drop-in, restore
 the retained executable, and verify the base service:
 
 ```bash
 set -euo pipefail
+CURRENT_SESSION_STATE="$(ao session ls --include-terminated --json)"
 systemctl --user stop agent-orchestrator.service
 if systemctl --user is-active --quiet agent-orchestrator.service; then
   echo "agent-orchestrator.service remained active after stop" >&2
@@ -792,6 +816,8 @@ if systemctl --user is-active --quiet agent-orchestrator.service; then
 fi
 ROLLBACK_SAVE="/home/fqzhang/.ao/backups/rollback-$(date +%Y%m%d%H%M%S)"
 install -d -m 0700 "${ROLLBACK_SAVE}"
+printf '%s\n' "${CURRENT_SESSION_STATE}" \
+  > "${ROLLBACK_SAVE}/session-state.json"
 install -m 0600 /home/fqzhang/.ao/data/ao.db "${ROLLBACK_SAVE}/ao.db"
 install -m 0755 /home/fqzhang/.local/bin/ao "${ROLLBACK_SAVE}/ao"
 install -m 0600 \
@@ -831,6 +857,23 @@ keep the Linear drop-in disabled, then verify:
 
 ```bash
 set -euo pipefail
+CURRENT_SESSION_STATE="$(ao session ls --include-terminated --json)"
+CURRENT_SESSION_STATE="${CURRENT_SESSION_STATE}" python - <<'PY'
+import json
+import os
+
+payload = json.loads(os.environ["CURRENT_SESSION_STATE"])
+active = [
+    session["id"]
+    for session in payload.get("data", [])
+    if not session.get("isTerminated", False)
+]
+if active:
+    raise SystemExit(
+        "drain and preserve nonterminated workers before database rollback: "
+        + ", ".join(active)
+    )
+PY
 systemctl --user stop agent-orchestrator.service
 if systemctl --user is-active --quiet agent-orchestrator.service; then
   echo "agent-orchestrator.service remained active after stop" >&2
@@ -838,6 +881,8 @@ if systemctl --user is-active --quiet agent-orchestrator.service; then
 fi
 ROLLBACK_SAVE="/home/fqzhang/.ao/backups/rollback-$(date +%Y%m%d%H%M%S)"
 install -d -m 0700 "${ROLLBACK_SAVE}"
+printf '%s\n' "${CURRENT_SESSION_STATE}" \
+  > "${ROLLBACK_SAVE}/session-state.json"
 install -m 0600 /home/fqzhang/.ao/data/ao.db "${ROLLBACK_SAVE}/ao.db"
 install -m 0755 /home/fqzhang/.local/bin/ao "${ROLLBACK_SAVE}/ao"
 install -m 0600 \
@@ -879,6 +924,23 @@ matching unit:
 
 ```bash
 set -euo pipefail
+CURRENT_SESSION_STATE="$(ao session ls --include-terminated --json)"
+CURRENT_SESSION_STATE="${CURRENT_SESSION_STATE}" python - <<'PY'
+import json
+import os
+
+payload = json.loads(os.environ["CURRENT_SESSION_STATE"])
+active = [
+    session["id"]
+    for session in payload.get("data", [])
+    if not session.get("isTerminated", False)
+]
+if active:
+    raise SystemExit(
+        "drain and preserve nonterminated workers before database rollback: "
+        + ", ".join(active)
+    )
+PY
 systemctl --user stop agent-orchestrator.service
 if systemctl --user is-active --quiet agent-orchestrator.service; then
   echo "agent-orchestrator.service remained active after stop" >&2
@@ -886,6 +948,8 @@ if systemctl --user is-active --quiet agent-orchestrator.service; then
 fi
 ROLLBACK_SAVE="/home/fqzhang/.ao/backups/rollback-$(date +%Y%m%d%H%M%S)"
 install -d -m 0700 "${ROLLBACK_SAVE}"
+printf '%s\n' "${CURRENT_SESSION_STATE}" \
+  > "${ROLLBACK_SAVE}/session-state.json"
 install -m 0600 /home/fqzhang/.ao/data/ao.db "${ROLLBACK_SAVE}/ao.db"
 install -m 0755 /home/fqzhang/.local/bin/ao "${ROLLBACK_SAVE}/ao"
 if [ -e /home/fqzhang/.local/bin/ao-daemon ]; then
