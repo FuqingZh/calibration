@@ -23,5 +23,8 @@ Issue {{ issue.identifier }}: {{ issue.title }}
 {{ issue.description }}
 
 Follow the repository's AGENTS.md instructions.
-Implement the issue, validate the result with the repository-owned validation
-contract, and open or update a pull request for the completed change.
+Follow the task mode declared in the issue description. If it declares
+`READ-ONLY PROBE`, perform only the stated read-only observations: do not edit,
+commit, push, or open or update a pull request. Otherwise, implement the issue,
+validate the result with the repository-owned validation contract, and open or
+update a pull request for the completed change.
