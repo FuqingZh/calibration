@@ -74,8 +74,16 @@ and all nine pre-existing tmux pane PIDs were unchanged.
 
 A fresh AO worker pane performed a boolean presence check that never printed
 credential values and reported exactly `LINEAR_ENV_CLEAN`; the disposable
-worker was then terminated. This closes the worker-environment acceptance gate
-for both `AO_LINEAR_API_KEY` and `AO_LINEAR_OAUTH_TOKEN`.
+worker was then terminated. This closes the ambient-environment acceptance gate
+for removing `AO_LINEAR_API_KEY` and `AO_LINEAR_OAUTH_TOKEN` from new panes.
+
+It does not establish worker-secret isolation. The daemon and workers share the
+`fqzhang` account and workers use `bypass-permissions`, so a worker with that
+authority may read the mode `0600` credential file or inspect same-user process
+state through host interfaces permitted by the operating system. Preventing a
+worker from obtaining the credential requires privilege separation, such as a
+distinct daemon account or security boundary inaccessible to workers. The
+accepted evidence is limited to ambient-environment hygiene.
 
 ## Reproducible Build And Source Sync
 
@@ -121,11 +129,12 @@ artifacts.
 The Phase 3 smoke validates the credential and read-only Linear API identity
 path; it does not exercise AO's tracker adapter and is not a real Linear intake
 loop. The installed binary hash, service wiring, AO health, focused AO tests,
-and fresh-worker environment check are separate evidence. They do not prove
-sustained polling, durable claim coordination, issue-to-worker creation,
-restart recovery, or end-to-end processing of a real Linear issue. Do not
-describe the deployment as a proven production Linear intake service until a
-separately authorized real-project canary exercises those behaviors.
+and fresh-worker ambient-environment check are separate evidence. They do not
+prove privilege-separated secret isolation, sustained polling, durable claim
+coordination, issue-to-worker creation, restart recovery, or end-to-end
+processing of a real Linear issue. Do not describe the deployment as a proven
+production Linear intake service until a separately authorized real-project
+canary exercises those behaviors.
 
 The bounded smoke must also remain read-only: authenticate a `viewer` GraphQL
 query using the credential file, require a non-empty viewer id and no GraphQL

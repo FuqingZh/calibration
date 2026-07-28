@@ -287,8 +287,6 @@ install -D -m 0755 \
   "${CALIBRATION_ROOT}/docs/runbooks/artifacts/ao-daemon-with-linear" \
   /home/fqzhang/.local/lib/ao/bin/ao-daemon-with-linear
 sha256sum /home/fqzhang/.local/lib/ao/bin/ao-daemon-with-linear
-sha256sum \
-  /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf
 ```
 
 The expected wrapper SHA-256 is
@@ -339,7 +337,17 @@ effective unit readback named the wrapper, AO was ready and healthy, doctor had
 zero failures, and all nine pre-existing tmux pane PIDs were unchanged. A fresh
 AO worker pane ran a boolean presence check that never printed values, reported
 exactly `LINEAR_ENV_CLEAN`, and was terminated. This is the accepted evidence
-that both Linear credential variables are absent from a newly AO-created pane.
+that both Linear credential variables are absent from a newly AO-created
+pane's ambient environment.
+
+This is environment-hygiene evidence, not worker-secret isolation. AO and its
+workers run as the same `fqzhang` user with `bypass-permissions`; a worker with
+that authority can read the mode `0600` credential file or inspect same-user
+process state through host interfaces allowed by the operating system. True
+isolation from workers requires privilege separation: run the credentialed
+daemon under a distinct account or security boundary that workers cannot read
+or inspect. Do not claim the current single-user deployment prevents a
+malicious or fully privileged worker from obtaining the credential.
 
 The append-only user log is the first diagnostic surface for an HTTP
 `INTERNAL_ERROR`. Inspect the matching request id before retrying a failed
@@ -467,7 +475,10 @@ ao status --json
 ao project get repository-name --json
 PATH=/home/fqzhang/.local/lib/ao/bin:/home/fqzhang/.nvm/versions/node/v22.22.2/bin:/home/fqzhang/.local/bin:/usr/local/bin:/usr/bin:/bin \
 ao doctor --json
-sha256sum /home/fqzhang/.local/bin/ao
+sha256sum \
+  /home/fqzhang/.local/bin/ao \
+  /home/fqzhang/.local/lib/ao/bin/ao-daemon-with-linear \
+  /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf
 ```
 
 After the final Phase 3 security-fix cutover,
@@ -496,7 +507,9 @@ stat -c '%A %a %U:%G %n' \
   /home/fqzhang/.local/lib/ao/bin/ao-daemon-with-linear \
   /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d \
   /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf
-sha256sum /home/fqzhang/.local/lib/ao/bin/ao-daemon-with-linear
+sha256sum \
+  /home/fqzhang/.local/lib/ao/bin/ao-daemon-with-linear \
+  /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf
 ```
 
 A check run as another user, outside the user manager, or with a separately
@@ -557,7 +570,7 @@ IFS= read -r LINEAR_SMOKE_KEY < \
   /home/fqzhang/.config/agent-orchestrator/linear-api-key ||
   [ -n "${LINEAR_SMOKE_KEY}" ]
 printf 'header = "Authorization: %s"\n' "${LINEAR_SMOKE_KEY}" |
-  curl --config - --fail-with-body --silent --show-error \
+  curl -q --config - --fail-with-body --silent --show-error \
   --connect-timeout 10 --max-time 30 \
   -H 'Content-Type: application/json' \
   --data '{"query":"query AOViewer { viewer { id } }"}' \
@@ -569,9 +582,11 @@ import pathlib
 import sys
 
 payload = json.loads(pathlib.Path(sys.argv[1]).read_text())
-assert not payload.get("errors"), "Linear returned GraphQL errors"
+if payload.get("errors"):
+    raise SystemExit("Linear returned GraphQL errors")
 viewer_id = payload.get("data", {}).get("viewer", {}).get("id", "")
-assert isinstance(viewer_id, str) and viewer_id.strip(), "missing Linear viewer id"
+if not isinstance(viewer_id, str) or not viewer_id.strip():
+    raise SystemExit("missing Linear viewer id")
 print("linear-read-only-smoke: PASS")
 PY
 rm -f "${LINEAR_SMOKE_RESPONSE}"
@@ -582,7 +597,7 @@ Success requires HTTP success, valid JSON, no GraphQL `errors`, a non-empty
 `data.viewer.id`, and the final line `linear-read-only-smoke: PASS`. The query
 has no mutation and does not enable tracker intake, create a worker, or alter a
 Linear object. Strict shell mode makes any missing credential, transport
-failure, invalid JSON, or assertion failure return nonzero and block the
+failure, invalid JSON, or explicit validation failure return nonzero and block the
 deployment claim.
 
 This verifies the credential and read-only Linear API path. The installed AO
@@ -618,11 +633,12 @@ ao session get SESSION_ID --project calibration --json
 ao session kill SESSION_ID --project calibration
 ```
 
-The check prints only a boolean result, never variable values. The accepted
-test ran while the active wrapper supplied the real credential to the daemon,
-so it exercised filtering rather than passing against an uncredentialed
-service. The fresh worker reported exactly `LINEAR_ENV_CLEAN` and was
-terminated.
+The check prints only a boolean result, never variable values. It verifies
+ambient environment hygiene, not privilege separation or credential
+inaccessibility. The accepted test ran while the active wrapper supplied the
+real credential to the daemon, so it exercised filtering rather than passing
+against an uncredentialed service. The fresh worker reported exactly
+`LINEAR_ENV_CLEAN` and was terminated.
 
 Do not restart the shared tmux server while other workers are active. A
 server-start inheritance recheck requires either a maintenance window after
