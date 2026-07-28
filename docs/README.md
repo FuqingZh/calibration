@@ -21,7 +21,7 @@ Read the smallest source that owns the decision:
 | Writable comparative evidence | `decisions/2026-07-27-ai-native-writable-implementation-evaluation-closeout.md` |
 | Five-phase convergence result | `decisions/2026-07-27-ai-native-calibration-convergence-closeout.md` |
 | Current-host AO Phase 3 deployment | `decisions/2026-07-27-ao-phase-3-deployment-reproducibility-closeout.md` |
-| Pending bounded Linear intake rollout | `implementation-plan/20260728-v1.9-persistent-linear-intake-and-no-product-canary-implementation-plan.md` |
+| Current three-scenario Linear acceptance | `implementation-plan/20260728-v2.0-three-scenario-linear-acceptance-implementation-plan.md` |
 
 The current default is outcome autonomy within repository-local, reversible
 boundaries. Repository rules and executable feedback choose and revise the
@@ -75,11 +75,14 @@ judgment. Repositories opt in individually after an observed continuation need.
 An explicit conversation-authorized implementation may start a task-specific
 worker in an already accepted repository.
 
-FUQ-14 adds a repository-owned `WORKFLOW.md` and a pending plan for one
-label-gated, project-scoped Linear intake lane. The contract does not itself
-enable host intake. Persistent enablement and acceptance require the plan's
-post-merge configuration readback and controlled documentation-only live
-canary. Until every canary acceptance row passes, automatic work discovery and
+FUQ-14 adds a repository-owned `WORKFLOW.md` for one label-gated,
+project-scoped Linear intake lane. The current v2.0 plan reduces live
+acceptance to three state-machine scenarios: review-to-merge completion,
+same-issue retry after abnormal worker exit, and cancellation that survives a
+late PR merge. AO's Linear adapter remains read-only; remote state drift caused
+by Linear/GitHub integration is repaired at that integration boundary rather
+than by granting AO write authority. Until all three scenarios pass against a
+persistent service-managed AO revision, automatic work discovery and
 unattended issue intake remain unaccepted. Auto-merge, bulk enrollment, and
 wider orchestration remain outside the accepted boundary.
 
@@ -156,8 +159,9 @@ reading path.
 - `implementation-plan/20260723-v1.7-ao-repository-adoption-contract-implementation-plan.md`:
   closed behavior-validated adoption contract.
 - `implementation-plan/20260728-v1.9-persistent-linear-intake-and-no-product-canary-implementation-plan.md`:
-  pending FUQ-14 repository contract, enable/readback/rollback procedure, and
-  controlled documentation-only Linear canary.
+  superseded historical FUQ-14 rollout and manual canary procedure.
+- `implementation-plan/20260728-v2.0-three-scenario-linear-acceptance-implementation-plan.md`:
+  current minimal acceptance contract and failure routing.
 
 ### Current convergence history
 
