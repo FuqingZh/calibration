@@ -18,8 +18,8 @@ Dashboard:
   creates or continues the worker from that authorization. GitHub pull requests
   are the delivery, CI, review, and merge fact source. Linear integration is
   deferred and is not an execution prerequisite.
-- A narrow fail-closed GitHub auto-merge policy may be used only for explicitly
-  classified low-risk pull requests.
+- A narrow operator-gated GitHub auto-merge happy path may be used only for
+  explicitly classified low-risk pull requests.
 
 The historical Linear decisions, plans, canary evidence, wrapper, and credential
 rollback copy remain available for audit. They are not current authority.
@@ -78,20 +78,21 @@ headless feature.
 
 The compatibility shim supplies the Electron-only read interfaces that the
 packaged renderer expects and points its API reads to the same-origin proxy.
-The service health endpoint reports:
+The nginx-only liveness endpoint reports:
 
 ```json
-{"status":"ok","mode":"read-only","renderer":"0.11.1","api":"127.0.0.1:3001"}
+{"status":"live","component":"ao-dashboard-readonly-nginx","renderer":"0.11.1"}
 ```
 
-A LAN-bound read returned persisted Dashboard notifications and their unread
-count. An isolated headless Chrome run loaded the packaged assets, projects,
-sessions, and notification stream; nginx also recorded the renderer's
-background agent-refresh POST being rejected with HTTP 403. Reads sourced from
-the trusted interface returned 200, while the same root, health, and API reads
-sourced from the host's `192.168.10.13` interface returned 403. These readbacks
-establish the bounded status/attention use case; they do not establish full
-Electron feature parity.
+`/dashboard-health` separately proxies AO's `/readyz`; it returns success only
+while the Dashboard's AO dependency is ready. A LAN-bound read returned
+persisted Dashboard notifications and their unread count. An isolated headless
+Chrome run loaded the packaged assets, projects, sessions, and notification
+stream; nginx also recorded the renderer's background agent-refresh POST being
+rejected with HTTP 403. Reads sourced from the trusted interface returned 200,
+while the same root, liveness, health, and API reads sourced from the host's
+`192.168.10.13` interface returned 403. These readbacks establish the bounded
+status/attention use case; they do not establish full Electron feature parity.
 
 The managed compatibility artifacts are:
 
@@ -126,9 +127,10 @@ The superseded Linear plans remain historical evidence. Re-enabling Linear
 requires a new decision; no Linear repair or availability condition blocks the
 current GitHub/AO path.
 
-## Fail-Closed Low-Risk Auto-Merge Policy
+## Verified Low-Risk Auto-Merge Happy Path
 
-Auto-merge is denied unless every condition below is true:
+Request GitHub auto-merge only when every condition below has already been read
+back as true on the exact current head:
 
 1. The pull request is explicitly created as a disposable canary or classified
    low-risk by the repository owner.
@@ -141,9 +143,9 @@ Auto-merge is denied unless every condition below is true:
 4. Every repository-required check passes on the exact head SHA.
 5. Every review thread is resolved, no review requests changes, and no required
    review is pending.
-6. GitHub's auto-merge request is enabled only after conditions 1-5 are read
-   back. Any uncertainty, API failure, head change, new review, failed check, or
-   scope expansion cancels or withholds auto-merge.
+6. Immediately before the request, repeat the head SHA, draft, mergeability,
+   required-check, review-decision, and unresolved-thread reads. Any
+   uncertainty or failed read withholds the request.
 7. AO records status and attention in its Dashboard only. AO does not override
    branch rules, merge queues, GitHub permissions, or a human stop decision.
 
@@ -151,6 +153,13 @@ This is an allowlist, not a default. Pull requests outside it remain
 human-merged. PR #24 is explicitly outside this decision and remains untouched.
 PR #36 is superseded by this convergence and may be closed without merging only
 after the replacement pull request exists.
+
+No custom watcher, pending-request monitor, automatic cancellation path, or
+negative head-change/check-failure/review-arrival behavior was implemented or
+proven. If any state changes after the exact read-back gate, GitHub's native
+branch rules and auto-merge behavior are the only enforcement. Operators must
+not rely on AO to cancel a pending request. This decision accepts only the
+verified already-green happy path.
 
 ### Disposable real-PR canary
 
@@ -161,7 +170,7 @@ GitHub read back the exact head
 required `validate-skills` check passed on that head, the PR was not draft, and
 the GraphQL review-thread readback returned zero unresolved threads.
 
-`gh pr merge 37 --auto --squash` then merged the PR at
+Only after those reads, `gh pr merge 37 --auto --squash` merged the PR at
 `2026-07-29T08:08:01Z` as commit
 `08118596387e531e31d21bdfe1772ba19d455a55`. The replacement delivery PR
 removes the marker, leaving the policy and evidence while discarding the
