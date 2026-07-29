@@ -21,7 +21,8 @@ Read the smallest source that owns the decision:
 | Writable comparative evidence | `decisions/2026-07-27-ai-native-writable-implementation-evaluation-closeout.md` |
 | Five-phase convergence result | `decisions/2026-07-27-ai-native-calibration-convergence-closeout.md` |
 | Current-host AO Phase 3 deployment | `decisions/2026-07-27-ao-phase-3-deployment-reproducibility-closeout.md` |
-| Current three-scenario Linear acceptance | `implementation-plan/20260728-v2.0-three-scenario-linear-acceptance-implementation-plan.md` |
+| Linear authority decision | `decisions/2026-07-29-linear-projection-and-explicit-agent-dispatch.md` |
+| Current Linear Agent bridge implementation | `implementation-plan/20260729-v2.1-linear-agent-command-bridge-implementation-plan.md` |
 
 The current default is outcome autonomy within repository-local, reversible
 boundaries. Repository rules and executable feedback choose and revise the
@@ -74,17 +75,22 @@ AO is an environment adapter, not a default part of ordinary engineering
 judgment. Repositories opt in individually after an observed continuation need.
 An explicit conversation-authorized implementation may start a task-specific
 worker in an already accepted repository.
+This conversation-authorized path is independent of automatic issue intake;
+it remains available while Linear state-driven intake is disabled.
 
-FUQ-14 adds a repository-owned `WORKFLOW.md` for one label-gated,
-project-scoped Linear intake lane. The current v2.0 plan reduces live
-acceptance to three state-machine scenarios: review-to-merge completion,
-same-issue retry after abnormal worker exit, and cancellation that survives a
-late PR merge. AO's Linear adapter remains read-only; remote state drift caused
-by Linear/GitHub integration is repaired at that integration boundary rather
-than by granting AO write authority. Until all three scenarios pass against a
-persistent service-managed AO revision, automatic work discovery and
-unattended issue intake remain unaccepted. Auto-merge, bulk enrollment, and
-wider orchestration remain outside the accepted boundary.
+FUQ-23 rejected the earlier label- and state-driven Linear intake authority.
+Linear is now the human workbench, explicit Agent dispatch surface, and progress
+projection; it is not an AO scheduler. Ordinary issue state, label, assignee,
+link, and GitHub events cannot authorize worker creation. AO remains the
+execution controller, and the model executes only inside an authorized AO run.
+
+The current v2.1 plan introduces a thin bridge from signed Linear AgentSession
+delegation or an accepted dispatch mention to AO's existing session API. The
+bridge owns authentication, authorization, idempotency, AgentSession-to-AO
+mapping, and projected progress only. The old `trackerIntake` route remains
+disabled and is removed only after a real replacement canary. Auto-merge, bulk
+enrollment, Linear-side retry/cancel controls, and wider orchestration remain
+outside the accepted boundary.
 
 ## Open Evidence Gaps
 
@@ -161,7 +167,11 @@ reading path.
 - `implementation-plan/20260728-v1.9-persistent-linear-intake-and-no-product-canary-implementation-plan.md`:
   superseded historical FUQ-14 rollout and manual canary procedure.
 - `implementation-plan/20260728-v2.0-three-scenario-linear-acceptance-implementation-plan.md`:
-  current minimal acceptance contract and failure routing.
+  rejected historical state-driven acceptance contract.
+- `decisions/2026-07-29-linear-projection-and-explicit-agent-dispatch.md`:
+  current Linear/AO ownership and explicit-dispatch boundary.
+- `implementation-plan/20260729-v2.1-linear-agent-command-bridge-implementation-plan.md`:
+  current staged implementation and replacement-canary contract.
 
 ### Current convergence history
 
