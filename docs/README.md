@@ -86,6 +86,12 @@ persistent service-managed AO revision, automatic work discovery and
 unattended issue intake remain unaccepted. Auto-merge, bulk enrollment, and
 wider orchestration remain outside the accepted boundary.
 
+The July 29 v2.0 canary did not accept persistent intake. Scenarios A and B
+passed their required paths, but a late merge moved a canceled Linear issue
+back into an eligible state and AO re-claimed the same canonical issue after
+its terminal run had been released. Tracker intake is disabled while the AO
+terminal-monotonicity and Linear/GitHub status-ownership defects remain open.
+
 ## Open Evidence Gaps
 
 - The writable comparison covers small dependency-free Python repositories,
@@ -161,7 +167,7 @@ reading path.
 - `implementation-plan/20260728-v1.9-persistent-linear-intake-and-no-product-canary-implementation-plan.md`:
   superseded historical FUQ-14 rollout and manual canary procedure.
 - `implementation-plan/20260728-v2.0-three-scenario-linear-acceptance-implementation-plan.md`:
-  current minimal acceptance contract and failure routing.
+  current failed-canary evidence, disabled-intake closeout, and repair gates.
 
 ### Current convergence history
 
