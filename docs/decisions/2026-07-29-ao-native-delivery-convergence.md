@@ -47,6 +47,9 @@ The exact tag source was built locally with the release metadata:
 
 The installed `/home/fqzhang/.local/bin/ao` SHA-256 is
 `b6249d803dd3c3ad8a315783dd3443f0ed0771f5d73d094267ff2f79b0f08bb0`.
+That digest is specific to the recorded `go1.26.4 linux/amd64` build toolchain;
+reconstruction with another toolchain requires its own artifact digest and
+evidence.
 Focused upstream CLI, daemon, HTTP, mobile-LAN, notification, and SQLite tests
 passed in an environment scrubbed of the active AO worker variables. A broader
 run also passed those surfaces and most adapters, but inherited live-session
@@ -56,6 +59,14 @@ release acceptance evidence.
 After cutover, `ao status --json` reported ready and healthy on loopback port
 3001, `ao doctor --json` reported zero failures, and systemd reported the
 service enabled and active with no drop-ins.
+
+At `2026-07-29T08:37:48Z`, upstream v0.11.1 refreshed PR #38 as mergeability
+blocked while reporting `review: none` and `reviewComments: false`, and it did
+not automatically continue the owning worker. This canary therefore does not
+establish complete inline-review visibility or automatic review-to-worker
+continuation. Explicit operator or conversation-authorized AO continuation
+remains necessary when actionable review is not surfaced and delivered. No
+watcher or adapter is added by this decision.
 
 ## Trusted-LAN Dashboard Compatibility Boundary
 

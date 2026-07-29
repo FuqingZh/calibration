@@ -33,6 +33,8 @@ GLIBC 2.28 with release version metadata. The installed binary reports:
 
 Its SHA-256 is
 `b6249d803dd3c3ad8a315783dd3443f0ed0771f5d73d094267ff2f79b0f08bb0`.
+That digest is qualified to the recorded `go1.26.4 linux/amd64` toolchain; it
+is not a universal digest for builds made with another Go release or target.
 The base `agent-orchestrator.service` launches this binary directly. No Linear
 drop-in or Linear credential variable is active. The `calibration` project
 readback has an empty `trackerIntake` object with no provider, repository, or
@@ -62,6 +64,7 @@ Capture the active state before mutation:
 
 ```bash
 set -euo pipefail
+CALIBRATION_ROOT="$(git rev-parse --show-toplevel)"
 AO_BACKUP="/home/fqzhang/.ao/backups/native-dashboard-$(date +%Y%m%dT%H%M%S)"
 install -d -m 0700 "${AO_BACKUP}"
 install -m 0755 /home/fqzhang/.local/bin/ao "${AO_BACKUP}/ao.before"
@@ -112,18 +115,21 @@ then build with the release metadata:
 
 ```bash
 set -euo pipefail
-cd "${AO_BUILD_ROOT}/source/backend"
-AO_TEST_HOME="$(mktemp -d)"
-env -u AO_DATA_DIR -u AO_ISSUE_ID -u AO_PROJECT_ID \
-  -u AO_RUNTIME_LAUNCH_ID -u AO_SESSION_ID \
-  HOME="${AO_TEST_HOME}" \
-  go test ./internal/cli ./internal/daemon ./internal/httpd/... \
-    ./internal/mobilebridge ./internal/service/notification \
-    ./internal/storage/sqlite/...
-mkdir -p "${AO_BUILD_ROOT}/bin"
-go build -trimpath -buildvcs=false \
-  -ldflags '-X github.com/aoagents/agent-orchestrator/backend/internal/cli.Version=0.11.1 -X github.com/aoagents/agent-orchestrator/backend/internal/cli.Commit=2f6d98f272afa2cd9ea142511fe3a9197d94d2c6 -X github.com/aoagents/agent-orchestrator/backend/internal/cli.Date=2026-07-29T03:21:29Z' \
-  -o "${AO_BUILD_ROOT}/bin/ao" ./cmd/ao
+test "$(go version)" = "go version go1.26.4 linux/amd64"
+(
+  cd "${AO_BUILD_ROOT}/source/backend"
+  AO_TEST_HOME="$(mktemp -d)"
+  env -u AO_DATA_DIR -u AO_ISSUE_ID -u AO_PROJECT_ID \
+    -u AO_RUNTIME_LAUNCH_ID -u AO_SESSION_ID \
+    HOME="${AO_TEST_HOME}" \
+    go test ./internal/cli ./internal/daemon ./internal/httpd/... \
+      ./internal/mobilebridge ./internal/service/notification \
+      ./internal/storage/sqlite/...
+  mkdir -p "${AO_BUILD_ROOT}/bin"
+  go build -trimpath -buildvcs=false \
+    -ldflags '-X github.com/aoagents/agent-orchestrator/backend/internal/cli.Version=0.11.1 -X github.com/aoagents/agent-orchestrator/backend/internal/cli.Commit=2f6d98f272afa2cd9ea142511fe3a9197d94d2c6 -X github.com/aoagents/agent-orchestrator/backend/internal/cli.Date=2026-07-29T03:21:29Z' \
+    -o "${AO_BUILD_ROOT}/bin/ao" ./cmd/ao
+)
 "${AO_BUILD_ROOT}/bin/ao" version
 printf '%s  %s\n' \
   b6249d803dd3c3ad8a315783dd3443f0ed0771f5d73d094267ff2f79b0f08bb0 \
@@ -142,7 +148,7 @@ set -euo pipefail
 install -m 0755 "${AO_BUILD_ROOT}/bin/ao" /home/fqzhang/.local/bin/ao
 install -d -m 0700 /home/fqzhang/.ao
 install -D -m 0600 \
-  docs/runbooks/artifacts/agent-orchestrator-v0.11.1.service \
+  "${CALIBRATION_ROOT}/docs/runbooks/artifacts/agent-orchestrator-v0.11.1.service" \
   /home/fqzhang/.config/systemd/user/agent-orchestrator.service
 if test -f \
   /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf
@@ -152,7 +158,8 @@ then
     "${AO_BACKUP}/linear.conf.disabled"
 fi
 systemctl --user daemon-reload
-systemctl --user enable --now agent-orchestrator.service
+systemctl --user enable agent-orchestrator.service
+systemctl --user restart agent-orchestrator.service
 for attempt in $(seq 1 30)
 do
   if ao status --json
@@ -206,10 +213,10 @@ RENDERER_ROOT="${DASHBOARD_ROOT}/v0.11.1"
 install -d -m 0700 "${DASHBOARD_ROOT}" "${RENDERER_ROOT}"
 cp -a "${ASAR_ROOT}/.vite/renderer/main_window/." "${RENDERER_ROOT}/"
 install -m 0600 \
-  docs/runbooks/artifacts/ao-dashboard-readonly-shim.js \
+  "${CALIBRATION_ROOT}/docs/runbooks/artifacts/ao-dashboard-readonly-shim.js" \
   "${RENDERER_ROOT}/ao-dashboard-readonly-shim.js"
 install -m 0600 \
-  docs/runbooks/artifacts/ao-dashboard-readonly-health.json \
+  "${CALIBRATION_ROOT}/docs/runbooks/artifacts/ao-dashboard-readonly-health.json" \
   "${RENDERER_ROOT}/ao-dashboard-readonly-health.json"
 python3 - "${RENDERER_ROOT}" <<'PY'
 from pathlib import Path
@@ -245,14 +252,15 @@ install -d -m 0700 \
   "${DASHBOARD_ROOT}/fastcgi" "${DASHBOARD_ROOT}/uwsgi" \
   "${DASHBOARD_ROOT}/scgi"
 install -m 0600 \
-  docs/runbooks/artifacts/ao-dashboard-readonly.nginx.conf \
+  "${CALIBRATION_ROOT}/docs/runbooks/artifacts/ao-dashboard-readonly.nginx.conf" \
   "${DASHBOARD_ROOT}/nginx.conf"
 install -D -m 0600 \
-  docs/runbooks/artifacts/ao-dashboard-readonly.service \
+  "${CALIBRATION_ROOT}/docs/runbooks/artifacts/ao-dashboard-readonly.service" \
   /home/fqzhang/.config/systemd/user/ao-dashboard-readonly.service
 /usr/sbin/nginx -t -c "${DASHBOARD_ROOT}/nginx.conf"
 systemctl --user daemon-reload
-systemctl --user enable --now ao-dashboard-readonly.service
+systemctl --user enable ao-dashboard-readonly.service
+systemctl --user restart ao-dashboard-readonly.service
 ```
 
 Verify the active boundary:
@@ -284,6 +292,14 @@ dependency is unavailable. Require both. Also require an allowed
 Dashboard notifications are the only accepted attention event surface. Do not
 add an external notifier. The historical fork, Linear wrapper, credential
 boundary, and canary material below are retained only for rollback and audit.
+
+At `2026-07-29T08:37:48Z`, upstream v0.11.1 refreshed PR #38 as mergeability
+blocked while reporting `review: none` and `reviewComments: false`; it did not
+automatically continue this worker. That readback does not prove complete
+inline-review visibility or automatic review-to-worker continuation. Continue
+to use explicit operator or conversation-authorized AO continuation when the
+Dashboard does not surface and deliver actionable review. Do not add a watcher
+or adapter as an implicit workaround.
 
 ## Historical Pinned Inputs
 
