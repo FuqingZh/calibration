@@ -83,9 +83,9 @@ The current conversation and explicit implementation authorization are the
 work-intake authority; this is conversation-authorized issue intake, and AO
 creates or continues the worker from that authority. GitHub pull requests are
 the delivery, CI, review, and merge fact source. Linear integration is deferred,
-its intake is removed from the active AO project and service, and its repair
-conditions are not on the execution critical path. Historical Linear plans and
-canary evidence remain below for audit.
+its intake is removed from the active AO project, service, and root
+`WORKFLOW.md`, and its repair conditions are not on the execution critical
+path. Historical Linear plans and canary evidence remain below for audit.
 
 AO retains status and attention events in its durable Dashboard only. The
 current host exposes a read-only renderer/API compatibility surface on the

@@ -109,6 +109,10 @@ unit in the same transaction as the upstream binary install; the effective
 service has no drop-ins and the daemon environment contains no
 `AO_LINEAR_API_KEY` or `AO_LINEAR_OAUTH_TOKEN`.
 
+The active root `WORKFLOW.md` Linear intake definition is removed. Historical
+plans retain its former contents and behavior evidence, but no repository-root
+workflow can make Linear appear to be a current intake authority.
+
 The credential itself was not printed, committed, or revoked incidentally. A
 mode-0600 rollback copy and the old binary, wrapper, unit, AppImage, database,
 project readback, and hashes are retained under the mode-0700 local backup
