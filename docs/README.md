@@ -92,6 +92,12 @@ disabled and is removed only after a real replacement canary. Auto-merge, bulk
 enrollment, Linear-side retry/cancel controls, and wider orchestration remain
 outside the accepted boundary.
 
+The July 29 v2.0 canary did not accept persistent intake. Scenarios A and B
+passed their required paths, but a late merge moved a canceled Linear issue
+back into an eligible state and AO re-claimed the same canonical issue after
+its terminal run had been released. Tracker intake is disabled while the AO
+terminal-monotonicity and Linear/GitHub status-ownership defects remain open.
+
 ## Open Evidence Gaps
 
 - The writable comparison covers small dependency-free Python repositories,
@@ -167,7 +173,8 @@ reading path.
 - `implementation-plan/20260728-v1.9-persistent-linear-intake-and-no-product-canary-implementation-plan.md`:
   superseded historical FUQ-14 rollout and manual canary procedure.
 - `implementation-plan/20260728-v2.0-three-scenario-linear-acceptance-implementation-plan.md`:
-  rejected historical state-driven acceptance contract.
+  rejected state-driven contract with failed-canary evidence and the
+  disabled-intake closeout.
 - `decisions/2026-07-29-linear-projection-and-explicit-agent-dispatch.md`:
   current Linear/AO ownership and explicit-dispatch boundary.
 - `implementation-plan/20260729-v2.1-linear-agent-command-bridge-implementation-plan.md`:
