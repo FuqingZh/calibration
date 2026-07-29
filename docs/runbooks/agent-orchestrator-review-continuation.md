@@ -21,18 +21,20 @@ AO calls this mode `bypass-permissions`; the Codex adapter emits
 `--dangerously-bypass-approvals-and-sandbox`. Do not reuse that choice on a new
 host without explicit risk acceptance from its owner.
 
-## Current v0.11.1 Deployment
+## Current v0.11.1 Calibration Deployment
 
-The current host runs upstream AO tag `v0.11.1`, commit
-`2f6d98f272afa2cd9ea142511fe3a9197d94d2c6`, built locally against the host's
-GLIBC 2.28 with release version metadata. The installed binary reports:
+The current host runs a minimal calibration fork based directly on upstream AO
+tag `v0.11.1`, commit
+`2f6d98f272afa2cd9ea142511fe3a9197d94d2c6`. The deployed fork head is
+`ed191f7cb48f33e4915cf0dbfbb3eb2916ca5d13`, built locally against the host's
+GLIBC 2.28. The installed binary reports:
 
 ```text
-0.11.1 commit 2f6d98f272afa2cd9ea142511fe3a9197d94d2c6 built 2026-07-29T03:21:29Z
+0.11.1-calibration.9 commit ed191f7c built 2026-07-29T10:49:00Z
 ```
 
 Its SHA-256 is
-`b6249d803dd3c3ad8a315783dd3443f0ed0771f5d73d094267ff2f79b0f08bb0`.
+`0f0adb964c91ae9c9ef0655b0615fc932b07fe1c808fef084e6a265a94c67ad0`.
 That digest is qualified to the recorded `go1.26.4 linux/amd64` toolchain; it
 is not a universal digest for builds made with another Go release or target.
 The base `agent-orchestrator.service` launches this binary directly. No Linear
@@ -60,6 +62,14 @@ This is the only current reconstruction procedure. The fork, Linear, and
 headless-extraction procedures later in this runbook are historical rollback
 records and must not be used to reconstruct the accepted deployment.
 
+The deployed fork adds eleven commits directly above the verified upstream
+base. The first, `1f0f986e`, is the v0.11.1 cherry-pick equivalent of historical
+fork fix `379202f9`; the remaining commits bound actionable bot-review
+delivery, lifecycle-message confirmation, durable launch-permission metadata,
+and reliable Codex paste submission. The head contains no Linear or Symphony
+intake. Pin and verify the complete head because the live canary required those
+delivery fixes as one compatible stack.
+
 Capture the active state before mutation:
 
 ```bash
@@ -67,10 +77,16 @@ set -euo pipefail
 CALIBRATION_ROOT="$(git rev-parse --show-toplevel)"
 AO_BACKUP="/home/fqzhang/.ao/backups/native-dashboard-$(date +%Y%m%dT%H%M%S)"
 install -d -m 0700 "${AO_BACKUP}"
-install -m 0755 /home/fqzhang/.local/bin/ao "${AO_BACKUP}/ao.before"
-install -m 0600 \
-  /home/fqzhang/.config/systemd/user/agent-orchestrator.service \
-  "${AO_BACKUP}/agent-orchestrator.service.before"
+if test -f /home/fqzhang/.local/bin/ao
+then
+  install -m 0755 /home/fqzhang/.local/bin/ao "${AO_BACKUP}/ao.before"
+fi
+if test -f /home/fqzhang/.config/systemd/user/agent-orchestrator.service
+then
+  install -m 0600 \
+    /home/fqzhang/.config/systemd/user/agent-orchestrator.service \
+    "${AO_BACKUP}/agent-orchestrator.service.before"
+fi
 if test -f \
   /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf
 then
@@ -78,17 +94,23 @@ then
     /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf \
     "${AO_BACKUP}/linear.conf.before"
 fi
-sqlite3 /home/fqzhang/.ao/data/ao.db \
-  ".backup '${AO_BACKUP}/ao.db.before'"
-ao status --json >"${AO_BACKUP}/status.before.json"
-ao doctor --json >"${AO_BACKUP}/doctor.before.json"
-ao project get calibration --json \
-  >"${AO_BACKUP}/calibration-project.before.json"
+if test -f /home/fqzhang/.ao/data/ao.db
+then
+  sqlite3 /home/fqzhang/.ao/data/ao.db \
+    ".backup '${AO_BACKUP}/ao.db.before'"
+fi
+if command -v ao >/dev/null 2>&1
+then
+  ao status --json >"${AO_BACKUP}/status.before.json" 2>/dev/null || true
+  ao doctor --json >"${AO_BACKUP}/doctor.before.json" 2>/dev/null || true
+  ao project get calibration --json \
+    >"${AO_BACKUP}/calibration-project.before.json" 2>/dev/null || true
+fi
 systemctl --user cat agent-orchestrator.service \
-  >"${AO_BACKUP}/agent-orchestrator.effective.before.txt"
+  >"${AO_BACKUP}/agent-orchestrator.effective.before.txt" 2>/dev/null || true
 ```
 
-Fetch the exact verified source and release AppImage:
+Fetch the exact upstream base, deployed calibration fork, and release AppImage:
 
 ```bash
 set -euo pipefail
@@ -101,6 +123,16 @@ git -C "${AO_BUILD_ROOT}/source" fetch --depth 1 origin \
 git -C "${AO_BUILD_ROOT}/source" checkout --detach v0.11.1
 test "$(git -C "${AO_BUILD_ROOT}/source" rev-parse HEAD)" = \
   2f6d98f272afa2cd9ea142511fe3a9197d94d2c6
+git -C "${AO_BUILD_ROOT}/source" remote add calibration \
+  https://github.com/FuqingZh/agent-orchestrator.git
+git -C "${AO_BUILD_ROOT}/source" fetch --depth 12 calibration \
+  ed191f7cb48f33e4915cf0dbfbb3eb2916ca5d13
+git -C "${AO_BUILD_ROOT}/source" checkout --detach \
+  ed191f7cb48f33e4915cf0dbfbb3eb2916ca5d13
+test "$(git -C "${AO_BUILD_ROOT}/source" rev-parse HEAD)" = \
+  ed191f7cb48f33e4915cf0dbfbb3eb2916ca5d13
+test "$(git -C "${AO_BUILD_ROOT}/source" rev-parse HEAD~11)" = \
+  2f6d98f272afa2cd9ea142511fe3a9197d94d2c6
 curl -L --fail \
   -o "${AO_BUILD_ROOT}/agent-orchestrator-v0.11.1.AppImage" \
   https://github.com/Untrivial-ai/agent-orchestrator/releases/download/v0.11.1/agent-orchestrator-linux-x64.AppImage
@@ -111,7 +143,7 @@ printf '%s  %s\n' \
 ```
 
 Run the focused upstream checks without inheriting an active worker identity,
-then build with the release metadata:
+then build with the deployed calibration metadata:
 
 ```bash
 set -euo pipefail
@@ -126,13 +158,13 @@ test "$(go version)" = "go version go1.26.4 linux/amd64"
       ./internal/mobilebridge ./internal/service/notification \
       ./internal/storage/sqlite/...
   mkdir -p "${AO_BUILD_ROOT}/bin"
-  go build -trimpath -buildvcs=false \
-    -ldflags '-X github.com/aoagents/agent-orchestrator/backend/internal/cli.Version=0.11.1 -X github.com/aoagents/agent-orchestrator/backend/internal/cli.Commit=2f6d98f272afa2cd9ea142511fe3a9197d94d2c6 -X github.com/aoagents/agent-orchestrator/backend/internal/cli.Date=2026-07-29T03:21:29Z' \
+  go build -buildvcs=false \
+    -ldflags '-X github.com/aoagents/agent-orchestrator/backend/internal/cli.Version=0.11.1-calibration.9 -X github.com/aoagents/agent-orchestrator/backend/internal/cli.Commit=ed191f7c -X github.com/aoagents/agent-orchestrator/backend/internal/cli.Date=2026-07-29T10:49:00Z' \
     -o "${AO_BUILD_ROOT}/bin/ao" ./cmd/ao
 )
 "${AO_BUILD_ROOT}/bin/ao" version
 printf '%s  %s\n' \
-  b6249d803dd3c3ad8a315783dd3443f0ed0771f5d73d094267ff2f79b0f08bb0 \
+  0f0adb964c91ae9c9ef0655b0615fc932b07fe1c808fef084e6a265a94c67ad0 \
   "${AO_BUILD_ROOT}/bin/ao" |
   sha256sum --check -
 ```
@@ -184,7 +216,7 @@ then
     --path /home/fqzhang/project/calibration \
     --worker-agent codex
 fi
-PROJECT_CONFIG='{"defaultBranch":"main","sessionPrefix":"calibration","env":{"CODEX_HOME":"/home/fqzhang/.ao/codex-home"},"agentConfig":{},"worker":{"agent":"codex","agentConfig":{"permissions":"bypass-permissions"}},"orchestrator":{"agentConfig":{}}}'
+PROJECT_CONFIG='{"defaultBranch":"main","sessionPrefix":"calibration","env":{"CODEX_HOME":"/home/fqzhang/.ao/codex-home"},"agentConfig":{},"worker":{"agent":"codex","agentConfig":{"permissions":"bypass-permissions"}},"orchestrator":{"agentConfig":{}},"trackerIntake":{},"botReviewFeedback":{"allowAuthors":["chatgpt-codex-connector"]}}'
 ao project set-config calibration \
   --config-json "${PROJECT_CONFIG}" --json
 ao version
@@ -276,10 +308,20 @@ systemctl --user show agent-orchestrator.service \
 systemctl --user show ao-dashboard-readonly.service \
   -p ActiveState -p SubState -p ExecStart
 ss -ltnp | rg '127.0.0.1:3001|192.168.30.205:31080'
-curl --noproxy '*' --interface 192.168.30.205 \
+curl --fail --noproxy '*' --interface 192.168.30.205 \
   http://192.168.30.205:31080/dashboard-live
-curl --noproxy '*' --interface 192.168.30.205 \
+curl --fail --noproxy '*' --interface 192.168.30.205 \
   http://192.168.30.205:31080/dashboard-health
+test "$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
+  --noproxy '*' --interface 192.168.30.205 --request POST \
+  http://192.168.30.205:31080/api/v1/notifications)" = 403
+for path in / /dashboard-live /dashboard-health \
+  '/api/v1/notifications?limit=1'
+do
+  test "$(curl --silent --show-error --output /dev/null \
+    --write-out '%{http_code}' --noproxy '*' --interface 192.168.10.13 \
+    "http://192.168.30.205:31080${path}")" = 403
+done
 ```
 
 `/dashboard-live` proves only that nginx can serve the packaged renderer
@@ -295,17 +337,24 @@ boundary, and canary material below are retained only for rollback and audit.
 
 At `2026-07-29T08:37:48Z`, upstream v0.11.1 refreshed PR #38 as mergeability
 blocked while reporting `review: none` and `reviewComments: false`; it did not
-automatically continue this worker. That readback does not prove complete
-inline-review visibility or automatic review-to-worker continuation. Continue
-to use explicit operator or conversation-authorized AO continuation when the
-Dashboard does not surface and deliver actionable review. Do not add a watcher
-or adapter as an implicit workaround.
+automatically continue this worker. The minimal fork refreshes COMMENTED review
+threads when provider `UpdatedAt` advances, delivers precise actionable review
+feedback, persists the launch permission fact needed for safe Codex submission,
+and confirms/submits the pasted lifecycle message. The calibration.8 canary
+automatically discovered and pasted the review payload, but left it in the
+Codex composer. The operator manually sent `Right` then `Enter` at
+`2026-07-29T10:47:15.618543016Z` to diagnose that key sequence; that activation
+is not automatic-continuation evidence. Calibration.9 was deployed at
+`2026-07-29T10:49:53Z`. A fresh thread event with no manual terminal key is
+still required before claiming bounded automatic submission or closing the
+continuation canary. No watcher, Linear intake, or Symphony is part of this
+patch.
 
 ## Historical Pinned Inputs
 
-- Current deployed fork:
+- Historical Phase 3 deployed fork:
   `https://github.com/FuqingZh/agent-orchestrator.git`
-- Current deployed fork `main` commit:
+- Historical Phase 3 fork `main` commit:
   `68496903141232718c23b8f13f4efede2d6f7b58`
 - Merged worker-environment fix head:
   `4c241b1447b4c5c303593ac0a94386cc3dfd3261`
@@ -780,9 +829,13 @@ with `--claim-pr`. Ready-for-review triggers CI/review ownership; it does not
 authorize merge. A stacked pull request may be ready while its base remains
 open, provided merge order stays explicit.
 
-## Verification
+## Historical Phase 3 Verification
 
-Run after installation, restart, configuration, or upgrade:
+This section applies only when reconstructing or auditing the superseded Phase
+3 Linear deployment. Do not run it against the current calibration fork and
+direct-binary service. Current installation and upgrade verification is the
+active-boundary procedure under
+[`Current v0.11.1 Calibration Deployment`](#current-v0111-calibration-deployment).
 
 ```bash
 systemctl --user is-enabled agent-orchestrator.service
@@ -1027,6 +1080,7 @@ custom-frontend precedent from it.
 To stop the service without deleting state:
 
 ```bash
+systemctl --user disable --now ao-dashboard-readonly.service
 systemctl --user disable --now agent-orchestrator.service
 ```
 

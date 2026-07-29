@@ -9,7 +9,8 @@ Status: Accepted and deployed on the current host
 The current-host delivery path converges on upstream AO, GitHub, and AO's
 Dashboard:
 
-- AO v0.11.1 is the host runtime and Dashboard compatibility target.
+- AO v0.11.1 is the Dashboard compatibility target. The host runtime is the
+  minimal `0.11.1-calibration.9` review-continuation fork described below.
 - AO's durable Dashboard notifications are the only attention-event surface.
   No email, chat, webhook, Linear, or other external notifier is part of the
   accepted path.
@@ -24,7 +25,7 @@ Dashboard:
 The historical Linear decisions, plans, canary evidence, wrapper, and credential
 rollback copy remain available for audit. They are not current authority.
 
-## Upstream v0.11.1 Evidence
+## Upstream v0.11.1 And Minimal-Fork Evidence
 
 The accepted source is upstream tag `v0.11.1`, commit
 `2f6d98f272afa2cd9ea142511fe3a9197d94d2c6`. GitHub reported the tag as a
@@ -39,17 +40,32 @@ standalone Web Dashboard listener. The v0.11.1 remote-access documentation and
 the executable headless behavior therefore do not establish upstream-native
 headless Dashboard support on this host.
 
-The exact tag source was built locally with the release metadata:
+The original exact tag source was built locally with the release metadata:
 
 ```text
 0.11.1 commit 2f6d98f272afa2cd9ea142511fe3a9197d94d2c6 built 2026-07-29T03:21:29Z
 ```
 
-The installed `/home/fqzhang/.local/bin/ao` SHA-256 is
-`b6249d803dd3c3ad8a315783dd3443f0ed0771f5d73d094267ff2f79b0f08bb0`.
-That digest is specific to the recorded `go1.26.4 linux/amd64` build toolchain;
-reconstruction with another toolchain requires its own artifact digest and
-evidence.
+That upstream binary was superseded after the real PR #38 canary showed that
+COMMENTED reviews were not refreshed when provider `UpdatedAt` advanced. The
+deployed minimal fork is based directly on `2f6d98f` and ends at
+[`ed191f7cb48f33e4915cf0dbfbb3eb2916ca5d13`](https://github.com/FuqingZh/agent-orchestrator/commit/ed191f7cb48f33e4915cf0dbfbb3eb2916ca5d13).
+Its eleven-commit patch stack is limited to COMMENTED-review refresh and
+actionability, lifecycle-message confirmation, persisted launch-permission
+facts and their migration, and reliable Codex paste submission. It contains no
+Linear or Symphony intake.
+
+The installed binary reports:
+
+```text
+0.11.1-calibration.9 commit ed191f7c built 2026-07-29T10:49:00Z
+```
+
+Its SHA-256 is
+`0f0adb964c91ae9c9ef0655b0615fc932b07fe1c808fef084e6a265a94c67ad0`.
+That digest is specific to the recorded `go1.26.4 linux/amd64` build toolchain
+and release flags; reconstruction with another toolchain or flag set requires
+its own artifact digest and evidence.
 Focused upstream CLI, daemon, HTTP, mobile-LAN, notification, and SQLite tests
 passed in an environment scrubbed of the active AO worker variables. A broader
 run also passed those surfaces and most adapters, but inherited live-session
@@ -62,11 +78,14 @@ service enabled and active with no drop-ins.
 
 At `2026-07-29T08:37:48Z`, upstream v0.11.1 refreshed PR #38 as mergeability
 blocked while reporting `review: none` and `reviewComments: false`, and it did
-not automatically continue the owning worker. This canary therefore does not
-establish complete inline-review visibility or automatic review-to-worker
-continuation. Explicit operator or conversation-authorized AO continuation
-remains necessary when actionable review is not surfaced and delivered. No
-watcher or adapter is added by this decision.
+not automatically continue the owning worker. Calibration.8 later discovered
+and pasted a fresh review payload automatically, but left it in the Codex
+composer. The operator manually sent `Right` then `Enter` at
+`2026-07-29T10:47:15.618543016Z`; that activation does not prove automatic
+submission. Calibration.9 was deployed at `2026-07-29T10:49:53Z` to end the
+paste burst before submitting. A fresh review-thread event with no manual
+terminal key remains the closure gate. No general watcher, issue intake,
+negative cancellation behavior, Linear, or Symphony is established.
 
 ## Trusted-LAN Dashboard Compatibility Boundary
 
@@ -76,7 +95,7 @@ headless feature.
 
 - Renderer source: the renderer extracted from the digest-verified v0.11.1
   AppImage.
-- API source: the exact locally built v0.11.1 binary above.
+- API source: the exact locally built `0.11.1-calibration.9` binary above.
 - Loopback API: fixed `127.0.0.1:3001`, unchanged and not directly exposed.
 - Dashboard: fixed `http://192.168.30.205:31080`.
 - Network allowlist: `192.168.30.0/24` only.

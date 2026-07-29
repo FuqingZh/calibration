@@ -1,3 +1,40 @@
+const dashboardPort = Number(window.location.port);
+
+const readDaemonStatus = async () => {
+	try {
+		const response = await fetch("/dashboard-health", { cache: "no-store" });
+		if (!response.ok) {
+			throw new Error(`AO readiness returned HTTP ${response.status}`);
+		}
+		return { state: "ready", port: dashboardPort };
+	} catch (error) {
+		return {
+			state: "error",
+			code: "daemon_unreachable",
+			message: error instanceof Error ? error.message : "AO readiness failed",
+		};
+	}
+};
+
+const subscribeDaemonStatus = (listener) => {
+	let active = true;
+	let previous = "";
+	const refresh = async () => {
+		const status = await readDaemonStatus();
+		const serialized = JSON.stringify(status);
+		if (active && serialized !== previous) {
+			previous = serialized;
+			listener(status);
+		}
+	};
+	void refresh();
+	const timer = window.setInterval(refresh, 5000);
+	return () => {
+		active = false;
+		window.clearInterval(timer);
+	};
+};
+
 window.ao = {
 	app: {
 		getVersion: async () => "0.11.1",
@@ -11,8 +48,8 @@ window.ao = {
 		onFocusTerminalShortcut: () => () => {},
 	},
 	daemon: {
-		getStatus: async () => ({ state: "ready", port: 31080 }),
-		onStatus: () => () => {},
+		getStatus: readDaemonStatus,
+		onStatus: subscribeDaemonStatus,
 	},
 	telemetry: { getBootstrap: async () => null },
 	notifications: { show: async () => {}, onClick: () => () => {} },
