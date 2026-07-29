@@ -6,24 +6,368 @@ Status: Current for the `fqzhang` user on the present Linux host
 
 ## Purpose And Boundary
 
-This runbook reconstructs the pinned AO service that connects an actionable
+This runbook reconstructs the AO service that connects an actionable
 GitHub Automatic Codex Review finding to the original AO-managed Codex worker.
 For an individually registered repository, the same service may start or claim
 a task-specific worker after a conversation explicitly authorizes
 implementation and pull-request delivery. It does not install Symphony,
 replace GitHub Actions or Automatic Review, enable unattended issue intake or
-automatic work discovery, register every repository, or enable auto-merge.
+automatic work discovery, or register every repository. Low-risk auto-merge is
+governed separately by
+[`../decisions/2026-07-29-ao-native-delivery-convergence.md`](../decisions/2026-07-29-ao-native-delivery-convergence.md).
 
 The service is intentionally permissionless for the current single-user host.
 AO calls this mode `bypass-permissions`; the Codex adapter emits
 `--dangerously-bypass-approvals-and-sandbox`. Do not reuse that choice on a new
 host without explicit risk acceptance from its owner.
 
-## Pinned Inputs
+## Current v0.11.1 Calibration Deployment
 
-- Current deployed fork:
+The current host runs a minimal calibration fork based directly on upstream AO
+tag `v0.11.1`, commit
+`2f6d98f272afa2cd9ea142511fe3a9197d94d2c6`. The deployed fork head is
+`ed191f7cb48f33e4915cf0dbfbb3eb2916ca5d13`, built locally against the host's
+GLIBC 2.28. The installed binary reports:
+
+```text
+0.11.1-calibration.9 commit ed191f7c built 2026-07-29T10:49:00Z
+```
+
+Its SHA-256 is
+`fc4cf5a1527e0b11383ff1904161009f1645eb7e9f66d39faba01b83d482f7de`.
+That digest is qualified to the recorded `go1.26.4 linux/amd64` toolchain; it
+also requires the documented `-trimpath -buildvcs=false` flags and is not a
+universal digest for builds made with another Go release, target, or flag set.
+The base `agent-orchestrator.service` launches this binary directly. No Linear
+drop-in or Linear credential variable is active. The `calibration` project
+readback has an empty `trackerIntake` object with no provider, repository, or
+assignee.
+
+The upstream v0.11.1 AppImage SHA-256 is
+`a2997ef52ad4414581454cef320d2ad0b44062cccfde46be05fa4dd7e3ae1bee`.
+It cannot launch its bundled daemon on this host because that binary requires
+GLIBC 2.32 and 2.34. `ao start` launches Electron and does not expose a
+standalone Web Dashboard. Do not claim upstream-native headless support.
+
+The accepted compatibility deployment serves the renderer extracted from that
+verified AppImage at `http://192.168.30.205:31080`. Its nginx listener binds
+only that address, allows only `192.168.30.0/24`, proxies only GET/HEAD to AO's
+fixed loopback API at `127.0.0.1:3001`, and returns HTTP 403 for mutation
+methods. `/mux` is unavailable. The persistent service is
+`ao-dashboard-readonly.service`; its managed unit, nginx configuration, and
+Electron compatibility shim are under `artifacts/`.
+
+### Reconstruct and install the current runtime
+
+This is the only current reconstruction procedure. The fork, Linear, and
+headless-extraction procedures later in this runbook are historical rollback
+records and must not be used to reconstruct the accepted deployment.
+
+The deployed fork adds eleven commits directly above the verified upstream
+base. The first, `1f0f986e`, is the v0.11.1 cherry-pick equivalent of historical
+fork fix `379202f9`; the remaining commits bound actionable bot-review
+delivery, lifecycle-message confirmation, durable launch-permission metadata,
+and reliable Codex paste submission. The head contains no Linear or Symphony
+intake. Pin and verify the complete head because the live canary required those
+delivery fixes as one compatible stack.
+
+Capture the active state before mutation:
+
+```bash
+set -euo pipefail
+CALIBRATION_ROOT="$(git rev-parse --show-toplevel)"
+AO_BACKUP="/home/fqzhang/.ao/backups/native-dashboard-$(date +%Y%m%dT%H%M%S)"
+install -d -m 0700 "${AO_BACKUP}"
+if test -f /home/fqzhang/.local/bin/ao
+then
+  install -m 0755 /home/fqzhang/.local/bin/ao "${AO_BACKUP}/ao.before"
+fi
+if test -f /home/fqzhang/.config/systemd/user/agent-orchestrator.service
+then
+  install -m 0600 \
+    /home/fqzhang/.config/systemd/user/agent-orchestrator.service \
+    "${AO_BACKUP}/agent-orchestrator.service.before"
+fi
+if test -f \
+  /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf
+then
+  install -m 0644 \
+    /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf \
+    "${AO_BACKUP}/linear.conf.before"
+fi
+if test -f /home/fqzhang/.ao/data/ao.db
+then
+  sqlite3 /home/fqzhang/.ao/data/ao.db \
+    ".backup '${AO_BACKUP}/ao.db.before'"
+fi
+if command -v ao >/dev/null 2>&1
+then
+  ao status --json >"${AO_BACKUP}/status.before.json" 2>/dev/null || true
+  ao doctor --json >"${AO_BACKUP}/doctor.before.json" 2>/dev/null || true
+  ao project get calibration --json \
+    >"${AO_BACKUP}/calibration-project.before.json" 2>/dev/null || true
+fi
+systemctl --user cat agent-orchestrator.service \
+  >"${AO_BACKUP}/agent-orchestrator.effective.before.txt" 2>/dev/null || true
+```
+
+Fetch the exact upstream base, deployed calibration fork, and release AppImage:
+
+```bash
+set -euo pipefail
+AO_BUILD_ROOT="$(mktemp -d)"
+git clone --no-checkout \
+  https://github.com/Untrivial-ai/agent-orchestrator.git \
+  "${AO_BUILD_ROOT}/source"
+git -C "${AO_BUILD_ROOT}/source" fetch --depth 1 origin \
+  refs/tags/v0.11.1:refs/tags/v0.11.1
+git -C "${AO_BUILD_ROOT}/source" checkout --detach v0.11.1
+test "$(git -C "${AO_BUILD_ROOT}/source" rev-parse HEAD)" = \
+  2f6d98f272afa2cd9ea142511fe3a9197d94d2c6
+git -C "${AO_BUILD_ROOT}/source" remote add calibration \
+  https://github.com/FuqingZh/agent-orchestrator.git
+git -C "${AO_BUILD_ROOT}/source" fetch --depth 12 calibration \
+  ed191f7cb48f33e4915cf0dbfbb3eb2916ca5d13
+git -C "${AO_BUILD_ROOT}/source" checkout --detach \
+  ed191f7cb48f33e4915cf0dbfbb3eb2916ca5d13
+test "$(git -C "${AO_BUILD_ROOT}/source" rev-parse HEAD)" = \
+  ed191f7cb48f33e4915cf0dbfbb3eb2916ca5d13
+test "$(git -C "${AO_BUILD_ROOT}/source" rev-parse HEAD~11)" = \
+  2f6d98f272afa2cd9ea142511fe3a9197d94d2c6
+curl -L --fail \
+  -o "${AO_BUILD_ROOT}/agent-orchestrator-v0.11.1.AppImage" \
+  https://github.com/Untrivial-ai/agent-orchestrator/releases/download/v0.11.1/agent-orchestrator-linux-x64.AppImage
+printf '%s  %s\n' \
+  a2997ef52ad4414581454cef320d2ad0b44062cccfde46be05fa4dd7e3ae1bee \
+  "${AO_BUILD_ROOT}/agent-orchestrator-v0.11.1.AppImage" |
+  sha256sum --check -
+```
+
+Run the focused upstream checks without inheriting an active worker identity,
+then build with the deployed calibration metadata:
+
+```bash
+set -euo pipefail
+test "$(go version)" = "go version go1.26.4 linux/amd64"
+(
+  cd "${AO_BUILD_ROOT}/source/backend"
+  AO_TEST_HOME="$(mktemp -d)"
+  env -u AO_DATA_DIR -u AO_ISSUE_ID -u AO_PROJECT_ID \
+    -u AO_RUNTIME_LAUNCH_ID -u AO_SESSION_ID \
+    HOME="${AO_TEST_HOME}" \
+    go test ./internal/cli ./internal/daemon ./internal/httpd/... \
+      ./internal/mobilebridge ./internal/service/notification \
+      ./internal/storage/sqlite/...
+  mkdir -p "${AO_BUILD_ROOT}/bin"
+  go build -trimpath -buildvcs=false \
+    -ldflags '-X github.com/aoagents/agent-orchestrator/backend/internal/cli.Version=0.11.1-calibration.9 -X github.com/aoagents/agent-orchestrator/backend/internal/cli.Commit=ed191f7c -X github.com/aoagents/agent-orchestrator/backend/internal/cli.Date=2026-07-29T10:49:00Z' \
+    -o "${AO_BUILD_ROOT}/bin/ao" ./cmd/ao
+)
+"${AO_BUILD_ROOT}/bin/ao" version
+printf '%s  %s\n' \
+  fc4cf5a1527e0b11383ff1904161009f1645eb7e9f66d39faba01b83d482f7de \
+  "${AO_BUILD_ROOT}/bin/ao" |
+  sha256sum --check -
+```
+
+Install the current binary and exact current-host base unit, then remove the
+active Linear override. The managed unit intentionally records this host's Node
+path, tmux wrapper path, loopback proxy on port 7897, and `NO_PROXY` networks.
+They are reconstruction facts for this host, not portable defaults; change them
+only after verifying the replacement paths and network route.
+
+```bash
+set -euo pipefail
+install -m 0755 "${AO_BUILD_ROOT}/bin/ao" /home/fqzhang/.local/bin/ao
+install -d -m 0700 /home/fqzhang/.ao
+install -D -m 0600 \
+  "${CALIBRATION_ROOT}/docs/runbooks/artifacts/agent-orchestrator-v0.11.1.service" \
+  /home/fqzhang/.config/systemd/user/agent-orchestrator.service
+if test -f \
+  /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf
+then
+  mv \
+    /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf \
+    "${AO_BACKUP}/linear.conf.disabled"
+fi
+systemctl --user daemon-reload
+systemctl --user enable agent-orchestrator.service
+systemctl --user restart agent-orchestrator.service
+for attempt in $(seq 1 30)
+do
+  if ao status --json
+  then
+    break
+  fi
+  test "${attempt}" -lt 30
+  sleep 1
+done
+```
+
+Register the project if it is missing, then replace its complete configuration
+without tracker provider, project, assignee, or workflow:
+
+```bash
+set -euo pipefail
+if ! ao project get calibration --json >/dev/null 2>&1
+then
+  ao project add \
+    --id calibration \
+    --name calibration \
+    --path /home/fqzhang/project/calibration \
+    --worker-agent codex
+fi
+PROJECT_CONFIG='{"defaultBranch":"main","sessionPrefix":"calibration","env":{"CODEX_HOME":"/home/fqzhang/.ao/codex-home"},"agentConfig":{},"worker":{"agent":"codex","agentConfig":{"permissions":"bypass-permissions"}},"orchestrator":{"agentConfig":{}},"trackerIntake":{},"botReviewFeedback":{"allowAuthors":["chatgpt-codex-connector"]}}'
+ao project set-config calibration \
+  --config-json "${PROJECT_CONFIG}" --json
+ao version
+ao status --json
+ao doctor --json
+ao project get calibration --json
+```
+
+Extract and adapt only the renderer from the verified AppImage:
+
+```bash
+set -euo pipefail
+APPIMAGE_ROOT="${AO_BUILD_ROOT}/appimage"
+ASAR_ROOT="${AO_BUILD_ROOT}/asar"
+install -d -m 0700 "${APPIMAGE_ROOT}" "${ASAR_ROOT}"
+chmod 0755 "${AO_BUILD_ROOT}/agent-orchestrator-v0.11.1.AppImage"
+(
+  cd "${APPIMAGE_ROOT}"
+  "${AO_BUILD_ROOT}/agent-orchestrator-v0.11.1.AppImage" \
+    --appimage-extract >/dev/null
+)
+npx -y asar@3.2.0 extract \
+  "${APPIMAGE_ROOT}/squashfs-root/resources/app.asar" "${ASAR_ROOT}"
+DASHBOARD_ROOT=/home/fqzhang/.local/share/ao-dashboard
+RENDERER_ROOT="${DASHBOARD_ROOT}/v0.11.1"
+install -d -m 0700 "${DASHBOARD_ROOT}" "${RENDERER_ROOT}"
+cp -a "${ASAR_ROOT}/.vite/renderer/main_window/." "${RENDERER_ROOT}/"
+install -m 0600 \
+  "${CALIBRATION_ROOT}/docs/runbooks/artifacts/ao-dashboard-readonly-shim.js" \
+  "${RENDERER_ROOT}/ao-dashboard-readonly-shim.js"
+install -m 0600 \
+  "${CALIBRATION_ROOT}/docs/runbooks/artifacts/ao-dashboard-readonly-health.json" \
+  "${RENDERER_ROOT}/ao-dashboard-readonly-health.json"
+python3 - "${RENDERER_ROOT}" <<'PY'
+from pathlib import Path
+import sys
+
+root = Path(sys.argv[1])
+index = root / "index.html"
+text = index.read_text()
+text = text.replace(
+    '<script type="module"',
+    '<script src="./ao-dashboard-readonly-shim.js"></script>\n'
+    '\t\t<script type="module"',
+    1,
+)
+index.write_text(text)
+for path in (root / "assets").glob("*.js"):
+    text = path.read_text()
+    path.write_text(
+        text.replace("http://127.0.0.1:", "http://192.168.30.205:")
+    )
+PY
+find "${RENDERER_ROOT}" -type d -exec chmod 0700 {} +
+find "${RENDERER_ROOT}" -type f -exec chmod 0600 {} +
+```
+
+Install and enable the fixed-port read-only proxy:
+
+```bash
+set -euo pipefail
+DASHBOARD_ROOT=/home/fqzhang/.local/share/ao-dashboard
+install -d -m 0700 \
+  "${DASHBOARD_ROOT}/client-body" "${DASHBOARD_ROOT}/proxy" \
+  "${DASHBOARD_ROOT}/fastcgi" "${DASHBOARD_ROOT}/uwsgi" \
+  "${DASHBOARD_ROOT}/scgi"
+install -m 0600 \
+  "${CALIBRATION_ROOT}/docs/runbooks/artifacts/ao-dashboard-readonly.nginx.conf" \
+  "${DASHBOARD_ROOT}/nginx.conf"
+install -D -m 0600 \
+  "${CALIBRATION_ROOT}/docs/runbooks/artifacts/ao-dashboard-readonly.service" \
+  /home/fqzhang/.config/systemd/user/ao-dashboard-readonly.service
+/usr/sbin/nginx -t -c "${DASHBOARD_ROOT}/nginx.conf"
+systemctl --user daemon-reload
+systemctl --user enable ao-dashboard-readonly.service
+systemctl --user restart ao-dashboard-readonly.service
+```
+
+Verify the active boundary:
+
+```bash
+ao version
+sha256sum /home/fqzhang/.local/bin/ao
+ao status --json
+ao doctor --json
+ao project get calibration --json
+systemctl --user show agent-orchestrator.service \
+  -p ActiveState -p SubState -p DropInPaths -p ExecStart
+systemctl --user show ao-dashboard-readonly.service \
+  -p ActiveState -p SubState -p ExecStart
+ss -ltnp | rg '127.0.0.1:3001|192.168.30.205:31080'
+curl --fail --noproxy '*' --interface 192.168.30.205 \
+  http://192.168.30.205:31080/dashboard-live
+curl --fail --noproxy '*' --interface 192.168.30.205 \
+  http://192.168.30.205:31080/dashboard-health
+curl --fail --noproxy '*' --interface 192.168.30.205 \
+  'http://192.168.30.205:31080/api/v1/notifications?limit=1'
+test "$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
+  --noproxy '*' --interface 192.168.30.205 --request POST \
+  http://192.168.30.205:31080/api/v1/notifications)" = 403
+for path in / /dashboard-live /dashboard-health \
+  '/api/v1/notifications?limit=1'
+do
+  test "$(curl --silent --show-error --output /dev/null \
+    --write-out '%{http_code}' --noproxy '*' --interface 192.168.10.13 \
+    "http://192.168.30.205:31080${path}")" = 403
+done
+```
+
+`/dashboard-live` proves only that nginx can serve the packaged renderer
+surface. `/dashboard-health` proxies AO's `/readyz` and must fail when the AO
+dependency is unavailable. Require both. Also require an allowed
+`/api/v1/notifications?limit=1` read, an HTTP 403 mutation readback, and HTTP
+403 for root, liveness, health, and API reads sourced from an interface outside
+`192.168.30.0/24`.
+
+Dashboard notifications are the only accepted attention event surface. Do not
+add an external notifier. The historical fork, Linear wrapper, credential
+boundary, and canary material below are retained only for rollback and audit.
+
+At `2026-07-29T08:37:48Z`, upstream v0.11.1 refreshed PR #38 as mergeability
+blocked while reporting `review: none` and `reviewComments: false`; it did not
+automatically continue this worker. The minimal fork refreshes COMMENTED review
+threads when provider `UpdatedAt` advances, delivers precise actionable review
+feedback, persists the launch permission fact needed for safe Codex submission,
+and confirms/submits the pasted lifecycle message. The calibration.8 canary
+automatically discovered and pasted the review payload, but left it in the
+Codex composer. The operator manually sent `Right` then `Enter` at
+`2026-07-29T10:47:15.618543016Z` to diagnose that key sequence; that activation
+is not automatic-continuation evidence. Calibration.9 was deployed at
+`2026-07-29T10:49:53Z`, then reloaded at `2026-07-29T11:06:35Z`. After the
+worker was idle, AO recorded the definitive fresh root thread at
+`2026-07-29T11:11:36.744168837Z` and automatically changed the same
+`calibration-27` worker to active at
+`2026-07-29T11:11:43.339564135Z`. No `ao send` or terminal key was used after
+the event. This closes the bounded automatic discovery, paste, submission, and
+same-worker continuation canary. No watcher, Linear intake, or Symphony is
+part of this patch. The same source was then rebuilt reproducibly with
+`-trimpath` and restarted at `2026-07-29T11:12:27Z`.
+
+The pre-trimpath calibration.9 binary is retained at
+`/home/fqzhang/.ao/backups/calibration9-trimpath-20260729T1915/ao.before` with
+SHA-256
+`0f0adb964c91ae9c9ef0655b0615fc932b07fe1c808fef084e6a265a94c67ad0`.
+
+## Historical Pinned Inputs
+
+- Historical Phase 3 deployed fork:
   `https://github.com/FuqingZh/agent-orchestrator.git`
-- Current deployed fork `main` commit:
+- Historical Phase 3 fork `main` commit:
   `68496903141232718c23b8f13f4efede2d6f7b58`
 - Merged worker-environment fix head:
   `4c241b1447b4c5c303593ac0a94386cc3dfd3261`
@@ -75,9 +419,12 @@ The current host uses:
 No token is copied into the repository or service unit. AO discovers the
 existing user authentication at runtime.
 
-## Rebuild
+## Historical Rebuild Procedures
 
-### Current Phase 3 fork
+Everything in this section reconstructs superseded fork or canary states. It
+does not reconstruct the current v0.11.1 runtime or Dashboard.
+
+### Historical Phase 3 fork
 
 Start from the calibration checkout, preserve its root for later managed
 artifact installation, then clone the AO fork:
@@ -278,9 +625,9 @@ routing. A new host may use a system tmux 3.5 or later and omit the wrapper.
 Update the unit and rerun `ao doctor --json` after changing the active Node,
 Codex, tmux, or network configuration.
 
-### Phase 3 Linear credential override
+### Historical Phase 3 Linear credential override
 
-The current host adds Linear access without placing a credential in the base
+The superseded Phase 3 host added Linear access without placing a credential in the base
 unit or repository. Store the credential only at
 `/home/fqzhang/.config/agent-orchestrator/linear-api-key`, mode `0600`, inside
 the mode `0700` directory `/home/fqzhang/.config/agent-orchestrator`.
@@ -495,9 +842,13 @@ with `--claim-pr`. Ready-for-review triggers CI/review ownership; it does not
 authorize merge. A stacked pull request may be ready while its base remains
 open, provided merge order stays explicit.
 
-## Verification
+## Historical Phase 3 Verification
 
-Run after installation, restart, configuration, or upgrade:
+This section applies only when reconstructing or auditing the superseded Phase
+3 Linear deployment. Do not run it against the current calibration fork and
+direct-binary service. Current installation and upgrade verification is the
+active-boundary procedure under
+[`Current v0.11.1 Calibration Deployment`](#current-v0111-calibration-deployment).
 
 ```bash
 systemctl --user is-enabled agent-orchestrator.service
@@ -706,7 +1057,11 @@ passes, and auto-merge remains off. Static status readback alone does not prove
 the GitHub event loop. Only after this canary may the repository be called
 `continuation-proven` or fully adopted.
 
-## Headless Dashboard Boundary
+## Historical Headless Dashboard Canary
+
+This section records the superseded 0.10.3 experiment. Its conclusion that no
+Web Dashboard was retained is historical and must not override the current
+v0.11.1 reconstruction, service, and verification procedure above.
 
 The pinned AO `0.10.3` desktop package contains the dashboard renderer, but
 `ao start` fetches and opens an Electron Desktop App. It is not a supported
@@ -726,18 +1081,19 @@ the AO daemon and API remained healthy. Both temporary Web services were then
 stopped. No Web Dashboard service, listener, proxy, extracted renderer, or
 startup contract was retained.
 
-Do not run `ao start` on this headless host. Use `ao status --json`, project and
-session readback, the loopback AO API, and the owning Codex or GitHub surfaces
-for current status. Reconsider a persistent browser dashboard only when it
-materially reduces attention cost and a maintained AO release exposes a
-supported remote-Web contract; do not promote the isolated extraction into a
-custom production frontend.
+The historical canary did not use `ao start` on this headless host. At that
+time, operators used `ao status --json`, project and session readback, the
+loopback AO API, and the owning Codex or GitHub surfaces for current status.
+The current v0.11.1 compatibility deployment is the explicitly reviewed
+exception. Do not reconstruct the old loopback canary or infer a broader
+custom-frontend precedent from it.
 
 ## Stop Or Remove
 
 To stop the service without deleting state:
 
 ```bash
+systemctl --user disable --now ao-dashboard-readonly.service
 systemctl --user disable --now agent-orchestrator.service
 ```
 
