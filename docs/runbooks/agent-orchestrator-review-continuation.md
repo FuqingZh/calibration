@@ -6,20 +6,74 @@ Status: Current for the `fqzhang` user on the present Linux host
 
 ## Purpose And Boundary
 
-This runbook reconstructs the pinned AO service that connects an actionable
+This runbook reconstructs the AO service that connects an actionable
 GitHub Automatic Codex Review finding to the original AO-managed Codex worker.
 For an individually registered repository, the same service may start or claim
 a task-specific worker after a conversation explicitly authorizes
 implementation and pull-request delivery. It does not install Symphony,
 replace GitHub Actions or Automatic Review, enable unattended issue intake or
-automatic work discovery, register every repository, or enable auto-merge.
+automatic work discovery, or register every repository. Low-risk auto-merge is
+governed separately by
+[`../decisions/2026-07-29-ao-native-delivery-convergence.md`](../decisions/2026-07-29-ao-native-delivery-convergence.md).
 
 The service is intentionally permissionless for the current single-user host.
 AO calls this mode `bypass-permissions`; the Codex adapter emits
 `--dangerously-bypass-approvals-and-sandbox`. Do not reuse that choice on a new
 host without explicit risk acceptance from its owner.
 
-## Pinned Inputs
+## Current v0.11.1 Deployment
+
+The current host runs upstream AO tag `v0.11.1`, commit
+`2f6d98f272afa2cd9ea142511fe3a9197d94d2c6`, built locally against the host's
+GLIBC 2.28 with release version metadata. The installed binary reports:
+
+```text
+0.11.1 commit 2f6d98f272afa2cd9ea142511fe3a9197d94d2c6 built 2026-07-29T03:21:29Z
+```
+
+Its SHA-256 is
+`b6249d803dd3c3ad8a315783dd3443f0ed0771f5d73d094267ff2f79b0f08bb0`.
+The base `agent-orchestrator.service` launches this binary directly. No Linear
+drop-in or Linear credential variable is active. The `calibration` project
+readback has an empty `trackerIntake` object with no provider, repository, or
+assignee.
+
+The upstream v0.11.1 AppImage SHA-256 is
+`a2997ef52ad4414581454cef320d2ad0b44062cccfde46be05fa4dd7e3ae1bee`.
+It cannot launch its bundled daemon on this host because that binary requires
+GLIBC 2.32 and 2.34. `ao start` launches Electron and does not expose a
+standalone Web Dashboard. Do not claim upstream-native headless support.
+
+The accepted compatibility deployment serves the renderer extracted from that
+verified AppImage at `http://192.168.30.205:31080`. Its nginx listener binds
+only that address, allows only `192.168.30.0/24`, proxies only GET/HEAD to AO's
+fixed loopback API at `127.0.0.1:3001`, and returns HTTP 403 for mutation
+methods. `/mux` is unavailable. The persistent service is
+`ao-dashboard-readonly.service`; its managed unit, nginx configuration, and
+Electron compatibility shim are under `artifacts/`.
+
+Verify the active boundary:
+
+```bash
+ao version
+sha256sum /home/fqzhang/.local/bin/ao
+ao status --json
+ao doctor --json
+ao project get calibration --json
+systemctl --user show agent-orchestrator.service \
+  -p ActiveState -p SubState -p DropInPaths -p ExecStart
+systemctl --user show ao-dashboard-readonly.service \
+  -p ActiveState -p SubState -p ExecStart
+ss -ltnp | rg '127.0.0.1:3001|192.168.30.205:31080'
+curl --noproxy '*' --interface 192.168.30.205 \
+  http://192.168.30.205:31080/dashboard-health
+```
+
+Dashboard notifications are the only accepted attention event surface. Do not
+add an external notifier. The historical fork, Linear wrapper, credential
+boundary, and canary material below are retained only for rollback and audit.
+
+## Historical Pinned Inputs
 
 - Current deployed fork:
   `https://github.com/FuqingZh/agent-orchestrator.git`
@@ -278,9 +332,9 @@ routing. A new host may use a system tmux 3.5 or later and omit the wrapper.
 Update the unit and rerun `ao doctor --json` after changing the active Node,
 Codex, tmux, or network configuration.
 
-### Phase 3 Linear credential override
+### Historical Phase 3 Linear credential override
 
-The current host adds Linear access without placing a credential in the base
+The superseded Phase 3 host added Linear access without placing a credential in the base
 unit or repository. Store the credential only at
 `/home/fqzhang/.config/agent-orchestrator/linear-api-key`, mode `0600`, inside
 the mode `0700` directory `/home/fqzhang/.config/agent-orchestrator`.

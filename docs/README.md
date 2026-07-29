@@ -20,8 +20,7 @@ Read the smallest source that owns the decision:
 | Current AI-native direction | `decisions/2026-07-27-ai-native-calibration-review.md` |
 | Writable comparative evidence | `decisions/2026-07-27-ai-native-writable-implementation-evaluation-closeout.md` |
 | Five-phase convergence result | `decisions/2026-07-27-ai-native-calibration-convergence-closeout.md` |
-| Current-host AO Phase 3 deployment | `decisions/2026-07-27-ao-phase-3-deployment-reproducibility-closeout.md` |
-| Current three-scenario Linear acceptance | `implementation-plan/20260728-v2.0-three-scenario-linear-acceptance-implementation-plan.md` |
+| Current-host AO and delivery boundary | `decisions/2026-07-29-ao-native-delivery-convergence.md` |
 
 The current default is outcome autonomy within repository-local, reversible
 boundaries. Repository rules and executable feedback choose and revise the
@@ -60,10 +59,15 @@ Raw trajectories, isolated homes, workspaces, arm maps, and blind judge
 packages remain private temporary evidence. Commit only fixtures, protocol,
 reviewed findings, and reconstructable hashes.
 
-### AO review continuation
+### AO-native delivery
 
 `runbooks/agent-orchestrator-review-continuation.md` is the current-host
-installation, service, permission, recovery, and repository-adoption contract.
+installation, Dashboard, service, permission, recovery, and
+repository-adoption contract.
+`decisions/2026-07-29-ao-native-delivery-convergence.md` records the accepted
+upstream v0.11.1 runtime, trusted-LAN read-only Dashboard compatibility
+boundary, Dashboard-only attention policy, Linear retirement, and fail-closed
+low-risk GitHub auto-merge policy.
 `decisions/2026-07-23-ao-review-continuation-adoption.md` records the accepted
 narrow review-to-original-worker bridge.
 `decisions/2026-07-27-ao-phase-3-deployment-reproducibility-closeout.md`
@@ -75,22 +79,19 @@ judgment. Repositories opt in individually after an observed continuation need.
 An explicit conversation-authorized implementation may start a task-specific
 worker in an already accepted repository.
 
-FUQ-14 adds a repository-owned `WORKFLOW.md` for one label-gated,
-project-scoped Linear intake lane. The current v2.0 plan reduces live
-acceptance to three state-machine scenarios: review-to-merge completion,
-same-issue retry after abnormal worker exit, and cancellation that survives a
-late PR merge. AO's Linear adapter remains read-only; remote state drift caused
-by Linear/GitHub integration is repaired at that integration boundary rather
-than by granting AO write authority. Until all three scenarios pass against a
-persistent service-managed AO revision, automatic work discovery and
-unattended issue intake remain unaccepted. Auto-merge, bulk enrollment, and
-wider orchestration remain outside the accepted boundary.
+The current conversation and explicit implementation authorization are the
+work-intake authority; this is conversation-authorized issue intake, and AO
+creates or continues the worker from that authority. GitHub pull requests are
+the delivery, CI, review, and merge fact source. Linear integration is deferred,
+its intake is removed from the active AO project and service, and its repair
+conditions are not on the execution critical path. Historical Linear plans and
+canary evidence remain below for audit.
 
-The July 29 v2.0 canary did not accept persistent intake. Scenarios A and B
-passed their required paths, but a late merge moved a canceled Linear issue
-back into an eligible state and AO re-claimed the same canonical issue after
-its terminal run had been released. Tracker intake is disabled while the AO
-terminal-monotonicity and Linear/GitHub status-ownership defects remain open.
+AO retains status and attention events in its durable Dashboard only. The
+current host exposes a read-only renderer/API compatibility surface on the
+trusted LAN because the v0.11.1 AppImage does not supply a supported headless
+Web listener on this GLIBC 2.28 host. Do not describe that adapter as
+upstream-native headless support.
 
 ## Open Evidence Gaps
 
