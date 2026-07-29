@@ -62,10 +62,10 @@ The installed binary reports:
 ```
 
 Its SHA-256 is
-`0f0adb964c91ae9c9ef0655b0615fc932b07fe1c808fef084e6a265a94c67ad0`.
+`fc4cf5a1527e0b11383ff1904161009f1645eb7e9f66d39faba01b83d482f7de`.
 That digest is specific to the recorded `go1.26.4 linux/amd64` build toolchain
-and release flags; reconstruction with another toolchain or flag set requires
-its own artifact digest and evidence.
+and `-trimpath -buildvcs=false` release flags; reconstruction with another
+toolchain or flag set requires its own artifact digest and evidence.
 Focused upstream CLI, daemon, HTTP, mobile-LAN, notification, and SQLite tests
 passed in an environment scrubbed of the active AO worker variables. A broader
 run also passed those surfaces and most adapters, but inherited live-session
@@ -83,9 +83,13 @@ and pasted a fresh review payload automatically, but left it in the Codex
 composer. The operator manually sent `Right` then `Enter` at
 `2026-07-29T10:47:15.618543016Z`; that activation does not prove automatic
 submission. Calibration.9 was deployed at `2026-07-29T10:49:53Z` to end the
-paste burst before submitting. A fresh review-thread event with no manual
-terminal key remains the closure gate. No general watcher, issue intake,
-negative cancellation behavior, Linear, or Symphony is established.
+paste burst before submitting. After the worker was idle, the post-restart root
+thread was recorded at `2026-07-29T11:11:36.744168837Z`; AO automatically
+changed the same `calibration-27` worker to active at
+`2026-07-29T11:11:43.339564135Z`, with no `ao send` or terminal key after the
+event. This closes the bounded automatic discovery, paste, submission, and
+same-worker continuation canary. No general watcher, issue intake, negative
+cancellation behavior, Linear, or Symphony is established.
 
 ## Trusted-LAN Dashboard Compatibility Boundary
 

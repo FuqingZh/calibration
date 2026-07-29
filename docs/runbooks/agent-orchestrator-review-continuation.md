@@ -34,9 +34,10 @@ GLIBC 2.28. The installed binary reports:
 ```
 
 Its SHA-256 is
-`0f0adb964c91ae9c9ef0655b0615fc932b07fe1c808fef084e6a265a94c67ad0`.
+`fc4cf5a1527e0b11383ff1904161009f1645eb7e9f66d39faba01b83d482f7de`.
 That digest is qualified to the recorded `go1.26.4 linux/amd64` toolchain; it
-is not a universal digest for builds made with another Go release or target.
+also requires the documented `-trimpath -buildvcs=false` flags and is not a
+universal digest for builds made with another Go release, target, or flag set.
 The base `agent-orchestrator.service` launches this binary directly. No Linear
 drop-in or Linear credential variable is active. The `calibration` project
 readback has an empty `trackerIntake` object with no provider, repository, or
@@ -158,13 +159,13 @@ test "$(go version)" = "go version go1.26.4 linux/amd64"
       ./internal/mobilebridge ./internal/service/notification \
       ./internal/storage/sqlite/...
   mkdir -p "${AO_BUILD_ROOT}/bin"
-  go build -buildvcs=false \
+  go build -trimpath -buildvcs=false \
     -ldflags '-X github.com/aoagents/agent-orchestrator/backend/internal/cli.Version=0.11.1-calibration.9 -X github.com/aoagents/agent-orchestrator/backend/internal/cli.Commit=ed191f7c -X github.com/aoagents/agent-orchestrator/backend/internal/cli.Date=2026-07-29T10:49:00Z' \
     -o "${AO_BUILD_ROOT}/bin/ao" ./cmd/ao
 )
 "${AO_BUILD_ROOT}/bin/ao" version
 printf '%s  %s\n' \
-  0f0adb964c91ae9c9ef0655b0615fc932b07fe1c808fef084e6a265a94c67ad0 \
+  fc4cf5a1527e0b11383ff1904161009f1645eb7e9f66d39faba01b83d482f7de \
   "${AO_BUILD_ROOT}/bin/ao" |
   sha256sum --check -
 ```
@@ -312,6 +313,8 @@ curl --fail --noproxy '*' --interface 192.168.30.205 \
   http://192.168.30.205:31080/dashboard-live
 curl --fail --noproxy '*' --interface 192.168.30.205 \
   http://192.168.30.205:31080/dashboard-health
+curl --fail --noproxy '*' --interface 192.168.30.205 \
+  'http://192.168.30.205:31080/api/v1/notifications?limit=1'
 test "$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
   --noproxy '*' --interface 192.168.30.205 --request POST \
   http://192.168.30.205:31080/api/v1/notifications)" = 403
@@ -345,10 +348,20 @@ automatically discovered and pasted the review payload, but left it in the
 Codex composer. The operator manually sent `Right` then `Enter` at
 `2026-07-29T10:47:15.618543016Z` to diagnose that key sequence; that activation
 is not automatic-continuation evidence. Calibration.9 was deployed at
-`2026-07-29T10:49:53Z`. A fresh thread event with no manual terminal key is
-still required before claiming bounded automatic submission or closing the
-continuation canary. No watcher, Linear intake, or Symphony is part of this
-patch.
+`2026-07-29T10:49:53Z`, then reloaded at `2026-07-29T11:06:35Z`. After the
+worker was idle, AO recorded the definitive fresh root thread at
+`2026-07-29T11:11:36.744168837Z` and automatically changed the same
+`calibration-27` worker to active at
+`2026-07-29T11:11:43.339564135Z`. No `ao send` or terminal key was used after
+the event. This closes the bounded automatic discovery, paste, submission, and
+same-worker continuation canary. No watcher, Linear intake, or Symphony is
+part of this patch. The same source was then rebuilt reproducibly with
+`-trimpath` and restarted at `2026-07-29T11:12:27Z`.
+
+The pre-trimpath calibration.9 binary is retained at
+`/home/fqzhang/.ao/backups/calibration9-trimpath-20260729T1915/ao.before` with
+SHA-256
+`0f0adb964c91ae9c9ef0655b0615fc932b07fe1c808fef084e6a265a94c67ad0`.
 
 ## Historical Pinned Inputs
 
