@@ -1,0 +1,27 @@
+[Unit]
+Description=Agent Orchestrator daemon
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h
+Environment=PATH=%h/.local/lib/ao/bin:%h/.nvm/versions/node/v22.22.2/bin:%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+Environment=HTTP_PROXY=http://127.0.0.1:7897
+Environment=HTTPS_PROXY=http://127.0.0.1:7897
+Environment=ALL_PROXY=http://127.0.0.1:7897
+Environment=NO_PROXY=localhost,127.0.0.1,::1,192.168.0.0/16,192.168.30.202,10.0.0.0/8,172.16.0.0/12
+Environment=http_proxy=http://127.0.0.1:7897
+Environment=https_proxy=http://127.0.0.1:7897
+Environment=all_proxy=http://127.0.0.1:7897
+Environment=no_proxy=localhost,127.0.0.1,::1,192.168.0.0/16,192.168.30.202,10.0.0.0/8,172.16.0.0/12
+ExecStart=%h/.local/bin/ao daemon
+StandardOutput=append:%h/.ao/daemon.log
+StandardError=append:%h/.ao/daemon.log
+Restart=on-failure
+RestartSec=3
+KillMode=process
+UMask=0077
+
+[Install]
+WantedBy=default.target

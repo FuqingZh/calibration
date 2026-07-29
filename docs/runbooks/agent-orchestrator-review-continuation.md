@@ -131,13 +131,19 @@ printf '%s  %s\n' \
   sha256sum --check -
 ```
 
-Install the current binary, remove the active Linear override, and replace the
-complete project configuration without tracker provider, project, assignee, or
-workflow:
+Install the current binary and exact current-host base unit, then remove the
+active Linear override. The managed unit intentionally records this host's Node
+path, tmux wrapper path, loopback proxy on port 7897, and `NO_PROXY` networks.
+They are reconstruction facts for this host, not portable defaults; change them
+only after verifying the replacement paths and network route.
 
 ```bash
 set -euo pipefail
 install -m 0755 "${AO_BUILD_ROOT}/bin/ao" /home/fqzhang/.local/bin/ao
+install -d -m 0700 /home/fqzhang/.ao
+install -D -m 0600 \
+  docs/runbooks/artifacts/agent-orchestrator-v0.11.1.service \
+  /home/fqzhang/.config/systemd/user/agent-orchestrator.service
 if test -f \
   /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf
 then
@@ -145,11 +151,35 @@ then
     /home/fqzhang/.config/systemd/user/agent-orchestrator.service.d/linear.conf \
     "${AO_BACKUP}/linear.conf.disabled"
 fi
+systemctl --user daemon-reload
+systemctl --user enable --now agent-orchestrator.service
+for attempt in $(seq 1 30)
+do
+  if ao status --json
+  then
+    break
+  fi
+  test "${attempt}" -lt 30
+  sleep 1
+done
+```
+
+Register the project if it is missing, then replace its complete configuration
+without tracker provider, project, assignee, or workflow:
+
+```bash
+set -euo pipefail
+if ! ao project get calibration --json >/dev/null 2>&1
+then
+  ao project add \
+    --id calibration \
+    --name calibration \
+    --path /home/fqzhang/project/calibration \
+    --worker-agent codex
+fi
 PROJECT_CONFIG='{"defaultBranch":"main","sessionPrefix":"calibration","env":{"CODEX_HOME":"/home/fqzhang/.ao/codex-home"},"agentConfig":{},"worker":{"agent":"codex","agentConfig":{"permissions":"bypass-permissions"}},"orchestrator":{"agentConfig":{}}}'
 ao project set-config calibration \
   --config-json "${PROJECT_CONFIG}" --json
-systemctl --user daemon-reload
-systemctl --user restart agent-orchestrator.service
 ao version
 ao status --json
 ao doctor --json

@@ -96,6 +96,7 @@ status/attention use case; they do not establish full Electron feature parity.
 
 The managed compatibility artifacts are:
 
+- `../runbooks/artifacts/agent-orchestrator-v0.11.1.service`
 - `../runbooks/artifacts/ao-dashboard-readonly.nginx.conf`
 - `../runbooks/artifacts/ao-dashboard-readonly.service`
 - `../runbooks/artifacts/ao-dashboard-readonly-shim.js`
