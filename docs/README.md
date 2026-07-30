@@ -111,12 +111,14 @@ state, and merged-worker readback live in
 AO retains status and attention events in its durable Dashboard only. The
 current host exposes a read-only renderer and GET-only API compatibility
 surface to `192.168.30.0/24` because the v0.11.1 AppImage does not supply a
-supported headless Web listener on this GLIBC 2.28 host. The committed adapter
-configuration proposes an exact `/mux` WebSocket terminal control surface
-restricted to `192.168.30.134` and `192.168.30.205`. It is not current host
-state until a separately authorized deployment and representative allowed- and
-denied-client WebSocket probes pass. The route does not authorize REST
-mutations or standalone shell creation. Do not describe that adapter as
+supported headless Web listener on this GLIBC 2.28 host. The deployed
+`ao-dashboard-readonly.nginx.conf` artifact remains the reconstruction
+authority and continues returning HTTP 404 for `/mux`. The separately staged
+`ao-dashboard-terminal-proposed.nginx.conf` proposes an exact `/mux` WebSocket
+control surface restricted to `192.168.30.134` and `192.168.30.205`. It is not
+current host state until a separately authorized deployment and representative
+allowed- and denied-client WebSocket probes pass. The route does not authorize
+REST mutations or standalone shell creation. Do not describe that adapter as
 upstream-native headless support.
 
 ## Open Evidence Gaps

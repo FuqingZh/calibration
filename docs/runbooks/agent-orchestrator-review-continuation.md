@@ -58,9 +58,10 @@ an exact `/mux` WebSocket proxy to `127.0.0.1:3001/mux` only for clients
 `192.168.30.134` and `192.168.30.205`. It remains pending until a separately
 authorized deployment and representative allowed- and denied-client WebSocket
 probes pass. This proposed terminal control surface does not enable REST
-mutations or standalone shell creation. The persistent service retains the compatibility name
-`ao-dashboard-readonly.service`; its managed unit, nginx configuration, and
-Electron compatibility shim retain their legacy filenames under `artifacts/`.
+mutations or standalone shell creation. The deployed nginx and service
+artifacts retain the compatibility names `ao-dashboard-readonly.nginx.conf` and
+`ao-dashboard-readonly.service`. The proposed terminal configuration is staged
+separately as `ao-dashboard-terminal-proposed.nginx.conf`.
 
 ### Reconstruct and install the current runtime
 
@@ -280,11 +281,7 @@ find "${RENDERER_ROOT}" -type d -exec chmod 0700 {} +
 find "${RENDERER_ROOT}" -type f -exec chmod 0600 {} +
 ```
 
-The following restricted-terminal installation is proposed, not current host
-state. Do not execute it without separate deployment authorization.
-
-Install and enable the proposed fixed-port read-mostly Dashboard adapter with
-the restricted terminal route:
+Install or repair the current fixed-port read-only Dashboard adapter:
 
 ```bash
 set -euo pipefail
@@ -302,6 +299,26 @@ install -D -m 0600 \
 /usr/sbin/nginx -t -c "${DASHBOARD_ROOT}/nginx.conf"
 systemctl --user daemon-reload
 systemctl --user enable ao-dashboard-readonly.service
+systemctl --user restart ao-dashboard-readonly.service
+```
+
+The following restricted-terminal installation is proposed, not current host
+state. Do not execute it without separate deployment authorization.
+
+The separately authorized rollout replaces only the live `nginx.conf` with the
+proposed variant, preserving the compatibility service filename:
+
+```bash
+set -euo pipefail
+DASHBOARD_ROOT=/home/fqzhang/.local/share/ao-dashboard
+install -d -m 0700 \
+  "${DASHBOARD_ROOT}/client-body" "${DASHBOARD_ROOT}/proxy" \
+  "${DASHBOARD_ROOT}/fastcgi" "${DASHBOARD_ROOT}/uwsgi" \
+  "${DASHBOARD_ROOT}/scgi"
+install -m 0600 \
+  "${CALIBRATION_ROOT}/docs/runbooks/artifacts/ao-dashboard-terminal-proposed.nginx.conf" \
+  "${DASHBOARD_ROOT}/nginx.conf"
+/usr/sbin/nginx -t -c "${DASHBOARD_ROOT}/nginx.conf"
 systemctl --user restart ao-dashboard-readonly.service
 ```
 

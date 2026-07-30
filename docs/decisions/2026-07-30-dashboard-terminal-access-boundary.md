@@ -23,9 +23,11 @@ proxy.
 
 This change does not authorize REST mutations, standalone shell creation,
 public exposure, shared-subnet terminal access, host deployment, or a change to
-the AO daemon listener. The compatibility artifact and service filenames remain
-`ao-dashboard-readonly.*` because external installation and rollback procedures
-depend on them.
+the AO daemon listener. The deployed compatibility artifacts remain
+`ao-dashboard-readonly.nginx.conf` and `ao-dashboard-readonly.service`
+byte-for-byte because current reconstruction and rollback procedures depend on
+them. The terminal change is staged separately as
+`ao-dashboard-terminal-proposed.nginx.conf`.
 
 ## Rationale
 
@@ -43,6 +45,7 @@ to a shared subnet or the public Internet.
 
 Static repository checks must prove that:
 
+- the deployed read-only nginx and service artifacts remain unchanged;
 - only `location = /mux` proxies to `127.0.0.1:3001/mux`;
 - only `192.168.30.134` and `192.168.30.205` are allowed there;
 - the route accepts only GET handshakes, retains bounded proxy timeouts and
