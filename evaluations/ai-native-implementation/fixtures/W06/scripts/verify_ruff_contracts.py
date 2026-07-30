@@ -12,11 +12,13 @@ fallback = load_configuration("fallback-project/pyproject.toml")
 local = load_configuration("local-project/pyproject.toml")
 
 expected_fallback = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
-actual_fallback = fallback["tool"]["ruff"]["lint"]["select"]
+fallback_ruff = fallback["tool"]["ruff"]
+fallback_lint = fallback_ruff["lint"]
+actual_fallback = fallback_lint["select"]
 if actual_fallback != expected_fallback:
     raise SystemExit(f"fallback Ruff selection mismatch: {actual_fallback!r}")
 
-if "preview" in fallback["tool"]["ruff"]:
+if fallback_ruff.get("preview") is True or fallback_lint.get("preview") is True:
     raise SystemExit("fallback project must not enable Ruff preview")
 
 expected_local = ["E", "F", "S"]

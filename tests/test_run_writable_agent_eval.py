@@ -237,6 +237,19 @@ def test_w06_verifies_fallback_adoption_and_local_contract_precedence(
         encoding="utf-8",
     )
 
+    fallback.write_text(
+        fallback.read_text(encoding="utf-8") + "preview = true\n",
+        encoding="utf-8",
+    )
+    lint_preview = evaluation.verify_workspace(case, workspace)
+    assert lint_preview["passed"] is False
+    checks = cast(list[dict[str, object]], lint_preview["checks"])
+    assert "must not enable Ruff preview" in cast(str, checks[0]["stderr"])
+
+    fallback.write_text(
+        fallback.read_text(encoding="utf-8").replace("preview = true\n", ""),
+        encoding="utf-8",
+    )
     after = evaluation.verify_workspace(case, workspace)
     assert after["passed"] is True
     assert after["changed_paths"] == ["fallback-project/pyproject.toml"]
