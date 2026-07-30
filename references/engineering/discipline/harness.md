@@ -50,6 +50,23 @@ Treat named tools and artifacts as possible means unless the user or an
 accepted contract requires that exact artifact. Assess the capability they
 serve before creating them.
 
+### Ruff quality-gate baseline
+
+When a Python repository uses Ruff or is choosing a Python lint gate, inspect
+and follow its repository-local Ruff contract first. Do not replace an existing
+rule selection with a shared default.
+
+When no repository-local Ruff rule contract exists and Ruff is an appropriate
+fit, recommend the stable high-signal baseline `E`, `F`, `I`, `UP`, `B`, `SIM`,
+and `RUF`. Do not enable `S`, `ANN`, `D`, `PL`, `ALL`, or preview rules by
+default. Treat broader or preview selections as repository-specific policy
+choices that need their own evidence and migration decision.
+
+Make adoption actionable through the repository-owned configuration and
+canonical validation entrypoint. Inspect the resulting violations, fix only
+deterministic first-party issues introduced by the selected rules, preserve
+behavior, and keep vendored or generated exclusions under repository authority.
+
 Consider only capabilities that are material to the repository's work:
 
 - finding current authority and repository-specific operating constraints;

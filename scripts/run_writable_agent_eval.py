@@ -15,7 +15,6 @@ from typing import cast
 
 import yaml
 
-
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 EVALUATION_ROOT = REPOSITORY_ROOT / "evaluations/ai-native-implementation"
 

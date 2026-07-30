@@ -14,7 +14,6 @@ from scripts.validate_markdown_links import (
     validate_markdown_links,
 )
 
-
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 
 

@@ -16,7 +16,6 @@ from urllib.parse import unquote, urlsplit
 
 import yaml
 
-
 SKILL_ROOTS = (Path("skills"), Path("thirdparty/skills"))
 NAME_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 MARKDOWN_LINK_PATTERN = re.compile(r"(?<!!)\[[^]]*]\(([^)]+)\)")

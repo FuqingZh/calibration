@@ -36,7 +36,6 @@ from scripts.adopt_ao_repository import (
     main,
 )
 
-
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -268,7 +267,7 @@ def test_rejects_unsafe_codex_home(repository: Path) -> None:
     codex_home.chmod(0o700)
     config = codex_home / "config.toml"
     config.chmod(0o644)
-    with pytest.raises(AdoptionError, match="config.toml.*group or other"):
+    with pytest.raises(AdoptionError, match=r"config\.toml.*group or other"):
         adopt_repository(request(repository), apply=True)
 
     config.chmod(0o600)
@@ -386,7 +385,7 @@ def test_rejects_public_authentication_file(repository: Path) -> None:
     codex_home = repository.parent / "codex-home"
     auth = codex_home / "auth.json"
     auth.chmod(0o644)
-    with pytest.raises(AdoptionError, match="auth.json.*group or other"):
+    with pytest.raises(AdoptionError, match=r"auth\.json.*group or other"):
         _validate_codex_home(codex_home)
 
 
@@ -530,7 +529,7 @@ def test_project_config_accepts_encoded_json_and_rejects_bad_shapes() -> None:
 def test_rejects_enabled_tracker_intake() -> None:
     _reject_tracker_intake({})
     _reject_tracker_intake({"trackerIntake": {"enabled": False}})
-    with pytest.raises(AdoptionError, match="trackerIntake.enabled"):
+    with pytest.raises(AdoptionError, match=r"trackerIntake\.enabled"):
         _reject_tracker_intake({"trackerIntake": {"enabled": True}})
 
 
@@ -584,7 +583,7 @@ def test_project_get_accepts_wrapped_and_legacy_bare_payloads() -> None:
     for payload in payloads:
         output = json.dumps(payload)
         found, project = _project_get(
-            lambda received: completed(received, stdout=output),
+            lambda received, output=output: completed(received, stdout=output),
             "sample",
         )
         assert found is True
@@ -616,7 +615,7 @@ def test_project_get_accepts_wrapped_and_legacy_bare_payloads() -> None:
     ],
 )
 def test_project_get_rejects_degraded_readback(payload: dict[str, object]) -> None:
-    with pytest.raises(AdoptionError, match="status must be 'ok'|is degraded"):
+    with pytest.raises(AdoptionError, match=r"status must be 'ok'|is degraded"):
         _project_get(
             lambda received: completed(received, stdout=json.dumps(payload)),
             "sample",
@@ -848,7 +847,7 @@ def test_apply_rejects_existing_tracker_intake(repository: Path) -> None:
             str(repository.resolve()),
         ),
     )
-    with pytest.raises(AdoptionError, match="trackerIntake.enabled"):
+    with pytest.raises(AdoptionError, match=r"trackerIntake\.enabled"):
         adopt_repository(request(repository), apply=True, runner=FakeRunner(responses))
 
 

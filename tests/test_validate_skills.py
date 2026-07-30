@@ -18,7 +18,6 @@ from scripts.validate_skills import (
     validate_repository,
 )
 
-
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -489,6 +488,21 @@ def test_harness_is_proportional_not_a_repository_tier_list() -> None:
     assert "## Harness Proportionality" in harness
     assert "## Harness Levels" not in harness
     assert "does not imply a\nmandatory harness checklist" in harness
+
+
+def test_calibration_routes_to_the_shared_ruff_quality_gate_baseline() -> None:
+    skill = (REPOSITORY_ROOT / "skills/calibration/SKILL.md").read_text(
+        encoding="utf-8"
+    )
+    harness = (
+        REPOSITORY_ROOT / "references/engineering/discipline/harness.md"
+    ).read_text(encoding="utf-8")
+
+    assert "../../references/engineering/discipline/harness.md" in skill
+    assert "repository-local Ruff contract first" in harness
+    assert "`E`, `F`, `I`, `UP`, `B`, `SIM`,\nand `RUF`" in harness
+    assert "`S`, `ANN`, `D`, `PL`, `ALL`, or preview rules" in harness
+    assert "fix only\ndeterministic first-party issues" in harness
 
 
 def test_delivery_loop_classifies_failures_before_harness_changes() -> None:

@@ -11,7 +11,6 @@ import yaml
 from scripts import run_writable_agent_eval as evaluation
 from scripts.run_writable_agent_eval import CaseSpec, EvaluationError
 
-
 INVALID_CASES: list[tuple[dict[str, object], str]] = [
     ({"id": ""}, "id must be a non-empty string"),
     ({"allowed_changes": []}, "allowed_changes must be a non-empty list"),
@@ -99,7 +98,7 @@ def test_load_case_rejects_unreadable_shapes(
 ) -> None:
     path = tmp_path / "case.yaml"
     path.write_text(content, encoding="utf-8")
-    with pytest.raises(EvaluationError, match="case must be|cannot load case"):
+    with pytest.raises(EvaluationError, match=r"case must be|cannot load case"):
         evaluation.load_case(path)
 
 
@@ -138,7 +137,7 @@ def test_prepare_workspace_reports_git_failure(
         "_run",
         failed_run,
     )
-    with pytest.raises(EvaluationError, match="git init.*broken"):
+    with pytest.raises(EvaluationError, match=r"git init.*broken"):
         evaluation.prepare_workspace(case, tmp_path / "workspace")
 
 
