@@ -33,8 +33,8 @@ Load only the routers required by the decisions at hand:
   setup discovery, pull-request validation, CI, agent review, cloud execution
   gaps, and repeated delivery failures:
   `../../references/engineering/discipline/harness.md`
-- onboarding or repairing an explicitly opted-in repository on the accepted
-  Agent Orchestrator host:
+- portable integration guidance for an explicitly opted-in repository using
+  an already installed Agent Orchestrator:
   `../../docs/runbooks/agent-orchestrator-review-continuation.md`
 - architecture, module boundaries, interfaces, and abstraction:
   `../../references/engineering/design/README.md`

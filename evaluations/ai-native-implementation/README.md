@@ -65,7 +65,7 @@ python scripts/run_writable_agent_eval.py run \
   --case evaluations/ai-native-implementation/cases/W01.yaml \
   --workspace /tmp/calibration-eval-W01 \
   --source-root /path/to/calibration-arm \
-  --auth-file /home/fqzhang/.codex/auth.json \
+  --auth-file /path/to/codex/auth.json \
   --output-dir /tmp/calibration-eval-output/W01/candidate/1 \
   --model MODEL \
   --reasoning-effort medium

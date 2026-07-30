@@ -167,10 +167,10 @@ use only the new names.
    and `engineering-design`.
 5. Update README and references from `engineering-canon` to `calibration`.
 6. Verify the installer with `bash install.sh --dry-run`.
-7. Run the installer to refresh `/home/fqzhang/.codex`.
+7. Run the installer to refresh the selected Codex home.
 8. Commit and push the content migration.
 9. Rename the remote repository to `calibration`.
-10. Rename the local directory to `/home/fqzhang/project/calibration`.
+10. Rename the local checkout directory to `calibration`.
 11. Update the local git remote URL if the remote rename changes it.
 12. Re-run the installer from the new local path and verify that no stale
     `global-defaults` skill remains.

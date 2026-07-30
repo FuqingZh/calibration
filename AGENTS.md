@@ -8,15 +8,19 @@
 - First-party skills live under `skills/`; do not change behavioral cases as
   part of an unrelated implementation.
 
-## AO Delivery
+## Conditional AO Delivery
 
-This repository has opted into the accepted user-level AO service as
-`calibration`. For conversation-authorized implementation intended to cross a
-pull-request boundary, verify AO health and start a task-specific worker before
-creating the implementation branch or pull request. If a pull request already
-exists, mark it ready for review if it is a draft, then restore its owning
-worker or claim it with `--no-takeover`. Ready-for-review is only an AO claim
-prerequisite.
+AO is an optional environment adapter, not a property of every public clone.
+Use it only when the current environment has already installed AO, explicitly
+adopted this repository, and supplied local host authority. Otherwise use an
+isolated worktree and the repository's normal pull-request path.
+
+For conversation-authorized implementation intended to cross a pull-request
+boundary in an adopted environment, verify AO health and start a task-specific
+worker before creating the implementation branch or pull request. If a pull
+request already exists, mark it ready for review if it is a draft, then restore
+its owning worker or claim it without takeover. Ready-for-review is only an AO
+claim prerequisite.
 
 Conversation authorization for a low-risk implementation also authorizes the
 worker to request GitHub native auto-merge without a second merge
@@ -43,14 +47,14 @@ Classify AO observations by state owner before diagnosing them:
   binaries outside the worker boundary.
 
 A mismatch between these states is diagnostic evidence, not proof that the
-host is broken. Verify the state through its owning context and use the AO
-runbook's repair procedure before changing persistent host configuration.
+host is broken. Verify the state through its owning context and use local host
+authority, when present, before changing persistent host configuration.
 
 Use the accepted AO diagnosis states exactly:
 
 - a failure observed only in the sandbox is `indeterminate`;
-- active host service plus AO `ready`/`running` readback and a passing
-  `healthz` probe is `daemon ready`;
+- active host service plus AO `ready`/`running` readback and a passing health
+  probe is `daemon ready`;
 - repeated failure from the authoritative host context is `unavailable`; and
 - an AO doctor external integration or authentication failure is `delivery
   degraded`, not daemon unavailability. Core doctor failures remain evidence

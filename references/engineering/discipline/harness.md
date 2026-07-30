@@ -231,11 +231,14 @@ behind repository-owned checks or CI runners rather than assuming a hosted
 environment can reproduce them.
 
 Treat terminal access as a control surface, even when it is presented inside a
-read-only dashboard or operational viewer. Expose it only behind authentication
-or an exact-client private-network allowlist. Never expose terminal access to a
-shared subnet or the public Internet. Keep read-only status and observation
-routes independently constrained so adding terminal access does not implicitly
-enable REST mutations, standalone shell creation, or broader network access.
+read-only dashboard or operational viewer, and keep it off by default. A
+trusted single-user private LAN may opt in only with an exact client IP, exact
+WebSocket Origin, exact terminal path, and loopback upstream. Origin checking is
+defense in depth, not authentication. Multi-user, dynamic-address, public, or
+untrusted-network deployments require authentication. Keep read-only status and
+observation routes independently constrained so adding terminal access does not
+implicitly enable REST mutations, standalone shell creation, or broader
+network access.
 
 Prefer platform-native automatic review when the repository and account
 support it. Put only repository-specific review guidance in the closest useful
