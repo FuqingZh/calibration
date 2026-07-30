@@ -62,8 +62,11 @@ through four distinct states:
 
 Do not report adoption complete at registration, configuration, or static
 health. `scripts/adopt_ao_repository.py` remains an optional compatible
-plan/apply adapter for an already installed AO. It never claims the real event
-loop has passed and must preserve its existing CLI contract.
+plan/apply helper for its supported Linux user-service profile. Its apply path
+expects `systemd --user`, AO doctor checks, and compatible tmux prerequisites;
+it is not a universal Desktop adapter. Other platforms install and operate AO
+through upstream Desktop directly. The helper never claims the real event loop
+has passed and must preserve its existing CLI contract.
 
 Conversation authorization is sufficient issue intake. Issue-tracker intake,
 automatic work discovery, and a separate orchestrator session are not

@@ -4,6 +4,9 @@ This directory records calibration decisions, evaluations, historical plans,
 and portable integration guidance. Reusable cross-project engineering guidance
 lives under `../references/engineering/`.
 
+Calibration is in stable maintenance mode with no active implementation plan.
+New work begins from a concrete conversation-authorized task.
+
 ## Public Architecture
 
 Calibration has four layers:
@@ -33,7 +36,9 @@ back to `$HOME/.config/calibration/AGENTS.md`.
 | Portable AO integration | `runbooks/agent-orchestrator-review-continuation.md` |
 | Current AI-native direction | `decisions/2026-07-27-ai-native-calibration-review.md` |
 | Writable comparative evidence | `decisions/2026-07-27-ai-native-writable-implementation-evaluation-closeout.md` |
+| Five-phase convergence result | `decisions/2026-07-27-ai-native-calibration-convergence-closeout.md` |
 | Default repository quality gate | `decisions/2026-07-30-default-repository-quality-gate.md` |
+| Codex-home adoption compatibility | `decisions/2026-07-30-ao-host-context-and-config-compatibility.md` |
 | Dashboard terminal boundary | `decisions/2026-07-30-dashboard-terminal-access-boundary.md` |
 
 The current default is outcome autonomy within repository-local, reversible
@@ -74,8 +79,24 @@ upgrades belong to upstream Desktop. Calibration does not ship host deployment
 artifacts.
 
 `scripts/adopt_ao_repository.py` is an optional plan/apply adapter for an
-already installed, CLI-capable AO. It does not make AO a dependency of public
-skills or ordinary repository work.
+already installed, CLI-capable AO on its supported Linux `systemd --user` and
+tmux profile. It is not a universal Desktop adapter and does not make AO a
+dependency of public skills or ordinary repository work. Other platforms use
+upstream Desktop directly.
+
+## Open Evidence Gaps
+
+- Writable comparisons cover small dependency-free Python fixtures, one model,
+  one reasoning effort, and local verification; they do not establish the same
+  result for production, multi-language, dependency-heavy, or deployment work.
+- Variable pre-edit reproduction remains a reason to reopen the candidate if
+  real tasks skip executable feedback where it changes safety or diagnosis.
+- No repeated writable evidence supports changing the durable implementation
+  plan contract.
+- Public AO guidance defines portable integration, but current-host operation
+  requires rendered private authority and representative host readback.
+- Detailed debugging, verification, harness, and evaluation layers still need
+  representative ablation evidence before any consolidation.
 
 ## Historical Records
 
@@ -83,3 +104,29 @@ Historical decision and plan paths remain for link compatibility. Host-specific
 operational evidence has been reduced to short public summaries; detailed
 snapshots, hashes, credentials, service definitions, patches, and rollback
 material belong to private host authority.
+
+### Architecture And Documentation
+
+- `decisions/2026-07-01-calibration-rename-and-skill-architecture.md`
+- `decisions/2026-07-01-calibration-follow-up-batches.md`
+- `decisions/2026-07-01-document-types-retrospect-and-evaluation.md`
+- `decisions/2026-07-03-writing-docstrings-skill-design.md`
+
+### Harness And Evaluation
+
+- `decisions/2026-07-20-agent-harness-and-evaluation-ownership.md`
+- `decisions/2026-07-20-agent-harness-and-evaluation-closeout.md`
+- `decisions/2026-07-21-harness-successor-evaluation-closeout.md`
+- `decisions/2026-07-27-ai-native-calibration-evaluation-closeout.md`
+- `decisions/2026-07-27-ai-native-writable-implementation-evaluation-closeout.md`
+
+### Delivery And Orchestration
+
+- `decisions/2026-07-21-repository-delivery-feedback-loop.md`
+- `decisions/2026-07-23-ao-review-continuation-adoption.md`
+- `decisions/2026-07-29-ao-native-delivery-convergence.md`
+- `implementation-plan/20260723-v1.6-repository-quality-gate-implementation-plan.md`
+- `implementation-plan/20260723-v1.7-ao-repository-adoption-contract-implementation-plan.md`
+- `implementation-plan/20260727-v1.8-ai-native-calibration-convergence-implementation-plan.md`
+- `implementation-plan/20260728-v1.9-persistent-linear-intake-and-no-product-canary-implementation-plan.md`
+- `implementation-plan/20260728-v2.0-three-scenario-linear-acceptance-implementation-plan.md`

@@ -174,11 +174,12 @@ and permission profile are already accepted, distinguish these states:
    push its correction.
 
 Do not report repository adoption as complete at registration, configuration,
-or a passing static health check. Use the accepted operational runbook and its
-idempotent initializer instead of inventing permission, identity, or service
+or a passing static health check. Use the portable AO guide plus conditional
+private host authority instead of inventing permission, identity, or service
 defaults. Record the repository-specific adoption fact and task-intake
 entrypoint in the repository's own `AGENTS.md` through its normal delivery
-path. Keep the service alive beyond the initiating conversation.
+path. Keep any accepted continuation service alive beyond the initiating
+conversation.
 
 For conversation-authorized work, neither issue-tracker intake nor a separate
 orchestrator session is a prerequisite. Start or claim the task-specific

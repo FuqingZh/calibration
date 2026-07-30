@@ -78,21 +78,43 @@ fi
 if $CLI_CODEX_HOME_SET; then
   [[ -n "$CLI_CODEX_HOME" ]] ||
     fail_usage "--codex-home requires a non-empty path"
+  [[ "$CLI_CODEX_HOME" == /* ]] ||
+    fail_usage "--codex-home must be an absolute path"
   CODEX_HOME="$CLI_CODEX_HOME"
 else
   CODEX_HOME="${CODEX_HOME:-${HOME}/.codex}"
 fi
 [[ -n "$CODEX_HOME" ]] || fail_usage "Codex home must not be empty"
-[[ "$CODEX_HOME" != "/" ]] || fail_usage "Refusing to use / as Codex home"
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
-CALIBRATION_ROOT="$SCRIPT_DIR"
+CALIBRATION_ROOT="$(realpath -m -- "$SCRIPT_DIR")"
+CODEX_HOME="$(realpath -m -- "$CODEX_HOME")"
+[[ "$CODEX_HOME" != "/" ]] || fail_usage "Refusing to use / as Codex home"
+case "$CODEX_HOME" in
+  "$CALIBRATION_ROOT"|"$CALIBRATION_ROOT"/*)
+    fail_usage "Codex home must not equal or be inside the calibration checkout"
+    ;;
+esac
+case "$CALIBRATION_ROOT" in
+  "$CODEX_HOME"/*)
+    fail_usage "Codex home must not contain the calibration checkout"
+    ;;
+esac
+
+if [[ -n "${XDG_CONFIG_HOME:-}" ]]; then
+  [[ "$XDG_CONFIG_HOME" == /* ]] ||
+    fail_usage "XDG_CONFIG_HOME must be an absolute path"
+  HOST_CONFIG_ROOT="$(realpath -m -- "$XDG_CONFIG_HOME")"
+else
+  [[ "${HOME:-}" == /* ]] || fail_usage "HOME must be an absolute path"
+  HOST_CONFIG_ROOT="$(realpath -m -- "$HOME/.config")"
+fi
+
 SKILLS_DIR="$CODEX_HOME/skills"
 AGENTS_TARGET="$CODEX_HOME/AGENTS.md"
 SKILL_SOURCE_ROOT="$CALIBRATION_ROOT/skills"
 THIRDPARTY_SKILL_SOURCE_ROOT="$CALIBRATION_ROOT/thirdparty/skills"
 TEMPLATE="$CALIBRATION_ROOT/codex/AGENTS.md.template"
-HOST_CONFIG_ROOT="${XDG_CONFIG_HOME:-${HOME}/.config}"
 HOST_AUTHORITY="$HOST_CONFIG_ROOT/calibration/AGENTS.md"
 MANAGED_SKILLS=(
   calibration
@@ -193,7 +215,11 @@ remove_owned_skill_link() {
     return
   fi
   run rm -f "$target"
-  say "$label removed: $target"
+  if $DRY_RUN; then
+    say "$label removal planned: $target"
+  else
+    say "$label removed: $target"
+  fi
 }
 
 remove_retired_unmanaged_skill_path() {
@@ -204,7 +230,11 @@ remove_retired_unmanaged_skill_path() {
     return
   fi
   run rm -rf "$target"
-  say "Retired unmanaged skill removed: $target"
+  if $DRY_RUN; then
+    say "Retired unmanaged skill removal planned: $target"
+  else
+    say "Retired unmanaged skill removed: $target"
+  fi
 }
 
 backup_agents_target() {
@@ -214,7 +244,11 @@ backup_agents_target() {
   local backup
   backup="$AGENTS_TARGET.bak.$(date +%Y%m%d%H%M%S)"
   run cp -a "$AGENTS_TARGET" "$backup"
-  say "Backed up existing AGENTS.md: $backup"
+  if $DRY_RUN; then
+    say "Backup planned for existing AGENTS.md: $backup"
+  else
+    say "Backed up existing AGENTS.md: $backup"
+  fi
 }
 
 install_agents_file() {
@@ -276,6 +310,10 @@ main() {
       install_skill_link "$skill" "$THIRDPARTY_SKILL_SOURCE_ROOT"
     done
   else
+    for skill in "${RETIRED_THIRDPARTY_SKILLS[@]}"; do
+      remove_owned_skill_link \
+        "$skill" "$THIRDPARTY_SKILL_SOURCE_ROOT" "Retired third-party skill"
+    done
     for skill in "${MANAGED_THIRDPARTY_SKILLS[@]}"; do
       remove_owned_skill_link \
         "$skill" "$THIRDPARTY_SKILL_SOURCE_ROOT" "Managed third-party skill"

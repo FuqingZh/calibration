@@ -13,7 +13,7 @@ FORBIDDEN = (
 
 def test_tracked_tree_has_no_private_host_tokens() -> None:
     result = subprocess.run(
-        ["git", "ls-files", "-co", "--exclude-standard", "-z"],
+        ["git", "ls-files", "-z"],
         cwd=REPOSITORY_ROOT,
         check=True,
         capture_output=True,
@@ -23,6 +23,9 @@ def test_tracked_tree_has_no_private_host_tokens() -> None:
         if not raw_path:
             continue
         relative = raw_path.decode()
+        if any(token in raw_path for token in FORBIDDEN):
+            violations.append(relative)
+            continue
         path = REPOSITORY_ROOT / relative
         if not path.is_file():
             continue

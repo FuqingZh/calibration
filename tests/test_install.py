@@ -101,11 +101,30 @@ def test_ao_worker_requires_explicit_safe_cli_home_before_writes(
     tmp_path: Path,
 ) -> None:
     env_home = tmp_path / "environment-home"
+    root_link = tmp_path / "root-link"
+    root_link.symlink_to("/")
     cases = (
         ("--profile", "ao-worker"),
         ("--profile", "ao-worker", "--codex-home"),
         ("--profile", "ao-worker", "--codex-home", ""),
         ("--profile", "ao-worker", "--codex-home", "/"),
+        ("--profile", "ao-worker", "--codex-home", "//"),
+        ("--profile", "ao-worker", "--codex-home", "/tmp/.."),
+        ("--profile", "ao-worker", "--codex-home", "."),
+        ("--profile", "ao-worker", "--codex-home", str(root_link)),
+        ("--profile", "ao-worker", "--codex-home", str(REPOSITORY_ROOT)),
+        (
+            "--profile",
+            "ao-worker",
+            "--codex-home",
+            str(REPOSITORY_ROOT / "worker-home"),
+        ),
+        (
+            "--profile",
+            "ao-worker",
+            "--codex-home",
+            str(REPOSITORY_ROOT.parent),
+        ),
         ("--profile", "unknown", "--codex-home", str(tmp_path / "other")),
     )
 
@@ -113,6 +132,36 @@ def test_ao_worker_requires_explicit_safe_cli_home_before_writes(
         result = run_installer(env_home, *arguments)
         assert result.returncode == 2
         assert not env_home.exists()
+        assert root_link.is_symlink() and root_link.readlink() == Path("/")
+
+
+def test_relative_xdg_config_home_is_rejected_before_writes(
+    tmp_path: Path,
+) -> None:
+    codex_home = tmp_path / "codex-home"
+
+    result = run_installer(
+        codex_home,
+        env_updates={"XDG_CONFIG_HOME": "relative-config"},
+    )
+
+    assert result.returncode == 2
+    assert "XDG_CONFIG_HOME must be an absolute path" in result.stderr
+    assert not codex_home.exists()
+
+
+def test_standard_environment_home_cannot_overlap_source(
+    tmp_path: Path,
+) -> None:
+    marker = REPOSITORY_ROOT / "README.md"
+    before = marker.read_bytes()
+
+    result = run_installer(REPOSITORY_ROOT)
+
+    assert result.returncode == 2
+    assert "calibration checkout" in result.stderr
+    assert marker.read_bytes() == before
+    assert not (REPOSITORY_ROOT / "skills/AGENTS.md").exists()
 
 
 def test_ao_worker_uses_explicit_second_home_and_cli_precedence(
@@ -189,6 +238,21 @@ def test_profiles_are_idempotent_and_convert_safely(tmp_path: Path) -> None:
     for name in MANAGED_THIRDPARTY_SKILLS[1:]:
         assert not (codex_home / "skills" / name).exists()
 
+    retired_owned = codex_home / "skills/writing-plans"
+    retired_owned.symlink_to(REPOSITORY_ROOT / "thirdparty/skills/writing-plans")
+    retired_foreign = codex_home / "skills/darwin-skill"
+    retired_foreign.symlink_to(foreign_target)
+    worker_again = run_installer(
+        None,
+        "--profile",
+        "ao-worker",
+        "--codex-home",
+        str(codex_home),
+    )
+    assert worker_again.returncode == 0, worker_again.stderr
+    assert not retired_owned.exists() and not retired_owned.is_symlink()
+    assert retired_foreign.is_symlink()
+
     standard_again = run_installer(codex_home, "--profile", "standard")
     assert standard_again.returncode == 0, standard_again.stderr
     assert_standard_installed(REPOSITORY_ROOT, codex_home)
@@ -198,9 +262,10 @@ def test_ao_worker_preserves_unowned_codex_state_byte_exactly(
     tmp_path: Path,
 ) -> None:
     codex_home = tmp_path / "worker"
+    auth_target = tmp_path / "private-auth.json"
+    auth_target.write_bytes(b'{"token":"private"}\n')
     markers = {
         "config.toml": b"model = 'private'\n",
-        "auth.json": b'{"token":"private"}\n',
         "Apps/marker.bin": b"\x00apps\xff",
         "Plugins/marker.bin": b"\x00plugins\xff",
         "MCP/marker.bin": b"\x00mcp\xff",
@@ -209,6 +274,8 @@ def test_ao_worker_preserves_unowned_codex_state_byte_exactly(
         path = codex_home / relative
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(content)
+    auth_link = codex_home / "auth.json"
+    auth_link.symlink_to(auth_target)
 
     result = run_installer(
         None,
@@ -221,6 +288,55 @@ def test_ao_worker_preserves_unowned_codex_state_byte_exactly(
     assert result.returncode == 0, result.stderr
     for relative, content in markers.items():
         assert (codex_home / relative).read_bytes() == content
+    assert auth_link.is_symlink()
+    assert auth_link.readlink() == auth_target
+    assert auth_link.read_bytes() == b'{"token":"private"}\n'
+
+
+def test_dry_run_preserves_content_and_uses_planned_wording(
+    tmp_path: Path,
+) -> None:
+    codex_home = tmp_path / "worker"
+    skills = codex_home / "skills"
+    skills.mkdir(parents=True)
+    owned = skills / "grilling"
+    owned.symlink_to(REPOSITORY_ROOT / "thirdparty/skills/grilling")
+    retired = skills / "writing-plans"
+    retired.symlink_to(REPOSITORY_ROOT / "thirdparty/skills/writing-plans")
+    agents = codex_home / "AGENTS.md"
+    agents.write_text("preserve me\n", encoding="utf-8")
+
+    result = run_installer(
+        None,
+        "--profile",
+        "ao-worker",
+        "--codex-home",
+        str(codex_home),
+        "--dry-run",
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "removal planned" in result.stdout
+    assert "Backup planned" in result.stdout
+    assert " removed:" not in result.stdout
+    assert "Backed up" not in result.stdout
+    assert owned.is_symlink()
+    assert retired.is_symlink()
+    assert agents.read_text(encoding="utf-8") == "preserve me\n"
+    assert list(codex_home.glob("AGENTS.md.bak.*")) == []
+
+
+def test_no_backup_preserves_explicit_policy(tmp_path: Path) -> None:
+    codex_home = tmp_path / "standard"
+    codex_home.mkdir()
+    agents = codex_home / "AGENTS.md"
+    agents.write_text("replace without backup\n", encoding="utf-8")
+
+    result = run_installer(codex_home, "--no-backup")
+
+    assert result.returncode == 0, result.stderr
+    assert list(codex_home.glob("AGENTS.md.bak.*")) == []
+    assert "replace without backup" not in agents.read_text(encoding="utf-8")
 
 
 def test_existing_skill_requires_force_and_agents_backup_is_compatible(

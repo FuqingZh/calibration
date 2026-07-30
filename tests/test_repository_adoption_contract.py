@@ -105,3 +105,38 @@ def test_generated_agents_is_the_only_private_profile_discovery_path() -> None:
         skill = skill_dir / "SKILL.md"
         if skill.is_file():
             assert "Agent Orchestrator" not in skill.read_text(encoding="utf-8")
+
+
+def test_adoption_adapter_and_installer_have_distinct_codex_home_contracts() -> None:
+    decision = compact(
+        "docs/decisions/2026-07-30-ao-host-context-and-config-compatibility.md"
+    )
+    runbook = compact("docs/runbooks/agent-orchestrator-review-continuation.md")
+
+    for phrase in (
+        "apps = false",
+        "plugins = false",
+        "no top-level `mcp_servers`",
+        "harmless TUI state",
+        "extra top-level metadata",
+        "non-conflicting feature keys",
+        "read-only",
+    ):
+        assert phrase in decision
+    assert "does not read, validate, or modify" in decision
+    assert "Linux user-service profile" in runbook
+    assert "systemd --user" in runbook
+    assert "tmux prerequisites" in runbook
+    assert "not a universal Desktop adapter" in runbook
+
+
+def test_docs_restore_stable_authority_and_historical_navigation() -> None:
+    docs = compact("docs/README.md")
+
+    assert "stable maintenance mode with no active implementation plan" in docs
+    assert "Five-phase convergence result" in docs
+    assert "## Open Evidence Gaps" in docs
+    assert "### Architecture And Documentation" in docs
+    assert "### Harness And Evaluation" in docs
+    assert "### Delivery And Orchestration" in docs
+    assert "20260727-v1.8-ai-native-calibration-convergence" in docs

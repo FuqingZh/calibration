@@ -13,7 +13,9 @@
 AO is an optional environment adapter, not a property of every public clone.
 Use it only when the current environment has already installed AO, explicitly
 adopted this repository, and supplied local host authority. Otherwise use an
-isolated worktree and the repository's normal pull-request path.
+isolated worktree for pull-request-bound delivery. Ordinary local engineering
+tasks continue directly under repository rules without requiring AO or a new
+worktree.
 
 For conversation-authorized implementation intended to cross a pull-request
 boundary in an adopted environment, verify AO health and start a task-specific
@@ -35,7 +37,7 @@ This authority applies to GitHub's native per-pull-request auto-merge after the
 exact-head gate. It does not authorize always-on AO project configuration such
 as `autoMerge`, whose cancellation and state-change behavior is unproven and
 must remain disabled. If AO is unavailable, use an isolated worktree and report
-that fallback.
+that fallback for pull-request-bound delivery.
 
 Classify AO observations by state owner before diagnosing them:
 
