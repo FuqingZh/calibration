@@ -48,6 +48,9 @@ topics.
 
 - Put technical defaults in explicit configuration structures rather than
   scattering them through orchestration logic.
+- Validate extensible configuration by the invariants a consumer requires,
+  not by exact equality with the smallest known document. Preserve tolerated
+  metadata and extension keys unless the owning contract requires a rewrite.
 - Put product and style preferences in caller-facing configuration or
   project-level documentation.
 - Give every magic threshold a named constant, an applicability rationale, and

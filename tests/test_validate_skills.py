@@ -478,6 +478,7 @@ def test_calibration_defaults_to_outcome_autonomy() -> None:
         agents_contract
     )
     assert "complete canonical gate before delivery" in agents_contract
+    assert "authoritative host context" in agents_contract
 
 
 def test_harness_is_proportional_not_a_repository_tier_list() -> None:

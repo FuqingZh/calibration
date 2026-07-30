@@ -744,8 +744,12 @@ plugins = false
 ```
 
 The isolated home reuses authentication but not Desktop-specific Apps,
-Plugins, MCP servers, or unrelated instructions. Without the explicit feature
-settings, Codex defaults can still start Apps and reproduce the timeout.
+Plugins, or MCP servers. Without the explicit feature settings, Codex defaults
+can still start Apps and reproduce the timeout. The adoption validator requires
+`apps = false` and `plugins = false`, and rejects a top-level `mcp_servers`
+table. It intentionally accepts TUI state, unrelated top-level metadata, and
+additional feature keys without rewriting the file; Codex configuration is an
+extensible document, and AO owns only these safety invariants.
 
 ## Adopt An Opted-In Repository
 
@@ -830,10 +834,79 @@ exists, mark it ready for review if it is a draft, then restore its owning
 worker or claim it with `--no-takeover`. Ready-for-review is only an AO claim
 prerequisite; leave merge and risk decisions to the user. If AO is unavailable,
 use an isolated worktree and report that fallback.
+
+Classify AO observations by state owner before diagnosing them: sandbox state
+is visible only inside the current agent sandbox; worker state belongs to the
+AO-created worktree, pane, environment, and Codex home; daemon state belongs to
+the persistent AO service, database, and project readback; and host state
+belongs to the user service manager, filesystem, credentials, and installed
+binaries outside the worker boundary. A mismatch is diagnostic evidence, not
+proof that the host is broken. Sandbox-only failure is `indeterminate`; active
+host service plus AO `ready`/`running` and passing `healthz` is `daemon ready`;
+repeated authoritative host failure is `unavailable`; and doctor external
+integration or authentication failure is `delivery degraded`, not daemon
+unavailability.
 ```
 
 This entry makes task intake discoverable; it does not itself prove the event
 loop or authorize bulk enrollment.
+
+### Repair And Backfill Existing Opted-In Repositories
+
+Use this procedure when an opted-in repository predates the host-context state
+classification or when adoption reports an incompatible Codex home. It is a
+readback-first repair, not authorization to rewrite the live AO Codex home.
+
+1. From the host context, verify `ao status --json`, identify the repository's
+   AO project, and read its configured `CODEX_HOME` with
+   `ao project get PROJECT --json`. Do not infer host failure from a missing
+   path inside an agent sandbox.
+   Use the concrete read-only checks:
+
+   ```bash
+   systemctl --user is-active agent-orchestrator.service
+   ao status --json
+   curl --fail --silent --show-error http://127.0.0.1:3001/healthz
+   ao doctor --json
+   ao project get PROJECT --json
+   ```
+
+   If AO reports another loopback port, use the port from `ao status --json`
+   for `healthz`.
+2. Classify each observation as sandbox, worker, daemon, or host state. Resolve
+   disagreements through the owning context: worker pane and worktree for
+   worker state, AO project/service readback for daemon state, and the user
+   service manager and host filesystem for host state.
+   Apply the accepted state machine without adding intermediate states:
+   sandbox-only failure is `indeterminate`; an active host service with AO
+   `ready`/`running` readback and a passing `healthz` probe is `daemon ready`;
+   repeated authoritative host failure is `unavailable`; and an `ao doctor`
+   external integration or authentication failure is `delivery degraded`, not
+   daemon unavailable. Do not apply that classification to doctor core
+   service, database, tmux, or host failures.
+3. Run `scripts/adopt_ao_repository.py` without `--apply` against the existing
+   repository and configured Codex home. A compatible home may contain TUI
+   state, additional top-level metadata, and extra feature keys. It must retain
+   private permissions, authentication, `apps = false`, `plugins = false`, and
+   no top-level `mcp_servers`.
+4. If the repository lacks the AO state classification, add the current
+   repository-local `AO Delivery` guidance through that repository's normal
+   pull-request path. Do not copy current-host paths or this runbook into the
+   target repository.
+5. If an invariant fails, prepare the smallest explicit host-side repair and
+   obtain authorization before changing persistent configuration. Preserve all
+   tolerated keys and metadata; do not replace `config.toml` with the minimal
+   example merely to make validation pass.
+6. Re-run the non-mutating adoption plan, then `--apply` only when project
+   registration or modeled AO configuration actually needs convergence.
+   Confirm project readback and AO health afterward. A passing repair restores
+   `runtime-ready`; only a real review-continuation event establishes
+   `continuation-proven`.
+
+For future repositories, adoption includes the state-classification paragraph
+from the outset. Backfill existing opted-in repositories opportunistically
+when they next cross a pull-request boundary; do not perform an unaudited bulk
+rewrite across repositories.
 
 The installed AO build does not claim a GitHub Draft pull request: it returns
 `PR_NOT_OPEN` even though GitHub reports the draft's state as `OPEN`. Keep

@@ -14,4 +14,11 @@ canonical gate before delivery when one exists. Prefer configured repository
 tools over a universal language checklist. If a required check cannot be found
 or run, report the exact gap and residual risk rather than silently skipping it.
 
+When a diagnosis depends on host state outside the current sandbox or process
+context, treat sandbox-visible absence or mismatch as a hypothesis, not a host
+fact. Verify the relevant path, service, process, credential, or configuration
+from an authoritative host context before concluding that it is missing,
+misconfigured, or stale. If that context is unavailable, report the boundary
+and the exact host-side check still required.
+
 In WSL, the skill source is available at `{{CALIBRATION_ROOT}}/skills`.

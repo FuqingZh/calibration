@@ -22,6 +22,7 @@ Read the smallest source that owns the decision:
 | Five-phase convergence result | `decisions/2026-07-27-ai-native-calibration-convergence-closeout.md` |
 | Current-host AO and delivery boundary | `decisions/2026-07-29-ao-native-delivery-convergence.md` |
 | Default repository quality-gate evidence | `decisions/2026-07-30-default-repository-quality-gate.md` |
+| AO host-context and Codex-home compatibility | `decisions/2026-07-30-ao-host-context-and-config-compatibility.md` |
 
 The current default is outcome autonomy within repository-local, reversible
 boundaries. Repository rules and executable feedback choose and revise the

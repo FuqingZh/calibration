@@ -1,0 +1,13 @@
+{
+  "context": "host",
+  "codex_home": "/srv/ao/codex-home",
+  "service": "active",
+  "ao": "ready",
+  "healthz": "ok",
+  "doctor": "github authentication failed",
+  "features": {
+    "apps": false,
+    "plugins": false
+  },
+  "status": "present"
+}
