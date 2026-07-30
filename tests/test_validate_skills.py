@@ -468,11 +468,16 @@ def test_calibration_defaults_to_outcome_autonomy() -> None:
     agents_template = (REPOSITORY_ROOT / "codex/AGENTS.md.template").read_text(
         encoding="utf-8"
     )
+    agents_contract = " ".join(agents_template.split())
 
     assert "## Outcome Autonomy And Feedback" in principles
     assert "Treat plans as working hypotheses" in principles
     assert "Prefer outcome constraints and executable feedback" in skill
     assert "work directly from those sources" in agents_template
+    assert "discover and run the repository-owned validation entrypoint" in (
+        agents_contract
+    )
+    assert "complete canonical gate before delivery" in agents_contract
 
 
 def test_harness_is_proportional_not_a_repository_tier_list() -> None:
