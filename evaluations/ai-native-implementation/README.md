@@ -13,6 +13,8 @@ repository work rather than read-only descriptions of intended behavior.
   exposes a contract missed by the focused unit test.
 - `W05`: verify a sandbox-visible mismatch through an authoritative host
   context before diagnosing persistent AO state.
+- `W06`: invoke `$calibration` to adopt the shared Ruff fallback where no local
+  rule contract exists while preserving an existing repository-local contract.
 
 Every case is a tiny dependency-free Python repository. The runner copies a
 fixture into a fresh workspace, creates an initial Git commit, runs one Codex
@@ -71,3 +73,16 @@ python scripts/run_writable_agent_eval.py run \
 
 The run result is `result.json`; `trajectory.jsonl` and `final-message.txt`
 remain beside it as private evidence.
+
+## Focused W06 Evidence
+
+On 2026-07-30, one isolated current-head W06 run with `gpt-5.6-sol`, medium
+reasoning, and a fresh workspace and Codex home passed its deterministic
+contract. The trajectory loaded `$calibration`, followed the discipline
+router to `harness.md`, added exactly `E`, `F`, `I`, `UP`, `B`, `SIM`, and
+`RUF` only to the project without a local Ruff selection, preserved the other
+project's existing `E`, `F`, and `S` contract, and left preview disabled.
+
+This is focused evidence for the Ruff routing contract, not a broad workflow or
+model-quality claim. Raw trajectory and isolated-home artifacts remain private
+temporary evidence under the protocol above.

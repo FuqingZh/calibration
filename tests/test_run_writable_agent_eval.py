@@ -216,6 +216,32 @@ def test_verify_workspace_reports_missing_change_and_command_failure(
     assert checks[0]["exit_code"] == 2
 
 
+def test_w06_verifies_fallback_adoption_and_local_contract_precedence(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repository_evaluation_root = (
+        Path(__file__).resolve().parents[1] / "evaluations/ai-native-implementation"
+    )
+    monkeypatch.setattr(evaluation, "EVALUATION_ROOT", repository_evaluation_root)
+    case = evaluation.load_case(repository_evaluation_root / "cases/W06.yaml")
+    workspace = tmp_path / "workspace"
+    evaluation.prepare_workspace(case, workspace)
+
+    before = evaluation.verify_workspace(case, workspace)
+    assert before["passed"] is False
+
+    fallback = workspace / "fallback-project/pyproject.toml"
+    fallback.write_text(
+        fallback.read_text(encoding="utf-8")
+        + '\n[tool.ruff.lint]\nselect = ["E", "F", "I", "UP", "B", "SIM", "RUF"]\n',
+        encoding="utf-8",
+    )
+
+    after = evaluation.verify_workspace(case, workspace)
+    assert after["passed"] is True
+    assert after["changed_paths"] == ["fallback-project/pyproject.toml"]
+
+
 def test_build_codex_command_contains_frozen_controls(tmp_path: Path) -> None:
     case = CaseSpec(
         "T01",

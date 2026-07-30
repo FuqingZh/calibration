@@ -512,15 +512,22 @@ def test_calibration_owns_its_explicit_ruff_quality_gate_baseline() -> None:
     )
 
 
-def test_shared_ruff_guidance_requires_target_repository_evidence() -> None:
+def test_shared_ruff_guidance_preserves_local_authority_and_defines_fallback() -> None:
+    skill = (REPOSITORY_ROOT / "skills/calibration/SKILL.md").read_text(
+        encoding="utf-8"
+    )
+    discipline = (
+        REPOSITORY_ROOT / "references/engineering/discipline/README.md"
+    ).read_text(encoding="utf-8")
     harness = (
         REPOSITORY_ROOT / "references/engineering/discipline/harness.md"
     ).read_text(encoding="utf-8")
 
+    assert "../../references/engineering/discipline/README.md" in skill
+    assert "Python lint policy, or Ruff rule selection | `harness.md`" in discipline
     assert "repository-local Ruff contract first" in harness
-    assert "target repository's own evidence" in harness
-    assert "Do not copy another\nrepository's rule families or exclusions" in harness
-    assert "`E`, `F`, `I`, `UP`, `B`, `SIM`, and `RUF`" not in harness
+    assert "`E`, `F`, `I`, `UP`, `B`, `SIM`,\nand `RUF`" in harness
+    assert "`S`, `ANN`, `D`, `PL`, `ALL`, or preview rules" in harness
 
 
 def test_delivery_loop_classifies_failures_before_harness_changes() -> None:
