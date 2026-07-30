@@ -281,6 +281,90 @@ def test_rejects_unsafe_codex_home(repository: Path) -> None:
         _validate_codex_home(codex_home)
 
 
+def test_plan_accepts_extensible_codex_home_without_runtime_commands(
+    repository: Path,
+) -> None:
+    config = repository.parent / "codex-home" / "config.toml"
+    config.write_text(
+        'metadata = { owner = "ao" }\n'
+        "[features]\napps = false\nplugins = false\n"
+        "[tui.model_availability_nux]\n"
+        '"gpt-5.6-sol" = 4\n',
+        encoding="utf-8",
+    )
+    runner = FakeRunner({})
+
+    report = adopt_repository(request(repository), apply=False, runner=runner)
+
+    assert report.mode == "plan"
+    assert runner.commands == []
+
+
+def test_plan_rejects_missing_codex_home_without_runtime_commands(
+    repository: Path,
+) -> None:
+    runner = FakeRunner({})
+    missing_request = replace(
+        request(repository),
+        codex_home=repository.parent / "missing-codex-home",
+    )
+
+    with pytest.raises(AdoptionError, match="non-symlinked Codex home"):
+        adopt_repository(missing_request, apply=False, runner=runner)
+
+    assert runner.commands == []
+
+
+def test_plan_rejects_insecure_codex_home_without_runtime_commands(
+    repository: Path,
+) -> None:
+    codex_home = repository.parent / "codex-home"
+    codex_home.chmod(0o755)
+    runner = FakeRunner({})
+
+    with pytest.raises(AdoptionError, match="group or other"):
+        adopt_repository(request(repository), apply=False, runner=runner)
+
+    assert runner.commands == []
+
+
+def test_plan_rejects_conflicting_codex_home_without_runtime_commands(
+    repository: Path,
+) -> None:
+    config = repository.parent / "codex-home" / "config.toml"
+    config.write_text(
+        "[features]\napps = false\nplugins = true\n",
+        encoding="utf-8",
+    )
+    runner = FakeRunner({})
+
+    with pytest.raises(AdoptionError, match="plugins must be false"):
+        adopt_repository(request(repository), apply=False, runner=runner)
+
+    assert runner.commands == []
+
+
+def test_plan_rejects_codex_home_inside_repository_without_runtime_commands(
+    repository: Path,
+) -> None:
+    internal_home = repository / "codex-home"
+    internal_home.mkdir(mode=0o700)
+    (internal_home / "config.toml").write_text(
+        "[features]\napps = false\nplugins = false\n",
+        encoding="utf-8",
+    )
+    (internal_home / "config.toml").chmod(0o600)
+    (internal_home / "auth.json").write_text("{}\n", encoding="utf-8")
+    (internal_home / "auth.json").chmod(0o600)
+    runner = FakeRunner({})
+    internal_request = replace(request(repository), codex_home=internal_home)
+
+    with pytest.raises(AdoptionError, match="outside the selected repository"):
+        adopt_repository(internal_request, apply=False, runner=runner)
+
+    assert runner.commands == []
+
+
 def test_rejects_missing_or_symlinked_codex_home(repository: Path) -> None:
     codex_home = repository.parent / "codex-home"
     auth = codex_home / "auth.json"
@@ -330,23 +414,67 @@ def test_rejects_invalid_codex_login(repository: Path) -> None:
 
 
 @pytest.mark.parametrize(
-    "content",
+    ("content", "message"),
     [
-        "unrelated = true\n",
-        "[features]\napps = false\n",
-        "[features]\napps = false\nplugins = true\n",
-        "[features]\napps = true\nplugins = false\n",
-        "[features]\napps = false\nplugins = false\n[mcp_servers.example]\n",
-        "[features]\napps = false\nplugins = false\nextra = false\n",
-        "invalid = [\n",
+        ("unrelated = true\n", "must define"),
+        ("[features]\napps = false\n", "missing required feature keys: plugins"),
+        (
+            "[features]\napps = false\nplugins = true\n",
+            "conflicting feature values; plugins must be false",
+        ),
+        (
+            "[features]\napps = true\nplugins = false\n",
+            "conflicting feature values; apps must be false",
+        ),
+        ("invalid = [\n", "valid TOML"),
     ],
 )
-def test_rejects_unsafe_codex_features(repository: Path, content: str) -> None:
+def test_rejects_unsafe_codex_features(
+    repository: Path, content: str, message: str
+) -> None:
     config = repository.parent / "codex-home" / "config.toml"
     config.write_text(content, encoding="utf-8")
 
-    with pytest.raises(AdoptionError, match="valid TOML|apps = false"):
+    with pytest.raises(AdoptionError, match=message):
         _validate_codex_home(repository.parent / "codex-home")
+
+
+def test_rejects_top_level_mcp_servers(repository: Path) -> None:
+    config = repository.parent / "codex-home" / "config.toml"
+    config.write_text(
+        "[features]\napps = false\nplugins = false\n[mcp_servers.example]\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(AdoptionError, match="top-level mcp_servers"):
+        _validate_codex_home(repository.parent / "codex-home")
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        (
+            'model = "gpt-5.6-sol"\n'
+            "[features]\napps = false\nplugins = false\nextra = true\n"
+        ),
+        (
+            'metadata = { owner = "ao" }\n'
+            "[features]\napps = false\nplugins = false\n"
+            "[tui.model_availability_nux]\n"
+            '"gpt-5.6-sol" = 4\n'
+        ),
+    ],
+)
+def test_accepts_extensible_codex_config_without_rewrite(
+    repository: Path, content: str
+) -> None:
+    codex_home = repository.parent / "codex-home"
+    config = codex_home / "config.toml"
+    config.write_text(content, encoding="utf-8")
+
+    _validate_codex_home(codex_home)
+
+    assert config.read_text(encoding="utf-8") == content
 
 
 @pytest.mark.parametrize("existing", [False, True])

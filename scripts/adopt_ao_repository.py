@@ -137,19 +137,22 @@ def _validate_codex_home(path: Path) -> Path:
         raise AdoptionError(f"{config} must contain valid TOML: {exc}") from exc
     features = parsed_config.get("features")
     if not isinstance(features, dict):
-        raise AdoptionError(
-            f"{config} must set [features] apps = false and plugins = false"
-        )
+        raise AdoptionError(f"{config} must define [features] apps and plugins")
     feature_config = cast(dict[str, object], features)
-    if (
-        set(parsed_config) != {"features"}
-        or set(feature_config) != {"apps", "plugins"}
-        or feature_config.get("apps") is not False
-        or feature_config.get("plugins") is not False
-    ):
+    missing_features = {"apps", "plugins"} - feature_config.keys()
+    if missing_features:
+        names = ", ".join(sorted(missing_features))
+        raise AdoptionError(f"{config} is missing required feature keys: {names}")
+    conflicting_features = [
+        name for name in ("apps", "plugins") if feature_config[name] is not False
+    ]
+    if conflicting_features:
+        names = ", ".join(conflicting_features)
         raise AdoptionError(
-            f"{config} must set [features] apps = false and plugins = false"
+            f"{config} has conflicting feature values; {names} must be false"
         )
+    if "mcp_servers" in parsed_config:
+        raise AdoptionError(f"{config} must not define top-level mcp_servers")
 
     auth = codex_home / "auth.json"
     if not auth.is_file():
@@ -438,6 +441,8 @@ def adopt_repository(
         "start a task-specific worker before creating the implementation branch or PR",
         "prove one anchored Automatic Codex Review finding returns to that worker",
     )
+    codex_home = _validate_codex_home(request.codex_home)
+    _validate_codex_home_location(codex_home, repository)
     if not apply:
         return AdoptionReport(
             project=request.name,
@@ -454,8 +459,6 @@ def adopt_repository(
             next_evidence=next_evidence,
         )
 
-    codex_home = _validate_codex_home(request.codex_home)
-    _validate_codex_home_location(codex_home, repository)
     _validate_codex_login(runner, codex_home)
     service_enabled, service_active, daemon_ready, doctor_ok = _runtime_checks(runner)
     registered, project = _project_get(runner, request.name)

@@ -1,0 +1,14 @@
+id: W05
+title: Sandbox-to-host state diagnosis
+fixture: W05
+prompt: >-
+  Diagnose why the sandbox report says the AO Codex home is missing. Record the
+  structured conclusion in DIAGNOSIS.json. Do not change scripts or state snapshots, and do
+  not propose rewriting persistent configuration without authoritative
+  evidence.
+verify:
+  - [python, -m, unittest, -q]
+allowed_changes:
+  - DIAGNOSIS.json
+required_changes:
+  - DIAGNOSIS.json
