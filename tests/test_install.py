@@ -186,6 +186,62 @@ def test_ao_worker_uses_explicit_second_home_and_cli_precedence(
     assert str(xdg_root / "calibration/AGENTS.md") in agents
     for name in MANAGED_THIRDPARTY_SKILLS:
         assert not (worker_home / "skills" / name).exists()
+    assert worker_home.stat().st_mode & 0o777 == 0o700
+    assert (worker_home / "skills").stat().st_mode & 0o777 == 0o700
+
+
+def test_ao_worker_rejects_broad_existing_home_without_writes(
+    tmp_path: Path,
+) -> None:
+    worker_home = tmp_path / "broad-home"
+    worker_home.mkdir(mode=0o755)
+    worker_home.chmod(0o755)
+    marker = worker_home / "marker"
+    marker.write_text("preserve\n", encoding="utf-8")
+
+    result = run_installer(
+        None,
+        "--profile",
+        "ao-worker",
+        "--codex-home",
+        str(worker_home),
+    )
+
+    assert result.returncode == 2
+    assert "group or other permissions" in result.stderr
+    assert marker.read_text(encoding="utf-8") == "preserve\n"
+    assert list(worker_home.iterdir()) == [marker]
+
+
+def test_ao_worker_rejects_symlink_and_non_directory_homes(
+    tmp_path: Path,
+) -> None:
+    target = tmp_path / "private-target"
+    target.mkdir(mode=0o700)
+    marker = target / "marker"
+    marker.write_text("preserve\n", encoding="utf-8")
+    link = tmp_path / "worker-link"
+    link.symlink_to(target, target_is_directory=True)
+    file_home = tmp_path / "worker-file"
+    file_home.write_text("not a directory\n", encoding="utf-8")
+
+    for selected, expected in (
+        (link, "must not be a symlink"),
+        (file_home, "must be a directory"),
+    ):
+        result = run_installer(
+            None,
+            "--profile",
+            "ao-worker",
+            "--codex-home",
+            str(selected),
+        )
+        assert result.returncode == 2
+        assert expected in result.stderr
+
+    assert link.is_symlink() and link.readlink() == target
+    assert marker.read_text(encoding="utf-8") == "preserve\n"
+    assert file_home.read_text(encoding="utf-8") == "not a directory\n"
 
 
 def test_private_profile_absence_does_not_block_install(tmp_path: Path) -> None:
@@ -215,6 +271,7 @@ def test_profiles_are_idempotent_and_convert_safely(tmp_path: Path) -> None:
     second_standard = run_installer(codex_home, "--profile", "standard")
     assert first_standard.returncode == second_standard.returncode == 0
     assert "AGENTS.md already current" in second_standard.stdout
+    codex_home.chmod(0o700)
 
     owned = codex_home / "skills" / MANAGED_THIRDPARTY_SKILLS[0]
     owned.unlink()
@@ -274,6 +331,7 @@ def test_ao_worker_preserves_unowned_codex_state_byte_exactly(
         path = codex_home / relative
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(content)
+    codex_home.chmod(0o700)
     auth_link = codex_home / "auth.json"
     auth_link.symlink_to(auth_target)
 
@@ -299,6 +357,7 @@ def test_dry_run_preserves_content_and_uses_planned_wording(
     codex_home = tmp_path / "worker"
     skills = codex_home / "skills"
     skills.mkdir(parents=True)
+    codex_home.chmod(0o700)
     owned = skills / "grilling"
     owned.symlink_to(REPOSITORY_ROOT / "thirdparty/skills/grilling")
     retired = skills / "writing-plans"

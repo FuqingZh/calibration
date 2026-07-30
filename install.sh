@@ -85,6 +85,7 @@ else
   CODEX_HOME="${CODEX_HOME:-${HOME}/.codex}"
 fi
 [[ -n "$CODEX_HOME" ]] || fail_usage "Codex home must not be empty"
+SELECTED_CODEX_HOME="$CODEX_HOME"
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 CALIBRATION_ROOT="$(realpath -m -- "$SCRIPT_DIR")"
@@ -100,6 +101,20 @@ case "$CALIBRATION_ROOT" in
     fail_usage "Codex home must not contain the calibration checkout"
     ;;
 esac
+if [[ "$PROFILE" == "ao-worker" ]]; then
+  if [[ -L "$SELECTED_CODEX_HOME" ]]; then
+    fail_usage "ao-worker Codex home must not be a symlink"
+  fi
+  if [[ -e "$SELECTED_CODEX_HOME" && ! -d "$SELECTED_CODEX_HOME" ]]; then
+    fail_usage "ao-worker Codex home must be a directory"
+  fi
+  if [[ -d "$SELECTED_CODEX_HOME" ]]; then
+    home_mode="$(stat -c '%a' -- "$SELECTED_CODEX_HOME")"
+    if (( (8#$home_mode & 8#077) != 0 )); then
+      fail_usage "ao-worker Codex home must not grant group or other permissions"
+    fi
+  fi
+fi
 
 if [[ -n "${XDG_CONFIG_HOME:-}" ]]; then
   [[ "$XDG_CONFIG_HOME" == /* ]] ||
@@ -290,7 +305,19 @@ main() {
   say "Private host authority: $HOST_AUTHORITY"
   say "Skills target root: $SKILLS_DIR"
 
-  run mkdir -p "$SKILLS_DIR"
+  if [[ "$PROFILE" == "ao-worker" ]]; then
+    if [[ ! -d "$CODEX_HOME" ]]; then
+      run install -d -m 0700 "$CODEX_HOME"
+    fi
+    if [[ ! -e "$SKILLS_DIR" ]]; then
+      run install -d -m 0700 "$SKILLS_DIR"
+    elif [[ ! -d "$SKILLS_DIR" ]]; then
+      echo "AO worker skills target is not a directory: $SKILLS_DIR" >&2
+      exit 1
+    fi
+  else
+    run mkdir -p "$SKILLS_DIR"
+  fi
   for skill in "${RETIRED_SKILLS[@]}"; do
     remove_owned_skill_link "$skill" "$SKILL_SOURCE_ROOT" "Retired skill"
   done
