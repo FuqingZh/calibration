@@ -21,6 +21,7 @@ Read the smallest source that owns the decision:
 | Writable comparative evidence | `decisions/2026-07-27-ai-native-writable-implementation-evaluation-closeout.md` |
 | Five-phase convergence result | `decisions/2026-07-27-ai-native-calibration-convergence-closeout.md` |
 | Current-host AO and delivery boundary | `decisions/2026-07-29-ao-native-delivery-convergence.md` |
+| Default repository quality-gate evidence | `decisions/2026-07-30-default-repository-quality-gate.md` |
 
 The current default is outcome autonomy within repository-local, reversible
 boundaries. Repository rules and executable feedback choose and revise the

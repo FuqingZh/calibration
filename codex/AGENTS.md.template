@@ -8,4 +8,10 @@ documentation. For ordinary local implementation with clear repository rules
 and executable feedback, work directly from those sources without adding a
 calibration step. Load only the references routed for the current task.
 
+For code changes, discover and run the repository-owned validation entrypoint
+and any focused checks relevant to the changed surface. Run the complete
+canonical gate before delivery when one exists. Prefer configured repository
+tools over a universal language checklist. If a required check cannot be found
+or run, report the exact gap and residual risk rather than silently skipping it.
+
 In WSL, the skill source is available at `{{CALIBRATION_ROOT}}/skills`.
