@@ -301,6 +301,58 @@ def test_ao_worker_rejects_non_directory_home_without_writes(
     assert file_home.read_text(encoding="utf-8") == "not a directory\n"
 
 
+def test_ao_worker_rejects_symlinked_skills_target_without_external_writes(
+    tmp_path: Path,
+) -> None:
+    worker_home = tmp_path / "worker"
+    worker_home.mkdir(mode=0o700)
+    worker_home.chmod(0o700)
+    external = tmp_path / "external-skills"
+    external.mkdir()
+    marker = external / "marker"
+    marker.write_text("external preserve\n", encoding="utf-8")
+    skills_link = worker_home / "skills"
+    skills_link.symlink_to(external, target_is_directory=True)
+    external_before = snapshot_tree(external)
+    home_before = snapshot_tree(worker_home)
+
+    result = run_installer(
+        None,
+        "--profile",
+        "ao-worker",
+        "--codex-home",
+        str(worker_home),
+    )
+
+    assert result.returncode == 2
+    assert "ao-worker skills target must not be a symlink" in result.stderr
+    assert snapshot_tree(external) == external_before
+    assert snapshot_tree(worker_home) == home_before
+
+
+def test_ao_worker_rejects_non_directory_skills_target_without_writes(
+    tmp_path: Path,
+) -> None:
+    worker_home = tmp_path / "worker"
+    worker_home.mkdir(mode=0o700)
+    worker_home.chmod(0o700)
+    skills_file = worker_home / "skills"
+    skills_file.write_text("not a directory\n", encoding="utf-8")
+    home_before = snapshot_tree(worker_home)
+
+    result = run_installer(
+        None,
+        "--profile",
+        "ao-worker",
+        "--codex-home",
+        str(worker_home),
+    )
+
+    assert result.returncode == 2
+    assert "ao-worker skills target must be a directory" in result.stderr
+    assert snapshot_tree(worker_home) == home_before
+
+
 def test_private_profile_absence_does_not_block_install(tmp_path: Path) -> None:
     worker_home = tmp_path / "worker"
     config_root = tmp_path / "missing-config"

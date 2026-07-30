@@ -136,6 +136,14 @@ SKILL_SOURCE_ROOT="$CALIBRATION_ROOT/skills"
 THIRDPARTY_SKILL_SOURCE_ROOT="$CALIBRATION_ROOT/thirdparty/skills"
 TEMPLATE="$CALIBRATION_ROOT/codex/AGENTS.md.template"
 HOST_AUTHORITY="$HOST_CONFIG_ROOT/calibration/AGENTS.md"
+if [[ "$PROFILE" == "ao-worker" ]]; then
+  if [[ -L "$SKILLS_DIR" ]]; then
+    fail_usage "ao-worker skills target must not be a symlink"
+  fi
+  if [[ -e "$SKILLS_DIR" && ! -d "$SKILLS_DIR" ]]; then
+    fail_usage "ao-worker skills target must be a directory"
+  fi
+fi
 MANAGED_SKILLS=(
   calibration
   retrospect
