@@ -885,7 +885,10 @@ readback-first repair, not authorization to rewrite the live AO Codex home.
    daemon unavailable. Do not apply that classification to doctor core
    service, database, tmux, or host failures.
 3. Run `scripts/adopt_ao_repository.py` without `--apply` against the existing
-   repository and configured Codex home. A compatible home may contain TUI
+   repository and configured Codex home. The plan path validates the Codex-home
+   location, private filesystem permissions, authentication-file presence,
+   configuration syntax, and feature/MCP invariants without running login,
+   service, doctor, or project mutations. A compatible home may contain TUI
    state, additional top-level metadata, and extra feature keys. It must retain
    private permissions, authentication, `apps = false`, `plugins = false`, and
    no top-level `mcp_servers`.

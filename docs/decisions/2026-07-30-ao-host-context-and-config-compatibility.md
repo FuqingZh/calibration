@@ -67,16 +67,15 @@ home:
 
 | Case | Representative behavior | Result |
 | --- | --- | --- |
-| W05 host-context diagnosis | Ran `python -m scripts.query_host_context`; classified active service, AO ready, and healthz ok as `daemon ready`; classified GitHub authentication failure as `delivery degraded`; changed only `DIAGNOSIS.md` | Pass in 76.05 s |
-| W01 bounded local repair | Preserved the one-file repair boundary, changed only `src/normalize.py`, and passed `python -m unittest -q` | Pass in 67.66 s |
+| W05 host-context diagnosis | Ran `python -m scripts.query_host_context`; recorded exact sandbox, host, feature, health, and raw doctor evidence in structured JSON; classified the daemon as `ready` and delivery as `degraded`; changed only `DIAGNOSIS.json` | Pass in 56.41 s |
+| W01 bounded local repair | Preserved the one-file repair boundary, changed only `src/normalize.py`, and passed `python -m unittest -q` | Pass in 29.93 s |
 
-The W05 repository check initially rejected semantically equivalent wording
-(`delivery is degraded`). The agent used that executable feedback to emit the
-accepted state label exactly and reran the check successfully. The deterministic
-result hashes are
-`4af1574d6488a93bdff92d903595d1c4e45c4481804b0191a7ef0cd5f566aeba`
+The structured W05 contract compares all required evidence and classifications
+exactly, so negated prose does not cause a false rejection and contradictory
+host values cannot produce a false pass. The deterministic result hashes are
+`b4bb1af92648668763ae7864e8b18c656fcaecdf957442c85b00cb0d64e6111e`
 for W05 and
-`a8a4e2ef9854161040f0b4f3a63171257e123adba90a393bdc1226f1e31b460c`
+`45a70278e4dd7c44b23f79fb149ac658459c6ef81db1b0841161f6340966b76f`
 for W01. Raw trajectories, workspaces, and isolated homes remain temporary
 private evidence.
 

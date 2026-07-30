@@ -441,6 +441,8 @@ def adopt_repository(
         "start a task-specific worker before creating the implementation branch or PR",
         "prove one anchored Automatic Codex Review finding returns to that worker",
     )
+    codex_home = _validate_codex_home(request.codex_home)
+    _validate_codex_home_location(codex_home, repository)
     if not apply:
         return AdoptionReport(
             project=request.name,
@@ -457,8 +459,6 @@ def adopt_repository(
             next_evidence=next_evidence,
         )
 
-    codex_home = _validate_codex_home(request.codex_home)
-    _validate_codex_home_location(codex_home, repository)
     _validate_codex_login(runner, codex_home)
     service_enabled, service_active, daemon_ready, doctor_ok = _runtime_checks(runner)
     registered, project = _project_get(runner, request.name)
