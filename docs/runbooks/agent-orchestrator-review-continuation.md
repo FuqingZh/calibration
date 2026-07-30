@@ -52,11 +52,13 @@ standalone Web Dashboard. Do not claim upstream-native headless support.
 The accepted compatibility deployment serves the renderer extracted from that
 verified AppImage at `http://192.168.30.205:31080`. Its nginx listener binds
 only that address. The renderer and GET-only API remain available to
-`192.168.30.0/24`, and API mutation methods return HTTP 403. The exact `/mux`
-WebSocket route proxies to `127.0.0.1:3001/mux` only for clients
-`192.168.30.134` and `192.168.30.205`; every other client is denied. This
-terminal control surface does not enable REST mutations or standalone shell
-creation. The persistent service retains the compatibility name
+`192.168.30.0/24`, API mutation methods return HTTP 403, and `/mux` remains
+unavailable in current host state. The committed adapter configuration proposes
+an exact `/mux` WebSocket proxy to `127.0.0.1:3001/mux` only for clients
+`192.168.30.134` and `192.168.30.205`. It remains pending until a separately
+authorized deployment and representative allowed- and denied-client WebSocket
+probes pass. This proposed terminal control surface does not enable REST
+mutations or standalone shell creation. The persistent service retains the compatibility name
 `ao-dashboard-readonly.service`; its managed unit, nginx configuration, and
 Electron compatibility shim retain their legacy filenames under `artifacts/`.
 
@@ -278,8 +280,11 @@ find "${RENDERER_ROOT}" -type d -exec chmod 0700 {} +
 find "${RENDERER_ROOT}" -type f -exec chmod 0600 {} +
 ```
 
-Install and enable the fixed-port read-mostly Dashboard adapter with the
-restricted terminal route:
+The following restricted-terminal installation is proposed, not current host
+state. Do not execute it without separate deployment authorization.
+
+Install and enable the proposed fixed-port read-mostly Dashboard adapter with
+the restricted terminal route:
 
 ```bash
 set -euo pipefail
@@ -300,7 +305,7 @@ systemctl --user enable ao-dashboard-readonly.service
 systemctl --user restart ao-dashboard-readonly.service
 ```
 
-Verify the active boundary:
+After the separately authorized installation, verify the active boundary:
 
 ```bash
 ao version
