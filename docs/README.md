@@ -69,8 +69,8 @@ repository-adoption contract.
 `decisions/2026-07-29-ao-native-delivery-convergence.md` records the upstream
 v0.11.1 Dashboard base, minimal review-continuation runtime fork, trusted-LAN
 read-only Dashboard compatibility boundary, Dashboard-only attention policy,
-Linear retirement, and the verified operator-gated low-risk GitHub auto-merge
-happy path.
+Linear retirement, and the verified low-risk GitHub native auto-merge default
+for conversation-authorized implementation.
 `decisions/2026-07-23-ao-review-continuation-adoption.md` records the accepted
 narrow review-to-original-worker bridge.
 `decisions/2026-07-27-ao-phase-3-deployment-reproducibility-closeout.md`

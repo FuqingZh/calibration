@@ -557,7 +557,7 @@ def test_rejects_bot_review_denylist_conflict() -> None:
     ],
 )
 def test_rejects_auto_merge_configuration(config: dict[str, object]) -> None:
-    with pytest.raises(AdoptionError, match="must not enable auto-merge"):
+    with pytest.raises(AdoptionError, match="must not enable always-on auto-merge"):
         _reject_auto_merge(config)
 
 
@@ -879,7 +879,7 @@ def test_apply_rejects_existing_auto_merge_configuration(repository: Path) -> No
             str(repository.resolve()),
         ),
     )
-    with pytest.raises(AdoptionError, match="must not enable auto-merge"):
+    with pytest.raises(AdoptionError, match="must not enable always-on auto-merge"):
         adopt_repository(request(repository), apply=True, runner=FakeRunner(responses))
 
 

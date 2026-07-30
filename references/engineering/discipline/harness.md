@@ -130,8 +130,26 @@ requiring the user to name the tool again:
 
 - start a task-specific worker in an isolated workspace for new work;
 - claim or restore the owning worker when a pull request already exists; and
-- leave merge, risk acceptance, and other human-authority decisions outside
-  the worker.
+- retain human authority for high-risk, irreversible, permission, security,
+  secret, release, compatibility, and other materially underdetermined
+  decisions.
+
+### Low-risk GitHub native auto-merge
+
+Conversation authorization for a low-risk implementation includes permission
+to request GitHub native auto-merge without a second merge authorization; a
+repository-local stricter policy wins. Request it only after reading back that
+required CI passes on the exact current head, current-head review is clean, and
+no actionable review threads remain. Withhold the request after an explicit
+user stop or when the work requires a high-risk, irreversible, permission,
+security, secret, release, or compatibility decision.
+
+This is a per-pull-request GitHub control armed only after the exact-head gate.
+It is not permission to enable always-on AO project `autoMerge` or a reaction
+that automatically merges approvals. Those AO configuration paths lack proven
+head-change, failure, review-arrival, and cancellation behavior. Those
+unproven AO paths remain disabled unless a separate repository decision
+establishes them.
 
 Use only an already accepted repository, host, identity, and permission
 configuration. Do not silently register every repository, enable
@@ -165,8 +183,8 @@ path. Keep the service alive beyond the initiating conversation.
 For conversation-authorized work, neither issue-tracker intake nor a separate
 orchestrator session is a prerequisite. Start or claim the task-specific
 worker before creating its implementation branch or pull request. Until the
-real-event canary passes, label the repository `runtime-ready`, keep auto-merge
-off, and retain the normal isolated-Worktree fallback.
+real-event canary passes, label the repository `runtime-ready`, keep AO project
+`autoMerge` off, and retain the normal isolated-Worktree fallback.
 
 ## Repository Delivery Feedback Loop
 

@@ -279,7 +279,7 @@ def _reject_auto_merge(value: object) -> None:
                 and nested != ""
             ):
                 raise AdoptionError(
-                    "AO project configuration must not enable auto-merge"
+                    "AO project configuration must not enable always-on auto-merge"
                 )
             if (
                 key.casefold() == "action"
@@ -287,7 +287,7 @@ def _reject_auto_merge(value: object) -> None:
                 and nested.strip().casefold() == "auto-merge"
             ):
                 raise AdoptionError(
-                    "AO project configuration must not enable auto-merge"
+                    "AO project configuration must not enable always-on auto-merge"
                 )
             _reject_auto_merge(nested)
     elif isinstance(value, list):

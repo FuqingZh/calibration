@@ -19,8 +19,9 @@ Dashboard:
   creates or continues the worker from that authorization. GitHub pull requests
   are the delivery, CI, review, and merge fact source. Linear integration is
   deferred and is not an execution prerequisite.
-- A narrow operator-gated GitHub auto-merge happy path may be used only for
-  explicitly classified low-risk pull requests.
+- Conversation-authorized low-risk implementation includes permission to
+  request GitHub native auto-merge after the exact-current-head delivery gate;
+  no second merge authorization is required.
 
 The historical Linear decisions, plans, canary evidence, wrapper, and credential
 rollback copy remain available for audit. They are not current authority.
@@ -162,39 +163,40 @@ The superseded Linear plans remain historical evidence. Re-enabling Linear
 requires a new decision; no Linear repair or availability condition blocks the
 current GitHub/AO path.
 
-## Verified Low-Risk Auto-Merge Happy Path
+## Low-Risk GitHub Native Auto-Merge Default
 
-Request GitHub auto-merge only when every condition below has already been read
-back as true on the exact current head:
+For low-risk implementation already authorized in conversation, request GitHub
+native auto-merge without a second merge authorization only when every
+condition below has already been read back as true on the exact current head:
 
-1. The pull request is explicitly created as a disposable canary or classified
-   low-risk by the repository owner.
-2. The diff changes only documentation, comments, test-only fixtures, or a
-   similarly reversible non-runtime surface. Dependency, workflow, permission,
-   secret, release, installer, skill behavior, host configuration, generated
-   lockfile, and production-code changes are excluded.
+1. The work remains within the conversation-authorized low-risk implementation
+   scope. A repository-local stricter policy wins.
+2. No high-risk, irreversible, permission, security, secret, release, or
+   compatibility decision remains, and the user has not explicitly stopped
+   merge.
 3. The pull request is not draft, has no merge conflict, and is current with its
    base branch.
 4. Every repository-required check passes on the exact head SHA.
-5. Every review thread is resolved, no review requests changes, and no required
-   review is pending.
+5. Current-head review is clean: no review requests changes, no required review
+   is pending, and no actionable review threads remain.
 6. Immediately before the request, repeat the head SHA, draft, mergeability,
    required-check, review-decision, and unresolved-thread reads. Any
    uncertainty or failed read withholds the request.
 7. AO records status and attention in its Dashboard only. AO does not override
    branch rules, merge queues, GitHub permissions, or a human stop decision.
 
-This is an allowlist, not a default. Pull requests outside it remain
-human-merged. PR #24 is explicitly outside this decision and remains untouched.
-PR #36 is superseded by this convergence and may be closed without merging only
-after the replacement pull request exists.
+This is the cross-repository default for low-risk conversation-authorized work,
+not permission to decide high-risk scope or accept unresolved risk. A
+repository may require a second authorization or prohibit auto-merge.
 
-No custom watcher, pending-request monitor, automatic cancellation path, or
-negative head-change/check-failure/review-arrival behavior was implemented or
-proven. If any state changes after the exact read-back gate, GitHub's native
-branch rules and auto-merge behavior are the only enforcement. Operators must
-not rely on AO to cancel a pending request. This decision accepts only the
-verified already-green happy path.
+The accepted mechanism is GitHub's native per-pull-request auto-merge, requested
+only after the exact-head gate is already green. It is distinct from always-on
+AO project `autoMerge` or approval-reaction auto-merge configuration. Those AO
+paths are unproven and remain rejected by the repository adopter because no
+custom watcher, pending-request monitor, automatic cancellation path, or negative
+head-change/check-failure/review-arrival behavior has been implemented or
+proven. Do not rely on AO to cancel a pending request or describe the canary as
+broader negative-cancellation evidence.
 
 ### Disposable real-PR canary
 
@@ -205,11 +207,13 @@ GitHub read back the exact head
 required `validate-skills` check passed on that head, the PR was not draft, and
 the GraphQL review-thread readback returned zero unresolved threads.
 
-Only after those reads, `gh pr merge 37 --auto --squash` merged the PR at
+Only after those reads, `gh pr merge 37 --auto --squash` requested GitHub
+native auto-merge and merged the PR at
 `2026-07-29T08:08:01Z` as commit
 `08118596387e531e31d21bdfe1772ba19d455a55`. The replacement delivery PR
 removes the marker, leaving the policy and evidence while discarding the
-canary-only file.
+canary-only file. This proves the already-green native happy path only; it does
+not prove cancellation after a head, check, or review state change.
 
 ## Rollback
 

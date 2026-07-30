@@ -16,6 +16,7 @@ class AdoptionDocuments:
     docs_readme: str
     runbook: str
     ao_decision: str
+    native_delivery_decision: str
 
 
 @pytest.fixture(scope="module")
@@ -39,6 +40,10 @@ def documents() -> AdoptionDocuments:
             REPOSITORY_ROOT
             / "docs/decisions/2026-07-23-ao-review-continuation-adoption.md"
         ).read_text(encoding="utf-8"),
+        native_delivery_decision=compact(
+            REPOSITORY_ROOT
+            / "docs/decisions/2026-07-29-ao-native-delivery-convergence.md"
+        ),
     )
 
 
@@ -127,3 +132,56 @@ def test_ao_repository_adoption_requires_real_continuation_evidence(
     assert "Ready-for-review" in documents.runbook
     assert "AO Delivery" in documents.agents
     assert "start a task-specific worker before" in documents.agents
+
+
+def test_low_risk_authorization_includes_gated_github_native_auto_merge(
+    documents: AdoptionDocuments,
+) -> None:
+    for authority in (
+        documents.agents,
+        documents.harness,
+        " ".join(documents.runbook.split()),
+        documents.native_delivery_decision,
+    ):
+        normalized = authority.casefold()
+        assert "conversation" in normalized
+        assert "low-risk" in normalized
+        assert "github native auto-merge" in normalized
+        assert "exact current head" in normalized
+        assert "current-head review is clean" in normalized
+        assert "no actionable review threads remain" in normalized
+        assert "without a second merge authorization" in normalized
+
+    assert "repository-local stricter policy" in documents.harness
+    assert "explicit user stop" in documents.harness
+    for risk in (
+        "high-risk",
+        "irreversible",
+        "permission",
+        "security",
+        "secret",
+        "release",
+        "compatibility",
+    ):
+        assert risk in documents.harness
+
+
+def test_native_auto_merge_is_distinct_from_unproven_ao_configuration(
+    documents: AdoptionDocuments,
+) -> None:
+    for authority in (
+        documents.agents,
+        documents.harness,
+        " ".join(documents.runbook.split()),
+        documents.native_delivery_decision,
+    ):
+        assert "per-pull-request" in authority
+        assert "AO project" in authority
+        assert "autoMerge" in authority
+        assert "unproven" in authority
+
+    assert "PR #37" in documents.native_delivery_decision
+    assert "already-green native happy path only" in (
+        documents.native_delivery_decision
+    )
+    assert "does not prove cancellation" in documents.native_delivery_decision
