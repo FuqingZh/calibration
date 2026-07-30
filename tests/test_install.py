@@ -213,7 +213,7 @@ def test_ao_worker_rejects_broad_existing_home_without_writes(
     assert list(worker_home.iterdir()) == [marker]
 
 
-def test_ao_worker_rejects_symlink_and_non_directory_homes(
+def test_ao_worker_rejects_all_symlink_path_forms_without_writes(
     tmp_path: Path,
 ) -> None:
     target = tmp_path / "private-target"
@@ -222,25 +222,57 @@ def test_ao_worker_rejects_symlink_and_non_directory_homes(
     marker.write_text("preserve\n", encoding="utf-8")
     link = tmp_path / "worker-link"
     link.symlink_to(target, target_is_directory=True)
-    file_home = tmp_path / "worker-file"
-    file_home.write_text("not a directory\n", encoding="utf-8")
+    intermediate_target = tmp_path / "intermediate-target"
+    nested_home = intermediate_target / "worker"
+    nested_home.mkdir(parents=True, mode=0o700)
+    nested_home.chmod(0o700)
+    nested_marker = nested_home / "marker"
+    nested_marker.write_text("nested preserve\n", encoding="utf-8")
+    intermediate_link = tmp_path / "intermediate-link"
+    intermediate_link.symlink_to(intermediate_target, target_is_directory=True)
 
-    for selected, expected in (
-        (link, "must not be a symlink"),
-        (file_home, "must be a directory"),
-    ):
+    selected_paths = (
+        str(link),
+        f"{link}/",
+        f"{link}/.",
+        str(intermediate_link / "worker"),
+    )
+    for selected in selected_paths:
         result = run_installer(
             None,
             "--profile",
             "ao-worker",
             "--codex-home",
-            str(selected),
+            selected,
         )
         assert result.returncode == 2
-        assert expected in result.stderr
+        assert "must not traverse a symlink" in result.stderr
 
     assert link.is_symlink() and link.readlink() == target
+    assert intermediate_link.is_symlink()
+    assert intermediate_link.readlink() == intermediate_target
     assert marker.read_text(encoding="utf-8") == "preserve\n"
+    assert nested_marker.read_text(encoding="utf-8") == "nested preserve\n"
+    assert list(target.iterdir()) == [marker]
+    assert list(nested_home.iterdir()) == [nested_marker]
+
+
+def test_ao_worker_rejects_non_directory_home_without_writes(
+    tmp_path: Path,
+) -> None:
+    file_home = tmp_path / "worker-file"
+    file_home.write_text("not a directory\n", encoding="utf-8")
+
+    result = run_installer(
+        None,
+        "--profile",
+        "ao-worker",
+        "--codex-home",
+        str(file_home),
+    )
+
+    assert result.returncode == 2
+    assert "must be a directory" in result.stderr
     assert file_home.read_text(encoding="utf-8") == "not a directory\n"
 
 

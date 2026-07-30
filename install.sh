@@ -89,6 +89,7 @@ SELECTED_CODEX_HOME="$CODEX_HOME"
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 CALIBRATION_ROOT="$(realpath -m -- "$SCRIPT_DIR")"
+LEXICAL_CODEX_HOME="$(realpath -m -s -- "$CODEX_HOME")"
 CODEX_HOME="$(realpath -m -- "$CODEX_HOME")"
 [[ "$CODEX_HOME" != "/" ]] || fail_usage "Refusing to use / as Codex home"
 case "$CODEX_HOME" in
@@ -102,8 +103,8 @@ case "$CALIBRATION_ROOT" in
     ;;
 esac
 if [[ "$PROFILE" == "ao-worker" ]]; then
-  if [[ -L "$SELECTED_CODEX_HOME" ]]; then
-    fail_usage "ao-worker Codex home must not be a symlink"
+  if [[ "$LEXICAL_CODEX_HOME" != "$CODEX_HOME" ]]; then
+    fail_usage "ao-worker Codex home path must not traverse a symlink"
   fi
   if [[ -e "$SELECTED_CODEX_HOME" && ! -d "$SELECTED_CODEX_HOME" ]]; then
     fail_usage "ao-worker Codex home must be a directory"
