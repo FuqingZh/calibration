@@ -100,10 +100,11 @@ upstream Desktop directly.
 
 ## Historical Records
 
-Historical decision and plan paths remain for link compatibility. Host-specific
-operational evidence has been reduced to short public summaries; detailed
+Historical decision and plan paths remain for link compatibility. Current-host
+AO operational evidence has been reduced to short public summaries; detailed AO
 snapshots, hashes, credentials, service definitions, patches, and rollback
-material belong to private host authority.
+material belong to private host authority. Unrelated portable historical
+evidence remains in its owning public decisions.
 
 ### Architecture And Documentation
 

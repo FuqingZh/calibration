@@ -19,6 +19,7 @@ def run_installer(
     codex_home: Path | None,
     *arguments: str,
     env_updates: dict[str, str] | None = None,
+    unset_env: tuple[str, ...] = (),
     repository_root: Path = REPOSITORY_ROOT,
 ) -> subprocess.CompletedProcess[str]:
     env = os.environ.copy()
@@ -28,6 +29,8 @@ def run_installer(
         env["CODEX_HOME"] = str(codex_home)
     if env_updates:
         env.update(env_updates)
+    for name in unset_env:
+        env.pop(name, None)
     return subprocess.run(
         ["bash", str(repository_root / "install.sh"), *arguments],
         cwd=repository_root,
@@ -81,6 +84,28 @@ def test_default_and_explicit_standard_are_equivalent(tmp_path: Path) -> None:
     assert explicit.returncode == 0, explicit.stderr
     assert snapshot_tree(default_home) == snapshot_tree(explicit_home)
     assert_standard_installed(REPOSITORY_ROOT, default_home)
+
+
+def test_missing_home_and_codex_home_is_controlled_zero_write_failure(
+    tmp_path: Path,
+) -> None:
+    marker = tmp_path / "marker"
+    marker.write_text("preserve\n", encoding="utf-8")
+
+    result = run_installer(
+        None,
+        "--dry-run",
+        unset_env=("HOME", "CODEX_HOME"),
+    )
+
+    assert result.returncode == 2
+    assert (
+        "Cannot derive default Codex home: HOME and CODEX_HOME are unset"
+        in result.stderr
+    )
+    assert "unbound variable" not in result.stderr
+    assert marker.read_text(encoding="utf-8") == "preserve\n"
+    assert list(tmp_path.iterdir()) == [marker]
 
 
 @pytest.mark.parametrize("profile", ["standard", "ao-worker"])

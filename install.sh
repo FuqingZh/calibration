@@ -81,8 +81,12 @@ if $CLI_CODEX_HOME_SET; then
   [[ "$CLI_CODEX_HOME" == /* ]] ||
     fail_usage "--codex-home must be an absolute path"
   CODEX_HOME="$CLI_CODEX_HOME"
+elif [[ -n "${CODEX_HOME:-}" ]]; then
+  :
+elif [[ -n "${HOME:-}" ]]; then
+  CODEX_HOME="$HOME/.codex"
 else
-  CODEX_HOME="${CODEX_HOME:-${HOME}/.codex}"
+  fail_usage "Cannot derive default Codex home: HOME and CODEX_HOME are unset"
 fi
 [[ -n "$CODEX_HOME" ]] || fail_usage "Codex home must not be empty"
 SELECTED_CODEX_HOME="$CODEX_HOME"
