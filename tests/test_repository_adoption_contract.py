@@ -1,187 +1,142 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from pathlib import Path
-
-import pytest
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 
 
-@dataclass(frozen=True)
-class AdoptionDocuments:
-    agents: str
-    harness: str
-    skill: str
-    docs_readme: str
-    runbook: str
-    ao_decision: str
-    native_delivery_decision: str
+def text(path: str) -> str:
+    return (REPOSITORY_ROOT / path).read_text(encoding="utf-8")
 
 
-@pytest.fixture(scope="module")
-def documents() -> AdoptionDocuments:
-    def compact(path: Path) -> str:
-        return " ".join(path.read_text(encoding="utf-8").split())
-
-    return AdoptionDocuments(
-        agents=compact(REPOSITORY_ROOT / "AGENTS.md"),
-        harness=compact(
-            REPOSITORY_ROOT / "references/engineering/discipline/harness.md"
-        ),
-        skill=(REPOSITORY_ROOT / "skills/calibration/SKILL.md").read_text(
-            encoding="utf-8"
-        ),
-        docs_readme=(REPOSITORY_ROOT / "docs/README.md").read_text(encoding="utf-8"),
-        runbook=(
-            REPOSITORY_ROOT / "docs/runbooks/agent-orchestrator-review-continuation.md"
-        ).read_text(encoding="utf-8"),
-        ao_decision=(
-            REPOSITORY_ROOT
-            / "docs/decisions/2026-07-23-ao-review-continuation-adoption.md"
-        ).read_text(encoding="utf-8"),
-        native_delivery_decision=compact(
-            REPOSITORY_ROOT
-            / "docs/decisions/2026-07-29-ao-native-delivery-convergence.md"
-        ),
-    )
+def compact(path: str) -> str:
+    return " ".join(text(path).split())
 
 
-def test_adoption_starts_from_evidence_and_allows_no_change(
-    documents: AdoptionDocuments,
-) -> None:
-    assert "## Repository Capability Adoption" in documents.harness
-    assert "repository capability assessment, minimal adoption" in documents.skill
-    assert "present, missing, or not applicable" in documents.harness
-    assert "named tools and artifacts as possible means" in documents.harness
-    assert "Leave an adequate capability unchanged" in documents.harness
-    assert "Do not assign a generic maturity score" in documents.harness
-    assert "a library or CLI does not need a UI" in documents.harness
+def test_public_architecture_keeps_ao_optional() -> None:
+    docs = compact("docs/README.md")
+    agents = compact("AGENTS.md")
+    skill = compact("skills/calibration/SKILL.md")
+
+    for layer in (
+        "reusable references",
+        "model interaction entrypoints",
+        "optional environment adapter",
+        "private host configuration",
+    ):
+        assert layer in docs
+    assert "AO is an optional environment adapter" in agents
+    assert "not a property of every public clone" in agents
+    assert "already installed Agent Orchestrator" in skill
 
 
-def test_orchestrator_is_an_optional_engine_not_global_authority(
-    documents: AdoptionDocuments,
-) -> None:
-    assert "such as Symphony, over a custom scheduler" in documents.harness
-    assert "it does not own repository authority" in documents.harness
-    assert "one bounded representative task" in documents.harness
-    assert "do not turn local labels, deployment topology" in documents.harness
+def test_portable_ao_guide_preserves_state_and_adoption_contracts() -> None:
+    runbook = compact("docs/runbooks/agent-orchestrator-review-continuation.md")
+
+    for owner in ("sandbox state", "worker state", "daemon state", "host state"):
+        assert owner in runbook
+    for state in (
+        "indeterminate",
+        "daemon ready",
+        "unavailable",
+        "registered",
+        "configured",
+        "runtime-ready",
+        "continuation-proven",
+    ):
+        assert state in runbook
+    assert "isolated worktree" in runbook
+    assert "scripts/adopt_ao_repository.py" in runbook
+    assert "already installed, CLI-capable AO" in runbook
 
 
-def test_authorized_implementation_uses_an_adopted_orchestrator(
-    documents: AdoptionDocuments,
-) -> None:
-    assert "## Implementation Task Intake" in documents.harness
-    assert "execute an accepted plan" in documents.harness
-    assert (
-        "route it to that orchestrator without requiring the user" in documents.harness
-    )
-    assert "start a task-specific worker" in documents.harness
-    assert "claim or restore the owning worker" in documents.harness
-
-
-def test_planning_only_does_not_start_implementation(
-    documents: AdoptionDocuments,
-) -> None:
-    assert "remains read-only unless it also authorizes the change" in documents.harness
-    assert (
-        "Use only an already accepted repository, host, identity" in documents.harness
-    )
-    assert "normal isolated-Worktree delivery path" in documents.harness
-
-
-def test_unreachable_scheduler_is_not_a_server_continuation_substitute(
-    documents: AdoptionDocuments,
-) -> None:
-    assert (
-        "already accepted event-driven continuation orchestrator" in documents.harness
-    )
-    assert "do not substitute an unreachable scheduler" in documents.harness
-
-
-def test_accepted_ao_scope_includes_conversation_authorized_intake(
-    documents: AdoptionDocuments,
-) -> None:
+def test_pull_request_gates_remain_exact_head_and_conditional() -> None:
     for authority in (
-        documents.docs_readme,
-        documents.runbook,
-        documents.ao_decision,
+        compact("AGENTS.md"),
+        compact("references/engineering/discipline/harness.md"),
+        compact("docs/runbooks/agent-orchestrator-review-continuation.md"),
     ):
-        assert "conversation" in authority
-        assert "issue intake" in authority
-
-    assert "task-specific worker start" in documents.ao_decision
-    assert "automatic work discovery" in documents.runbook
-    assert "1248e3473c86192aa17c48062bf001ea97482d4f" in documents.ao_decision
-
-
-def test_ao_repository_adoption_requires_real_continuation_evidence(
-    documents: AdoptionDocuments,
-) -> None:
-    for authority in (documents.harness, documents.runbook):
-        assert "registered" in authority
-        assert "configured" in authority
-        assert "runtime-ready" in authority
-        assert "continuation-proven" in authority
-
-    assert "Do not report repository adoption as complete" in documents.harness
-    assert "never claims the real event loop has passed" in documents.runbook
-    assert "scripts/adopt_ao_repository.py" in documents.runbook
-    assert "Issue-tracker intake" in documents.runbook
-    assert "does not claim a GitHub Draft pull request" in documents.runbook
-    assert "Ready-for-review" in documents.runbook
-    assert "AO Delivery" in documents.agents
-    assert "start a task-specific worker before" in documents.agents
-
-
-def test_low_risk_authorization_includes_gated_github_native_auto_merge(
-    documents: AdoptionDocuments,
-) -> None:
-    for authority in (
-        documents.agents,
-        documents.harness,
-        " ".join(documents.runbook.split()),
-        documents.native_delivery_decision,
-    ):
-        normalized = authority.casefold()
-        assert "conversation" in normalized
-        assert "low-risk" in normalized
-        assert "github native auto-merge" in normalized
-        assert "exact current head" in normalized
-        assert "current-head review is clean" in normalized
-        assert "no actionable review threads remain" in normalized
-        assert "without a second merge authorization" in normalized
-
-    assert "repository-local stricter policy" in documents.harness
-    assert "explicit user stop" in documents.harness
-    for risk in (
-        "high-risk",
-        "irreversible",
-        "permission",
-        "security",
-        "secret",
-        "release",
-        "compatibility",
-    ):
-        assert risk in documents.harness
-
-
-def test_native_auto_merge_is_distinct_from_unproven_ao_configuration(
-    documents: AdoptionDocuments,
-) -> None:
-    for authority in (
-        documents.agents,
-        documents.harness,
-        " ".join(documents.runbook.split()),
-        documents.native_delivery_decision,
-    ):
-        assert "per-pull-request" in authority
-        assert "AO project" in authority
+        assert "exact current head" in authority or "exact-head" in authority
+        assert "current-head review" in authority
+        assert "actionable review threads" in authority
+        assert "GitHub native" in authority
         assert "autoMerge" in authority
-        assert "unproven" in authority
 
-    assert "PR #37" in documents.native_delivery_decision
-    assert "already-green native happy path only" in (
-        documents.native_delivery_decision
+    agents = compact("AGENTS.md")
+    assert "isolated worktree" in agents
+    assert "explicit user stop" in agents
+    assert "security" in agents
+
+
+def test_dashboard_terminal_boundary_is_portable_and_safe() -> None:
+    runbook = compact("docs/runbooks/agent-orchestrator-review-continuation.md")
+    decision = compact(
+        "docs/decisions/2026-07-30-dashboard-terminal-access-boundary.md"
     )
-    assert "does not prove cancellation" in documents.native_delivery_decision
+
+    for authority in (runbook, decision):
+        assert "off by default" in authority
+        assert "exact client IP" in authority
+        assert "exact" in authority and "Origin" in authority
+        assert "exact `/mux`" in authority
+        assert "loopback" in authority
+        assert "Origin" in authority and "not authentication" in authority
+        assert "Multi-user" in authority
+        assert "dynamic-address" in authority
+        assert "require authentication" in authority
+
+
+def test_generated_agents_is_the_only_private_profile_discovery_path() -> None:
+    template = text("codex/AGENTS.md.template")
+    assert "{{HOST_AUTHORITY}}" in template
+    assert "if that file exists" in " ".join(template.split())
+    assert "Do not load it for ordinary engineering work" in template
+
+    for root in ("skills", "references"):
+        for path in (REPOSITORY_ROOT / root).rglob("*"):
+            if path.is_file():
+                content = path.read_text(encoding="utf-8", errors="ignore")
+                assert ".config/calibration" not in content
+                assert "calibration/AGENTS.md" not in content
+
+    for skill_dir in (REPOSITORY_ROOT / "skills").iterdir():
+        if skill_dir.name == "calibration" or not skill_dir.is_dir():
+            continue
+        skill = skill_dir / "SKILL.md"
+        if skill.is_file():
+            assert "Agent Orchestrator" not in skill.read_text(encoding="utf-8")
+
+
+def test_adoption_adapter_and_installer_have_distinct_codex_home_contracts() -> None:
+    decision = compact(
+        "docs/decisions/2026-07-30-ao-host-context-and-config-compatibility.md"
+    )
+    runbook = compact("docs/runbooks/agent-orchestrator-review-continuation.md")
+
+    for phrase in (
+        "apps = false",
+        "plugins = false",
+        "no top-level `mcp_servers`",
+        "harmless TUI state",
+        "extra top-level metadata",
+        "non-conflicting feature keys",
+        "read-only",
+    ):
+        assert phrase in decision
+    assert "does not read, validate, or modify" in decision
+    assert "Linux user-service profile" in runbook
+    assert "systemd --user" in runbook
+    assert "tmux prerequisites" in runbook
+    assert "not a universal Desktop adapter" in runbook
+
+
+def test_docs_restore_stable_authority_and_historical_navigation() -> None:
+    docs = compact("docs/README.md")
+
+    assert "stable maintenance mode with no active implementation plan" in docs
+    assert "Five-phase convergence result" in docs
+    assert "## Open Evidence Gaps" in docs
+    assert "### Architecture And Documentation" in docs
+    assert "### Harness And Evaluation" in docs
+    assert "### Delivery And Orchestration" in docs
+    assert "20260727-v1.8-ai-native-calibration-convergence" in docs

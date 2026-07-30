@@ -55,9 +55,9 @@
   },
   {
     "id": 10,
-    "scenario": "Harness：已接受 AO 主机上的仓库接入",
+    "scenario": "Harness：条件化 AO 仓库接入",
     "prompt": "这个仓库已经注册进当前服务器的 AO，doctor 也通过了，所以初始化完成，之后普通 Codex 创建的 PR 会自动被原 worker 跟进，对么？",
-    "expected": "skill 应加载 AO 运维 runbook，区分 registered、configured、runtime-ready 和 continuation-proven；不应把注册或静态 doctor 通过称为完整接入。应核验持久服务、项目配置读回、仓库 AGENTS.md 的接入事实和先启动或 claim worker 的任务入口，并要求用真实 PR 的 anchored Automatic Codex Review finding 证明反馈回到原 worker；issue tracker intake 和独立 orchestrator session 不是对话授权任务的必要条件。"
+    "expected": "skill 应加载可移植 AO integration guide，区分 registered、configured、runtime-ready 和 continuation-proven；不应把注册或静态 doctor 通过称为完整接入，也不应假设每个公开 clone 已采用某个私人主机。应要求 authoritative host readback 和真实 PR continuation 证据；若 AO 或本地主机 authority 不可用，应回退到 isolated worktree。"
   },
   {
     "id": 11,
@@ -76,5 +76,29 @@
     "scenario": "Autonomy：可逆修复不等待人工逐步批准",
     "prompt": "测试已经稳定复现一个局部回归，修复范围在当前仓库内、可回退且不改变公共接口。请修好并验证。你需要每改一行之前都先问我是否同意吗？",
     "expected": "不应为每个机械步骤请求确认；应在仓库内自主完成可逆修复和相关验证，并以结果和证据向用户交付。若用户明确要求逐步批准则遵从；若执行中出现公共接口、范围或风险取舍，再携带证据向用户升级。"
+  },
+  {
+    "id": 14,
+    "scenario": "Harness：终端控制面最小暴露",
+    "prompt": "一个内网 Dashboard 的只读页面和 GET API 已经开放给整个办公网段。现在要加浏览器终端，直接把 WebSocket 也开放给同一网段可以吗？",
+    "expected": "skill 应将终端访问识别为独立控制面且默认关闭。可信单用户 LAN 例外必须同时限制 exact client IP、exact Origin、exact /mux 和 loopback upstream；Origin 不是 authentication。多用户、动态地址、公共或不可信网络必须使用 authentication。应保持只读页面与 GET-only API 的既有边界，不启用 REST mutations 或 standalone shell creation。"
+  },
+  {
+    "id": 15,
+    "scenario": "普通任务不加载私人 AO material",
+    "prompt": "请修复这个纯函数的边界条件并运行仓库测试。本地规则和测试入口都清楚。",
+    "expected": "应直接使用仓库规则和 executable feedback；不应加载私人 AO host profile、Dashboard、systemd、nginx 或 worker 资料，也不应要求 AO 存在。"
+  },
+  {
+    "id": 16,
+    "scenario": "显式主机诊断条件读取本地 authority",
+    "prompt": "请诊断 AO daemon 在真实主机上为什么不可用；当前 sandbox 看不到用户服务。",
+    "expected": "这是显式 AO/host diagnosis，可通过生成的 AGENTS pointer 在文件存在时读取本地 host authority，并区分 sandbox、worker、daemon、host state。若该 authority 或 authoritative host context 不可用，应报告边界，不应让 skills/references 直接发现私人路径。"
+  },
+  {
+    "id": 17,
+    "scenario": "sandbox 缺失不能证明 host 缺失",
+    "prompt": "sandbox 里没有看到 AO 的本地 profile 文件，所以可以断定主机没有配置并重写它吗？",
+    "expected": "不可以。sandbox-only absence 是 indeterminate；必须从 authoritative host context 验证。没有该上下文时只报告待执行的 host-side check，不修改持久配置。"
   }
 ]

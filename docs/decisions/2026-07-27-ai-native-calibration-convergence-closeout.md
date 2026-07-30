@@ -47,7 +47,8 @@ specialized layers can be removed from the cases that own them.
 | Harness placement | a repository need becomes prompt text before a lower enforceable owner is checked | `discipline/harness.md` | no Phase 3 start-gate condition repeated | retain |
 | Durable implementation plan | coordination, risk, interruption, or handoff decisions need a stable contract | implementation-plan document type | writable cases neither created nor required a new durable plan | retain unchanged |
 | General orchestration adoption | multi-agent or asynchronous machinery is added without information gain | harness guidance | no writable AO action or failure occurred | retain |
-| Current-host AO operation | versions, service, permissions, identity, and recovery need a local owner | AO runbook | not exercised by W01-W03; accepted host evidence remains separate | retain |
+| Portable AO integration | adoption states and exact-head delivery need a public owner | portable AO guide | not exercised by W01-W03 | retain |
+| Current-host AO operation | versions, service, permissions, identity, and recovery need a local owner | rendered private authority | accepted host evidence remains separate | retain outside public repository |
 
 Reconsider a layer only after its owning capability moves to a repository,
 tool, platform, or model boundary and a representative deletion or ablation

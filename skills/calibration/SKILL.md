@@ -33,13 +33,16 @@ Load only the routers required by the decisions at hand:
   setup discovery, pull-request validation, CI, agent review, cloud execution
   gaps, and repeated delivery failures:
   `../../references/engineering/discipline/harness.md`
-- onboarding or repairing an explicitly opted-in repository on the accepted
-  Agent Orchestrator host:
+- explicit AO onboarding, AO diagnosis, or AO-mediated pull-request delivery
+  for an opted-in repository using an already installed Agent Orchestrator:
   `../../docs/runbooks/agent-orchestrator-review-continuation.md`
 - architecture, module boundaries, interfaces, and abstraction:
   `../../references/engineering/design/README.md`
 - long-form engineering specifications and document routing:
   `../../references/engineering/docs_index.md`
+
+Do not load the AO guide merely because a repository is opted in. Ordinary
+calibration engineering tasks remain on the engineering references above.
 
 For a completion claim involving a public or cross-boundary contract, always
 load `../../references/engineering/discipline/verification.md`.

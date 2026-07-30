@@ -21,4 +21,10 @@ from an authoritative host context before concluding that it is missing,
 misconfigured, or stale. If that context is unavailable, report the boundary
 and the exact host-side check still required.
 
+For explicit AO installation, adoption, daemon, worker, Dashboard, systemd,
+nginx, or other host-operation tasks only, read `{{HOST_AUTHORITY}}` if that
+file exists. It is rendered local authority, not a public calibration
+dependency. Do not load it for ordinary engineering work, and do not treat its
+absence inside a sandbox as proof that the host profile is absent.
+
 In WSL, the skill source is available at `{{CALIBRATION_ROOT}}/skills`.

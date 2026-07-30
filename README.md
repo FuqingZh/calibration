@@ -5,7 +5,8 @@ An engineering calibration system for code, agents, judgment, and delivery.
 `calibration` keeps cross-project engineering principles, naming rules, design
 judgment, verification discipline, Codex skill entrypoints, and managed local
 setup in one repository. Skills are one presentation layer of the system, not
-the system itself.
+the system itself. AO is an optional environment adapter; private host
+configuration remains outside the public repository.
 
 ## Layout
 
@@ -25,8 +26,8 @@ the system itself.
   deterministic contracts, and the blind-review rubric for calibration
   behavior comparison
 - `docs/README.md`: current decision, evaluation, and implementation-plan map
-- `scripts/adopt_ao_repository.py`: explicit plan/apply and readback gate for
-  one repository opting into the accepted AO host
+- `scripts/adopt_ao_repository.py`: optional plan/apply and readback gate for a
+  repository using an already installed, CLI-capable AO
 - `thirdparty/`: vendored optional skills and their source/patch records
 - `pyproject.toml` and `pdm.lock`: locked repository validation environment and
   the canonical local/CI task entrypoints
@@ -45,15 +46,33 @@ Install or refresh the local Codex entry:
 bash install.sh
 ```
 
+The default `standard` profile preserves the existing installation behavior:
+
+```bash
+bash install.sh --profile standard
+```
+
+Install an isolated AO worker home with only first-party managed skills and
+global instructions:
+
+```bash
+bash install.sh --profile ao-worker --codex-home /path/to/worker-home
+```
+
+`ao-worker` requires an explicit non-root `--codex-home`. The installer does
+not read or modify `config.toml`, `auth.json`, Apps, Plugins, or MCP state.
+
 When adopting previously hand-installed optional skills for the first time, use
 `--force` after reviewing `--dry-run --force` so the installer can replace those
 local directories with managed symlinks.
 
-The installer renders `codex/AGENTS.md.template` into `~/.codex/AGENTS.md`
-with the current repository path and symlinks managed first-party skills from
-`skills/` and managed vendored skills from `thirdparty/skills/` into
-`~/.codex/skills/`. Existing `AGENTS.md` content is backed up before
-replacement when it differs.
+The installer renders `codex/AGENTS.md.template` into the selected Codex home
+with the current repository path and a conditional pointer to private host
+authority at `$XDG_CONFIG_HOME/calibration/AGENTS.md`, or
+`$HOME/.config/calibration/AGENTS.md` when `XDG_CONFIG_HOME` is unset. Standard
+installs symlink managed first-party and vendored skills. AO worker installs
+only managed first-party skills. Existing `AGENTS.md` content is backed up
+before replacement when it differs.
 
 ## Development
 
@@ -82,6 +101,7 @@ Codex installation. Ruff linting uses the explicit stable baseline `E`, `F`,
 - Keep reusable Codex skill entrypoints in `skills/`; keep architecture/design judgment in `calibration` unless it needs a distinct interaction mode.
 - Keep narrow topics such as naming and project-doc placement as references unless they need a distinct interaction mode.
 - Keep engineering source documents in `references/engineering/`.
+- Keep AO optional and keep private host configuration outside this repository.
 - Treat `~/.codex/AGENTS.md` as a local generated file; update the template in
   this repository, then rerun `install.sh`.
 - Keep project-specific exceptions in each repository's local docs.

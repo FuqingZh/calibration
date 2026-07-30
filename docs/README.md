@@ -1,13 +1,28 @@
 # Calibration Documentation
 
-This directory records calibration-specific decisions, evaluations, historical
-plans, and current-host runbooks. Calibration is in stable maintenance mode
-with no active implementation phase. Reusable cross-project engineering
-guidance lives under `../references/engineering/`.
+This directory records calibration decisions, evaluations, historical plans,
+and portable integration guidance. Reusable cross-project engineering guidance
+lives under `../references/engineering/`.
+
+Calibration is in stable maintenance mode with no active implementation plan.
+New work begins from a concrete conversation-authorized task.
+
+## Public Architecture
+
+Calibration has four layers:
+
+1. reusable references under `../references/engineering/`;
+2. skills under `../skills/` as model interaction entrypoints;
+3. AO as an optional environment adapter; and
+4. private host configuration outside this public repository.
+
+Public references and skills must work when AO and the private host profile are
+absent. Host paths, credentials, services, proxy configuration, deployment
+state, and rollback material belong to private authority. The installer renders
+only a conditional pointer to `$XDG_CONFIG_HOME/calibration/AGENTS.md`, falling
+back to `$HOME/.config/calibration/AGENTS.md`.
 
 ## Current Authority
-
-Read the smallest source that owns the decision:
 
 | Need | Current authority |
 | --- | --- |
@@ -18,187 +33,101 @@ Read the smallest source that owns the decision:
 | Completion and external-result evidence | `../references/engineering/discipline/verification.md` |
 | Agent and workflow comparison | `../references/engineering/discipline/evaluation.md` |
 | Durable implementation-plan contract | `../references/engineering/docs/document-types/implementation-plan.md` |
+| Portable AO integration | `runbooks/agent-orchestrator-review-continuation.md` |
 | Current AI-native direction | `decisions/2026-07-27-ai-native-calibration-review.md` |
 | Writable comparative evidence | `decisions/2026-07-27-ai-native-writable-implementation-evaluation-closeout.md` |
 | Five-phase convergence result | `decisions/2026-07-27-ai-native-calibration-convergence-closeout.md` |
-| Current-host AO and delivery boundary | `decisions/2026-07-29-ao-native-delivery-convergence.md` |
-| Default repository quality-gate evidence | `decisions/2026-07-30-default-repository-quality-gate.md` |
-| AO host-context and Codex-home compatibility | `decisions/2026-07-30-ao-host-context-and-config-compatibility.md` |
-| Current operational closeout and maintenance mode | `decisions/2026-07-30-final-operational-closeout.md` |
+| Default repository quality gate | `decisions/2026-07-30-default-repository-quality-gate.md` |
+| Codex-home adoption compatibility | `decisions/2026-07-30-ao-host-context-and-config-compatibility.md` |
+| Dashboard terminal boundary | `decisions/2026-07-30-dashboard-terminal-access-boundary.md` |
 
 The current default is outcome autonomy within repository-local, reversible
-boundaries. Repository rules and executable feedback choose and revise the
-implementation path. Calibration remains the judgment layer for cross-project
-decisions, non-local design, compatibility-sensitive contracts, unclear
-verification, harness and evaluation work, and durable engineering
-documentation.
+boundaries. AO is optional and conditional. Ordinary engineering tasks do not
+load private AO material.
 
-There is no active implementation plan. New implementation work begins from a
-concrete conversation-authorized task and, when it crosses a pull-request
-boundary, uses a task-specific AO worker. A separate orchestrator is optional
-for coordination, not a standing prerequisite.
+## Repository Validation
 
-## Current Operational Surface
-
-### Repository validation
-
-`pdm.lock` is the dependency authority. The repository completion gate is:
+`pdm.lock` is the dependency authority:
 
 ```bash
 pdm lock --check
 pdm run check
 CODEX_HOME="$(mktemp -d)" bash install.sh --dry-run
+bash install.sh --profile ao-worker --codex-home "$(mktemp -d)" --dry-run
 git diff --check
 git diff --cached --check
 git diff --check "${BASE_REF:-main}...HEAD"
 git status --short
 ```
 
-Use an explicit temporary `CODEX_HOME`; validation must not overwrite an active
-Codex installation.
+Use disposable Codex homes. Validation must not overwrite an active
+installation.
 
-### Writable behavior evaluation
+## Evaluation
 
-`../evaluations/ai-native-implementation/README.md` owns the isolated writable
-fixture protocol and runner commands. The current result is comparative
-improvement on W01-W03: candidate 9/9 deterministic passes and six of nine
-blind preferences versus baseline 8/9 and three preferences.
+`../evaluations/ai-native-implementation/README.md` owns the writable fixture
+protocol. Raw trajectories, credentials, isolated homes, workspaces, and
+private host snapshots remain outside the public repository. Commit only
+portable fixtures, reviewed findings, and reconstructable public evidence.
 
-Raw trajectories, isolated homes, workspaces, arm maps, and blind judge
-packages remain private temporary evidence. Commit only fixtures, protocol,
-reviewed findings, and reconstructable hashes.
+## AO Integration
 
-### AO-native delivery
+The portable AO guide keeps sandbox, worker, daemon, and host state distinct;
+defines registered, configured, runtime-ready, and continuation-proven
+adoption; and retains exact-head pull-request safety. AO installation and
+upgrades belong to upstream Desktop. Calibration does not ship host deployment
+artifacts.
 
-`runbooks/agent-orchestrator-review-continuation.md` is the current-host
-installation, Dashboard, service, permission, recovery, and
-repository-adoption contract.
-`decisions/2026-07-29-ao-native-delivery-convergence.md` records the upstream
-v0.11.1 Dashboard base, minimal review-continuation runtime fork, trusted-LAN
-read-only Dashboard compatibility boundary, Dashboard-only attention policy,
-Linear retirement, and the verified low-risk GitHub native auto-merge default
-for conversation-authorized implementation.
-`decisions/2026-07-23-ao-review-continuation-adoption.md` records the accepted
-narrow review-to-original-worker bridge.
-`decisions/2026-07-27-ao-phase-3-deployment-reproducibility-closeout.md`
-records the deployed fork revision, installed artifact, read-only Linear
-credential boundary, service override, and rollback evidence.
-
-AO is an environment adapter, not a default part of ordinary engineering
-judgment. Repositories opt in individually after an observed continuation need.
-An explicit conversation-authorized implementation may start a task-specific
-worker in an already accepted repository.
-
-The current conversation and explicit implementation authorization are the
-work-intake authority; this is conversation-authorized issue intake, and AO
-creates or continues the task-specific worker from that authority. GitHub pull
-requests are the delivery, CI, review, and merge fact source. Linear integration
-is deferred, its intake is removed from the active AO project, service, and
-root `WORKFLOW.md`, and its repair conditions are not on the execution critical
-path. Historical Linear plans and canary evidence remain below for audit.
-
-The AO project-level `autoMerge` setting remains disabled. The accepted merge
-mechanism is GitHub native per-pull-request auto-merge after fresh
-exact-current-head CI, review, and unresolved-thread readback. PR #37 is the
-bounded already-green happy-path evidence. PR #41 merged after an
-instruction-command escaping and ordering deviation, so it is recorded as a
-merged result, not additional exact-head proof. The final operational details,
-PR #38 through #41 ledger, clean `main`/`origin/main` readback, current AO ready
-state, and merged-worker readback live in
-`decisions/2026-07-30-final-operational-closeout.md`.
-
-AO retains status and attention events in its durable Dashboard only. The
-current host exposes a read-only renderer/API compatibility surface on the
-trusted LAN because the v0.11.1 AppImage does not supply a supported headless
-Web listener on this GLIBC 2.28 host. Do not describe that adapter as
-upstream-native headless support.
+`scripts/adopt_ao_repository.py` is an optional plan/apply adapter for an
+already installed, CLI-capable AO on its supported Linux `systemd --user` and
+tmux profile. It is not a universal Desktop adapter and does not make AO a
+dependency of public skills or ordinary repository work. Other platforms use
+upstream Desktop directly.
 
 ## Open Evidence Gaps
 
-- The writable comparison covers small dependency-free Python repositories,
-  one model, one reasoning effort, and local verification. It does not
-  establish the same result for dependency-heavy, multi-language, production,
-  or pull-request delivery tasks.
-- W01 still showed variable pre-edit failure reproduction. Reopen the candidate
-  if repeated real work skips executable feedback where it materially changes
-  diagnosis or safety.
-- No repeated writable evidence supports changing the durable
-  implementation-plan contract. Phase 3 therefore closed `NO-CHANGE`.
-- No writable case loaded irrelevant host AO details or failed an
-  orchestration gate. Phase 4 therefore closed `NO-CHANGE`.
-- Detailed debugging, verification, harness, evaluation, and AO layers have
-  scoped owners, but their deletion still requires a representative ablation
-  or real-task replacement capability.
-- Symphony is closed at its 2026-07-22 `NO-GO`. Its pinned dependency and
-  full-suite conditions are reopen gates, not an active implementation phase.
+- Writable comparisons cover small dependency-free Python fixtures, one model,
+  one reasoning effort, and local verification; they do not establish the same
+  result for production, multi-language, dependency-heavy, or deployment work.
+- Variable pre-edit reproduction remains a reason to reopen the candidate if
+  real tasks skip executable feedback where it changes safety or diagnosis.
+- No repeated writable evidence supports changing the durable implementation
+  plan contract.
+- Public AO guidance defines portable integration, but current-host operation
+  requires rendered private authority and representative host readback.
+- Detailed debugging, verification, harness, and evaluation layers still need
+  representative ablation evidence before any consolidation.
 
-## Historical Decisions
+## Historical Records
 
-These files preserve why the current authority exists. They are not the default
-reading path.
+Historical decision and plan paths remain for link compatibility. Current-host
+AO operational evidence has been reduced to short public summaries; detailed AO
+snapshots, hashes, credentials, service definitions, patches, and rollback
+material belong to private host authority. Unrelated portable historical
+evidence remains in its owning public decisions.
 
-### Architecture and documentation
+### Architecture And Documentation
 
-- `decisions/2026-07-01-calibration-rename-and-skill-architecture.md`:
-  implemented initial architecture.
-- `decisions/2026-07-01-calibration-follow-up-batches.md`: superseded batch
-  record.
-- `decisions/2026-07-01-document-types-retrospect-and-evaluation.md`: partially
-  superseded document-type decision.
-- `decisions/2026-07-03-writing-docstrings-skill-design.md`: superseded by
-  `writing-code-docs`.
+- `decisions/2026-07-01-calibration-rename-and-skill-architecture.md`
+- `decisions/2026-07-01-calibration-follow-up-batches.md`
+- `decisions/2026-07-01-document-types-retrospect-and-evaluation.md`
+- `decisions/2026-07-03-writing-docstrings-skill-design.md`
 
-### Harness and evaluation
+### Harness And Evaluation
 
-- `decisions/2026-07-20-skill-optimization-evaluation-closeout.md`: accepted
-  earlier skill baseline and evaluation limitations.
-- `decisions/2026-07-20-agent-contribution-and-task-isolation.md`: current
-  collaboration boundary.
-- `decisions/2026-07-20-agent-harness-and-evaluation-ownership.md`: accepted
-  harness and evaluation ownership.
-- `decisions/2026-07-20-agent-harness-and-evaluation-closeout.md`: rejected
-  Slice 2 candidate and retained Slice 3 evidence.
-- `decisions/2026-07-21-harness-successor-evaluation-closeout.md`: rejected
-  v1.2 successor.
-- `decisions/2026-07-27-ai-native-calibration-evaluation-closeout.md`:
-  historical read-only regression acceptance that motivated the writable
-  comparison.
-- `decisions/2026-07-27-ai-native-writable-implementation-evaluation-closeout.md`:
-  current writable comparative result.
+- `decisions/2026-07-20-agent-harness-and-evaluation-ownership.md`
+- `decisions/2026-07-20-agent-harness-and-evaluation-closeout.md`
+- `decisions/2026-07-21-harness-successor-evaluation-closeout.md`
+- `decisions/2026-07-27-ai-native-calibration-evaluation-closeout.md`
+- `decisions/2026-07-27-ai-native-writable-implementation-evaluation-closeout.md`
 
-### Repository delivery and orchestration
+### Delivery And Orchestration
 
-- `decisions/2026-07-21-repository-delivery-feedback-loop.md`: accepted
-  failure-driven delivery loop.
-- `decisions/2026-07-21-repository-engineering-capability-adoption-closeout.md`:
-  closed proportional adoption pilots and bounded Symphony `NO-GO`.
-- `decisions/2026-07-22-symphony-readiness-and-bounded-canary-closeout.md`:
-  closed readiness plan at Slice 1.
-- `implementation-plan/20260722-v1.5-symphony-readiness-and-bounded-canary-implementation-plan.md`:
-  closed Symphony plan and reopen gates.
-- `implementation-plan/20260723-v1.6-repository-quality-gate-implementation-plan.md`:
-  closed repository-local validation convergence.
-- `decisions/2026-07-23-ao-review-continuation-adoption.md`: accepted bounded
-  AO successor on the current host.
-- `decisions/2026-07-27-ao-phase-3-deployment-reproducibility-closeout.md`:
-  records the current-host Phase 3 Linear deployment and its verification
-  boundary.
-- `implementation-plan/20260723-v1.7-ao-repository-adoption-contract-implementation-plan.md`:
-  closed behavior-validated adoption contract.
-- `implementation-plan/20260728-v1.9-persistent-linear-intake-and-no-product-canary-implementation-plan.md`:
-  superseded historical FUQ-14 rollout and manual canary procedure.
-- `implementation-plan/20260728-v2.0-three-scenario-linear-acceptance-implementation-plan.md`:
-  current failed-canary evidence, disabled-intake closeout, and repair gates.
-
-### Current convergence history
-
-- `decisions/2026-07-27-ai-native-calibration-review.md`: accepted trigger and
-  outcome-autonomy direction.
-- `implementation-plan/20260727-v1.8-ai-native-calibration-convergence-implementation-plan.md`:
-  implemented five-phase plan.
-- `decisions/2026-07-27-ai-native-calibration-convergence-closeout.md`: final
-  phase decisions, retirement ledger, and reopen conditions.
-
-Historical files remain in place. Repair a historical document only when a
-fact or link is broken; record current interpretation in a new decision or the
-current authority map. Do not add a `README.html` mirror.
+- `decisions/2026-07-21-repository-delivery-feedback-loop.md`
+- `decisions/2026-07-23-ao-review-continuation-adoption.md`
+- `decisions/2026-07-29-ao-native-delivery-convergence.md`
+- `implementation-plan/20260723-v1.6-repository-quality-gate-implementation-plan.md`
+- `implementation-plan/20260723-v1.7-ao-repository-adoption-contract-implementation-plan.md`
+- `implementation-plan/20260727-v1.8-ai-native-calibration-convergence-implementation-plan.md`
+- `implementation-plan/20260728-v1.9-persistent-linear-intake-and-no-product-canary-implementation-plan.md`
+- `implementation-plan/20260728-v2.0-three-scenario-linear-acceptance-implementation-plan.md`

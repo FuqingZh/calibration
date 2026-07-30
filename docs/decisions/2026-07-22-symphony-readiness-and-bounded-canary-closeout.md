@@ -63,7 +63,7 @@ used an empty isolated `CODEX_HOME`; it did not copy authentication, start a
 model turn, or contact a tracker.
 
 The probe ran inside the current Codex filesystem and process sandbox but
-under the host `fqzhang` Unix identity. It therefore does not prove the
+under an unrestricted host Unix identity. It therefore does not prove the
 dedicated worker identity required by later slices. The exploratory sequence
 also compiled and ran focused tests before the automatic review clarified the
 stricter audit-before-execution ordering. No credential, listener, or real
@@ -169,7 +169,7 @@ content, Actions configuration, ruleset, staging state, or E03/E04 task was
 changed.
 
 The only persistent host mutation was hardening
-`/home/fqzhang/.config/gh/hosts.yml` from mode 755 to mode 600. Its contents and
+the private GitHub CLI credential file from mode 755 to mode 600. Its contents and
 authentication were not copied into the probe, and the broad GitHub CLI OAuth
 identity was not used as a Symphony credential.
 

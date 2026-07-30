@@ -174,11 +174,12 @@ and permission profile are already accepted, distinguish these states:
    push its correction.
 
 Do not report repository adoption as complete at registration, configuration,
-or a passing static health check. Use the accepted operational runbook and its
-idempotent initializer instead of inventing permission, identity, or service
+or a passing static health check. Use the portable AO guide plus conditional
+private host authority instead of inventing permission, identity, or service
 defaults. Record the repository-specific adoption fact and task-intake
 entrypoint in the repository's own `AGENTS.md` through its normal delivery
-path. Keep the service alive beyond the initiating conversation.
+path. Keep any accepted continuation service alive beyond the initiating
+conversation.
 
 For conversation-authorized work, neither issue-tracker intake nor a separate
 orchestrator session is a prerequisite. Start or claim the task-specific
@@ -229,6 +230,16 @@ task exposes a concrete gap. Keep setup logic in the repository when local,
 CI, and cloud execution can share it. Keep server-only dependencies and data
 behind repository-owned checks or CI runners rather than assuming a hosted
 environment can reproduce them.
+
+Treat terminal access as a control surface, even when it is presented inside a
+read-only dashboard or operational viewer, and keep it off by default. A
+trusted single-user private LAN may opt in only with an exact client IP, exact
+WebSocket Origin, exact terminal path, and loopback upstream. Origin checking is
+defense in depth, not authentication. Multi-user, dynamic-address, public, or
+untrusted-network deployments require authentication. Keep read-only status and
+observation routes independently constrained so adding terminal access does not
+implicitly enable REST mutations, standalone shell creation, or broader
+network access.
 
 Prefer platform-native automatic review when the repository and account
 support it. Put only repository-specific review guidance in the closest useful

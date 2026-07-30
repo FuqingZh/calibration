@@ -9,7 +9,7 @@ Mode: deep
 
 - Goal: Turn a loose personal engineering skill repository into a coherent
   `calibration` system with one default engineering entrypoint, explicit
-  optional modes, managed installation into `/home/fqzhang/.codex`, and durable
+  optional modes, managed installation into a local Codex home, and durable
   documentation of the decisions.
 - Risk: The default skill could remain too broad to follow; optional skills
   could accidentally become always-on policy; third-party skills could drift
@@ -35,7 +35,7 @@ Mode: deep
 - Validation: Recent git history shows focused commits from `ebbb090` through
   `ce0a64a`; `git status --short` was clean before this retro; `bash
   install.sh --dry-run` reported all managed first-party and vendored skills as
-  current; `readlink /home/fqzhang/.codex/skills/retrospect` resolves to this
+  current; the installed `retrospect` skill link resolves to this
   repository's `skills/retrospect` directory.
 - Result: The active repository now has a clearer product identity, one default
   engineering skill, explicit optional-mode boundaries, installer-managed local
