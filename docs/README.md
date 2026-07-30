@@ -1,8 +1,9 @@
 # Calibration Documentation
 
-This directory records calibration-specific decisions, evaluations, active
-plans, and current-host runbooks. Reusable cross-project engineering guidance
-lives under `../references/engineering/`.
+This directory records calibration-specific decisions, evaluations, historical
+plans, and current-host runbooks. Calibration is in stable maintenance mode
+with no active implementation phase. Reusable cross-project engineering
+guidance lives under `../references/engineering/`.
 
 ## Current Authority
 
@@ -23,6 +24,7 @@ Read the smallest source that owns the decision:
 | Current-host AO and delivery boundary | `decisions/2026-07-29-ao-native-delivery-convergence.md` |
 | Default repository quality-gate evidence | `decisions/2026-07-30-default-repository-quality-gate.md` |
 | AO host-context and Codex-home compatibility | `decisions/2026-07-30-ao-host-context-and-config-compatibility.md` |
+| Current operational closeout and maintenance mode | `decisions/2026-07-30-final-operational-closeout.md` |
 
 The current default is outcome autonomy within repository-local, reversible
 boundaries. Repository rules and executable feedback choose and revise the
@@ -30,6 +32,11 @@ implementation path. Calibration remains the judgment layer for cross-project
 decisions, non-local design, compatibility-sensitive contracts, unclear
 verification, harness and evaluation work, and durable engineering
 documentation.
+
+There is no active implementation plan. New implementation work begins from a
+concrete conversation-authorized task and, when it crosses a pull-request
+boundary, uses a task-specific AO worker. A separate orchestrator is optional
+for coordination, not a standing prerequisite.
 
 ## Current Operational Surface
 
@@ -84,11 +91,21 @@ worker in an already accepted repository.
 
 The current conversation and explicit implementation authorization are the
 work-intake authority; this is conversation-authorized issue intake, and AO
-creates or continues the worker from that authority. GitHub pull requests are
-the delivery, CI, review, and merge fact source. Linear integration is deferred,
-its intake is removed from the active AO project, service, and root
-`WORKFLOW.md`, and its repair conditions are not on the execution critical
+creates or continues the task-specific worker from that authority. GitHub pull
+requests are the delivery, CI, review, and merge fact source. Linear integration
+is deferred, its intake is removed from the active AO project, service, and
+root `WORKFLOW.md`, and its repair conditions are not on the execution critical
 path. Historical Linear plans and canary evidence remain below for audit.
+
+The AO project-level `autoMerge` setting remains disabled. The accepted merge
+mechanism is GitHub native per-pull-request auto-merge after fresh
+exact-current-head CI, review, and unresolved-thread readback. PR #37 is the
+bounded already-green happy-path evidence. PR #41 merged after an
+instruction-command escaping and ordering deviation, so it is recorded as a
+merged result, not additional exact-head proof. The final operational details,
+PR #38 through #41 ledger, clean `main`/`origin/main` readback, current AO ready
+state, and merged-worker readback live in
+`decisions/2026-07-30-final-operational-closeout.md`.
 
 AO retains status and attention events in its durable Dashboard only. The
 current host exposes a read-only renderer/API compatibility surface on the
@@ -112,8 +129,8 @@ upstream-native headless support.
 - Detailed debugging, verification, harness, evaluation, and AO layers have
   scoped owners, but their deletion still requires a representative ablation
   or real-task replacement capability.
-- The Symphony readiness path remains closed at its 2026-07-22 `NO-GO` until
-  its pinned dependency and full-suite reopen conditions pass.
+- Symphony is closed at its 2026-07-22 `NO-GO`. Its pinned dependency and
+  full-suite conditions are reopen gates, not an active implementation phase.
 
 ## Historical Decisions
 
