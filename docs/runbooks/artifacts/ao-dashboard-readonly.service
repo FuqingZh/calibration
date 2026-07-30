@@ -1,5 +1,5 @@
 [Unit]
-Description=AO v0.11.1 read-only trusted-LAN Dashboard
+Description=AO v0.11.1 trusted-LAN Dashboard with restricted terminal access
 After=agent-orchestrator.service network-online.target
 Wants=network-online.target
 

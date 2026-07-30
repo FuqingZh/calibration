@@ -51,11 +51,14 @@ standalone Web Dashboard. Do not claim upstream-native headless support.
 
 The accepted compatibility deployment serves the renderer extracted from that
 verified AppImage at `http://192.168.30.205:31080`. Its nginx listener binds
-only that address, allows only `192.168.30.0/24`, proxies only GET/HEAD to AO's
-fixed loopback API at `127.0.0.1:3001`, and returns HTTP 403 for mutation
-methods. `/mux` is unavailable. The persistent service is
+only that address. The renderer and GET-only API remain available to
+`192.168.30.0/24`, and API mutation methods return HTTP 403. The exact `/mux`
+WebSocket route proxies to `127.0.0.1:3001/mux` only for clients
+`192.168.30.134` and `192.168.30.205`; every other client is denied. This
+terminal control surface does not enable REST mutations or standalone shell
+creation. The persistent service retains the compatibility name
 `ao-dashboard-readonly.service`; its managed unit, nginx configuration, and
-Electron compatibility shim are under `artifacts/`.
+Electron compatibility shim retain their legacy filenames under `artifacts/`.
 
 ### Reconstruct and install the current runtime
 
@@ -275,7 +278,8 @@ find "${RENDERER_ROOT}" -type d -exec chmod 0700 {} +
 find "${RENDERER_ROOT}" -type f -exec chmod 0600 {} +
 ```
 
-Install and enable the fixed-port read-only proxy:
+Install and enable the fixed-port read-mostly Dashboard adapter with the
+restricted terminal route:
 
 ```bash
 set -euo pipefail
@@ -333,6 +337,13 @@ dependency is unavailable. Require both. Also require an allowed
 `/api/v1/notifications?limit=1` read, an HTTP 403 mutation readback, and HTTP
 403 for root, liveness, health, and API reads sourced from an interface outside
 `192.168.30.0/24`.
+
+Validate `/mux` with a WebSocket client capable of binding its source address:
+the upgrade must succeed from `192.168.30.134` and `192.168.30.205`, and must
+return HTTP 403 from every other source, including other clients inside
+`192.168.30.0/24`. The route match is exact: `/mux/` and other prefixes must
+not reach the terminal proxy. Do not use this verification to create a new
+standalone shell; attach only to an existing AO-managed terminal session.
 
 Dashboard notifications are the only accepted attention event surface. Do not
 add an external notifier. The historical fork, Linear wrapper, credential

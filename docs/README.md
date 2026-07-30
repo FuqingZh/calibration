@@ -25,6 +25,7 @@ Read the smallest source that owns the decision:
 | Default repository quality-gate evidence | `decisions/2026-07-30-default-repository-quality-gate.md` |
 | AO host-context and Codex-home compatibility | `decisions/2026-07-30-ao-host-context-and-config-compatibility.md` |
 | Current operational closeout and maintenance mode | `decisions/2026-07-30-final-operational-closeout.md` |
+| Dashboard terminal-access boundary | `decisions/2026-07-30-dashboard-terminal-access-boundary.md` |
 
 The current default is outcome autonomy within repository-local, reversible
 boundaries. Repository rules and executable feedback choose and revise the
@@ -108,10 +109,13 @@ state, and merged-worker readback live in
 `decisions/2026-07-30-final-operational-closeout.md`.
 
 AO retains status and attention events in its durable Dashboard only. The
-current host exposes a read-only renderer/API compatibility surface on the
-trusted LAN because the v0.11.1 AppImage does not supply a supported headless
-Web listener on this GLIBC 2.28 host. Do not describe that adapter as
-upstream-native headless support.
+current host exposes a read-only renderer and GET-only API compatibility
+surface to `192.168.30.0/24` because the v0.11.1 AppImage does not supply a
+supported headless Web listener on this GLIBC 2.28 host. The exact `/mux`
+WebSocket route is a separately authorized terminal control surface restricted
+to `192.168.30.134` and `192.168.30.205`; it does not authorize REST mutations
+or standalone shell creation. Do not describe that adapter as upstream-native
+headless support.
 
 ## Open Evidence Gaps
 
