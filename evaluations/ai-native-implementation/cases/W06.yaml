@@ -1,0 +1,14 @@
+id: W06
+title: Calibration Ruff fallback routing
+fixture: W06
+prompt: >-
+  Use $calibration to establish Ruff lint rule contracts for both Python
+  projects in this repository. Respect any existing repository-local Ruff
+  selection, apply the shared fallback only where no local rule contract
+  exists, and run the repository verification command.
+verify:
+  - [python, -m, scripts.verify_ruff_contracts]
+allowed_changes:
+  - fallback-project/pyproject.toml
+required_changes:
+  - fallback-project/pyproject.toml

@@ -17,7 +17,6 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import cast
 
-
 CommandRunner = Callable[[Sequence[str]], subprocess.CompletedProcess[str]]
 PERMISSIONS = ("accept-edits", "auto", "bypass-permissions")
 AO_ENVIRONMENT_OVERRIDES = ("AO_DATA_DIR", "AO_PORT", "AO_RUN_FILE")
@@ -280,13 +279,16 @@ def _reject_auto_merge(value: object) -> None:
                 and nested != ""
             ):
                 raise AdoptionError(
-                    "AO project configuration must not enable auto-merge"
+                    "AO project configuration must not enable always-on auto-merge"
                 )
-            if key.casefold() == "action" and isinstance(nested, str):
-                if nested.strip().casefold() == "auto-merge":
-                    raise AdoptionError(
-                        "AO project configuration must not enable auto-merge"
-                    )
+            if (
+                key.casefold() == "action"
+                and isinstance(nested, str)
+                and nested.strip().casefold() == "auto-merge"
+            ):
+                raise AdoptionError(
+                    "AO project configuration must not enable always-on auto-merge"
+                )
             _reject_auto_merge(nested)
     elif isinstance(value, list):
         for nested in cast(list[object], value):

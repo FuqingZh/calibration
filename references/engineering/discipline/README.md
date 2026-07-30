@@ -13,6 +13,7 @@ Use this index as a router. Read only the file needed for the current task.
 | Completion claim, release check, deployment check, generated output, external write, or user-visible artifact validation | `verification.md` |
 | Repeated agent stalls, missing repository capability, `AGENTS.md`, human escalation, or orchestration adoption | `harness.md` |
 | Repository delivery, pull-request feedback, CI or review gaps, or cloud execution failures | `harness.md` |
+| Repository quality-gate adoption, Python lint policy, or Ruff rule selection | `harness.md` |
 | Agent, skill, harness, or workflow quality comparison on representative tasks | `evaluation.md` |
 
 ## Scope

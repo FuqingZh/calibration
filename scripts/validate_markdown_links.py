@@ -9,7 +9,6 @@ import sys
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
-
 MARKDOWN_ROOTS = (
     Path("README.md"),
     Path("AGENTS.md"),

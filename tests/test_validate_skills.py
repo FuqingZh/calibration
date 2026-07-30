@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import runpy
 import sys
+import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 from typing import cast
@@ -17,7 +18,6 @@ from scripts.validate_skills import (
     main,
     validate_repository,
 )
-
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 
@@ -489,6 +489,45 @@ def test_harness_is_proportional_not_a_repository_tier_list() -> None:
     assert "## Harness Proportionality" in harness
     assert "## Harness Levels" not in harness
     assert "does not imply a\nmandatory harness checklist" in harness
+
+
+def test_calibration_owns_its_explicit_ruff_quality_gate_baseline() -> None:
+    configuration = tomllib.loads(
+        (REPOSITORY_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    )
+    readme = (REPOSITORY_ROOT / "README.md").read_text(encoding="utf-8")
+
+    assert configuration["tool"]["ruff"]["lint"]["select"] == [
+        "E",
+        "F",
+        "I",
+        "UP",
+        "B",
+        "SIM",
+        "RUF",
+    ]
+    assert "preview" not in configuration["tool"]["ruff"]
+    assert "explicit stable baseline `E`, `F`,\n`I`, `UP`, `B`, `SIM`, and `RUF`" in (
+        readme
+    )
+
+
+def test_shared_ruff_guidance_preserves_local_authority_and_defines_fallback() -> None:
+    skill = (REPOSITORY_ROOT / "skills/calibration/SKILL.md").read_text(
+        encoding="utf-8"
+    )
+    discipline = (
+        REPOSITORY_ROOT / "references/engineering/discipline/README.md"
+    ).read_text(encoding="utf-8")
+    harness = (
+        REPOSITORY_ROOT / "references/engineering/discipline/harness.md"
+    ).read_text(encoding="utf-8")
+
+    assert "../../references/engineering/discipline/README.md" in skill
+    assert "Python lint policy, or Ruff rule selection | `harness.md`" in discipline
+    assert "repository-local Ruff contract first" in harness
+    assert "`E`, `F`, `I`, `UP`, `B`, `SIM`,\nand `RUF`" in harness
+    assert "`S`, `ANN`, `D`, `PL`, `ALL`, or preview rules" in harness
 
 
 def test_delivery_loop_classifies_failures_before_harness_changes() -> None:

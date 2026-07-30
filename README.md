@@ -74,7 +74,8 @@ The gate runs Ruff, Pyright, rumdl, first-party Markdown link validation,
 ShellCheck, pytest with 100% line coverage for repository-owned Python tools,
 and the skill validator. Installer behavior tests always use isolated temporary
 `CODEX_HOME` directories; the development gate does not modify the active
-Codex installation.
+Codex installation. Ruff linting uses the explicit stable baseline `E`, `F`,
+`I`, `UP`, `B`, `SIM`, and `RUF`; preview rules are not enabled.
 
 ## Intent
 

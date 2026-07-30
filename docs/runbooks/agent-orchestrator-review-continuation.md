@@ -832,8 +832,22 @@ cross a pull-request boundary, verify AO health and start a task-specific
 worker before creating the implementation branch or PR. If a PR already
 exists, mark it ready for review if it is a draft, then restore its owning
 worker or claim it with `--no-takeover`. Ready-for-review is only an AO claim
-prerequisite; leave merge and risk decisions to the user. If AO is unavailable,
-use an isolated worktree and report that fallback.
+prerequisite.
+
+Conversation authorization for a low-risk implementation also authorizes the
+worker to request GitHub native auto-merge without a second merge
+authorization, but only after required CI passes on the exact current head,
+current-head review is clean, and no actionable review threads remain. Read
+those gates back immediately before the request. Repository-local stricter
+policy, an explicit user stop, or a high-risk, irreversible, permission,
+security, secret, release, or compatibility decision withholds auto-merge and
+requires escalation.
+
+This authority applies to GitHub's native per-pull-request auto-merge after the
+exact-head gate. It does not authorize always-on AO project configuration such
+as `autoMerge`, whose cancellation and state-change behavior is unproven and
+must remain disabled. If AO is unavailable, use an isolated worktree and report
+that fallback.
 
 Classify AO observations by state owner before diagnosing them: sandbox state
 is visible only inside the current agent sandbox; worker state belongs to the
@@ -1129,9 +1143,11 @@ without a per-command certificate override.
 A complete behavior revalidation also requires a disposable pull request with
 an anchored Automatic Codex Review finding. Confirm that the finding reaches
 the original worker, the worker commits the correction, repository validation
-passes, and auto-merge remains off. Static status readback alone does not prove
-the GitHub event loop. Only after this canary may the repository be called
-`continuation-proven` or fully adopted.
+passes, and AO project `autoMerge` remains off. Static status readback alone
+does not prove the GitHub event loop. Only after this canary may the repository
+be called `continuation-proven` or fully adopted. GitHub native auto-merge is a
+separate per-pull-request delivery control governed by the exact-head gate
+above.
 
 ## Historical Headless Dashboard Canary
 

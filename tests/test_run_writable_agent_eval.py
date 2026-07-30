@@ -11,7 +11,6 @@ import yaml
 from scripts import run_writable_agent_eval as evaluation
 from scripts.run_writable_agent_eval import CaseSpec, EvaluationError
 
-
 INVALID_CASES: list[tuple[dict[str, object], str]] = [
     ({"id": ""}, "id must be a non-empty string"),
     ({"allowed_changes": []}, "allowed_changes must be a non-empty list"),
@@ -99,7 +98,7 @@ def test_load_case_rejects_unreadable_shapes(
 ) -> None:
     path = tmp_path / "case.yaml"
     path.write_text(content, encoding="utf-8")
-    with pytest.raises(EvaluationError, match="case must be|cannot load case"):
+    with pytest.raises(EvaluationError, match=r"case must be|cannot load case"):
         evaluation.load_case(path)
 
 
@@ -138,7 +137,7 @@ def test_prepare_workspace_reports_git_failure(
         "_run",
         failed_run,
     )
-    with pytest.raises(EvaluationError, match="git init.*broken"):
+    with pytest.raises(EvaluationError, match=r"git init.*broken"):
         evaluation.prepare_workspace(case, tmp_path / "workspace")
 
 
@@ -215,6 +214,111 @@ def test_verify_workspace_reports_missing_change_and_command_failure(
     assert result["missing_required_changes"] == ["value.txt"]
     checks = cast(list[dict[str, object]], result["checks"])
     assert checks[0]["exit_code"] == 2
+
+
+def test_w06_verifies_fallback_adoption_and_local_contract_precedence(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repository_evaluation_root = (
+        Path(__file__).resolve().parents[1] / "evaluations/ai-native-implementation"
+    )
+    monkeypatch.setattr(evaluation, "EVALUATION_ROOT", repository_evaluation_root)
+    case = evaluation.load_case(repository_evaluation_root / "cases/W06.yaml")
+    workspace = tmp_path / "workspace"
+    evaluation.prepare_workspace(case, workspace)
+
+    before = evaluation.verify_workspace(case, workspace)
+    assert before["passed"] is False
+
+    fallback = workspace / "fallback-project/pyproject.toml"
+    fallback.write_text(
+        fallback.read_text(encoding="utf-8")
+        + '\n[tool.ruff.lint]\nselect = ["E", "F", "I", "UP", "B", "SIM", "RUF"]\n',
+        encoding="utf-8",
+    )
+
+    fallback.write_text(
+        fallback.read_text(encoding="utf-8") + "preview = true\n",
+        encoding="utf-8",
+    )
+    lint_preview = evaluation.verify_workspace(case, workspace)
+    assert lint_preview["passed"] is False
+    checks = cast(list[dict[str, object]], lint_preview["checks"])
+    assert "must not enable Ruff preview" in cast(str, checks[0]["stderr"])
+
+    fallback.write_text(
+        fallback.read_text(encoding="utf-8").replace("preview = true\n", ""),
+        encoding="utf-8",
+    )
+    after = evaluation.verify_workspace(case, workspace)
+    assert after["passed"] is True
+    assert after["changed_paths"] == ["fallback-project/pyproject.toml"]
+
+
+@pytest.mark.parametrize(
+    ("modifier", "configuration"),
+    [
+        ("extend-select", 'extend-select = ["S"]\n'),
+        ("ignore", 'ignore = ["F"]\n'),
+        (
+            "per-file-ignores",
+            'per-file-ignores = {"*.py" = ["E", "F", "I", "UP", "B", "SIM", "RUF"]}\n',
+        ),
+    ],
+)
+def test_w06_rejects_effective_rule_selection_modifiers(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    modifier: str,
+    configuration: str,
+) -> None:
+    repository_evaluation_root = (
+        Path(__file__).resolve().parents[1] / "evaluations/ai-native-implementation"
+    )
+    monkeypatch.setattr(evaluation, "EVALUATION_ROOT", repository_evaluation_root)
+    case = evaluation.load_case(repository_evaluation_root / "cases/W06.yaml")
+    workspace = tmp_path / "workspace"
+    evaluation.prepare_workspace(case, workspace)
+
+    fallback = workspace / "fallback-project/pyproject.toml"
+    fallback.write_text(
+        fallback.read_text(encoding="utf-8")
+        + "\n[tool.ruff.lint]\n"
+        + 'select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]\n'
+        + configuration,
+        encoding="utf-8",
+    )
+
+    result = evaluation.verify_workspace(case, workspace)
+    assert result["passed"] is False
+    checks = cast(list[dict[str, object]], result["checks"])
+    assert modifier in cast(str, checks[0]["stderr"])
+
+
+def test_w06_rejects_deprecated_top_level_rule_selection_modifiers(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repository_evaluation_root = (
+        Path(__file__).resolve().parents[1] / "evaluations/ai-native-implementation"
+    )
+    monkeypatch.setattr(evaluation, "EVALUATION_ROOT", repository_evaluation_root)
+    case = evaluation.load_case(repository_evaluation_root / "cases/W06.yaml")
+    workspace = tmp_path / "workspace"
+    evaluation.prepare_workspace(case, workspace)
+
+    fallback = workspace / "fallback-project/pyproject.toml"
+    fallback.write_text(
+        fallback.read_text(encoding="utf-8")
+        + 'ignore = ["F"]\n\n'
+        + "[tool.ruff.lint]\n"
+        + 'select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]\n',
+        encoding="utf-8",
+    )
+
+    result = evaluation.verify_workspace(case, workspace)
+    assert result["passed"] is False
+    checks = cast(list[dict[str, object]], result["checks"])
+    assert "tool.ruff.ignore" in cast(str, checks[0]["stderr"])
 
 
 def test_build_codex_command_contains_frozen_controls(tmp_path: Path) -> None:
