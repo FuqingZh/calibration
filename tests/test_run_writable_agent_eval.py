@@ -295,6 +295,32 @@ def test_w06_rejects_effective_rule_selection_modifiers(
     assert modifier in cast(str, checks[0]["stderr"])
 
 
+def test_w06_rejects_deprecated_top_level_rule_selection_modifiers(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repository_evaluation_root = (
+        Path(__file__).resolve().parents[1] / "evaluations/ai-native-implementation"
+    )
+    monkeypatch.setattr(evaluation, "EVALUATION_ROOT", repository_evaluation_root)
+    case = evaluation.load_case(repository_evaluation_root / "cases/W06.yaml")
+    workspace = tmp_path / "workspace"
+    evaluation.prepare_workspace(case, workspace)
+
+    fallback = workspace / "fallback-project/pyproject.toml"
+    fallback.write_text(
+        fallback.read_text(encoding="utf-8")
+        + 'ignore = ["F"]\n\n'
+        + "[tool.ruff.lint]\n"
+        + 'select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]\n',
+        encoding="utf-8",
+    )
+
+    result = evaluation.verify_workspace(case, workspace)
+    assert result["passed"] is False
+    checks = cast(list[dict[str, object]], result["checks"])
+    assert "tool.ruff.ignore" in cast(str, checks[0]["stderr"])
+
+
 def test_build_codex_command_contains_frozen_controls(tmp_path: Path) -> None:
     case = CaseSpec(
         "T01",

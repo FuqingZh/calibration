@@ -29,8 +29,15 @@ selection_modifiers = (
     "extend-per-file-ignores",
 )
 enabled_modifiers = [
-    key for key in selection_modifiers if fallback_lint.get(key)
+    f"tool.ruff.lint.{key}"
+    for key in selection_modifiers
+    if fallback_lint.get(key)
 ]
+enabled_modifiers.extend(
+    f"tool.ruff.{key}"
+    for key in ("select", *selection_modifiers)
+    if fallback_ruff.get(key)
+)
 if enabled_modifiers:
     raise SystemExit(
         "fallback project must not modify the effective Ruff selection: "
