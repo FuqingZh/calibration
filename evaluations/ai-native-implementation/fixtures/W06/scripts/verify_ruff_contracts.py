@@ -21,6 +21,22 @@ if actual_fallback != expected_fallback:
 if fallback_ruff.get("preview") is True or fallback_lint.get("preview") is True:
     raise SystemExit("fallback project must not enable Ruff preview")
 
+selection_modifiers = (
+    "extend-select",
+    "ignore",
+    "extend-ignore",
+    "per-file-ignores",
+    "extend-per-file-ignores",
+)
+enabled_modifiers = [
+    key for key in selection_modifiers if fallback_lint.get(key)
+]
+if enabled_modifiers:
+    raise SystemExit(
+        "fallback project must not modify the effective Ruff selection: "
+        + ", ".join(enabled_modifiers)
+    )
+
 expected_local = ["E", "F", "S"]
 actual_local = local["tool"]["ruff"]["lint"]["select"]
 if actual_local != expected_local:
