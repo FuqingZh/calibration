@@ -9,6 +9,8 @@ repository work rather than read-only descriptions of intended behavior.
 - `W02`: replace an incorrect plan hypothesis when executable evidence points
   to the real ownership boundary.
 - `W03`: use failing focused and smoke checks to complete a repair loop.
+- `W04`: discover and run a repository-owned quality gate whose second check
+  exposes a contract missed by the focused unit test.
 
 Every case is a tiny dependency-free Python repository. The runner copies a
 fixture into a fresh workspace, creates an initial Git commit, runs one Codex

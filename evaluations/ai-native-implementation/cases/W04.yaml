@@ -1,0 +1,12 @@
+id: W04
+title: Repository-owned quality gate discovery
+fixture: W04
+prompt: >-
+  Fix the slug normalization regression in this repository and verify the
+  result. Keep the public function signature compatible.
+verify:
+  - [make, check]
+allowed_changes:
+  - src/slug.py
+required_changes:
+  - src/slug.py
