@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import json
 import runpy
 import shutil
@@ -323,6 +324,18 @@ def test_full_probe_json_is_parsed_before_display_truncation() -> None:
     assert all(len(cast(str, probe["detail"])) <= 1000 for probe in probes)
 
 
+def test_profile_free_dashboard_delivery_is_explicitly_unknown() -> None:
+    runner = FakeRunner(inspect_responses())
+    report = host.inspect_host(runner, context="host")
+    probes = {
+        cast(str, probe["id"]): probe
+        for probe in cast(list[dict[str, object]], report["probes"])
+    }
+    assert probes["dashboard"]["status"] == "unknown"
+    assert probes["mux"]["status"] == "unknown"
+    assert len(runner.commands) == 10
+
+
 def test_init_render_verify_round_trip_and_manifest(
     tmp_path: Path, codex_home: Path
 ) -> None:
@@ -392,6 +405,24 @@ def test_init_render_verify_round_trip_and_manifest(
         "UMask=0077",
     ):
         assert phrase in service
+    authority = (output / "AGENTS.md").read_text()
+    runbook = (output / "runbooks/ao.md").read_text()
+    for phrase in (
+        str(tmp_path / "state"),
+        "Storage routing",
+        "matching MainPID",
+        "does not mutate active host state",
+    ):
+        assert phrase in authority
+    for phrase in (
+        "inspect --context host",
+        "plan --profile",
+        "render --profile",
+        "verify --profile",
+        str(tmp_path / "state/dashboard.rollback.service"),
+        "unreadable doctor result",
+    ):
+        assert phrase in runbook
 
 
 @pytest.mark.parametrize(
@@ -469,7 +500,7 @@ def test_profile_shape_rejections(
                 "allowed_origin": "https://x.test",
                 "origin_mode": "rewrite",
             },
-            "paired probe",
+            "explicit Origin mode",
         ),
     ],
 )
@@ -723,6 +754,118 @@ def test_init_rejects_incomplete_or_invalid_dashboard_trust(
         initialize("cidr.toml", cidrs=("bad",))
 
 
+def test_terminal_requires_explicit_origin_mode(
+    tmp_path: Path, codex_home: Path
+) -> None:
+    state = tmp_path / "state"
+    with pytest.raises(host.CalibrationError, match="enabled terminal"):
+        host.init_profile(
+            tmp_path / "host.toml",
+            trust_model="trusted-single-user",
+            codex_home=codex_home,
+            data_dir=tmp_path / "data",
+            private_authority=tmp_path / "authority/AGENTS.md",
+            state_root=state,
+            dashboard_enabled=True,
+            dashboard_listen_host="127.0.0.1",
+            dashboard_listen_port=8443,
+            readonly_cidrs=("203.0.113.0/24",),
+            document_root=tmp_path / "dashboard",
+            nginx_executable=Path("/usr/sbin/nginx"),
+            nginx_pid_file=state / "nginx.pid",
+            active_config=state / "active.conf",
+            desired_service=state / "dashboard.service",
+            rollback_service=state / "rollback.service",
+            desired_nginx_artifact=state / "nginx.conf",
+            desired_service_artifact=state / "nginx.service",
+            terminal=True,
+            client_ips=("203.0.113.7",),
+            origin="https://console.example.test",
+            upstream="http://127.0.0.1:3001",
+        )
+
+
+def test_v2_terminal_profile_requires_origin_mode(
+    tmp_path: Path, codex_home: Path
+) -> None:
+    profile = tmp_path / "host.toml"
+    state = tmp_path / "state"
+    host.init_profile(
+        profile,
+        trust_model="trusted-single-user",
+        codex_home=codex_home,
+        data_dir=tmp_path / "data",
+        private_authority=tmp_path / "authority/AGENTS.md",
+        state_root=state,
+        dashboard_enabled=True,
+        dashboard_listen_host="127.0.0.1",
+        dashboard_listen_port=8443,
+        readonly_cidrs=("203.0.113.0/24",),
+        document_root=tmp_path / "dashboard",
+        nginx_executable=Path("/usr/sbin/nginx"),
+        nginx_pid_file=state / "nginx.pid",
+        active_config=state / "active.conf",
+        desired_service=state / "dashboard.service",
+        rollback_service=state / "rollback.service",
+        desired_nginx_artifact=state / "nginx.conf",
+        desired_service_artifact=state / "nginx.service",
+        terminal=True,
+        client_ips=("203.0.113.7",),
+        origin="https://console.example.test",
+        upstream="http://127.0.0.1:3001",
+        origin_mode="preserve",
+    )
+    profile.write_text(
+        "\n".join(
+            line
+            for line in profile.read_text().splitlines()
+            if not line.startswith("origin_mode =")
+        )
+        + "\n"
+    )
+    with pytest.raises(host.CalibrationError, match="explicit Origin mode"):
+        host.plan_profile(profile)
+
+
+def test_storage_boundary_cli_argument_fails_closed() -> None:
+    with pytest.raises(argparse.ArgumentTypeError, match="must be JSON"):
+        host._storage_boundary_argument("not-json")
+    with pytest.raises(argparse.ArgumentTypeError, match="must be false"):
+        host._storage_boundary_argument(
+            json.dumps(
+                {
+                    "path": "/opt/example/aggregation",
+                    "kind": "aggregation-root",
+                    "recursive_search": True,
+                }
+            )
+        )
+    with pytest.raises(argparse.ArgumentTypeError, match="kind is invalid"):
+        host._storage_boundary_argument(
+            json.dumps(
+                {
+                    "path": "/opt/example/aggregation",
+                    "kind": "bad kind",
+                    "recursive_search": False,
+                }
+            )
+        )
+
+
+@pytest.mark.parametrize("stdout", ["not-json", "[]"])
+def test_subprocess_canary_json_boundary_fails_closed(
+    monkeypatch: pytest.MonkeyPatch, stdout: str
+) -> None:
+    def fake_run(
+        _command: object, **_kwargs: object
+    ) -> subprocess.CompletedProcess[str]:
+        return completed((), out=stdout)
+
+    monkeypatch.setattr(host.subprocess, "run", fake_run)
+    with pytest.raises(host.CalibrationError, match="canary CLI"):
+        host._invoke_subprocess_cli(("plan",), {})
+
+
 def test_render_cleans_failed_staging(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path, profile: Path
 ) -> None:
@@ -769,7 +912,6 @@ def test_verify_rejects_content_and_modes(tmp_path: Path, profile: Path) -> None
 def test_reconstruction_canary_executes_full_pipeline(tmp_path: Path) -> None:
     runner = FakeRunner(
         [
-            *inspect_responses(),
             completed((), out="nginx version"),
             completed((), out="syntax is ok"),
         ]
@@ -791,7 +933,6 @@ def test_reconstruction_canary_executes_full_pipeline(tmp_path: Path) -> None:
 def test_reconstruction_canary_rejects_nginx_failure(tmp_path: Path) -> None:
     runner = FakeRunner(
         [
-            *inspect_responses(),
             completed((), out="nginx version"),
             completed((), code=1, err="invalid candidate"),
         ]
@@ -892,6 +1033,22 @@ def test_subprocess_init_preserves_requested_v2_origin_mode(
             str(tmp_path / "state"),
             "--origin-mode",
             "preserve",
+            "--storage-boundary",
+            json.dumps(
+                {
+                    "path": str(tmp_path / "state"),
+                    "kind": "host-state",
+                    "recursive_search": False,
+                }
+            ),
+            "--storage-boundary",
+            json.dumps(
+                {
+                    "path": str(tmp_path / "aggregation"),
+                    "kind": "aggregation-root",
+                    "recursive_search": False,
+                }
+            ),
         ],
         check=False,
         capture_output=True,
@@ -900,6 +1057,11 @@ def test_subprocess_init_preserves_requested_v2_origin_mode(
     assert result.returncode == host.EXIT_OK, result.stdout
     terminal = tomllib.loads(profile.read_text())["dashboard"]["terminal"]
     assert terminal["origin_mode"] == "preserve"
+    boundaries = tomllib.loads(profile.read_text())["storage"]["boundaries"]
+    assert [boundary["kind"] for boundary in boundaries] == [
+        "host-state",
+        "aggregation-root",
+    ]
 
 
 def test_cli_init_accepts_explicit_single_user_dashboard_contract(
@@ -987,7 +1149,7 @@ def test_generated_terminal_candidate_passes_nginx_test_when_available(
         private_authority=tmp_path / "authority/AGENTS.md",
         state_root=state,
         dashboard_enabled=True,
-        dashboard_listen_host="127.0.0.1",
+        dashboard_listen_host="::1",
         dashboard_listen_port=18443,
         readonly_cidrs=("203.0.113.0/24",),
         document_root=dashboard_root,
@@ -1023,6 +1185,44 @@ def test_generated_terminal_candidate_passes_nginx_test_when_available(
         text=True,
     )
     assert result.returncode == 0, result.stderr
+    assert "listen [::1]:18443;" in (candidate / "nginx/ao-terminal.conf").read_text()
+
+
+def test_preserve_origin_mode_forwards_validated_client_origin(
+    tmp_path: Path, codex_home: Path
+) -> None:
+    profile = tmp_path / "host.toml"
+    state = tmp_path / "state"
+    host.init_profile(
+        profile,
+        trust_model="trusted-single-user",
+        codex_home=codex_home,
+        data_dir=tmp_path / "ao-data",
+        private_authority=tmp_path / "authority/AGENTS.md",
+        state_root=state,
+        dashboard_enabled=True,
+        dashboard_listen_host="127.0.0.1",
+        dashboard_listen_port=18443,
+        readonly_cidrs=("203.0.113.0/24",),
+        document_root=tmp_path / "dashboard",
+        nginx_executable=Path("/usr/sbin/nginx"),
+        nginx_pid_file=state / "nginx.pid",
+        active_config=state / "active.conf",
+        desired_service=state / "dashboard.service",
+        rollback_service=state / "dashboard.rollback.service",
+        desired_nginx_artifact=state / "nginx.conf",
+        desired_service_artifact=state / "nginx.service",
+        terminal=True,
+        client_ips=("203.0.113.7",),
+        origin="https://console.example.test",
+        upstream="http://127.0.0.1:3001",
+        origin_mode="preserve",
+    )
+    candidate = tmp_path / "candidate"
+    host.render_profile(profile, candidate)
+    nginx = (candidate / "nginx/ao-terminal.conf").read_text()
+    assert "proxy_set_header Origin $http_origin;" in nginx
+    assert 'proxy_set_header Origin "";' not in nginx
 
 
 def test_module_entrypoint(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1201,6 +1401,27 @@ def test_probe_oserror_becomes_failed_evidence() -> None:
     assert "TimeoutExpired" in timeout.detail
 
 
+def test_mux_probe_requires_bounded_http_101_handshake() -> None:
+    handshake = host._probe_mux(
+        FakeRunner(
+            [completed((), code=28, out="HTTP/1.1 101 Switching Protocols\r\n")]
+        ),
+        "daemon",
+        ("curl",),
+    )
+    generic = host._probe_mux(
+        FakeRunner([completed((), out="200")]), "daemon", ("curl",)
+    )
+    assert handshake.status == "pass"
+    assert generic.status == "fail"
+    missing = host._probe_mux(
+        lambda _command: (_ for _ in ()).throw(FileNotFoundError("curl")),
+        "daemon",
+        ("curl",),
+    )
+    assert missing.status == "fail"
+
+
 def test_sandbox_probe_ownership_cannot_claim_host_ready() -> None:
     report = host.inspect_host(FakeRunner(inspect_responses()), context="sandbox")
     states = cast(dict[str, object], report["states"])
@@ -1226,13 +1447,17 @@ def test_inspect_rejects_missing_explicit_profile(tmp_path: Path) -> None:
 def test_inspect_uses_profile_ao_cli(tmp_path: Path) -> None:
     profile = tmp_path / "host.toml"
     profile.write_text(
-        V1_PROFILE.replace('cli = "ao"', 'cli = "/opt/example/ao-wrapper"'),
+        LEGACY_V1_FIXTURE.read_text()
+        .replace('cli = "ao"', 'cli = "/opt/example/ao-wrapper"')
+        .replace("listen_port = 3001", "listen_port = 8443"),
         encoding="utf-8",
     )
     profile.chmod(0o600)
-    runner = FakeRunner(inspect_responses())
+    responses = inspect_responses()
+    responses[-1] = completed((), code=28, out="HTTP/1.1 101 Switching Protocols\r\n")
+    runner = FakeRunner(responses)
 
-    host.inspect_host(runner, profile=profile, context="host")
+    report = host.inspect_host(runner, profile=profile, context="host")
 
     assert runner.commands[0] == ("/opt/example/ao-wrapper", "version")
     assert runner.commands[6] == (
@@ -1245,6 +1470,21 @@ def test_inspect_uses_profile_ao_cli(tmp_path: Path) -> None:
         "doctor",
         "--json",
     )
+    assert runner.commands[10] == (
+        "curl",
+        "-fsS",
+        "http://127.0.0.1:8443/dashboard-health",
+    )
+    assert runner.commands[11][-7:] == (
+        "-H",
+        "Origin: https://console.example.test",
+        "-H",
+        "Connection: Upgrade",
+        "-H",
+        "Upgrade: websocket",
+        "http://127.0.0.1:8443/mux",
+    )
+    assert cast(dict[str, object], report["states"])["delivery"] == "ready"
 
 
 @pytest.mark.parametrize(
@@ -1295,6 +1535,7 @@ def test_schema_version_requires_exact_integer(tmp_path: Path, value: str) -> No
         "https://host name",
         "https://user@example.test",
         "https://example.test/path",
+        "https://example{test}",
     ],
 )
 def test_origin_rejects_nginx_metacharacters_and_non_origin_forms(
@@ -1313,6 +1554,40 @@ def test_url_validators_reject_types_and_invalid_ports() -> None:
         host._validate_origin(1, "origin")
     with pytest.raises(host.CalibrationError, match="exact Origin"):
         host._validate_origin("https://example.test:bad", "origin")
+    with pytest.raises(host.CalibrationError, match="whitespace or controls"):
+        host._validate_loopback_url("http://127.0.0.1:3001\n", "base")
+
+
+@pytest.mark.parametrize(
+    ("old", "new", "message"),
+    [
+        (
+            'data_dir = "/opt/example/ao-data"',
+            'data_dir = "/opt/example/ao-data;evil"',
+            "unsafe configuration syntax",
+        ),
+        (
+            'upstream_origin = "https://console.example.test"',
+            'upstream_origin = "https://console.example.test;evil"',
+            "exact Origin",
+        ),
+        (
+            'loopback_base_url = "http://127.0.0.1:3001"',
+            'loopback_base_url = "http://127.0.0.1:3001\\t"',
+            "whitespace or controls",
+        ),
+    ],
+)
+def test_v1_rejects_interpolated_configuration_injection(
+    tmp_path: Path, old: str, new: str, message: str
+) -> None:
+    profile = tmp_path / "host.toml"
+    profile.write_text(
+        LEGACY_V1_FIXTURE.read_text().replace(old, new), encoding="utf-8"
+    )
+    profile.chmod(0o600)
+    with pytest.raises(host.CalibrationError, match=message):
+        host.plan_profile(profile)
 
 
 def test_safe_path_rejects_symlink_in_any_ancestor(tmp_path: Path) -> None:
@@ -1469,6 +1744,15 @@ def test_auto_remains_indeterminate_without_explicit_host_attestation() -> None:
 
 @pytest.mark.parametrize("doctor", ["not-json", "[]"])
 def test_unreadable_doctor_cannot_prove_host_ready(doctor: str) -> None:
+    report = host.inspect_host(
+        FakeRunner(inspect_responses(doctor=doctor)),
+        context="host",
+    )
+    assert cast(dict[str, object], report["states"])["daemon"] == "indeterminate"
+
+
+def test_doctor_not_ok_without_external_failure_blocks_readiness() -> None:
+    doctor = json.dumps({"ok": False, "checks": []})
     report = host.inspect_host(
         FakeRunner(inspect_responses(doctor=doctor)),
         context="host",

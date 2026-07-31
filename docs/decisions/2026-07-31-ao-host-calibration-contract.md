@@ -18,6 +18,10 @@ host-owned core doctor failures affect daemon readiness, and malformed doctor
 output cannot establish that core checks are clean. `--context host` is the
 explicit host attestation; `auto` remains sandbox-owned and indeterminate until
 a separate positive host-context attestation exists.
+Profile-backed delivery probes target the configured Dashboard listener.
+Terminal evidence requires a bounded HTTP 101 WebSocket handshake with the
+configured exact Origin and Upgrade headers; profile-free Dashboard and
+Terminal state is explicitly unknown.
 
 The CLI recognizes the existing schema v1 `[ao]`, `[dashboard]`,
 `[dashboard.terminal]`, and `[paths]` sections when `schema_version` is absent
@@ -30,6 +34,9 @@ closed. Storage boundaries are structured path/kind/recursive-search values,
 and desired process containment never certifies observed containment.
 Fresh init identifies its in-memory profile as schema v2 before
 canonicalization, so an explicitly selected v2 Origin mode is preserved.
+Terminal init requires that Origin mode explicitly. Preserve forwards the
+validated client Origin unchanged and does not require an upstream Origin;
+edge-validated-rewrite requires and emits the proven loopback Origin.
 
 Legacy v1 terminal validation remains distinct from v2 policy. V1 accepts its
 deployed `single-user-trusted-lan` trust name, multiple exact client IPs, and a
@@ -83,8 +90,11 @@ outside this public change.
 
 Focused tests require 100 percent line coverage, a real schema v1 fixture,
 deterministic rendering, profile and mode rejection, evidence precedence,
-terminal constraints, and an isolated XDG reconstruction canary using a fake
-runner. The canary executes the JSON boundary for init, inspect, plan, render,
+terminal constraints, and an isolated XDG reconstruction canary using
+temporary synthetic probe executables. The canary executes the JSON boundary
+as subprocesses for init, inspect, plan, render,
 verify, and a byte-identical second render, and validates the complete nginx
-candidate when nginx is available. The canonical repository gate retains
+candidate when nginx is available. These stages run as real CLI subprocesses
+under isolated HOME/XDG/CODEX roots and temporary synthetic probe executables.
+The canonical repository gate retains
 public portability and Markdown-link checks.

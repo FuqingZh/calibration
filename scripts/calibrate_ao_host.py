@@ -4,15 +4,14 @@
 from __future__ import annotations
 
 import argparse
-import contextlib
 import hashlib
-import io
 import ipaddress
 import json
 import os
 import re
 import stat
 import subprocess
+import sys
 import tomllib
 import urllib.parse
 from collections.abc import Callable, Mapping, Sequence
@@ -158,6 +157,16 @@ def _probe(runner: Runner, owner: str, name: str, command: Sequence[str]) -> Evi
     return Evidence(name, owner, "pass" if result.returncode == 0 else "fail", detail)
 
 
+def _probe_mux(runner: Runner, owner: str, command: Sequence[str]) -> Evidence:
+    try:
+        result = runner(command)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return Evidence("mux", owner, "fail", f"{type(exc).__name__}: {exc}")
+    detail = result.stdout.strip() or result.stderr.strip() or "no output"
+    handshake = re.search(r"^HTTP/\S+\s+101(?:\s|$)", detail, re.MULTILINE)
+    return Evidence("mux", owner, "pass" if handshake else "fail", detail)
+
+
 def _json_object(text: str) -> dict[str, object]:
     try:
         value = json.loads(text)
@@ -189,6 +198,8 @@ def _profile_base_url(profile: Path | None) -> str:
 def _validate_loopback_url(value: object, label: str, *, mux_path: bool = False) -> str:
     if not isinstance(value, str):
         raise CalibrationError(f"{label} must be a string")
+    if any(character.isspace() or ord(character) < 0x20 for character in value):
+        raise CalibrationError(f"{label} must not contain whitespace or controls")
     try:
         parsed = urllib.parse.urlsplit(value)
         port = parsed.port
@@ -209,6 +220,20 @@ def _validate_loopback_url(value: object, label: str, *, mux_path: bool = False)
     return value
 
 
+def _validate_interpolated_scalar(value: object, label: str) -> str:
+    if (
+        not isinstance(value, str)
+        or re.fullmatch(r"[A-Za-z0-9_./:@+-]+", value) is None
+    ):
+        raise CalibrationError(f"{label} contains unsafe configuration syntax")
+    return value
+
+
+def _dashboard_url(host: str, port: int) -> str:
+    address = f"[{host}]" if ipaddress.ip_address(host).version == 6 else host
+    return f"http://{address}:{port}"
+
+
 def _validate_origin(value: object, label: str) -> str:
     if not isinstance(value, str):
         raise CalibrationError(f"{label} must be an exact Origin")
@@ -225,7 +250,13 @@ def _validate_origin(value: object, label: str) -> str:
         or parsed.path
         or parsed.query
         or parsed.fragment
+        or re.fullmatch(
+            r"(?:[A-Za-z0-9.-]+|\[[0-9A-Fa-f:]+\])(?::[0-9]+)?",
+            parsed.netloc,
+        )
+        is None
         or any(character.isspace() for character in value)
+        or any(ord(character) < 0x20 for character in value)
         or any(character in value for character in "\"';#")
     ):
         raise CalibrationError(f"{label} must be an exact Origin")
@@ -410,13 +441,22 @@ def inspect_host(
     ready = "/readyz"
     service = "agent-orchestrator.service"
     ao_cli = "ao"
+    dashboard_base: str | None = None
+    terminal_profile: dict[str, object] | None = None
     if profile is not None and profile.exists():
         parsed = _load_profile(profile)
         ao = cast(dict[str, object], parsed["ao"])
+        dashboard = _section(parsed, "dashboard")
+        terminal_profile = _section(dashboard, "terminal")
         health = cast(str, ao["health_path"])
         ready = cast(str, ao["ready_path"])
         service = cast(str, ao["daemon_service"])
         ao_cli = cast(str, ao["cli"])
+        if dashboard.get("mode", "read-only") == "read-only":
+            dashboard_base = _dashboard_url(
+                cast(str, dashboard["listen_host"]),
+                cast(int, dashboard["listen_port"]),
+            )
     authoritative_owner = "host" if context == "host" else "sandbox"
     endpoint_owner = "daemon" if context == "host" else "sandbox"
     evidence = [
@@ -440,14 +480,47 @@ def inspect_host(
         _probe(runner, authoritative_owner, "doctor", (ao_cli, "doctor", "--json")),
         _probe(runner, endpoint_owner, "healthz", ("curl", "-fsS", base + health)),
         _probe(runner, endpoint_owner, "readyz", ("curl", "-fsS", base + ready)),
-        _probe(runner, endpoint_owner, "dashboard", ("curl", "-fsSI", base + "/")),
+    ]
+    evidence.append(
         _probe(
             runner,
             endpoint_owner,
-            "mux",
-            ("curl", "-fsS", "-o", "/dev/null", "-w", "%{http_code}", base + "/mux"),
-        ),
-    ]
+            "dashboard",
+            ("curl", "-fsS", dashboard_base + "/dashboard-health"),
+        )
+        if dashboard_base is not None
+        else Evidence(
+            "dashboard", endpoint_owner, "unknown", "Dashboard not configured"
+        )
+    )
+    evidence.append(
+        _probe_mux(
+            runner,
+            endpoint_owner,
+            (
+                "curl",
+                "--http1.1",
+                "--max-time",
+                "2",
+                "-sS",
+                "-D",
+                "-",
+                "-o",
+                "/dev/null",
+                "-H",
+                f"Origin: {terminal_profile['allowed_origin']}",
+                "-H",
+                "Connection: Upgrade",
+                "-H",
+                "Upgrade: websocket",
+                dashboard_base + "/mux",
+            ),
+        )
+        if dashboard_base is not None
+        and terminal_profile is not None
+        and terminal_profile.get("desired_enabled") is True
+        else Evidence("mux", endpoint_owner, "unknown", "Terminal not configured")
+    )
     by_name = {item.id: item for item in evidence}
     status = _json_object(by_name["status"].detail)
     doctor = _json_object(by_name["doctor"].detail)
@@ -455,6 +528,13 @@ def inspect_host(
     doctor_valid = by_name["doctor"].status == "pass" and _required_subset(
         doctor, {"ok": bool, "checks": list}
     )
+    if (
+        doctor_valid
+        and doctor["ok"] is False
+        and not external_doctor_failure
+        and not core_doctor_failure
+    ):
+        core_doctor_failure = True
     core_doctor_failure = core_doctor_failure or not doctor_valid
     health_payload = _json_object(by_name["healthz"].detail)
     ready_payload = _json_object(by_name["readyz"].detail)
@@ -622,6 +702,37 @@ def _validate_keys(
         raise CalibrationError(f"{label} unknown keys: {', '.join(sorted(unknown))}")
 
 
+def _validate_storage_boundaries(boundaries: object) -> list[dict[str, object]]:
+    values = cast(list[object], boundaries) if isinstance(boundaries, list) else []
+    if not values:
+        raise CalibrationError("storage.boundaries must not be empty")
+    validated: list[dict[str, object]] = []
+    for raw_boundary in values:
+        if not isinstance(raw_boundary, dict):
+            raise CalibrationError("storage.boundaries entries must be objects")
+        boundary = cast(dict[str, object], raw_boundary)
+        if set(boundary) != {"path", "kind", "recursive_search"}:
+            raise CalibrationError(
+                "storage boundary requires path, kind, and recursive_search"
+            )
+        if (
+            not isinstance(boundary["path"], str)
+            or not Path(boundary["path"]).is_absolute()
+            or not isinstance(boundary["kind"], str)
+            or not isinstance(boundary["recursive_search"], bool)
+        ):
+            raise CalibrationError("storage boundary fields have invalid types")
+        _validate_interpolated_scalar(boundary["path"], "storage boundary path")
+        if re.fullmatch(r"[a-z0-9-]+", boundary["kind"]) is None:
+            raise CalibrationError("storage boundary kind is invalid")
+        if boundary["recursive_search"] is not False:
+            raise CalibrationError(
+                "storage boundary recursive_search must be false in the host profile"
+            )
+        validated.append(boundary)
+    return validated
+
+
 def _load_profile(path: Path) -> dict[str, object]:
     safe = _safe_path(path, may_create=False, directory=False)
     try:
@@ -681,7 +792,11 @@ def _load_profile(path: Path) -> dict[str, object]:
     _validate_loopback_url(ao["loopback_base_url"], "ao.loopback_base_url")
     for key in ("health_path", "ready_path"):
         value = cast(str, ao[key])
-        if not value.startswith("/") or value.startswith("//"):
+        if (
+            not value.startswith("/")
+            or value.startswith("//")
+            or re.fullmatch(r"/[A-Za-z0-9/_-]*", value) is None
+        ):
             raise CalibrationError(f"ao.{key} must be an absolute URL path")
     listen_host = dashboard.get("listen_host")
     listen_port = dashboard.get("listen_port")
@@ -725,30 +840,11 @@ def _load_profile(path: Path) -> dict[str, object]:
     for label, value in absolute_fields:
         if not isinstance(value, str) or not Path(value).is_absolute():
             raise CalibrationError(f"{label} must be an absolute path")
+        _validate_interpolated_scalar(value, label)
     if version == 1:
         _validate_terminal_v1(terminal)
     else:
-        boundaries = _section(profile, "storage").get("boundaries")
-        boundary_values = (
-            cast(list[object], boundaries) if isinstance(boundaries, list) else []
-        )
-        if not boundary_values:
-            raise CalibrationError("storage.boundaries must not be empty")
-        for raw_boundary in boundary_values:
-            if not isinstance(raw_boundary, dict):
-                raise CalibrationError("storage.boundaries entries must be objects")
-            boundary = cast(dict[str, object], raw_boundary)
-            if set(boundary) != {"path", "kind", "recursive_search"}:
-                raise CalibrationError(
-                    "storage boundary requires path, kind, and recursive_search"
-                )
-            if (
-                not isinstance(boundary["path"], str)
-                or not Path(boundary["path"]).is_absolute()
-                or not isinstance(boundary["kind"], str)
-                or not isinstance(boundary["recursive_search"], bool)
-            ):
-                raise CalibrationError("storage boundary fields have invalid types")
+        _validate_storage_boundaries(_section(profile, "storage").get("boundaries"))
         if (
             terminal.get("desired_enabled") is True
             and dashboard.get("mode") != "read-only"
@@ -779,6 +875,7 @@ def _validate_terminal_v1(terminal: Mapping[str, object]) -> None:
     _validate_loopback_url(
         terminal.get("upstream"), "legacy terminal upstream", mux_path=True
     )
+    _validate_origin(terminal.get("upstream_origin"), "legacy terminal upstream Origin")
     if terminal.get("trust_model") != "single-user-trusted-lan":
         raise CalibrationError("legacy terminal requires single-user-trusted-lan")
 
@@ -790,7 +887,7 @@ def _validate_terminal(terminal: Mapping[str, object]) -> None:
     if enabled:
         clients = terminal.get("allowed_client_ips")
         client_values = cast(list[object], clients) if isinstance(clients, list) else []
-        origin_mode = terminal.get("origin_mode", "preserve")
+        origin_mode = terminal.get("origin_mode")
         if (
             not client_values
             or not all(isinstance(value, str) for value in client_values)
@@ -812,7 +909,7 @@ def _validate_terminal(terminal: Mapping[str, object]) -> None:
         if terminal.get("trust_model") != "trusted-single-user":
             raise CalibrationError("terminal requires trusted-single-user")
         if origin_mode not in {"preserve", "edge-validated-rewrite"}:
-            raise CalibrationError("Origin rewrite requires paired probe evidence")
+            raise CalibrationError("terminal requires an explicit Origin mode")
         if origin_mode == "edge-validated-rewrite":
             _validate_origin(
                 terminal.get("upstream_origin"), "terminal upstream Origin"
@@ -911,6 +1008,7 @@ def init_profile(
     data_dir: Path,
     private_authority: Path,
     state_root: Path,
+    storage_boundaries: Sequence[Mapping[str, object]] = (),
     dashboard_enabled: bool = False,
     dashboard_listen_host: str | None = None,
     dashboard_listen_port: int | None = None,
@@ -928,7 +1026,7 @@ def init_profile(
     origin: str | None = None,
     upstream: str | None = None,
     upstream_origin: str | None = None,
-    origin_mode: str = "preserve",
+    origin_mode: str | None = None,
 ) -> dict[str, object]:
     """Create a canonical schema v2 profile with terminal disabled by default."""
     target = _safe_path(path, may_create=True)
@@ -977,7 +1075,8 @@ def init_profile(
         or not client_ips
         or origin is None
         or upstream is None
-        or upstream_origin is None
+        or origin_mode is None
+        or (origin_mode == "edge-validated-rewrite" and upstream_origin is None)
     ):
         raise CalibrationError(
             "enabled terminal requires explicit dashboard, IP, Origin, "
@@ -999,6 +1098,35 @@ def init_profile(
     rollback = rollback_service or state_root / "dashboard.rollback.service"
     nginx_artifact = desired_nginx_artifact or state_root / "nginx.conf"
     service_artifact = desired_service_artifact or state_root / "nginx.service"
+    reconstruction_paths = (
+        data_dir,
+        home,
+        private_authority,
+        state_root,
+        document,
+        nginx,
+        pid_file,
+        active,
+        service,
+        rollback,
+        nginx_artifact,
+        service_artifact,
+    )
+    for reconstruction_path in reconstruction_paths:
+        _validate_interpolated_scalar(str(reconstruction_path), "reconstruction path")
+    boundary_values = list(storage_boundaries) or [
+        {
+            "path": str(state_root),
+            "kind": "host-state",
+            "recursive_search": False,
+        },
+        {
+            "path": str(data_dir),
+            "kind": "ao-data",
+            "recursive_search": False,
+        },
+    ]
+    _validate_storage_boundaries(boundary_values)
     profile: dict[str, object] = {
         "schema_version": PROFILE_VERSION,
         "ao": {
@@ -1029,7 +1157,7 @@ def init_profile(
                 "path": "/mux",
                 "upstream": upstream or base,
                 "upstream_origin": upstream_origin or "",
-                "origin_mode": origin_mode,
+                "origin_mode": origin_mode or "preserve",
                 "require_authentication_if": [
                     "multi-user",
                     "dynamic-address",
@@ -1043,20 +1171,7 @@ def init_profile(
             "desired_service_artifact": str(service_artifact),
             "state_root": str(state_root),
         },
-        "storage": {
-            "boundaries": [
-                {
-                    "path": str(state_root),
-                    "kind": "host-state",
-                    "recursive_search": False,
-                },
-                {
-                    "path": str(data_dir),
-                    "kind": "ao-data",
-                    "recursive_search": False,
-                },
-            ]
-        },
+        "storage": {"boundaries": boundary_values},
     }
     canonical = _canonical_v2(profile)
     _validate_terminal(_section(_section(canonical, "dashboard"), "terminal"))
@@ -1086,36 +1201,75 @@ def plan_profile(path: Path) -> dict[str, object]:
 
 def _candidate_files(profile: Mapping[str, object]) -> dict[str, bytes]:
     canonical = _canonical_v2(profile)
+    ao = _section(canonical, "ao")
+    dashboard = _section(canonical, "dashboard")
     terminal = _section(_section(canonical, "dashboard"), "terminal")
+    paths = _section(canonical, "paths")
+    storage = _section(canonical, "storage")
+    boundary_lines = "\n".join(
+        f"- `{boundary['path']}`: `{boundary['kind']}`, "
+        f"recursive search `{str(boundary['recursive_search']).lower()}`"
+        for boundary in cast(list[dict[str, object]], storage["boundaries"])
+    )
     files: dict[str, bytes] = {
         "AGENTS.md": (
-            b"# AO Host Authority\n\n"
-            b"Classify evidence as sandbox, worker, daemon, or host state. "
-            b"Sandbox-only mismatches remain indeterminate. Host readiness "
-            b"requires matching systemd MainPID, AO status, healthz, and readyz. "
-            b"Keep process containment unverified until OS-owned scope evidence "
-            b"proves it. Report stable AO known-issue IDs and preserve read-only "
-            b"Dashboard API boundaries.\n"
-        ),
+            "# AO Host Authority\n\n"
+            f"Profile authority: `{paths['private_authority']}`. Candidate nginx "
+            f"and service destinations: `{paths['desired_nginx_artifact']}` and "
+            f"`{paths['desired_service_artifact']}`. Rollback service source: "
+            f"`{dashboard['rollback_service']}`.\n\n"
+            "Classify evidence by sandbox, worker, daemon, and host owner. Only "
+            "explicit host context may establish readiness. Require host systemd "
+            "state, AO ready/running status, matching MainPID/status/health/ready "
+            "identity, valid healthz and readyz payloads, and readable doctor core "
+            "checks. External integration failures degrade delivery. Process "
+            "containment remains unverified until OS-owned evidence proves it.\n\n"
+            "## Storage routing\n\n"
+            f"{boundary_lines}\n\n"
+            "Recursive search is off by default; a separate task-specific reason "
+            "is required outside this profile to broaden discovery.\n\n"
+            "This tree is review material and does not mutate active host state. "
+            "Keep Dashboard APIs read-only and preserve the stable known-issue IDs.\n"
+        ).encode(),
         "host.toml": _toml(canonical).encode(),
         "runbooks/ao.md": (
-            b"# AO Host Runbook\n\n"
-            b"Use inspect and verify for read-only evidence. A host core doctor "
-            b"failure affects daemon readiness; github/auth/token/integration "
-            b"failures degrade delivery. Never promote sandbox service or status "
-            b"evidence to host ownership. Investigate emitted known_issues and "
-            b"next_actions before using a candidate. Terminal access requires "
-            b"exact IP and Origin checks while REST APIs remain GET-only.\n"
-        ),
+            "# AO Host Reconstruction Runbook\n\n"
+            f"Canonical candidate profile: `host.toml`; private authority: "
+            f"`{paths['private_authority']}`; AO data: "
+            f"`{ao['data_dir']}`; Codex home: `{ao['codex_home']}`; state root: "
+            f"`{paths['state_root']}`.\n\n"
+            "Read live state from the user service manager, AO status and doctor, "
+            f"`{ao['loopback_base_url']}{ao['health_path']}`, "
+            f"`{ao['loopback_base_url']}{ao['ready_path']}`, and the configured "
+            "Dashboard listener. A host core doctor failure blocks readiness; an "
+            "unreadable doctor result is not clean evidence.\n\n"
+            "Use `calibrate_ao_host.py inspect --context host --profile <profile>` "
+            "for attested observation, `plan --profile <profile>` for migration "
+            "readback, `render --profile <profile> --output <new-private-root>` "
+            "for a deterministic candidate, and `verify --profile <profile> "
+            "--candidate <root>` for read-only comparison. A second render must "
+            "be byte-identical.\n\n"
+            f"Review candidate destinations `{paths['desired_nginx_artifact']}` "
+            f"and `{paths['desired_service_artifact']}` against active config "
+            f"`{dashboard['active_config']}`. Rollback authority remains "
+            f"`{dashboard['rollback_service']}`. These commands do not change "
+            "the active proxy, service manager, or rollback material.\n\n"
+            "## Storage routing\n\n"
+            f"{boundary_lines}\n\n"
+            "Treat recursive search as disabled by default. Any broader search "
+            "requires separate task-specific authority outside this profile.\n"
+        ).encode(),
     }
     if terminal["desired_enabled"]:
         clients = cast(list[str], terminal["allowed_client_ips"])
         origin = cast(str, terminal["allowed_origin"])
         upstream = cast(str, terminal["upstream"])
         upstream_origin = cast(str, terminal["upstream_origin"])
-        dashboard = _section(canonical, "dashboard")
-        ao = _section(canonical, "ao")
-        paths = _section(canonical, "paths")
+        origin_header = (
+            "$http_origin"
+            if terminal["origin_mode"] == "preserve"
+            else f'"{upstream_origin}"'
+        )
         allow_lines = "".join(f"      allow {client};\n" for client in clients)
         readonly_allow_lines = "".join(
             f"      allow {cidr};\n"
@@ -1142,7 +1296,7 @@ def _candidate_files(profile: Mapping[str, object]) -> dict[str, bytes]:
             "    websocket 1;\n"
             "  }\n"
             "  server {\n"
-            f"    listen {dashboard['listen_host']}:{dashboard['listen_port']};\n"
+            f"    listen {_dashboard_url(cast(str, dashboard['listen_host']), cast(int, dashboard['listen_port'])).removeprefix('http://')};\n"
             f"    root {dashboard['document_root']};\n"
             '    add_header X-Content-Type-Options "nosniff" always;\n'
             '    add_header X-Frame-Options "DENY" always;\n'
@@ -1175,7 +1329,7 @@ def _candidate_files(profile: Mapping[str, object]) -> dict[str, bytes]:
             "      proxy_set_header Upgrade $http_upgrade;\n"
             '      proxy_set_header Connection "upgrade";\n'
             "      proxy_set_header Host $proxy_host;\n"
-            f'      proxy_set_header Origin "{upstream_origin}";\n'
+            f"      proxy_set_header Origin {origin_header};\n"
             "      proxy_buffering off;\n"
             "      proxy_cache off;\n"
             "      proxy_connect_timeout 2s;\n"
@@ -1318,15 +1472,83 @@ def verify_profile(path: Path, *, candidate: Path | None = None) -> dict[str, ob
     }
 
 
-def _invoke_cli(argv: Sequence[str], runner: Runner) -> tuple[int, dict[str, object]]:
-    output = io.StringIO()
-    with contextlib.redirect_stdout(output):
-        code = main(argv, runner=runner)
-    return code, cast(dict[str, object], json.loads(output.getvalue()))
+def _invoke_subprocess_cli(
+    argv: Sequence[str], env: Mapping[str, str]
+) -> tuple[int, dict[str, object]]:
+    result = subprocess.run(
+        [sys.executable, str(Path(__file__).resolve()), *argv],
+        check=False,
+        capture_output=True,
+        text=True,
+        env=dict(env),
+        timeout=PROBE_TIMEOUT_SECONDS,
+    )
+    try:
+        payload = json.loads(result.stdout)
+    except json.JSONDecodeError as exc:
+        raise CalibrationError("canary CLI did not emit JSON") from exc
+    if not isinstance(payload, dict):
+        raise CalibrationError("canary CLI JSON must be an object")
+    return result.returncode, cast(dict[str, object], payload)
+
+
+def _write_canary_probe_tools(root: Path) -> Path:
+    fake_bin = root / "fake-bin"
+    fake_bin.mkdir(mode=0o700)
+    script = (
+        "#!"
+        + sys.executable
+        + "\n"
+        + """import json
+import pathlib
+import sys
+
+name = pathlib.Path(sys.argv[0]).name
+args = sys.argv[1:]
+if name == "ao":
+    if args == ["version"]:
+        print("ao version 1.2.3")
+    elif args[:1] == ["status"]:
+        status = {"state":"stale","pid":42,"port":3001}
+        status.update({"health":"ok","ready":"ready"})
+        print(json.dumps(status))
+    else:
+        check = {"name":"data-dir-write","level":"FAIL"}
+        check["detail"] = "read-only sandbox"
+        print(json.dumps({"ok":False,"checks":[check]}))
+elif name == "systemctl":
+    print("42" if "show" in args else "active")
+elif name == "ldd":
+    print("ldd (GNU libc) 2.39")
+elif name == "tmux":
+    print("tmux 3.5")
+elif name == "stat":
+    print("cgroup2fs")
+elif name == "curl":
+    url = args[-1]
+    identity = {"service":"agent-orchestrator-daemon","pid":42}
+    identity["executablePath"] = "/opt/example/ao"
+    identity["workingDirectory"] = "/opt/example/work"
+    identity["startupWorkingDirectory"] = "/opt/example/start"
+    if url.endswith("/healthz"):
+        print(json.dumps({"status":"ok",**identity}))
+    elif url.endswith("/readyz"):
+        print(json.dumps({"status":"ready",**identity}))
+    elif url.endswith("/mux"):
+        print("HTTP/1.1 101 Switching Protocols")
+    else:
+        print("ok")
+"""
+    )
+    for name in ("ao", "systemctl", "ldd", "tmux", "stat", "curl"):
+        tool = fake_bin / name
+        tool.write_text(script, encoding="utf-8")
+        tool.chmod(0o700)
+    return fake_bin
 
 
 def reconstruction_canary(root: Path, runner: Runner) -> dict[str, object]:
-    """Migrate realistic v1 through the JSON CLI under isolated XDG roots."""
+    """Run the real JSON CLI boundary under isolated XDG roots and fake probes."""
     home = root / "home"
     config_home = root / "config"
     state_home = root / "state"
@@ -1339,101 +1561,103 @@ def reconstruction_canary(root: Path, runner: Runner) -> dict[str, object]:
     auth = codex_home / "auth.json"
     auth.write_text("{}\n", encoding="utf-8")
     auth.chmod(0o600)
-    previous = {
-        name: os.environ.get(name)
-        for name in ("HOME", "XDG_CONFIG_HOME", "XDG_STATE_HOME", "CODEX_HOME")
-    }
-    os.environ.update(
+    fake_bin = _write_canary_probe_tools(root)
+    canary_env = os.environ.copy()
+    canary_env.update(
         {
             "HOME": str(home),
             "XDG_CONFIG_HOME": str(config_home),
             "XDG_STATE_HOME": str(state_home),
             "CODEX_HOME": str(codex_home),
+            "PATH": str(fake_bin),
         }
     )
-    try:
-        initialized = config_home / "calibration" / "initialized.toml"
-        init_code, _initialized = _invoke_cli(
+    initialized = config_home / "calibration" / "initialized.toml"
+    init_code, _initialized = _invoke_subprocess_cli(
+        (
+            "init",
+            "--profile",
+            str(initialized),
+            "--trust-model",
+            "untrusted",
+            "--codex-home",
+            str(codex_home),
+            "--data-dir",
+            str(state_home / "ao"),
+            "--private-authority",
+            str(config_home / "calibration/AGENTS.md"),
+            "--state-root",
+            str(state_home / "calibration"),
+            "--storage-boundary",
+            json.dumps(
+                {
+                    "path": str(state_home / "aggregation"),
+                    "kind": "aggregation-root",
+                    "recursive_search": False,
+                }
+            ),
+        ),
+        canary_env,
+    )
+    profile = config_home / "calibration" / "host.toml"
+    profile.write_text(
+        _canary_v1_profile(
+            codex_home=codex_home,
+            data_dir=state_home / "ao",
+            config_home=config_home,
+            state_root=state_home / "calibration",
+        ),
+        encoding="utf-8",
+    )
+    profile.chmod(0o600)
+    inspect_code, _inspection = _invoke_subprocess_cli(
+        ("inspect", "--profile", str(profile), "--context", "sandbox"),
+        canary_env,
+    )
+    plan_code, _plan = _invoke_subprocess_cli(
+        ("plan", "--profile", str(profile)), canary_env
+    )
+    candidate = root / "candidate"
+    first_code, first = _invoke_subprocess_cli(
+        ("render", "--profile", str(profile), "--output", str(candidate)),
+        canary_env,
+    )
+    second_code, second = _invoke_subprocess_cli(
+        ("render", "--profile", str(profile), "--output", str(candidate)),
+        canary_env,
+    )
+    verify_code, _verified = _invoke_subprocess_cli(
+        (
+            "verify",
+            "--profile",
+            str(profile),
+            "--candidate",
+            str(candidate),
+        ),
+        canary_env,
+    )
+    dashboard = _section(_canonical_v2(_load_profile(profile)), "dashboard")
+    nginx = cast(str, dashboard["nginx_executable"])
+    nginx_checked = False
+    if runner((nginx, "-v")).returncode == 0:
+        prefix = root / "nginx-prefix"
+        (prefix / "logs").mkdir(mode=0o700, parents=True)
+        nginx_result = runner(
             (
-                "init",
-                "--profile",
-                str(initialized),
-                "--trust-model",
-                "untrusted",
-                "--codex-home",
-                str(codex_home),
-                "--data-dir",
-                str(state_home / "ao"),
-                "--private-authority",
-                str(config_home / "calibration/AGENTS.md"),
-                "--state-root",
-                str(state_home / "calibration"),
-            ),
-            runner,
-        )
-        profile = config_home / "calibration" / "host.toml"
-        profile.write_text(
-            _canary_v1_profile(
-                codex_home=codex_home,
-                data_dir=state_home / "ao",
-                config_home=config_home,
-                state_root=state_home / "calibration",
-            ),
-            encoding="utf-8",
-        )
-        profile.chmod(0o600)
-        inspect_code, _inspection = _invoke_cli(
-            ("inspect", "--profile", str(profile), "--context", "sandbox"),
-            runner,
-        )
-        plan_code, _plan = _invoke_cli(("plan", "--profile", str(profile)), runner)
-        candidate = root / "candidate"
-        first_code, first = _invoke_cli(
-            ("render", "--profile", str(profile), "--output", str(candidate)),
-            runner,
-        )
-        second_code, second = _invoke_cli(
-            ("render", "--profile", str(profile), "--output", str(candidate)),
-            runner,
-        )
-        verify_code, _verified = _invoke_cli(
-            (
-                "verify",
-                "--profile",
-                str(profile),
-                "--candidate",
-                str(candidate),
-            ),
-            runner,
-        )
-        dashboard = _section(_canonical_v2(_load_profile(profile)), "dashboard")
-        nginx = cast(str, dashboard["nginx_executable"])
-        nginx_checked = False
-        if runner((nginx, "-v")).returncode == 0:
-            prefix = root / "nginx-prefix"
-            (prefix / "logs").mkdir(mode=0o700, parents=True)
-            nginx_result = runner(
-                (
-                    nginx,
-                    "-t",
-                    "-p",
-                    str(prefix) + "/",
-                    "-c",
-                    str(candidate / "nginx/ao-terminal.conf"),
-                )
+                nginx,
+                "-t",
+                "-p",
+                str(prefix) + "/",
+                "-c",
+                str(candidate / "nginx/ao-terminal.conf"),
             )
-            if nginx_result.returncode != 0:
-                raise CalibrationError(
-                    "nginx candidate validation failed: "
-                    + (nginx_result.stderr.strip() or nginx_result.stdout.strip())
-                )
-            nginx_checked = True
-    finally:
-        for name, value in previous.items():
-            if value is None:
-                os.environ.pop(name, None)
-            else:
-                os.environ[name] = value
+        )
+        if nginx_result.returncode != 0:
+            raise CalibrationError(
+                "nginx candidate validation failed: "
+                + (nginx_result.stderr.strip() or nginx_result.stdout.strip())
+            )
+        nginx_checked = True
     return {
         "init_exit": init_code,
         "inspect_exit": inspect_code,
@@ -1488,6 +1712,17 @@ state_root = {quoted(state_root)}
 """
 
 
+def _storage_boundary_argument(value: str) -> dict[str, object]:
+    try:
+        parsed = json.loads(value)
+    except json.JSONDecodeError as exc:
+        raise argparse.ArgumentTypeError("storage boundary must be JSON") from exc
+    try:
+        return _validate_storage_boundaries([parsed])[0]
+    except CalibrationError as exc:
+        raise argparse.ArgumentTypeError(str(exc)) from exc
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = JsonArgumentParser(description="Calibrate a private AO host profile.")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -1505,6 +1740,12 @@ def _parser() -> argparse.ArgumentParser:
     init_parser.add_argument("--data-dir", type=Path, required=True)
     init_parser.add_argument("--private-authority", type=Path, required=True)
     init_parser.add_argument("--state-root", type=Path, required=True)
+    init_parser.add_argument(
+        "--storage-boundary",
+        action="append",
+        type=_storage_boundary_argument,
+        default=[],
+    )
     init_parser.add_argument("--enable-dashboard", action="store_true")
     init_parser.add_argument("--dashboard-listen-host")
     init_parser.add_argument("--dashboard-listen-port", type=int)
@@ -1525,7 +1766,6 @@ def _parser() -> argparse.ArgumentParser:
     init_parser.add_argument(
         "--origin-mode",
         choices=("preserve", "edge-validated-rewrite"),
-        default="preserve",
     )
     for name in ("plan", "render", "verify"):
         child = commands.add_parser(name)
@@ -1556,6 +1796,7 @@ def main(argv: Sequence[str] | None = None, *, runner: Runner = _run) -> int:
                 data_dir=args.data_dir,
                 private_authority=args.private_authority,
                 state_root=args.state_root,
+                storage_boundaries=args.storage_boundary,
                 dashboard_enabled=args.enable_dashboard,
                 dashboard_listen_host=args.dashboard_listen_host,
                 dashboard_listen_port=args.dashboard_listen_port,

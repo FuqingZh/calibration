@@ -128,8 +128,12 @@ Dashboard with `--enable-dashboard` plus explicit `--dashboard-listen-host`,
 `--dashboard-listen-port`, repeatable `--readonly-cidr`, `--document-root`,
 nginx executable/PID/config paths, and desired/rollback service and artifact
 paths. Add `--terminal` only with repeatable exact `--client-ip`,
-`--origin`, loopback `/mux` `--upstream`, `--upstream-origin`, and an explicit
-`--origin-mode`. Inspection never infers these trust decisions.
+`--origin`, a loopback `--upstream`, and an explicit `--origin-mode`;
+edge-validated-rewrite also requires a loopback `/mux` upstream and
+`--upstream-origin`, while preserve does not. Repeat
+`--storage-boundary` with a JSON object containing `path`, `kind`, and
+`recursive_search=false` to reconstruct explicit storage routing. Inspection
+never infers these trust decisions.
 `plan` and `verify` are read-only. `render` writes only a new deterministic
 candidate tree, or accepts an existing byte-identical tree; it does not operate
 services or active host configuration.
