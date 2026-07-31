@@ -211,6 +211,7 @@ def _validate_loopback_url(value: object, label: str, *, mux_path: bool = False)
         parsed.scheme != "http"
         or parsed.hostname not in {"127.0.0.1", "::1", "localhost"}
         or port is None
+        or not 1 <= port <= 65535
         or parsed.username is not None
         or parsed.password is not None
         or parsed.path != expected_path
@@ -899,9 +900,8 @@ def _load_profile(path: Path) -> dict[str, object]:
 
 def _validate_terminal_v1(terminal: Mapping[str, object]) -> None:
     """Validate the deployed legacy terminal contract without v2 reinterpretation."""
+    _validate_terminal_shapes(terminal)
     enabled = terminal.get("desired_enabled")
-    if not isinstance(enabled, bool):
-        raise CalibrationError("dashboard.terminal.desired_enabled must be boolean")
     if not enabled:
         return
     clients = terminal.get("allowed_client_ips")
@@ -924,9 +924,8 @@ def _validate_terminal_v1(terminal: Mapping[str, object]) -> None:
 
 
 def _validate_terminal(terminal: Mapping[str, object]) -> None:
+    _validate_terminal_shapes(terminal)
     enabled = terminal.get("desired_enabled")
-    if not isinstance(enabled, bool):
-        raise CalibrationError("dashboard.terminal.desired_enabled must be boolean")
     if enabled:
         clients = terminal.get("allowed_client_ips")
         client_values = cast(list[object], clients) if isinstance(clients, list) else []
@@ -957,6 +956,47 @@ def _validate_terminal(terminal: Mapping[str, object]) -> None:
             _validate_loopback_url(
                 terminal.get("upstream_origin"), "terminal upstream Origin"
             )
+
+
+def _validate_terminal_shapes(terminal: Mapping[str, object]) -> None:
+    if not isinstance(terminal.get("desired_enabled"), bool):
+        raise CalibrationError("dashboard.terminal.desired_enabled must be boolean")
+    for key in (
+        "trust_model",
+        "allowed_origin",
+        "path",
+        "upstream",
+        "upstream_origin",
+    ):
+        if not isinstance(terminal.get(key), str):
+            raise CalibrationError(f"dashboard.terminal.{key} must be a string")
+    clients = terminal.get("allowed_client_ips")
+    client_values = cast(list[object], clients) if isinstance(clients, list) else []
+    if not isinstance(clients, list) or not all(
+        isinstance(value, str) for value in client_values
+    ):
+        raise CalibrationError(
+            "dashboard.terminal.allowed_client_ips must be IP strings"
+        )
+    try:
+        for value in cast(list[str], client_values):
+            ipaddress.ip_address(value)
+    except ValueError as exc:
+        raise CalibrationError(
+            "dashboard.terminal.allowed_client_ips must be valid IPs"
+        ) from exc
+    authentication = terminal.get("require_authentication_if")
+    authentication_values = (
+        cast(list[object], authentication) if isinstance(authentication, list) else []
+    )
+    if not isinstance(authentication, list) or not all(
+        isinstance(value, str) for value in authentication_values
+    ):
+        raise CalibrationError(
+            "dashboard.terminal.require_authentication_if must be strings"
+        )
+    if "origin_mode" in terminal and not isinstance(terminal["origin_mode"], str):
+        raise CalibrationError("dashboard.terminal.origin_mode must be a string")
 
 
 def _quote(value: object) -> str:
@@ -1315,19 +1355,19 @@ def _candidate_files(profile: Mapping[str, object]) -> dict[str, bytes]:
         ).encode(),
     }
     if dashboard["mode"] == "read-only":
-        clients = cast(list[str], terminal["allowed_client_ips"])
-        origin = cast(str, terminal["allowed_origin"])
-        upstream = cast(str, terminal["upstream"])
-        upstream_origin = cast(str, terminal["upstream_origin"])
-        origin_header = (
-            "$http_origin"
-            if terminal["origin_mode"] == "preserve"
-            else f'"{upstream_origin}"'
-        )
-        allow_lines = "".join(f"      allow {client};\n" for client in clients)
         terminal_maps = ""
         mux_location = ""
         if terminal["desired_enabled"]:
+            clients = cast(list[str], terminal["allowed_client_ips"])
+            origin = cast(str, terminal["allowed_origin"])
+            upstream = cast(str, terminal["upstream"])
+            upstream_origin = cast(str, terminal["upstream_origin"])
+            origin_header = (
+                "$http_origin"
+                if terminal["origin_mode"] == "preserve"
+                else f'"{upstream_origin}"'
+            )
+            allow_lines = "".join(f"      allow {client};\n" for client in clients)
             terminal_maps = (
                 "  map $http_origin $ao_origin_allowed {\n"
                 "    default 0;\n"

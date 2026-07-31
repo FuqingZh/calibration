@@ -1368,6 +1368,125 @@ def test_dashboard_only_profile_renders_base_nginx_and_service(
     assert f"ReadWritePaths={state}" in service
 
 
+@pytest.mark.parametrize("command", ["plan", "verify", "render"])
+def test_disabled_terminal_malformed_shape_returns_json_invalid(
+    tmp_path: Path, codex_home: Path, command: str
+) -> None:
+    profile = tmp_path / f"{command}.toml"
+    state = tmp_path / "state"
+    host.init_profile(
+        profile,
+        trust_model="trusted-single-user",
+        codex_home=codex_home,
+        data_dir=tmp_path / "data",
+        private_authority=tmp_path / "authority/AGENTS.md",
+        state_root=state,
+        dashboard_enabled=True,
+        dashboard_listen_host="127.0.0.1",
+        dashboard_listen_port=18443,
+        readonly_cidrs=("203.0.113.0/24",),
+        document_root=tmp_path / "dashboard",
+        nginx_executable=Path("/usr/sbin/nginx"),
+        nginx_pid_file=state / "nginx.pid",
+        active_config=state / "active.conf",
+        desired_service="ao-dashboard.service",
+        rollback_service="ao-dashboard-rollback.service",
+        desired_nginx_artifact=state / "nginx.conf",
+        desired_service_artifact=state / "nginx.service",
+    )
+    profile.write_text(
+        profile.read_text(encoding="utf-8").replace(
+            "allowed_client_ips = []", "allowed_client_ips = 7"
+        ),
+        encoding="utf-8",
+    )
+    argv = [
+        sys.executable,
+        str(REPOSITORY_ROOT / "scripts/calibrate_ao_host.py"),
+        command,
+        "--profile",
+        str(profile),
+    ]
+    if command == "render":
+        argv.extend(("--output", str(tmp_path / "candidate")))
+    result = subprocess.run(argv, check=False, capture_output=True, text=True)
+    payload = json.loads(result.stdout)
+    assert result.returncode == host.EXIT_INVALID
+    assert payload["command"] == command
+    assert payload["states"]["operation"] == "unavailable"
+    assert payload["capabilities"]["error"]["kind"] == "invalid"
+    assert (
+        "allowed_client_ips must be IP strings"
+        in payload["capabilities"]["error"]["message"]
+    )
+    assert "Traceback" not in result.stderr
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        ("trust_model", 7, "trust_model must be a string"),
+        ("allowed_client_ips", 7, "allowed_client_ips must be IP strings"),
+        ("allowed_client_ips", ["bad"], "allowed_client_ips must be valid IPs"),
+        (
+            "require_authentication_if",
+            7,
+            "require_authentication_if must be strings",
+        ),
+        ("origin_mode", 7, "origin_mode must be a string"),
+    ],
+)
+def test_disabled_terminal_all_shapes_fail_closed(
+    field: str, value: object, message: str
+) -> None:
+    terminal: dict[str, object] = {
+        "desired_enabled": False,
+        "trust_model": "untrusted",
+        "allowed_client_ips": [],
+        "allowed_origin": "",
+        "path": "/mux",
+        "upstream": "",
+        "upstream_origin": "",
+        "require_authentication_if": [],
+        "origin_mode": "preserve",
+    }
+    terminal[field] = value
+    with pytest.raises(host.CalibrationError, match=message):
+        host._validate_terminal_shapes(terminal)
+
+
+@pytest.mark.parametrize("schema_version", [1, 2])
+@pytest.mark.parametrize(
+    "field",
+    ["loopback_base_url", "upstream", "upstream_origin"],
+)
+def test_loopback_port_zero_is_rejected_before_plan_or_render(
+    tmp_path: Path, schema_version: int, field: str
+) -> None:
+    source = tmp_path / "source.toml"
+    source.write_text(LEGACY_V1_FIXTURE.read_text(encoding="utf-8"), encoding="utf-8")
+    source.chmod(0o600)
+    if schema_version == 1:
+        content = source.read_text(encoding="utf-8")
+    else:
+        content = host._toml(host._canonical_v2(host._load_profile(source)))
+    originals = {
+        "loopback_base_url": 'loopback_base_url = "http://127.0.0.1:3001"',
+        "upstream": 'upstream = "http://127.0.0.1:3001/mux"',
+        "upstream_origin": 'upstream_origin = "http://127.0.0.1:3001"',
+    }
+    invalid = tmp_path / f"v{schema_version}-{field}.toml"
+    invalid.write_text(
+        content.replace(originals[field], originals[field].replace(":3001", ":0")),
+        encoding="utf-8",
+    )
+    invalid.chmod(0o600)
+    with pytest.raises(host.CalibrationError, match="HTTP loopback URL"):
+        host.plan_profile(invalid)
+    with pytest.raises(host.CalibrationError, match="HTTP loopback URL"):
+        host.render_profile(invalid, tmp_path / f"candidate-v{schema_version}-{field}")
+
+
 def test_module_entrypoint(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("sys.argv", ["calibrate_ao_host.py", "plan"])
     with pytest.raises(SystemExit, match="2"):
