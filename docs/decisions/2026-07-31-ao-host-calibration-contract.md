@@ -18,10 +18,15 @@ host-owned core doctor failures affect daemon readiness, and malformed doctor
 output cannot establish that core checks are clean. `--context host` is the
 explicit host attestation; `auto` remains sandbox-owned and indeterminate until
 a separate positive host-context attestation exists.
+Structurally valid doctor JSON is classified independently of its process exit
+status because AO exits nonzero for reported failures; an external-only
+`github-token` failure degrades delivery without making the daemon unavailable.
 Profile-backed delivery probes target the configured Dashboard listener.
 Terminal evidence requires a bounded HTTP 101 WebSocket handshake with the
 configured exact Origin and Upgrade headers; profile-free Dashboard and
-Terminal state is explicitly unknown.
+Terminal state is explicitly unknown. Dashboard-only profiles still render and
+verify the base read-only nginx and service candidates and classify delivery
+from the Dashboard probe; only the `/mux` maps and location are conditional.
 
 The CLI recognizes the existing schema v1 `[ao]`, `[dashboard]`,
 `[dashboard.terminal]`, and `[paths]` sections when `schema_version` is absent
@@ -37,6 +42,8 @@ canonicalization, so an explicitly selected v2 Origin mode is preserved.
 Terminal init requires that Origin mode explicitly. Preserve forwards the
 validated client Origin unchanged and does not require an upstream Origin;
 edge-validated-rewrite requires and emits the proven loopback Origin.
+The v1 and v2 Dashboard service fields remain systemd unit identifiers;
+artifact destinations remain the absolute paths under `[paths]`.
 
 Legacy v1 terminal validation remains distinct from v2 policy. V1 accepts its
 deployed `single-user-trusted-lan` trust name, multiple exact client IPs, and a
@@ -77,7 +84,9 @@ client-IP, external-Origin, loopback-upstream, upstream-Origin, and origin-mode
 inputs as applicable. The generated full nginx candidate keeps static and API
 access GET-only and CIDR-restricted, while exact `/mux` requires every exact
 client IP, exact Origin, GET, WebSocket Upgrade, and the proven loopback Origin
-rewrite. Inspection may discover runtime facts but never chooses trust values.
+rewrite. The service grants write access only to the explicit runtime state
+root under its strict filesystem sandbox. Inspection may discover runtime facts
+but never chooses trust values.
 
 ## Compatibility
 

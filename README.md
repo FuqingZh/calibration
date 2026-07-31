@@ -127,7 +127,8 @@ unless all terminal constraints are supplied. Enable a private nginx
 Dashboard with `--enable-dashboard` plus explicit `--dashboard-listen-host`,
 `--dashboard-listen-port`, repeatable `--readonly-cidr`, `--document-root`,
 nginx executable/PID/config paths, and desired/rollback service and artifact
-paths. Add `--terminal` only with repeatable exact `--client-ip`,
+values. Desired and rollback services are safe systemd unit names; only their
+artifact destinations are paths. Add `--terminal` only with repeatable exact `--client-ip`,
 `--origin`, a loopback `--upstream`, and an explicit `--origin-mode`;
 edge-validated-rewrite also requires a loopback `/mux` upstream and
 `--upstream-origin`, while preserve does not. Repeat

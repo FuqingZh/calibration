@@ -229,6 +229,15 @@ def _validate_interpolated_scalar(value: object, label: str) -> str:
     return value
 
 
+def _validate_service_unit(value: object, label: str) -> str:
+    if (
+        not isinstance(value, str)
+        or re.fullmatch(r"[A-Za-z0-9_.@-]+\.service", value) is None
+    ):
+        raise CalibrationError(f"{label} must be a safe systemd service unit")
+    return value
+
+
 def _dashboard_url(host: str, port: int) -> str:
     address = f"[{host}]" if ipaddress.ip_address(host).version == 6 else host
     return f"http://{address}:{port}"
@@ -301,6 +310,14 @@ def evaluate_daemon_state(
         and ready.get("status") == "ready"
         and health.get("service") == "agent-orchestrator-daemon"
         and ready.get("service") == "agent-orchestrator-daemon"
+        and all(
+            health.get(field) == ready.get(field)
+            for field in (
+                "executablePath",
+                "workingDirectory",
+                "startupWorkingDirectory",
+            )
+        )
     )
     if (
         service.status == "pass"
@@ -329,21 +346,22 @@ def evaluate_delivery_state(
     probes: Mapping[str, Evidence],
     *,
     daemon_state: str,
+    dashboard_enabled: bool | None,
     terminal_enabled: bool | None,
     external_failure: bool = False,
 ) -> str:
     """Classify Dashboard delivery independently from daemon readiness."""
     if daemon_state == "ready" and external_failure:
         return "degraded"
-    if terminal_enabled is False:
+    if dashboard_enabled is False:
         return "not_applicable"
-    if terminal_enabled is None or daemon_state != "ready":
+    if dashboard_enabled is None or daemon_state != "ready":
         return "indeterminate"
-    return (
-        "ready"
-        if probes["dashboard"].status == "pass" and probes["mux"].status == "pass"
-        else "degraded"
-    )
+    if probes["dashboard"].status != "pass":
+        return "degraded"
+    if terminal_enabled is True and probes["mux"].status != "pass":
+        return "degraded"
+    return "ready"
 
 
 def _doctor_failure_classes(doctor: Mapping[str, object]) -> tuple[bool, bool]:
@@ -525,9 +543,7 @@ def inspect_host(
     status = _json_object(by_name["status"].detail)
     doctor = _json_object(by_name["doctor"].detail)
     external_doctor_failure, core_doctor_failure = _doctor_failure_classes(doctor)
-    doctor_valid = by_name["doctor"].status == "pass" and _required_subset(
-        doctor, {"ok": bool, "checks": list}
-    )
+    doctor_valid = _required_subset(doctor, {"ok": bool, "checks": list})
     if (
         doctor_valid
         and doctor["ok"] is False
@@ -591,6 +607,7 @@ def inspect_host(
     delivery_state = evaluate_delivery_state(
         by_name,
         daemon_state=daemon_state,
+        dashboard_enabled=dashboard_base is not None,
         terminal_enabled=(
             cast(bool, terminal["desired_enabled"]) if terminal is not None else None
         ),
@@ -809,6 +826,8 @@ def _load_profile(path: Path) -> dict[str, object]:
         raise CalibrationError("dashboard.listen_host must be an IP address") from exc
     if type(listen_port) is not int or listen_port < 0 or listen_port > 65535:
         raise CalibrationError("dashboard.listen_port must be an integer port")
+    if dashboard.get("mode", "read-only") == "read-only" and listen_port == 0:
+        raise CalibrationError("enabled dashboard listen_port must be 1 through 65535")
     cidr_values = (
         cast(list[object], readonly_cidrs) if isinstance(readonly_cidrs, list) else []
     )
@@ -826,8 +845,6 @@ def _load_profile(path: Path) -> dict[str, object]:
         ("ao.codex_home", ao["codex_home"]),
         ("dashboard.document_root", dashboard["document_root"]),
         ("dashboard.active_config", dashboard["active_config"]),
-        ("dashboard.desired_service", dashboard["desired_service"]),
-        ("dashboard.rollback_service", dashboard["rollback_service"]),
         *[(f"paths.{key}", paths[key]) for key in V1_KEYS["paths"]],
     ]
     if version == 2:
@@ -841,6 +858,12 @@ def _load_profile(path: Path) -> dict[str, object]:
         if not isinstance(value, str) or not Path(value).is_absolute():
             raise CalibrationError(f"{label} must be an absolute path")
         _validate_interpolated_scalar(value, label)
+    _validate_service_unit(
+        dashboard.get("desired_service"), "dashboard.desired_service"
+    )
+    _validate_service_unit(
+        dashboard.get("rollback_service"), "dashboard.rollback_service"
+    )
     if version == 1:
         _validate_terminal_v1(terminal)
     else:
@@ -1017,8 +1040,8 @@ def init_profile(
     nginx_executable: Path | None = None,
     nginx_pid_file: Path | None = None,
     active_config: Path | None = None,
-    desired_service: Path | None = None,
-    rollback_service: Path | None = None,
+    desired_service: str | None = None,
+    rollback_service: str | None = None,
     desired_nginx_artifact: Path | None = None,
     desired_service_artifact: Path | None = None,
     terminal: bool = False,
@@ -1094,8 +1117,10 @@ def init_profile(
     nginx = nginx_executable or Path("/usr/sbin/nginx")
     pid_file = nginx_pid_file or state_root / "nginx.pid"
     active = active_config or state_root / "active.conf"
-    service = desired_service or state_root / "dashboard.service"
-    rollback = rollback_service or state_root / "dashboard.rollback.service"
+    service = desired_service or "ao-dashboard.service"
+    rollback = rollback_service or "ao-dashboard-rollback.service"
+    _validate_service_unit(service, "dashboard desired service")
+    _validate_service_unit(rollback, "dashboard rollback service")
     nginx_artifact = desired_nginx_artifact or state_root / "nginx.conf"
     service_artifact = desired_service_artifact or state_root / "nginx.service"
     reconstruction_paths = (
@@ -1107,12 +1132,12 @@ def init_profile(
         nginx,
         pid_file,
         active,
-        service,
-        rollback,
         nginx_artifact,
         service_artifact,
     )
     for reconstruction_path in reconstruction_paths:
+        if not reconstruction_path.is_absolute():
+            raise CalibrationError("reconstruction paths must be absolute")
         _validate_interpolated_scalar(str(reconstruction_path), "reconstruction path")
     boundary_values = list(storage_boundaries) or [
         {
@@ -1185,9 +1210,9 @@ def plan_profile(path: Path) -> dict[str, object]:
     profile = _load_profile(path)
     version = cast(int, profile.get("schema_version", 1))
     candidate = _canonical_v2(profile)
-    terminal = _section(_section(candidate, "dashboard"), "terminal")
+    dashboard = _section(candidate, "dashboard")
     artifacts = ["AGENTS.md", "host.toml", "runbooks/ao.md", "MANIFEST.json"]
-    if terminal["desired_enabled"]:
+    if dashboard["mode"] == "read-only":
         artifacts.extend(["nginx/ao-terminal.conf", "service/ao-dashboard.service"])
     return {
         "mode": "plan",
@@ -1260,7 +1285,7 @@ def _candidate_files(profile: Mapping[str, object]) -> dict[str, bytes]:
             "requires separate task-specific authority outside this profile.\n"
         ).encode(),
     }
-    if terminal["desired_enabled"]:
+    if dashboard["mode"] == "read-only":
         clients = cast(list[str], terminal["allowed_client_ips"])
         origin = cast(str, terminal["allowed_origin"])
         upstream = cast(str, terminal["upstream"])
@@ -1271,6 +1296,39 @@ def _candidate_files(profile: Mapping[str, object]) -> dict[str, bytes]:
             else f'"{upstream_origin}"'
         )
         allow_lines = "".join(f"      allow {client};\n" for client in clients)
+        terminal_maps = ""
+        mux_location = ""
+        if terminal["desired_enabled"]:
+            terminal_maps = (
+                "  map $http_origin $ao_origin_allowed {\n"
+                "    default 0;\n"
+                f'    "{origin}" 1;\n'
+                "  }\n"
+                "  map $http_upgrade $ao_upgrade_allowed {\n"
+                "    default 0;\n"
+                "    websocket 1;\n"
+                "  }\n"
+            )
+            mux_location = (
+                "    location = /mux {\n"
+                f"{allow_lines}"
+                "      deny all;\n"
+                "      if ($request_method != GET) { return 405; }\n"
+                "      if ($ao_origin_allowed = 0) { return 403; }\n"
+                "      if ($ao_upgrade_allowed = 0) { return 400; }\n"
+                "      proxy_http_version 1.1;\n"
+                "      proxy_set_header Upgrade $http_upgrade;\n"
+                '      proxy_set_header Connection "upgrade";\n'
+                "      proxy_set_header Host $proxy_host;\n"
+                f"      proxy_set_header Origin {origin_header};\n"
+                "      proxy_buffering off;\n"
+                "      proxy_cache off;\n"
+                "      proxy_connect_timeout 2s;\n"
+                "      proxy_read_timeout 1h;\n"
+                "      proxy_send_timeout 1h;\n"
+                f"      proxy_pass {upstream};\n"
+                "    }\n"
+            )
         readonly_allow_lines = "".join(
             f"      allow {cidr};\n"
             for cidr in cast(list[str], dashboard["trusted_readonly_cidrs"])
@@ -1287,14 +1345,7 @@ def _candidate_files(profile: Mapping[str, object]) -> dict[str, bytes]:
             f"  fastcgi_temp_path {paths['state_root']}/nginx-fastcgi;\n"
             f"  uwsgi_temp_path {paths['state_root']}/nginx-uwsgi;\n"
             f"  scgi_temp_path {paths['state_root']}/nginx-scgi;\n"
-            "  map $http_origin $ao_origin_allowed {\n"
-            "    default 0;\n"
-            f'    "{origin}" 1;\n'
-            "  }\n"
-            "  map $http_upgrade $ao_upgrade_allowed {\n"
-            "    default 0;\n"
-            "    websocket 1;\n"
-            "  }\n"
+            f"{terminal_maps}"
             "  server {\n"
             f"    listen {_dashboard_url(cast(str, dashboard['listen_host']), cast(int, dashboard['listen_port'])).removeprefix('http://')};\n"
             f"    root {dashboard['document_root']};\n"
@@ -1319,24 +1370,7 @@ def _candidate_files(profile: Mapping[str, object]) -> dict[str, bytes]:
             "      deny all;\n"
             "      try_files $uri $uri/ =404;\n"
             "    }\n"
-            "    location = /mux {\n"
-            f"{allow_lines}"
-            "      deny all;\n"
-            "      if ($request_method != GET) { return 405; }\n"
-            "      if ($ao_origin_allowed = 0) { return 403; }\n"
-            "      if ($ao_upgrade_allowed = 0) { return 400; }\n"
-            "      proxy_http_version 1.1;\n"
-            "      proxy_set_header Upgrade $http_upgrade;\n"
-            '      proxy_set_header Connection "upgrade";\n'
-            "      proxy_set_header Host $proxy_host;\n"
-            f"      proxy_set_header Origin {origin_header};\n"
-            "      proxy_buffering off;\n"
-            "      proxy_cache off;\n"
-            "      proxy_connect_timeout 2s;\n"
-            "      proxy_read_timeout 1h;\n"
-            "      proxy_send_timeout 1h;\n"
-            f"      proxy_pass {upstream};\n"
-            "    }\n"
+            f"{mux_location}"
             "  }\n"
             "}\n"
         ).encode()
@@ -1357,6 +1391,7 @@ def _candidate_files(profile: Mapping[str, object]) -> dict[str, bytes]:
             "NoNewPrivileges=true\n"
             "PrivateTmp=true\n"
             "ProtectSystem=strict\n"
+            f"ReadWritePaths={paths['state_root']}\n"
             "Restart=on-failure\n"
         ).encode()
     expected_modes = {name: "0600" for name in files}
@@ -1693,8 +1728,8 @@ listen_port = 8443
 trusted_readonly_cidrs = ["203.0.113.0/24"]
 document_root = {quoted(state_root / "dashboard")}
 active_config = {quoted(state_root / "active.conf")}
-desired_service = {quoted(state_root / "dashboard.service")}
-rollback_service = {quoted(state_root / "dashboard.rollback.service")}
+desired_service = "ao-dashboard.service"
+rollback_service = "ao-dashboard-rollback.service"
 [dashboard.terminal]
 desired_enabled = true
 trust_model = "single-user-trusted-lan"
@@ -1754,8 +1789,8 @@ def _parser() -> argparse.ArgumentParser:
     init_parser.add_argument("--nginx-executable", type=Path)
     init_parser.add_argument("--nginx-pid-file", type=Path)
     init_parser.add_argument("--active-config", type=Path)
-    init_parser.add_argument("--desired-service", type=Path)
-    init_parser.add_argument("--rollback-service", type=Path)
+    init_parser.add_argument("--desired-service")
+    init_parser.add_argument("--rollback-service")
     init_parser.add_argument("--desired-nginx-artifact", type=Path)
     init_parser.add_argument("--desired-service-artifact", type=Path)
     init_parser.add_argument("--terminal", action="store_true")

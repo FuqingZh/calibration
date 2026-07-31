@@ -34,8 +34,8 @@ listen_port = 3001
 trusted_readonly_cidrs = ["203.0.113.0/24"]
 document_root = "/opt/example/dashboard"
 active_config = "/opt/example/active.conf"
-desired_service = "/opt/example/dashboard.service"
-rollback_service = "/opt/example/dashboard.rollback.service"
+desired_service = "ao-dashboard.service"
+rollback_service = "ao-dashboard-rollback.service"
 
 [dashboard.terminal]
 desired_enabled = false
@@ -175,12 +175,22 @@ def test_real_legacy_v1_shape_is_accepted_without_live_profile(
     profile.chmod(0o600)
 
     plan = host.plan_profile(profile)
-    verified = host.verify_profile(profile)
+    inspected = host.inspect_host(
+        FakeRunner(inspect_responses()), profile=profile, context="sandbox"
+    )
+    candidate = tmp_path / "candidate"
+    rendered = host.render_profile(profile, candidate)
+    verified = host.verify_profile(profile, candidate=candidate)
 
     assert plan["schema_read"] == 1
     assert plan["migration_required"] is True
+    assert cast(dict[str, object], inspected["states"])["daemon"] == "indeterminate"
+    assert rendered["unchanged"] is False
     assert verified["schema_read"] == 1
     assert verified["migration_required"] is True
+    migrated = tomllib.loads((candidate / "host.toml").read_text())
+    assert migrated["dashboard"]["desired_service"] == "ao-dashboard.service"
+    assert migrated["dashboard"]["rollback_service"] == "ao-dashboard-rollback.service"
 
 
 def test_legacy_v1_canonicalizes_to_self_readable_v2(tmp_path: Path) -> None:
@@ -246,7 +256,7 @@ def test_host_status_stale_and_core_doctor_failure_block_ready() -> None:
 
     assert report["states"] == {
         "daemon": "indeterminate",
-        "delivery": "indeterminate",
+        "delivery": "not_applicable",
     }
     assert report["known_issues"] == [
         "AO-HOST-CONTEXT-MISMATCH",
@@ -355,8 +365,8 @@ def test_init_render_verify_round_trip_and_manifest(
         nginx_executable=Path("/usr/sbin/nginx"),
         nginx_pid_file=tmp_path / "state/nginx.pid",
         active_config=tmp_path / "state/active.conf",
-        desired_service=tmp_path / "state/dashboard.service",
-        rollback_service=tmp_path / "state/dashboard.rollback.service",
+        desired_service="ao-dashboard.service",
+        rollback_service="ao-dashboard-rollback.service",
         desired_nginx_artifact=tmp_path / "state/nginx.conf",
         desired_service_artifact=tmp_path / "state/nginx.service",
         terminal=True,
@@ -403,6 +413,7 @@ def test_init_render_verify_round_trip_and_manifest(
         "PIDFile=",
         "Restart=on-failure",
         "UMask=0077",
+        "ReadWritePaths=",
     ):
         assert phrase in service
     authority = (output / "AGENTS.md").read_text()
@@ -419,7 +430,7 @@ def test_init_render_verify_round_trip_and_manifest(
         "plan --profile",
         "render --profile",
         "verify --profile",
-        str(tmp_path / "state/dashboard.rollback.service"),
+        "ao-dashboard-rollback.service",
         "unreadable doctor result",
     ):
         assert phrase in runbook
@@ -721,6 +732,7 @@ def test_init_rejects_incomplete_or_invalid_dashboard_trust(
         listen_port: int = 8443,
         cidrs: Sequence[str] = ("203.0.113.0/24",),
         terminal: bool = False,
+        document_root: Path | None = None,
     ) -> None:
         host.init_profile(
             tmp_path / name,
@@ -733,12 +745,12 @@ def test_init_rejects_incomplete_or_invalid_dashboard_trust(
             dashboard_listen_host=listen_host,
             dashboard_listen_port=listen_port,
             readonly_cidrs=cidrs,
-            document_root=tmp_path / "dashboard",
+            document_root=document_root or tmp_path / "dashboard",
             nginx_executable=Path("/usr/sbin/nginx"),
             nginx_pid_file=tmp_path / "state/nginx.pid",
             active_config=tmp_path / "state/active.conf",
-            desired_service=tmp_path / "state/dashboard.service",
-            rollback_service=tmp_path / "state/dashboard.rollback.service",
+            desired_service="ao-dashboard.service",
+            rollback_service="ao-dashboard-rollback.service",
             desired_nginx_artifact=tmp_path / "state/nginx.conf",
             desired_service_artifact=tmp_path / "state/nginx.service",
             terminal=terminal,
@@ -752,6 +764,8 @@ def test_init_rejects_incomplete_or_invalid_dashboard_trust(
         initialize("terminal.toml", terminal=True)
     with pytest.raises(host.CalibrationError, match="valid networks"):
         initialize("cidr.toml", cidrs=("bad",))
+    with pytest.raises(host.CalibrationError, match="must be absolute"):
+        initialize("relative.toml", document_root=Path("relative"))
 
 
 def test_terminal_requires_explicit_origin_mode(
@@ -774,8 +788,8 @@ def test_terminal_requires_explicit_origin_mode(
             nginx_executable=Path("/usr/sbin/nginx"),
             nginx_pid_file=state / "nginx.pid",
             active_config=state / "active.conf",
-            desired_service=state / "dashboard.service",
-            rollback_service=state / "rollback.service",
+            desired_service="ao-dashboard.service",
+            rollback_service="ao-dashboard-rollback.service",
             desired_nginx_artifact=state / "nginx.conf",
             desired_service_artifact=state / "nginx.service",
             terminal=True,
@@ -805,8 +819,8 @@ def test_v2_terminal_profile_requires_origin_mode(
         nginx_executable=Path("/usr/sbin/nginx"),
         nginx_pid_file=state / "nginx.pid",
         active_config=state / "active.conf",
-        desired_service=state / "dashboard.service",
-        rollback_service=state / "rollback.service",
+        desired_service="ao-dashboard.service",
+        rollback_service="ao-dashboard-rollback.service",
         desired_nginx_artifact=state / "nginx.conf",
         desired_service_artifact=state / "nginx.service",
         terminal=True,
@@ -824,6 +838,16 @@ def test_v2_terminal_profile_requires_origin_mode(
         + "\n"
     )
     with pytest.raises(host.CalibrationError, match="explicit Origin mode"):
+        host.plan_profile(profile)
+
+
+def test_enabled_v2_dashboard_rejects_port_zero(profile: Path) -> None:
+    text = profile.read_text()
+    profile.write_text(
+        text.replace('mode = "disabled"', 'mode = "read-only"'),
+        encoding="utf-8",
+    )
+    with pytest.raises(host.CalibrationError, match="1 through 65535"):
         host.plan_profile(profile)
 
 
@@ -1099,9 +1123,9 @@ def test_cli_init_accepts_explicit_single_user_dashboard_contract(
         "--active-config",
         str(state / "active.conf"),
         "--desired-service",
-        str(state / "dashboard.service"),
+        "ao-dashboard.service",
         "--rollback-service",
-        str(state / "dashboard.rollback.service"),
+        "ao-dashboard-rollback.service",
         "--desired-nginx-artifact",
         str(state / "nginx.conf"),
         "--desired-service-artifact",
@@ -1156,8 +1180,8 @@ def test_generated_terminal_candidate_passes_nginx_test_when_available(
         nginx_executable=Path(nginx),
         nginx_pid_file=state / "nginx.pid",
         active_config=state / "active.conf",
-        desired_service=state / "dashboard.service",
-        rollback_service=state / "dashboard.rollback.service",
+        desired_service="ao-dashboard.service",
+        rollback_service="ao-dashboard-rollback.service",
         desired_nginx_artifact=state / "nginx.conf",
         desired_service_artifact=state / "nginx.service",
         terminal=True,
@@ -1208,8 +1232,8 @@ def test_preserve_origin_mode_forwards_validated_client_origin(
         nginx_executable=Path("/usr/sbin/nginx"),
         nginx_pid_file=state / "nginx.pid",
         active_config=state / "active.conf",
-        desired_service=state / "dashboard.service",
-        rollback_service=state / "dashboard.rollback.service",
+        desired_service="ao-dashboard.service",
+        rollback_service="ao-dashboard-rollback.service",
         desired_nginx_artifact=state / "nginx.conf",
         desired_service_artifact=state / "nginx.service",
         terminal=True,
@@ -1223,6 +1247,43 @@ def test_preserve_origin_mode_forwards_validated_client_origin(
     nginx = (candidate / "nginx/ao-terminal.conf").read_text()
     assert "proxy_set_header Origin $http_origin;" in nginx
     assert 'proxy_set_header Origin "";' not in nginx
+
+
+def test_dashboard_only_profile_renders_base_nginx_and_service(
+    tmp_path: Path, codex_home: Path
+) -> None:
+    profile = tmp_path / "host.toml"
+    state = tmp_path / "state"
+    host.init_profile(
+        profile,
+        trust_model="trusted-single-user",
+        codex_home=codex_home,
+        data_dir=tmp_path / "data",
+        private_authority=tmp_path / "authority/AGENTS.md",
+        state_root=state,
+        dashboard_enabled=True,
+        dashboard_listen_host="127.0.0.1",
+        dashboard_listen_port=18443,
+        readonly_cidrs=("203.0.113.0/24",),
+        document_root=tmp_path / "dashboard",
+        nginx_executable=Path("/usr/sbin/nginx"),
+        nginx_pid_file=state / "nginx.pid",
+        active_config=state / "active.conf",
+        desired_service="ao-dashboard.service",
+        rollback_service="ao-dashboard-rollback.service",
+        desired_nginx_artifact=state / "nginx.conf",
+        desired_service_artifact=state / "nginx.service",
+    )
+    assert "nginx/ao-terminal.conf" in cast(
+        list[str], host.plan_profile(profile)["artifacts"]
+    )
+    candidate = tmp_path / "candidate"
+    host.render_profile(profile, candidate)
+    nginx = (candidate / "nginx/ao-terminal.conf").read_text()
+    service = (candidate / "service/ao-dashboard.service").read_text()
+    assert "location /api/" in nginx
+    assert "location = /mux" not in nginx
+    assert f"ReadWritePaths={state}" in service
 
 
 def test_module_entrypoint(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1333,19 +1394,28 @@ def test_pure_state_and_issue_evaluators() -> None:
     )
     assert (
         host.evaluate_delivery_state(
-            probes, daemon_state="ready", terminal_enabled=True
+            probes,
+            daemon_state="ready",
+            dashboard_enabled=True,
+            terminal_enabled=True,
         )
         == "degraded"
     )
     assert (
         host.evaluate_delivery_state(
-            probes, daemon_state="ready", terminal_enabled=False
+            probes,
+            daemon_state="ready",
+            dashboard_enabled=False,
+            terminal_enabled=False,
         )
         == "not_applicable"
     )
     assert (
         host.evaluate_delivery_state(
-            probes, daemon_state="indeterminate", terminal_enabled=True
+            probes,
+            daemon_state="indeterminate",
+            dashboard_enabled=True,
+            terminal_enabled=True,
         )
         == "indeterminate"
     )
@@ -1353,7 +1423,30 @@ def test_pure_state_and_issue_evaluators() -> None:
     passing_mux["mux"] = host.Evidence("mux", "daemon", "pass", "101")
     assert (
         host.evaluate_delivery_state(
-            passing_mux, daemon_state="ready", terminal_enabled=True
+            passing_mux,
+            daemon_state="ready",
+            dashboard_enabled=True,
+            terminal_enabled=True,
+        )
+        == "ready"
+    )
+    failed_dashboard = dict(passing_mux)
+    failed_dashboard["dashboard"] = host.Evidence("dashboard", "daemon", "fail", "down")
+    assert (
+        host.evaluate_delivery_state(
+            failed_dashboard,
+            daemon_state="ready",
+            dashboard_enabled=True,
+            terminal_enabled=False,
+        )
+        == "degraded"
+    )
+    assert (
+        host.evaluate_delivery_state(
+            probes,
+            daemon_state="ready",
+            dashboard_enabled=True,
+            terminal_enabled=False,
         )
         == "ready"
     )
@@ -1519,6 +1612,20 @@ def test_profile_probe_and_path_fields_fail_closed(
         host.plan_profile(profile)
 
 
+def test_service_fields_require_safe_unit_identifiers(tmp_path: Path) -> None:
+    profile = tmp_path / "host.toml"
+    profile.write_text(
+        V1_PROFILE.replace(
+            'desired_service = "ao-dashboard.service"',
+            'desired_service = "/tmp/dashboard.service"',
+        ),
+        encoding="utf-8",
+    )
+    profile.chmod(0o600)
+    with pytest.raises(host.CalibrationError, match="systemd service unit"):
+        host.plan_profile(profile)
+
+
 @pytest.mark.parametrize("value", ["true", "1.0"])
 def test_schema_version_requires_exact_integer(tmp_path: Path, value: str) -> None:
     profile = tmp_path / "host.toml"
@@ -1649,8 +1756,8 @@ def test_v2_terminal_requires_read_only_dashboard(
         nginx_executable=Path("/usr/sbin/nginx"),
         nginx_pid_file=tmp_path / "state/nginx.pid",
         active_config=tmp_path / "state/active.conf",
-        desired_service=tmp_path / "state/dashboard.service",
-        rollback_service=tmp_path / "state/dashboard.rollback.service",
+        desired_service="ao-dashboard.service",
+        rollback_service="ao-dashboard-rollback.service",
         desired_nginx_artifact=tmp_path / "state/nginx.conf",
         desired_service_artifact=tmp_path / "state/nginx.service",
         terminal=True,
@@ -1688,6 +1795,22 @@ def test_external_doctor_failure_degrades_delivery() -> None:
     )
     states = cast(dict[str, object], report["states"])
     assert states == {"daemon": "ready", "delivery": "degraded"}
+
+
+def test_nonzero_external_doctor_json_degrades_without_blocking_daemon() -> None:
+    doctor = json.dumps(
+        {
+            "ok": False,
+            "checks": [{"name": "github-token", "level": "FAIL"}],
+        }
+    )
+    responses = inspect_responses(doctor=doctor)
+    responses[7] = completed((), code=1, out=doctor)
+    report = host.inspect_host(FakeRunner(responses), context="host")
+    assert cast(dict[str, object], report["states"]) == {
+        "daemon": "ready",
+        "delivery": "degraded",
+    }
 
 
 def test_doctor_three_way_classification_matrix() -> None:
@@ -1740,6 +1863,15 @@ def test_auto_remains_indeterminate_without_explicit_host_attestation() -> None:
         for probe in probes
         if probe["id"] in {"systemd-active", "status", "doctor", "healthz", "readyz"}
     } == {"sandbox"}
+
+
+def test_endpoint_identity_fields_must_match() -> None:
+    responses = inspect_responses()
+    ready = json.loads(responses[9].stdout)
+    ready["workingDirectory"] = "/opt/example/other-work"
+    responses[9] = completed((), out=json.dumps(ready))
+    report = host.inspect_host(FakeRunner(responses), context="host")
+    assert cast(dict[str, object], report["states"])["daemon"] == "indeterminate"
 
 
 @pytest.mark.parametrize("doctor", ["not-json", "[]"])

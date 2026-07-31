@@ -13,8 +13,8 @@ listen_port = 3001
 trusted_readonly_cidrs = ["203.0.113.0/24"]
 document_root = "/opt/example/dashboard"
 active_config = "/opt/example/active.conf"
-desired_service = "/opt/example/dashboard.service"
-rollback_service = "/opt/example/dashboard.rollback.service"
+desired_service = "ao-dashboard.service"
+rollback_service = "ao-dashboard-rollback.service"
 
 [dashboard.terminal]
 desired_enabled = true
