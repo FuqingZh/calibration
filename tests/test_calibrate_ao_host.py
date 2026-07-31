@@ -6,6 +6,7 @@ import os
 import runpy
 import shutil
 import socketserver
+import stat
 import subprocess
 import sys
 import threading
@@ -1197,7 +1198,7 @@ def test_safe_path_and_render_drift_rejections(
     unsafe_parent = tmp_path / "writable-parent"
     unsafe_parent.mkdir(mode=0o777)
     unsafe_parent.chmod(0o777)
-    with pytest.raises(host.CalibrationError, match="sticky bit and a trusted owner"):
+    with pytest.raises(host.CalibrationError, match="untrusted group or other"):
         host.render_profile(profile, unsafe_parent / "candidate")
     unsafe_parent.chmod(0o1777)
     assert (
@@ -1230,9 +1231,7 @@ def test_safe_path_and_render_drift_rejections(
 
     with monkeypatch.context() as patch:
         patch.setattr(Path, "lstat", other_owned_lstat)
-        with pytest.raises(
-            host.CalibrationError, match="sticky bit and a trusted owner"
-        ):
+        with pytest.raises(host.CalibrationError, match="trusted owner"):
             host.render_profile(profile, other_owned_parent / "candidate")
     with pytest.raises(host.CalibrationError, match="parent must exist"):
         host.render_profile(profile, tmp_path / "missing" / "candidate")
@@ -1283,12 +1282,92 @@ def test_private_ancestor_and_external_role_inspection_fail_closed(
         with pytest.raises(host.CalibrationError, match="cannot be inspected"):
             host._private_chain_missing_components(inspected_child)
 
+    foreign_parent = tmp_path / "foreign-parent"
+    foreign_parent.mkdir(mode=0o755)
+    foreign_parent.chmod(0o755)
+    untrusted_uid = max(0, os.geteuid(), Path("/").lstat().st_uid) + 1
+
+    def foreign_parent_lstat(self: Path) -> os.stat_result:
+        metadata = original_lstat(self)
+        if self != foreign_parent:
+            return metadata
+        fields = list(metadata)
+        fields[4] = untrusted_uid
+        return os.stat_result(fields)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(Path, "lstat", foreign_parent_lstat)
+        with pytest.raises(host.CalibrationError, match="trusted owner"):
+            host._private_chain_missing_components(foreign_parent / "missing")
+
     dangling = tmp_path / "dangling"
     dangling.symlink_to(tmp_path / "missing-target")
     with pytest.raises(host.CalibrationError, match="dangling symlink"):
         host._validate_existing_path_role(
             dangling, "dashboard.active_config", directory=False
         )
+    with pytest.raises(host.CalibrationError, match="regular file"):
+        host._validate_control_path(dangling, "dashboard.active_config")
+
+    shared_target = tmp_path / "shared-target"
+    shared_target.mkdir(mode=0o770)
+    shared_target.chmod(0o770)
+    target = shared_target / "active.conf"
+    target.write_text("config", encoding="utf-8")
+    target.chmod(0o600)
+    safe_link_parent = tmp_path / "safe-links"
+    safe_link_parent.mkdir(mode=0o700)
+    linked_control = safe_link_parent / "active.conf"
+    linked_control.symlink_to(target)
+    with pytest.raises(host.CalibrationError, match="regular file"):
+        host._validate_control_path(linked_control, "dashboard.active_config")
+
+    foreign_control = tmp_path / "foreign-control"
+    foreign_control.write_text("config", encoding="utf-8")
+    foreign_control.chmod(0o600)
+
+    def foreign_control_lstat(self: Path) -> os.stat_result:
+        metadata = original_lstat(self)
+        if self != foreign_control:
+            return metadata
+        fields = list(metadata)
+        fields[4] = untrusted_uid
+        return os.stat_result(fields)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(Path, "lstat", foreign_control_lstat)
+        with pytest.raises(host.CalibrationError, match="trusted owner"):
+            host._validate_control_path(foreign_control, "dashboard.active_config")
+
+    denied_control = tmp_path / "denied-control"
+
+    def denied_control_lstat(self: Path) -> os.stat_result:
+        if self == denied_control:
+            raise PermissionError("control denied")
+        return original_lstat(self)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(Path, "lstat", denied_control_lstat)
+        with pytest.raises(host.CalibrationError, match="cannot be inspected"):
+            host._validate_control_path(denied_control, "dashboard.active_config")
+
+    trusted_control = tmp_path / "trusted-control"
+    trusted_control.write_text("config", encoding="utf-8")
+    trusted_control.chmod(0o600)
+    root_calls = 0
+
+    def denied_anchor_lstat(self: Path) -> os.stat_result:
+        nonlocal root_calls
+        if self == Path("/"):
+            root_calls += 1
+            if root_calls == 2:
+                raise PermissionError("anchor denied")
+        return original_lstat(self)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(Path, "lstat", denied_anchor_lstat)
+        with pytest.raises(host.CalibrationError, match="trust anchor"):
+            host._validate_control_path(trusted_control, "dashboard.active_config")
 
     original_stat = Path.stat
     denied_role = tmp_path / "denied-role"
@@ -1304,6 +1383,100 @@ def test_private_ancestor_and_external_role_inspection_fail_closed(
             host._validate_existing_path_role(
                 denied_role, "dashboard.active_config", directory=False
             )
+
+
+@pytest.mark.parametrize("read_only", [True, False])
+def test_namespace_group_writable_ancestor_requires_readonly_filesystem(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, read_only: bool
+) -> None:
+    system_directory = tmp_path / "system-directory"
+    system_directory.mkdir(mode=0o775)
+    system_directory.chmod(0o775)
+    original_lstat = Path.lstat
+    original_statvfs = os.statvfs
+    original_anchor = Path("/").lstat()
+    namespace_uid = max(1, os.geteuid() + 1)
+    namespace_gid = max(1, os.getegid() + 1)
+
+    def root_namespace_lstat(self: Path) -> os.stat_result:
+        metadata = original_lstat(self)
+        if self != system_directory and metadata.st_uid != original_anchor.st_uid:
+            return metadata
+        fields = list(metadata)
+        fields[4] = namespace_uid
+        fields[5] = namespace_gid
+        return os.stat_result(fields)
+
+    def controlled_statvfs(path: os.PathLike[str] | str) -> os.statvfs_result:
+        fields = list(original_statvfs(path))
+        if read_only:
+            fields[8] |= os.ST_RDONLY
+        else:
+            fields[8] &= ~os.ST_RDONLY
+        return os.statvfs_result(fields)
+
+    monkeypatch.setattr(Path, "lstat", root_namespace_lstat)
+    monkeypatch.setattr(os, "statvfs", controlled_statvfs)
+    if read_only:
+        assert host._private_chain_missing_components(system_directory / "missing") == [
+            system_directory / "missing"
+        ]
+    else:
+        with pytest.raises(host.CalibrationError, match="existing ancestor"):
+            host._private_chain_missing_components(system_directory / "missing")
+
+
+def test_group_writable_ancestor_statvfs_failure_is_closed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    system_directory = tmp_path / "system-directory"
+    system_directory.mkdir(mode=0o775)
+    system_directory.chmod(0o775)
+    original_lstat = Path.lstat
+    original_anchor = Path("/").lstat()
+    namespace_uid = max(1, os.geteuid() + 1)
+    namespace_gid = max(1, os.getegid() + 1)
+
+    def root_namespace_lstat(self: Path) -> os.stat_result:
+        metadata = original_lstat(self)
+        if self != system_directory and metadata.st_uid != original_anchor.st_uid:
+            return metadata
+        fields = list(metadata)
+        fields[4] = namespace_uid
+        fields[5] = namespace_gid
+        return os.stat_result(fields)
+
+    def denied_statvfs(_path: os.PathLike[str] | str) -> os.statvfs_result:
+        raise OSError("statvfs denied")
+
+    monkeypatch.setattr(Path, "lstat", root_namespace_lstat)
+    monkeypatch.setattr(os, "statvfs", denied_statvfs)
+    with pytest.raises(host.CalibrationError, match="filesystem cannot be inspected"):
+        host._private_chain_missing_components(system_directory / "missing")
+
+
+def test_root_owned_root_group_writable_ancestor_is_trusted(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    original_lstat = Path.lstat
+
+    root_group_directory = tmp_path / "root-group-directory"
+    root_group_directory.mkdir(mode=0o775)
+    root_group_directory.chmod(0o775)
+
+    def root_group_lstat(self: Path) -> os.stat_result:
+        metadata = original_lstat(self)
+        if self != root_group_directory:
+            return metadata
+        fields = list(metadata)
+        fields[4] = 0
+        fields[5] = 0
+        return os.stat_result(fields)
+
+    monkeypatch.setattr(Path, "lstat", root_group_lstat)
+    assert host._private_chain_missing_components(root_group_directory / "missing") == [
+        root_group_directory / "missing"
+    ]
 
 
 def test_invalid_profile_and_init_rejections(
@@ -1385,9 +1558,7 @@ def test_init_rejects_writable_ancestor_above_private_parent(
     other_owned_target = nearest / "other-owned" / "host.toml"
     with monkeypatch.context() as patch:
         patch.setattr(Path, "lstat", other_owned_lstat)
-        with pytest.raises(
-            host.CalibrationError, match="sticky bit and a trusted owner"
-        ):
+        with pytest.raises(host.CalibrationError, match="trusted owner"):
             host.init_profile(
                 other_owned_target,
                 trust_model="untrusted",
@@ -1472,6 +1643,91 @@ def test_private_host_paths_require_trusted_ancestors_on_init_and_load(
     shared.chmod(0o770)
     with pytest.raises(host.CalibrationError, match="existing ancestor"):
         host.plan_profile(target)
+
+
+@pytest.mark.parametrize("mode", [0o755, 0o500])
+@pytest.mark.parametrize(
+    "field",
+    [
+        "data_dir",
+        "codex_home",
+        "private_authority",
+        "desired_nginx_artifact",
+        "desired_service_artifact",
+        "state_root",
+    ],
+)
+def test_existing_private_host_directories_require_mode_0700(
+    tmp_path: Path, profile: Path, field: str, mode: int
+) -> None:
+    payload = host._canonical_v2(host._load_profile(profile))
+    directory = tmp_path / f"{field}-{mode:o}"
+    directory.mkdir(mode=0o700)
+    directory.chmod(mode)
+    ao = cast(dict[str, object], payload["ao"])
+    paths = cast(dict[str, object], payload["paths"])
+    if field in {"data_dir", "codex_home"}:
+        ao[field] = str(directory)
+    elif field == "private_authority":
+        paths[field] = str(directory / "AGENTS.md")
+    elif field == "state_root":
+        paths[field] = str(directory)
+        cast(dict[str, object], payload["dashboard"])["pid_file"] = str(
+            directory / "nginx.pid"
+        )
+    else:
+        paths[field] = str(directory / "artifact")
+    candidate = tmp_path / f"invalid-{field}-{mode:o}.toml"
+    candidate.write_text(host._toml(payload), encoding="utf-8")
+    candidate.chmod(0o600)
+
+    with pytest.raises(host.CalibrationError, match=r"mode 0700"):
+        host.plan_profile(candidate)
+
+
+def test_existing_private_host_directory_requires_current_user_owner(
+    tmp_path: Path,
+    profile: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    payload = host._canonical_v2(host._load_profile(profile))
+    data_dir = tmp_path / "foreign-data"
+    data_dir.mkdir(mode=0o700)
+    cast(dict[str, object], payload["ao"])["data_dir"] = str(data_dir)
+    original_lstat = Path.lstat
+    trust_anchor_uid = Path("/").lstat().st_uid
+    actual_euid = os.geteuid()
+    expected_euid = max(0, actual_euid, trust_anchor_uid) + 1
+
+    def foreign_data_lstat(self: Path) -> os.stat_result:
+        metadata = original_lstat(self)
+        fields = list(metadata)
+        if self == data_dir:
+            fields[4] = trust_anchor_uid
+        elif metadata.st_uid == actual_euid:
+            fields[4] = expected_euid
+        return os.stat_result(fields)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(Path, "lstat", foreign_data_lstat)
+        patch.setattr(os, "geteuid", lambda: expected_euid)
+        with pytest.raises(host.CalibrationError, match="owned by the current user"):
+            host._validate_profile_host_path_ancestors(payload)
+
+
+def test_state_root_cannot_be_the_filesystem_root(
+    tmp_path: Path, profile: Path
+) -> None:
+    payload = host._canonical_v2(host._load_profile(profile))
+    paths = cast(dict[str, object], payload["paths"])
+    paths["state_root"] = "/"
+    cast(dict[str, object], payload["dashboard"])["pid_file"] = "/nginx.pid"
+    candidate = tmp_path / "root-state.toml"
+    candidate.write_text(host._toml(payload), encoding="utf-8")
+    candidate.chmod(0o600)
+
+    with pytest.raises(host.CalibrationError, match=r"state_root.*mode 0700"):
+        host.plan_profile(candidate)
 
 
 def test_load_rejects_missing_private_target_below_unsafe_ancestor(
@@ -2045,6 +2301,28 @@ def test_enabled_dashboard_validates_path_roles_and_distinct_services(
     active_state.mkdir(mode=0o700)
     active_directory = active_state / "active.conf"
     active_directory.mkdir(mode=0o700)
+    active_writable = active_state / "writable.conf"
+    active_writable.write_text("config", encoding="utf-8")
+    active_writable.chmod(0o664)
+    active_readable = active_state / "readable.conf"
+    active_readable.write_text("config", encoding="utf-8")
+    active_readable.chmod(0o644)
+    shared_config = tmp_path / "shared-config"
+    shared_config.mkdir(mode=0o770)
+    shared_config.chmod(0o770)
+    replaceable_config = shared_config / "active.conf"
+    replaceable_config.write_text("config", encoding="utf-8")
+    replaceable_config.chmod(0o600)
+    sticky_config = tmp_path / "sticky-config"
+    sticky_config.mkdir(mode=0o1777)
+    sticky_config.chmod(0o1777)
+    missing_sticky_config = sticky_config / "active.conf"
+    shared_bin = tmp_path / "shared-bin"
+    shared_bin.mkdir(mode=0o770)
+    shared_bin.chmod(0o770)
+    replaceable_nginx = shared_bin / "nginx"
+    replaceable_nginx.write_text("binary", encoding="utf-8")
+    replaceable_nginx.chmod(0o755)
     pid_state = tmp_path / "pid-state"
     pid_state.mkdir(mode=0o700)
     pid_directory = pid_state / "nginx.pid"
@@ -2060,14 +2338,35 @@ def test_enabled_dashboard_validates_path_roles_and_distinct_services(
         initialize("nginx-writable", nginx_executable=nginx_writable)
     with pytest.raises(host.CalibrationError, match=r"active_config.*regular file"):
         initialize("active", state_root=active_state, active_config=active_directory)
+    with pytest.raises(host.CalibrationError, match=r"active_config.*writable"):
+        initialize(
+            "active-writable",
+            state_root=active_state,
+            active_config=active_writable,
+        )
+    with pytest.raises(host.CalibrationError, match="existing ancestor"):
+        initialize("active-replaceable", active_config=replaceable_config)
+    with pytest.raises(host.CalibrationError, match="untrusted group or other"):
+        initialize("active-missing-sticky", active_config=missing_sticky_config)
+    with pytest.raises(host.CalibrationError, match="existing ancestor"):
+        initialize("nginx-replaceable", nginx_executable=replaceable_nginx)
     with pytest.raises(host.CalibrationError, match=r"pid_file.*regular file"):
         initialize("pid", state_root=pid_state, nginx_pid_file=pid_directory)
+    assert initialize(
+        "active-readable",
+        state_root=active_state,
+        active_config=active_readable,
+    ).exists()
     for name in (
         "document",
         "nginx-directory",
         "nginx-mode",
         "nginx-writable",
         "active",
+        "active-writable",
+        "active-replaceable",
+        "active-missing-sticky",
+        "nginx-replaceable",
         "pid",
     ):
         assert not (tmp_path / f"{name}.toml").exists()
@@ -2139,6 +2438,7 @@ def test_enabled_dashboard_validates_path_roles_and_distinct_services(
         private_authority=tmp_path / "disabled-authority/AGENTS.md",
         state_root=tmp_path / "disabled-state",
         nginx_executable=nginx_writable,
+        active_config=missing_sticky_config,
         desired_service="ao-dashboard.service",
         rollback_service="ao-dashboard.service",
     )
@@ -2313,6 +2613,88 @@ def test_render_cleans_failed_staging(
     with pytest.raises(OSError, match="publish failed"):
         host.render_profile(profile, target)
     assert not (tmp_path / ".failed.staging").exists()
+
+
+def test_render_does_not_clean_staging_created_by_a_competing_call(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, profile: Path
+) -> None:
+    target = tmp_path / "competing"
+    staging = tmp_path / ".competing.staging"
+    marker = staging / "owned-by-other-call"
+    original_mkdir = Path.mkdir
+
+    def competing_mkdir(
+        self: Path,
+        mode: int = 0o777,
+        parents: bool = False,
+        exist_ok: bool = False,
+    ) -> None:
+        if self == staging:
+            original_mkdir(self, mode=mode, parents=parents, exist_ok=exist_ok)
+            marker.write_text("preserve", encoding="utf-8")
+            raise FileExistsError(staging)
+        original_mkdir(self, mode=mode, parents=parents, exist_ok=exist_ok)
+
+    monkeypatch.setattr(Path, "mkdir", competing_mkdir)
+    with pytest.raises(FileExistsError):
+        host.render_profile(profile, target)
+
+    assert marker.read_text(encoding="utf-8") == "preserve"
+    assert not target.exists()
+
+
+@pytest.mark.parametrize("mask", [0o400, 0o777])
+def test_render_publishes_private_tree_independent_of_umask(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    profile: Path,
+    mask: int,
+) -> None:
+    target = tmp_path / f"private-{mask:o}"
+    expected = host._candidate_files(host._load_profile(profile))
+    original_replace = os.replace
+    observed = False
+
+    def validating_replace(source: Path, destination: Path) -> None:
+        nonlocal observed
+        assert host._tree_bytes(source) == expected
+        host._validate_tree_shape(source, expected)
+        host._validate_tree_modes(source)
+        observed = True
+        original_replace(source, destination)
+
+    monkeypatch.setattr(host.os, "replace", validating_replace)
+    previous_umask = os.umask(mask)
+    try:
+        assert host.render_profile(profile, target)["unchanged"] is False
+    finally:
+        os.umask(previous_umask)
+
+    assert observed is True
+    assert all(
+        stat.S_IMODE(item.stat().st_mode) == (0o700 if item.is_dir() else 0o600)
+        for item in (target, *target.rglob("*"))
+    )
+    assert host.verify_profile(profile, candidate=target)["valid"] is True
+    assert host.render_profile(profile, target)["unchanged"] is True
+    assert not (tmp_path / f".private-{mask:o}.staging").exists()
+
+
+def test_render_rejects_noncanonical_staging_content(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, profile: Path
+) -> None:
+    target = tmp_path / "invalid-staging"
+
+    def wrong_tree(_root: Path) -> dict[str, bytes]:
+        return {}
+
+    monkeypatch.setattr(host, "_tree_bytes", wrong_tree)
+
+    with pytest.raises(host.CalibrationError, match="content is not canonical"):
+        host.render_profile(profile, target)
+
+    assert not target.exists()
+    assert not (tmp_path / ".invalid-staging.staging").exists()
 
 
 def test_verify_rejects_content_and_modes(tmp_path: Path, profile: Path) -> None:
@@ -3139,6 +3521,34 @@ def test_pure_state_and_issue_evaluators() -> None:
         )
         == "ready"
     )
+    for field in (
+        "executablePath",
+        "workingDirectory",
+        "startupWorkingDirectory",
+    ):
+        matching_status = {**status, field: health[field]}
+        assert (
+            host.evaluate_daemon_state(
+                probes,
+                context="host",
+                status=matching_status,
+                health=health,
+                ready=ready,
+            )
+            == "ready"
+        )
+        for invalid in ("different", "", 7):
+            conflicting_status = {**status, field: invalid}
+            assert (
+                host.evaluate_daemon_state(
+                    probes,
+                    context="host",
+                    status=conflicting_status,
+                    health=health,
+                    ready=ready,
+                )
+                == "indeterminate"
+            )
     incomplete_health = dict(health)
     incomplete_health.pop("executablePath")
     assert (
@@ -3821,10 +4231,14 @@ def test_cli_expanduser_failure_uses_fixed_json_error_envelope(
 
 
 def test_inspect_uses_profile_ao_cli(tmp_path: Path) -> None:
+    wrapper = tmp_path / "trusted-bin" / "ao-wrapper"
+    wrapper.parent.mkdir(mode=0o700)
+    wrapper.write_text("#!/bin/sh\n", encoding="utf-8")
+    wrapper.chmod(0o755)
     profile = tmp_path / "host.toml"
     profile.write_text(
         LEGACY_V1_FIXTURE.read_text()
-        .replace('cli = "ao"', 'cli = "/opt/example/ao-wrapper"')
+        .replace('cli = "ao"', f'cli = "{wrapper}"')
         .replace("listen_port = 3001", "listen_port = 8443")
         .replace(
             'trusted_readonly_cidrs = ["203.0.113.0/24"]',
@@ -3843,14 +4257,14 @@ def test_inspect_uses_profile_ao_cli(tmp_path: Path) -> None:
 
     report = host.inspect_host(runner, profile=profile, context="host")
 
-    assert runner.commands[0] == ("/opt/example/ao-wrapper", "version")
+    assert runner.commands[0] == (str(wrapper), "version")
     assert runner.commands[6] == (
-        "/opt/example/ao-wrapper",
+        str(wrapper),
         "status",
         "--json",
     )
     assert runner.commands[7] == (
-        "/opt/example/ao-wrapper",
+        str(wrapper),
         "doctor",
         "--json",
     )
@@ -3942,6 +4356,47 @@ def test_profile_probe_and_path_fields_fail_closed(
     )
     profile.chmod(0o600)
     with pytest.raises(host.CalibrationError, match=message):
+        host.plan_profile(profile)
+
+
+def test_absolute_ao_cli_requires_trusted_executable_path(tmp_path: Path) -> None:
+    trusted = tmp_path / "trusted-bin"
+    trusted.mkdir(mode=0o700)
+    writable = trusted / "writable-ao"
+    writable.write_text("#!/bin/sh\n", encoding="utf-8")
+    writable.chmod(0o775)
+
+    shared = tmp_path / "shared-bin"
+    shared.mkdir(mode=0o770)
+    shared.chmod(0o770)
+    replaceable = shared / "ao"
+    replaceable.write_text("#!/bin/sh\n", encoding="utf-8")
+    replaceable.chmod(0o755)
+
+    for executable, message in (
+        (writable, "group/other-writable"),
+        (replaceable, "existing ancestor"),
+    ):
+        profile = tmp_path / f"{executable.name}.toml"
+        profile.write_text(
+            V1_PROFILE.replace('cli = "ao"', f'cli = "{executable}"'),
+            encoding="utf-8",
+        )
+        profile.chmod(0o600)
+        with pytest.raises(host.CalibrationError, match=message):
+            host.plan_profile(profile)
+
+    sticky = tmp_path / "sticky-bin"
+    sticky.mkdir(mode=0o1777)
+    sticky.chmod(0o1777)
+    missing = sticky / "missing-ao"
+    profile = tmp_path / "missing-sticky-cli.toml"
+    profile.write_text(
+        V1_PROFILE.replace('cli = "ao"', f'cli = "{missing}"'),
+        encoding="utf-8",
+    )
+    profile.chmod(0o600)
+    with pytest.raises(host.CalibrationError, match="untrusted group or other"):
         host.plan_profile(profile)
 
 
@@ -4306,13 +4761,33 @@ def test_auto_remains_indeterminate_without_explicit_host_attestation() -> None:
     } == {"sandbox"}
 
 
-def test_endpoint_identity_fields_must_match() -> None:
+@pytest.mark.parametrize(
+    "field",
+    ["executablePath", "workingDirectory", "startupWorkingDirectory"],
+)
+def test_endpoint_identity_fields_must_match(field: str) -> None:
     responses = inspect_responses()
     ready = json.loads(responses[9].stdout)
-    ready["workingDirectory"] = "/opt/example/other-work"
+    ready[field] = "/opt/example/conflict"
     responses[9] = completed((), out=json.dumps(ready))
     report = host.inspect_host(FakeRunner(responses), context="host")
     assert cast(dict[str, object], report["states"])["daemon"] == "indeterminate"
+
+
+def test_status_identity_extension_conflict_is_preserved_and_not_ready() -> None:
+    status = json.loads(inspect_responses()[6].stdout)
+    status["workingDirectory"] = "/opt/example/conflict"
+    report = host.inspect_host(
+        FakeRunner(inspect_responses(status=json.dumps(status))),
+        context="host",
+    )
+
+    assert cast(dict[str, object], report["states"])["daemon"] == "indeterminate"
+    capabilities = cast(dict[str, object], report["capabilities"])
+    assert (
+        cast(dict[str, object], capabilities["ao_status"])["workingDirectory"]
+        == "/opt/example/conflict"
+    )
 
 
 @pytest.mark.parametrize("doctor", ["not-json", "[]"])

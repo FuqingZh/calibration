@@ -506,6 +506,16 @@ def evaluate_daemon_state(
         "workingDirectory",
         "startupWorkingDirectory",
     )
+    status_identity_matches = all(
+        field not in status
+        or (
+            isinstance(status[field], str)
+            and bool(cast(str, status[field]).strip())
+            and status[field] == health.get(field)
+            and status[field] == ready.get(field)
+        )
+        for field in identity_fields
+    )
     identity_matches = (
         probes["main-pid"].status == "pass"
         and main_pid is not None
@@ -536,6 +546,7 @@ def evaluate_daemon_state(
             for field in identity_fields
         )
         and all(health.get(field) == ready.get(field) for field in identity_fields)
+        and status_identity_matches
     )
     if (
         probes["ao-version"].status == "pass"
@@ -1036,6 +1047,30 @@ def _safe_path(path: Path, *, may_create: bool, directory: bool | None = None) -
     return expanded.resolve()
 
 
+def _has_untrusted_directory_write(
+    path: Path,
+    metadata: os.stat_result,
+) -> bool:
+    mode = stat.S_IMODE(metadata.st_mode)
+    trusted_system_group = metadata.st_uid == 0 and metadata.st_gid == 0
+    read_only_filesystem = False
+    needs_read_only_proof = bool(mode & 0o002) or (
+        bool(mode & 0o020) and not trusted_system_group
+    )
+    if needs_read_only_proof:
+        try:
+            read_only_filesystem = bool(os.statvfs(path).f_flag & os.ST_RDONLY)
+        except OSError as exc:
+            raise CalibrationError(
+                f"{path} filesystem cannot be inspected: {exc}"
+            ) from exc
+    unsafe_group_write = bool(mode & 0o020) and not (
+        trusted_system_group or read_only_filesystem
+    )
+    unsafe_other_write = bool(mode & 0o002) and not read_only_filesystem
+    return unsafe_group_write or unsafe_other_write
+
+
 def _private_chain_missing_components(path: Path) -> list[Path]:
     missing: list[Path] = []
     current = path
@@ -1060,16 +1095,21 @@ def _private_chain_missing_components(path: Path) -> list[Path]:
         if stat.S_ISLNK(metadata.st_mode) or not stat.S_ISDIR(metadata.st_mode):
             raise CalibrationError(f"{ancestor} must be a real directory")
         inspected.append((ancestor, metadata))
-    trusted_owner_uids = {0, os.geteuid(), inspected[-1][1].st_uid}
+    trust_anchor = inspected[-1][1]
+    trusted_owner_uids = {0, os.geteuid(), trust_anchor.st_uid}
     for ancestor, metadata in inspected:
+        if metadata.st_uid not in trusted_owner_uids:
+            raise CalibrationError(
+                f"{ancestor} existing ancestor must have a trusted owner"
+            )
         mode = stat.S_IMODE(metadata.st_mode)
         trusted_sticky = bool(mode & stat.S_ISVTX) and (
             metadata.st_uid in trusted_owner_uids
         )
-        if mode & 0o022 and not trusted_sticky:
+        if not trusted_sticky and _has_untrusted_directory_write(ancestor, metadata):
             raise CalibrationError(
-                f"{ancestor} existing ancestor must not be group/other-writable "
-                "unless it has a sticky bit and a trusted owner"
+                f"{ancestor} existing ancestor must not be writable by an "
+                "untrusted group or other identity"
             )
     return missing
 
@@ -1087,15 +1127,42 @@ def _validate_profile_host_path_ancestors(
     ao = _section(profile, "ao")
     paths = _section(profile, "paths")
     directories = (
-        Path(cast(str, ao["data_dir"])),
-        Path(cast(str, ao["codex_home"])),
-        Path(cast(str, paths["private_authority"])).parent,
-        Path(cast(str, paths["desired_nginx_artifact"])).parent,
-        Path(cast(str, paths["desired_service_artifact"])).parent,
-        Path(cast(str, paths["state_root"])),
+        ("ao.data_dir", Path(cast(str, ao["data_dir"]))),
+        ("ao.codex_home", Path(cast(str, ao["codex_home"]))),
+        (
+            "paths.private_authority parent",
+            Path(cast(str, paths["private_authority"])).parent,
+        ),
+        (
+            "paths.desired_nginx_artifact parent",
+            Path(cast(str, paths["desired_nginx_artifact"])).parent,
+        ),
+        (
+            "paths.desired_service_artifact parent",
+            Path(cast(str, paths["desired_service_artifact"])).parent,
+        ),
+        ("paths.state_root", Path(cast(str, paths["state_root"]))),
     )
-    for directory in dict.fromkeys(directories):
+    seen: set[Path] = set()
+    for label, directory in directories:
+        if directory in seen:
+            continue
+        seen.add(directory)
         _private_chain_missing_components(directory)
+        if directory.exists():
+            metadata = directory.lstat()
+            if (
+                metadata.st_uid != os.geteuid()
+                or stat.S_IMODE(metadata.st_mode) != 0o700
+            ):
+                raise CalibrationError(
+                    f"{label} must be owned by the current user with mode 0700 "
+                    "when it exists"
+                )
+
+    cli = cast(str, ao["cli"])
+    if Path(cli).is_absolute():
+        _validate_control_path(Path(cli), "ao.cli", executable=True)
 
 
 def _validate_codex_home(path: Path) -> Path:
@@ -1227,6 +1294,7 @@ def _validate_existing_path_role(
     *,
     directory: bool,
     executable: bool = False,
+    trusted_file: bool = False,
 ) -> None:
     try:
         metadata = path.stat()
@@ -1242,10 +1310,55 @@ def _validate_existing_path_role(
         raise CalibrationError(f"{label} must be a regular file when it exists")
     if executable and not os.access(path, os.X_OK):
         raise CalibrationError(f"{label} must be executable when it exists")
-    if executable and stat.S_IMODE(metadata.st_mode) & 0o022:
+    if (executable or trusted_file) and stat.S_IMODE(metadata.st_mode) & 0o022:
         raise CalibrationError(
             f"{label} must not be group/other-writable when it exists"
         )
+
+
+def _validate_control_path(
+    path: Path,
+    label: str,
+    *,
+    executable: bool = False,
+) -> None:
+    missing_parent_components = _private_chain_missing_components(path.parent)
+    try:
+        metadata = path.lstat()
+    except FileNotFoundError:
+        metadata = None
+    except OSError as exc:
+        raise CalibrationError(f"{label} cannot be inspected: {exc}") from exc
+    if metadata is None:
+        creation_boundary = (
+            missing_parent_components[-1].parent
+            if missing_parent_components
+            else path.parent
+        )
+        boundary_metadata = creation_boundary.lstat()
+        if _has_untrusted_directory_write(creation_boundary, boundary_metadata):
+            raise CalibrationError(
+                f"{label} missing path must not depend on a creation boundary "
+                "writable by an untrusted group or other identity"
+            )
+    if metadata is not None:
+        if not stat.S_ISREG(metadata.st_mode):
+            raise CalibrationError(f"{label} must be a regular file when it exists")
+        try:
+            trust_anchor = Path(path.anchor).lstat()
+        except OSError as exc:
+            raise CalibrationError(
+                f"{label} trust anchor cannot be inspected: {exc}"
+            ) from exc
+        if metadata.st_uid not in {0, os.geteuid(), trust_anchor.st_uid}:
+            raise CalibrationError(f"{label} must have a trusted owner when it exists")
+    _validate_existing_path_role(
+        path,
+        label,
+        directory=False,
+        executable=executable,
+        trusted_file=True,
+    )
 
 
 def _validate_dashboard_path_roles(dashboard: Mapping[str, object]) -> None:
@@ -1272,16 +1385,14 @@ def _validate_dashboard_path_roles(dashboard: Mapping[str, object]) -> None:
         "dashboard.document_root",
         directory=True,
     )
-    _validate_existing_path_role(
+    _validate_control_path(
         Path(cast(str, dashboard["active_config"])),
         "dashboard.active_config",
-        directory=False,
     )
     if "nginx_executable" in dashboard:
-        _validate_existing_path_role(
+        _validate_control_path(
             Path(cast(str, dashboard["nginx_executable"])),
             "dashboard.nginx_executable",
-            directory=False,
             executable=True,
         )
     if "pid_file" in dashboard:
@@ -2263,11 +2374,20 @@ def render_profile(path: Path, output: Path) -> dict[str, object]:
         raise CalibrationError("sibling staging path must be absent")
     staging.mkdir(mode=0o700, parents=False)
     try:
+        staging.chmod(0o700)
         for name, content in files.items():
             destination = staging / name
-            destination.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+            directory = staging
+            for part in Path(name).parent.parts:
+                directory /= part
+                directory.mkdir(mode=0o700, exist_ok=True)
+                directory.chmod(0o700)
             destination.write_bytes(content)
             destination.chmod(0o600)
+        if _tree_bytes(staging) != files:
+            raise CalibrationError("staging tree content is not canonical")
+        _validate_tree_shape(staging, files)
+        _validate_tree_modes(staging)
         os.replace(staging, target)
     except BaseException:
         if staging.exists():
