@@ -30,10 +30,11 @@ Resolve the assigned workspace first and make any additional repository or
 external path explicit.
 
 On remote mounts, network filesystems, and large shared filesystems, narrow
-recursive discovery to relevant subdirectories and bound it by file type,
-depth, or result count. Private mount topology, exclusions, and host-specific
-safe paths belong to rendered local authority and are consulted only for
-explicit host-operation tasks.
+the search root and require a traversal-aware bound such as selected
+subdirectories or maximum depth. Also bound file type, file size, result count,
+and concurrency where supported. Private mount topology, exclusions, and
+host-specific safe paths belong to rendered local authority and are consulted
+only for explicit host-operation tasks.
 
 This is a portable operating invariant; process containment is not current AO
 behavior established by this guide. A service-manager scope for each worker
@@ -41,6 +42,19 @@ and its descendants is proposed to upstream AO as defense in depth. Until
 upstream implements and documents that behavior, repository and
 generated-agent boundaries remain the active controls; calibration ships no
 service unit or deployed host artifact.
+
+Process release is a distinct invariant. An orchestrator may mark a worker
+terminated or its runtime released only after the worker's OS-owned
+containment boundary is empty. Terminal, tmux, shell, harness-session, or
+orchestrator-session disappearance is not proof that descendant processes have
+exited. An incomplete release remains observable and retryable, with enough
+worker and containment identity retained for cleanup and authoritative
+emptiness verification.
+
+Current AO does not yet enforce per-worker systemd scopes. Those scopes remain
+an upstream proposal for supplying the required OS-owned containment boundary;
+this guide defines the release contract without claiming that mechanism is
+deployed.
 
 ## State Ownership And Diagnosis
 

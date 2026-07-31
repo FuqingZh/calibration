@@ -176,6 +176,24 @@ descendant processes, is a stronger defense in depth when the upstream
 orchestrator supports it; documentation must not describe a proposed
 containment mechanism as current AO behavior.
 
+## Orchestrator Process Release
+
+Treat process release as a separate portable lifecycle invariant. An
+orchestrator may mark a worker terminated or its runtime released only after
+the OS-owned containment boundary assigned to that worker is empty. A
+terminal, tmux pane, shell, harness session, or orchestrator session
+disappearing is not proof that descendant processes have exited.
+
+When the containment boundary is not empty or cannot be authoritatively read,
+keep the incomplete release observable and retryable. Preserve enough worker
+identity and containment state for the owning control plane to retry cleanup
+and verify emptiness; do not silently convert a partial teardown into a
+released state.
+
+This is a portable release contract, not a claim about current enforcement.
+Per-worker systemd scopes are one proposed upstream mechanism for providing an
+OS-owned boundary. Current AO does not yet enforce those scopes.
+
 ## Accepted Orchestrator Repository Adoption
 
 For an explicitly opted-in repository on a host whose orchestrator, identity,

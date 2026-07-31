@@ -125,18 +125,39 @@ def test_orchestrator_containment_is_portable_and_bounded() -> None:
         assert "remote mount" in authority
         assert "network filesystem" in authority
         assert "large shared filesystem" in authority
+        assert "traversal-aware bound" in authority
         assert "file type" in authority
+        assert "file size" in authority
         assert "depth" in authority
         assert "result count" in authority
+        assert "concurrency" in authority
 
     assert "{{HOST_AUTHORITY}}" in text("codex/AGENTS.md.template")
     assert "explicit" in template and "host-operation tasks only" in template
+    assert "discovery and mutations" in template
     for authority in (harness, runbook, decision, plan):
         assert "proposed" in authority
         assert "current AO behavior" in authority
-    assert "CAL-1 implemented and closed" in plan
+    assert "CAL-1 contract implemented; behavioral evaluation pending" in plan
+    assert "does not establish a behavioral improvement" in plan
     assert "does not modify" in plan
     assert "agent-orchestrator" not in plan
+
+
+def test_process_release_requires_empty_observable_retryable_containment() -> None:
+    harness = compact("references/engineering/discipline/harness.md")
+    runbook = compact("docs/runbooks/agent-orchestrator-review-continuation.md")
+    decision = compact("docs/decisions/2026-07-31-portable-orchestrator-containment.md")
+
+    for authority in (harness, runbook, decision):
+        assert "OS-owned containment boundary" in authority
+        assert "empty" in authority
+        assert "terminated" in authority
+        assert "runtime released" in authority
+        assert "not proof" in authority
+        assert "observable" in authority
+        assert "retryable" in authority
+        assert "Current AO does not yet enforce" in authority
 
 
 def test_shared_aggregation_root_has_behavioral_prompt_coverage() -> None:
@@ -144,7 +165,9 @@ def test_shared_aggregation_root_has_behavioral_prompt_coverage() -> None:
 
     assert "共享聚合根下的递归搜索边界" in prompts
     assert "sibling worktrees" in prompts
-    assert "targeted search" in prompts
+    assert "traversal-aware bound" in prompts
+    assert "file size" in prompts
+    assert "concurrency" in prompts
     assert "upstream proposal" in prompts
 
 
@@ -175,7 +198,8 @@ def test_docs_restore_stable_authority_and_historical_navigation() -> None:
     docs = compact("docs/README.md")
 
     assert "stable maintenance mode" in docs
-    assert "CAL-1 containment increment is implemented and closed" in docs
+    assert "CAL-1 containment contract is implemented" in docs
+    assert "behavioral evaluation pending" in docs
     assert "systemd containment remains a proposal" in docs
     assert "Five-phase convergence result" in docs
     assert "## Open Evidence Gaps" in docs

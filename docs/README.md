@@ -5,8 +5,8 @@ and portable integration guidance. Reusable cross-project engineering guidance
 lives under `../references/engineering/`.
 
 Calibration is in stable maintenance mode. The bounded CAL-1 containment
-increment is implemented and closed; upstream systemd containment remains a
-proposal rather than current AO behavior.
+contract is implemented, with behavioral evaluation pending; upstream systemd
+containment remains a proposal rather than current AO behavior.
 
 ## Public Architecture
 
@@ -79,10 +79,12 @@ portable fixtures, reviewed findings, and reconstructable public evidence.
 The portable AO guide keeps sandbox, worker, daemon, and host state distinct;
 defines registered, configured, runtime-ready, and continuation-proven
 adoption; retains exact-head pull-request safety; and bounds recursive
-discovery to the assigned workspace. AO installation, upgrades, and proposed
-per-worker systemd process containment belong upstream. Current AO behavior
-does not provide that proposed systemd guarantee, and calibration does not ship
-host deployment artifacts.
+discovery and mutation to the assigned workspace. It also requires an empty
+OS-owned containment boundary before process release can be reported, with
+incomplete release kept observable and retryable. AO installation, upgrades,
+and proposed per-worker systemd process containment belong upstream. Current
+AO behavior does not provide that proposed systemd guarantee, and calibration
+does not ship host deployment artifacts.
 
 `scripts/adopt_ao_repository.py` is an optional plan/apply adapter for an
 already installed, CLI-capable AO on its supported Linux `systemd --user` and

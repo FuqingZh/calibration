@@ -21,14 +21,15 @@ from an authoritative host context before concluding that it is missing,
 misconfigured, or stale. If that context is unavailable, report the boundary
 and the exact host-side check still required.
 
-Keep recursive searches inside the assigned repository or task workspace by
-default. Before recursively searching a remote mount, network filesystem,
+Keep discovery and mutations inside the assigned repository or task workspace
+by default. Before recursively searching a remote mount, network filesystem,
 large shared filesystem, or a parent aggregation root containing sibling
-worktrees or repositories, narrow the path and bound the query by relevant
-subdirectories, file types, depth, or result count. Prefer repository indexes
-and targeted lookups. If the required boundary or safe query cannot be
-determined, stop the broad search and report the narrower host-side check
-needed.
+worktrees or repositories, narrow the root and apply an explicit
+traversal-aware bound such as relevant subdirectories or maximum depth. Also
+bound file types, file size, result count, and search concurrency where the
+tool supports them. Prefer repository indexes and targeted lookups. If the
+required boundary or safe query cannot be determined, stop the broad search
+and report the narrower host-side check needed.
 
 For explicit AO installation, adoption, daemon, worker, Dashboard, systemd,
 nginx, remote-mount, shared-filesystem, or other host-operation tasks only,
