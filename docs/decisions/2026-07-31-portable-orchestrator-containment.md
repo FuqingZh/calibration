@@ -21,10 +21,12 @@ Ordinary repository work does not load that authority.
 
 ## Process-Release Invariant
 
-An orchestrator may mark a worker terminated or its runtime released only
-after the OS-owned containment boundary assigned to that worker is empty.
-Terminal, tmux, shell, harness-session, or orchestrator-session disappearance
-is not proof that descendant processes have exited.
+An orchestrator may treat worker termination as complete or mark its runtime
+released only after the OS-owned containment boundary assigned to that worker
+is empty. A worker or session may enter a terminated state while cleanup
+remains pending. Terminal, tmux, shell, harness-session, or
+orchestrator-session disappearance is not proof that descendant processes have
+exited.
 
 An incomplete release remains observable and retryable. The owning control
 plane retains enough worker identity, containment identity, and teardown state
@@ -52,8 +54,13 @@ template variables, installer options, AO configuration, or
 Static tests require the discovery, mutation, and process-release invariants in
 the harness, generated-agent template, public AO guide, documentation map, and
 this decision. Focused assertions cover an empty OS-owned containment boundary,
-non-proof from terminal or session disappearance, and observable, retryable
-incomplete release. A behavioral prompt exercises a repository below a shared
-aggregation root, but remains an unevaluated prompt case rather than evidence
-of changed agent behavior. Public portability tests continue to reject
-personal paths, private network values, and deployable AO artifacts.
+termination-completion semantics, non-proof from terminal or session
+disappearance, and observable, retryable incomplete release. The
+shared-aggregation-root prompt remains unevaluated machinery, not behavioral
+evidence, and this decision makes no behavioral-improvement claim. A future
+evaluation is not an active phase and may reopen only through a separately
+reviewed executable protocol with the assigned worktree as its own Git root,
+the synthetic sibling outside that repository, structured tool-event root
+auditing, and a separate sibling mutation manifest. Public portability tests
+continue to reject personal paths, private network values, and deployable AO
+artifacts.

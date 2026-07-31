@@ -43,13 +43,14 @@ upstream implements and documents that behavior, repository and
 generated-agent boundaries remain the active controls; calibration ships no
 service unit or deployed host artifact.
 
-Process release is a distinct invariant. An orchestrator may mark a worker
-terminated or its runtime released only after the worker's OS-owned
-containment boundary is empty. Terminal, tmux, shell, harness-session, or
-orchestrator-session disappearance is not proof that descendant processes have
-exited. An incomplete release remains observable and retryable, with enough
-worker and containment identity retained for cleanup and authoritative
-emptiness verification.
+Process release is a distinct invariant. An orchestrator may treat worker
+termination as complete or mark its runtime released only after the worker's
+OS-owned containment boundary is empty. A worker or session may enter a
+terminated state while cleanup remains pending. Terminal, tmux, shell,
+harness-session, or orchestrator-session disappearance is not proof that
+descendant processes have exited. An incomplete release remains observable and
+retryable, with enough worker and containment identity retained for cleanup
+and authoritative emptiness verification.
 
 Current AO does not yet enforce per-worker systemd scopes. Those scopes remain
 an upstream proposal for supplying the required OS-owned containment boundary;

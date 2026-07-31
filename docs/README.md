@@ -5,8 +5,9 @@ and portable integration guidance. Reusable cross-project engineering guidance
 lives under `../references/engineering/`.
 
 Calibration is in stable maintenance mode. The bounded CAL-1 containment
-contract is implemented, with behavioral evaluation pending; upstream systemd
-containment remains a proposal rather than current AO behavior.
+public contract is delivered without a behavioral-improvement claim. A future
+evaluation is not an active phase; upstream systemd containment remains a
+proposal rather than current AO behavior.
 
 ## Public Architecture
 

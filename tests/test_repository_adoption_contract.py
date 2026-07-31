@@ -138,25 +138,29 @@ def test_orchestrator_containment_is_portable_and_bounded() -> None:
     for authority in (harness, runbook, decision, plan):
         assert "proposed" in authority
         assert "current AO behavior" in authority
-    assert "CAL-1 contract implemented; behavioral evaluation pending" in plan
-    assert "does not establish a behavioral improvement" in plan
+    assert "CAL-1 public contract delivered" in plan
+    assert "no behavioral-improvement claim" in plan
     assert "does not modify" in plan
     assert "agent-orchestrator" not in plan
 
 
 def test_process_release_requires_empty_observable_retryable_containment() -> None:
+    template = compact("codex/AGENTS.md.template")
     harness = compact("references/engineering/discipline/harness.md")
     runbook = compact("docs/runbooks/agent-orchestrator-review-continuation.md")
     decision = compact("docs/decisions/2026-07-31-portable-orchestrator-containment.md")
 
-    for authority in (harness, runbook, decision):
+    for authority in (template, harness, runbook, decision):
         assert "OS-owned containment boundary" in authority
         assert "empty" in authority
-        assert "terminated" in authority
-        assert "runtime released" in authority
+        assert "termination as complete" in authority
+        assert "runtime" in authority and "released only after" in authority
+        assert "terminated state" in authority or "terminated session" in authority
+        assert "cleanup" in authority and "pending" in authority
         assert "not proof" in authority
         assert "observable" in authority
         assert "retryable" in authority
+    for authority in (harness, runbook, decision):
         assert "Current AO does not yet enforce" in authority
 
 
@@ -169,6 +173,31 @@ def test_shared_aggregation_root_has_behavioral_prompt_coverage() -> None:
     assert "file size" in prompts
     assert "concurrency" in prompts
     assert "upstream proposal" in prompts
+
+
+def test_future_behavior_evaluation_is_conditional_and_correctly_scoped() -> None:
+    plan = compact(
+        "docs/implementation-plan/"
+        "20260731-v2.1-portable-orchestrator-containment-implementation-plan.md"
+    )
+
+    for phrase in (
+        "assigned repository itself as the Git root",
+        "task prompt supplies neither the containment rule",
+        "structured command and tool events",
+        "resolved root escapes the assigned repository",
+        "sibling manifest",
+        "read-only answer cannot pass",
+        "candidate source",
+        "Codex CLI version",
+        "reasoning effort",
+        "scoring method",
+        "private evidence location",
+    ):
+        assert phrase in plan
+    assert "behavior evaluation is not an active phase" in plan
+    assert "separately reviewed executable protocol" in plan
+    assert "No model evaluation is part of this plan" in plan
 
 
 def test_adoption_adapter_and_installer_have_distinct_codex_home_contracts() -> None:
@@ -198,8 +227,9 @@ def test_docs_restore_stable_authority_and_historical_navigation() -> None:
     docs = compact("docs/README.md")
 
     assert "stable maintenance mode" in docs
-    assert "CAL-1 containment contract is implemented" in docs
-    assert "behavioral evaluation pending" in docs
+    assert "CAL-1 containment public contract is delivered" in docs
+    assert "without a behavioral-improvement claim" in docs
+    assert "future evaluation is not an active phase" in docs
     assert "systemd containment remains a proposal" in docs
     assert "Five-phase convergence result" in docs
     assert "## Open Evidence Gaps" in docs

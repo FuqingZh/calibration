@@ -31,6 +31,12 @@ tool supports them. Prefer repository indexes and targeted lookups. If the
 required boundary or safe query cannot be determined, stop the broad search
 and report the narrower host-side check needed.
 
+For worker teardown, treat termination as complete or runtime as released only
+after the worker's OS-owned containment boundary is empty. A terminated
+session may retain pending cleanup; terminal, tmux, shell, or session
+disappearance is not proof that descendants exited. Keep incomplete cleanup
+observable and retryable.
+
 For explicit AO installation, adoption, daemon, worker, Dashboard, systemd,
 nginx, remote-mount, shared-filesystem, or other host-operation tasks only,
 read `{{HOST_AUTHORITY}}` if that file exists. Use it to resolve any private

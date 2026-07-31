@@ -179,10 +179,11 @@ containment mechanism as current AO behavior.
 ## Orchestrator Process Release
 
 Treat process release as a separate portable lifecycle invariant. An
-orchestrator may mark a worker terminated or its runtime released only after
-the OS-owned containment boundary assigned to that worker is empty. A
-terminal, tmux pane, shell, harness session, or orchestrator session
-disappearing is not proof that descendant processes have exited.
+orchestrator may treat worker termination as complete or mark its runtime
+released only after the OS-owned containment boundary assigned to that worker
+is empty. A worker or session may enter a terminated state while cleanup
+remains pending. A terminal, tmux pane, shell, harness session, or orchestrator
+session disappearing is not proof that descendant processes have exited.
 
 When the containment boundary is not empty or cannot be authoritatively read,
 keep the incomplete release observable and retryable. Preserve enough worker
