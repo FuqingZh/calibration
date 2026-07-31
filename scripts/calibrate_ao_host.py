@@ -359,6 +359,36 @@ def _parse_unscoped_ip_address(
     return ipaddress.ip_address(value)
 
 
+def _validate_terminal_client_address(
+    value: str,
+) -> ipaddress.IPv4Address | ipaddress.IPv6Address:
+    """Require an exact address that can identify a concrete unicast client."""
+    address = _parse_unscoped_ip_address(value)
+    classification = (
+        address.ipv4_mapped
+        if isinstance(address, ipaddress.IPv6Address)
+        and address.ipv4_mapped is not None
+        else address
+    )
+    limited_broadcast = isinstance(classification, ipaddress.IPv4Address) and int(
+        classification
+    ) == (2**32 - 1)
+    this_network = (
+        isinstance(classification, ipaddress.IPv4Address)
+        and classification.packed[0] == 0
+    )
+    if (
+        classification.is_unspecified
+        or classification.is_multicast
+        or limited_broadcast
+        or this_network
+    ):
+        raise CalibrationError(
+            "terminal allowed client IPs must be concrete unicast source addresses"
+        )
+    return address
+
+
 def _parse_unscoped_ip_network(
     value: str,
 ) -> ipaddress.IPv4Network | ipaddress.IPv6Network:
@@ -1393,6 +1423,23 @@ def _validate_dashboard_role_collisions(dashboard: Mapping[str, object]) -> None
         resolved_roles[resolved] = role
 
 
+def _validate_dashboard_service_roles(profile: Mapping[str, object]) -> None:
+    dashboard = _section(profile, "dashboard")
+    if dashboard.get("mode", "read-only") != "read-only":
+        return
+    ao = _section(profile, "ao")
+    service_roles = (
+        cast(str, ao["daemon_service"]),
+        cast(str, dashboard["desired_service"]),
+        cast(str, dashboard["rollback_service"]),
+    )
+    if len(set(service_roles)) != len(service_roles):
+        raise CalibrationError(
+            "AO daemon, Dashboard desired, and Dashboard rollback service roles "
+            "must differ"
+        )
+
+
 def _validate_dashboard_path_roles(
     dashboard: Mapping[str, object],
     *,
@@ -1494,6 +1541,10 @@ def _validate_dashboard_document_tree(
                 "group/other-writable"
             )
         if stat.S_ISREG(metadata.st_mode):
+            if metadata.st_nlink != 1:
+                raise CalibrationError(
+                    f"dashboard document tree entry {current} must be singly linked"
+                )
             if (metadata.st_dev, metadata.st_ino) in protected:
                 raise CalibrationError(
                     f"dashboard document tree entry {current} aliases a protected file"
@@ -1593,6 +1644,77 @@ def _configured_host_role_paths(
     return tuple(roles)
 
 
+def _configured_host_file_role_paths(
+    profile: Mapping[str, object], source_profile: Path
+) -> tuple[tuple[str, Path], ...]:
+    ao = _section(profile, "ao")
+    dashboard = _section(profile, "dashboard")
+    paths = _section(profile, "paths")
+    codex_home = Path(cast(str, ao["codex_home"]))
+    roles: list[tuple[str, Path]] = [
+        ("source profile", source_profile),
+        ("ao.codex_home/config.toml", codex_home / "config.toml"),
+        ("ao.codex_home/auth.json", codex_home / "auth.json"),
+        ("dashboard.active_config", Path(cast(str, dashboard["active_config"]))),
+        (
+            "dashboard.nginx_executable",
+            Path(cast(str, dashboard["nginx_executable"])),
+        ),
+        ("dashboard.pid_file", Path(cast(str, dashboard["pid_file"]))),
+        ("paths.private_authority", Path(cast(str, paths["private_authority"]))),
+        (
+            "paths.desired_nginx_artifact",
+            Path(cast(str, paths["desired_nginx_artifact"])),
+        ),
+        (
+            "paths.desired_service_artifact",
+            Path(cast(str, paths["desired_service_artifact"])),
+        ),
+    ]
+    cli = Path(cast(str, ao["cli"]))
+    if cli.is_absolute():
+        roles.append(("ao.cli", cli))
+    return tuple(roles)
+
+
+def _validate_host_file_role_collisions(
+    profile: Mapping[str, object], source_profile: Path
+) -> tuple[tuple[int, int], ...]:
+    dashboard = _section(profile, "dashboard")
+    if dashboard.get("mode", "read-only") != "read-only":
+        return ()
+    resolved_roles: dict[Path, str] = {}
+    inode_roles: dict[tuple[int, int], str] = {}
+    for label, path in _configured_host_file_role_paths(profile, source_profile):
+        resolved = path.resolve(strict=False)
+        previous = resolved_roles.get(resolved)
+        if previous is not None:
+            raise CalibrationError(
+                f"configured host file roles must differ: {previous} and {label}"
+            )
+        resolved_roles[resolved] = label
+        try:
+            metadata = path.lstat()
+        except FileNotFoundError:
+            continue
+        except OSError as exc:
+            raise CalibrationError(f"{label} cannot be inspected: {exc}") from exc
+        if not stat.S_ISREG(metadata.st_mode):
+            raise CalibrationError(
+                f"configured host file role {label} must be a real regular file "
+                "when it exists"
+            )
+        identity = (metadata.st_dev, metadata.st_ino)
+        previous = inode_roles.get(identity)
+        if previous is not None:
+            raise CalibrationError(
+                "configured host file roles must not alias the same file: "
+                f"{previous} and {label}"
+            )
+        inode_roles[identity] = label
+    return tuple(sorted(inode_roles))
+
+
 def _paths_overlap(first: Path, second: Path) -> bool:
     resolved_first = first.resolve(strict=False)
     resolved_second = second.resolve(strict=False)
@@ -1613,13 +1735,14 @@ def _validate_render_destination_roles(
     *,
     source_profile: Path,
     target: Path,
-    staging: Path,
+    staging: Path | None,
+    target_label: str = "render candidate",
 ) -> None:
     roles = _configured_host_role_paths(profile, source_profile)
-    for destination_label, destination in (
-        ("render candidate", target),
-        ("render sibling staging", staging),
-    ):
+    destinations = [(target_label, target)]
+    if staging is not None:
+        destinations.append(("render sibling staging", staging))
+    for destination_label, destination in destinations:
         for role_label, role_path in roles:
             if _paths_overlap(destination, role_path):
                 raise CalibrationError(
@@ -1757,10 +1880,10 @@ def _load_profile(path: Path) -> dict[str, object]:
             Path(cast(str, dashboard["pid_file"])),
             Path(cast(str, paths["state_root"])),
         )
-    desired_service = _validate_service_unit(
+    _validate_service_unit(
         dashboard.get("desired_service"), "dashboard.desired_service"
     )
-    rollback_service = _validate_service_unit(
+    _validate_service_unit(
         dashboard.get("rollback_service"), "dashboard.rollback_service"
     )
     if version == 1:
@@ -1791,24 +1914,20 @@ def _load_profile(path: Path) -> dict[str, object]:
     canonical = _canonical_v2(profile)
     _validate_profile_host_path_ancestors(canonical)
     codex_home = Path(cast(str, _section(canonical, "ao")["codex_home"]))
-    protected_file_identities: tuple[tuple[int, int], ...] = ()
     if codex_home.exists():
-        auth_metadata = _validate_codex_auth_file(codex_home)
-        protected_file_identities = ((auth_metadata.st_dev, auth_metadata.st_ino),)
+        _validate_codex_auth_file(codex_home)
+    _validate_dashboard_service_roles(canonical)
+    protected_file_identities = _validate_host_file_role_collisions(canonical, safe)
+    _validate_dashboard_role_collisions(_section(canonical, "dashboard"))
+    _validate_dashboard_public_root(
+        canonical,
+        (("source profile", safe),),
+    )
+    _validate_dashboard_path_roles(
+        _section(canonical, "dashboard"),
+        protected_file_identities=protected_file_identities,
+    )
     if dashboard.get("mode", "read-only") == "read-only":
-        if desired_service == rollback_service:
-            raise CalibrationError(
-                "dashboard desired_service and rollback_service must differ"
-            )
-        _validate_dashboard_role_collisions(_section(canonical, "dashboard"))
-        _validate_dashboard_public_root(
-            canonical,
-            (("source profile", safe),),
-        )
-        _validate_dashboard_path_roles(
-            _section(canonical, "dashboard"),
-            protected_file_identities=protected_file_identities,
-        )
         _validate_listener_network_families(
             listen_host,
             cast(list[str], cidr_values),
@@ -1856,7 +1975,7 @@ def _validate_terminal_v1(terminal: Mapping[str, object]) -> None:
     if not client_values or not all(isinstance(value, str) for value in client_values):
         raise CalibrationError("legacy terminal requires exact client IPs")
     for value in client_values:
-        _parse_unscoped_ip_address(cast(str, value))
+        _validate_terminal_client_address(cast(str, value))
     _validate_origin(terminal.get("allowed_origin"), "legacy terminal Origin")
     if terminal.get("path") != "/mux":
         raise CalibrationError("legacy terminal path must be exactly /mux")
@@ -1892,7 +2011,7 @@ def _validate_terminal(terminal: Mapping[str, object]) -> None:
                 "terminal requires exact client IPs compatible with origin mode"
             )
         for value in client_values:
-            _parse_unscoped_ip_address(cast(str, value))
+            _validate_terminal_client_address(cast(str, value))
         _validate_origin(terminal.get("allowed_origin"), "terminal Origin")
         if terminal.get("path") != "/mux":
             raise CalibrationError("terminal path must be exactly /mux")
@@ -2258,7 +2377,8 @@ def init_profile(
     }
     canonical = _canonical_v2(profile)
     _validate_profile_host_path_ancestors(canonical)
-    auth_metadata = (home / "auth.json").lstat()
+    _validate_dashboard_service_roles(canonical)
+    protected_file_identities = _validate_host_file_role_collisions(canonical, target)
     _validate_dashboard_role_collisions(_section(canonical, "dashboard"))
     _validate_dashboard_public_root(
         canonical,
@@ -2266,7 +2386,7 @@ def init_profile(
     )
     _validate_dashboard_path_roles(
         _section(canonical, "dashboard"),
-        protected_file_identities=((auth_metadata.st_dev, auth_metadata.st_ino),),
+        protected_file_identities=protected_file_identities,
     )
     _validate_terminal(_section(_section(canonical, "dashboard"), "terminal"))
     if dashboard_enabled:
@@ -2619,12 +2739,21 @@ def render_profile(path: Path, output: Path) -> dict[str, object]:
 def verify_profile(path: Path, *, candidate: Path | None = None) -> dict[str, object]:
     """Verify a v1/v2 profile and optional canonical v2 candidate read-only."""
     profile = _load_profile(path)
+    source_profile = _safe_path(path, may_create=False, directory=False)
     version = cast(int, profile.get("schema_version", 1))
     if candidate is not None:
         root = _safe_path(candidate, may_create=False, directory=True)
+        canonical = _canonical_v2(profile)
         _validate_dashboard_public_root(
-            _canonical_v2(profile),
+            canonical,
             (("verify candidate", root),),
+        )
+        _validate_render_destination_roles(
+            canonical,
+            source_profile=source_profile,
+            target=root,
+            staging=None,
+            target_label="verify candidate",
         )
         files = _candidate_files(profile)
         if _tree_bytes(root) != files:

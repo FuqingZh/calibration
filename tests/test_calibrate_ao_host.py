@@ -666,7 +666,7 @@ def test_unspecified_listener_is_not_a_proven_source(tmp_path: Path) -> None:
         )
         .replace(
             'allowed_client_ips = ["203.0.113.7", "203.0.113.8"]',
-            f'allowed_client_ips = ["{listen_host}"]',
+            'allowed_client_ips = ["127.0.0.1"]',
         ),
         encoding="utf-8",
     )
@@ -5400,3 +5400,287 @@ def test_additional_profile_field_validation(tmp_path: Path, profile: Path) -> N
     )
     with pytest.raises(host.CalibrationError, match="invalid types"):
         host.plan_profile(profile)
+
+
+def _init_enabled_review_profile(
+    tmp_path: Path,
+    codex_home: Path,
+    name: str,
+    *,
+    document_root: Path | None = None,
+    private_authority: Path | None = None,
+    desired_nginx_artifact: Path | None = None,
+    desired_service_artifact: Path | None = None,
+    desired_service: str = "ao-dashboard.service",
+    rollback_service: str = "ao-dashboard-rollback.service",
+) -> Path:
+    target = tmp_path / f"{name}.toml"
+    state = tmp_path / f"{name}-state"
+    host.init_profile(
+        target,
+        trust_model="trusted-single-user",
+        codex_home=codex_home,
+        data_dir=tmp_path / f"{name}-data",
+        private_authority=(
+            private_authority or tmp_path / f"{name}-authority/AGENTS.md"
+        ),
+        state_root=state,
+        dashboard_enabled=True,
+        dashboard_listen_host="127.0.0.1",
+        dashboard_listen_port=8443,
+        readonly_cidrs=("127.0.0.1/32",),
+        document_root=document_root or tmp_path / f"{name}-dashboard",
+        nginx_executable=Path("/usr/sbin/nginx"),
+        nginx_pid_file=state / "nginx.pid",
+        active_config=state / "active.conf",
+        desired_service=desired_service,
+        rollback_service=rollback_service,
+        desired_nginx_artifact=(desired_nginx_artifact or state / "nginx.conf"),
+        desired_service_artifact=(desired_service_artifact or state / "nginx.service"),
+    )
+    return target
+
+
+def test_enabled_dashboard_rejects_hardlinked_codex_config(
+    tmp_path: Path, codex_home: Path
+) -> None:
+    document_root = tmp_path / "hardlink-dashboard"
+    document_root.mkdir(mode=0o755)
+    alias = document_root / "config.toml"
+    os.link(codex_home / "config.toml", alias)
+
+    with pytest.raises(host.CalibrationError, match="must be singly linked"):
+        _init_enabled_review_profile(
+            tmp_path,
+            codex_home,
+            "hardlink-private-file",
+            document_root=document_root,
+        )
+    assert not (tmp_path / "hardlink-private-file.toml").exists()
+
+
+def test_enabled_dashboard_rejects_unlisted_private_hardlinks(
+    tmp_path: Path, codex_home: Path
+) -> None:
+    name = "unlisted-private-hardlink"
+    data_dir = tmp_path / f"{name}-data"
+    data_dir.mkdir(mode=0o700)
+    secret = data_dir / "session.db"
+    secret.write_text("private", encoding="utf-8")
+    secret.chmod(0o600)
+    document_root = tmp_path / f"{name}-dashboard"
+    document_root.mkdir(mode=0o755)
+    os.link(secret, document_root / "app.js")
+
+    with pytest.raises(host.CalibrationError, match="must be singly linked"):
+        _init_enabled_review_profile(
+            tmp_path,
+            codex_home,
+            name,
+            document_root=document_root,
+        )
+    assert not (tmp_path / f"{name}.toml").exists()
+
+
+@pytest.mark.parametrize(
+    "collision",
+    ["artifact-pair", "private-authority", "source-profile"],
+)
+def test_enabled_dashboard_rejects_artifact_destination_collisions(
+    tmp_path: Path, codex_home: Path, collision: str
+) -> None:
+    name = f"artifact-collision-{collision}"
+    target = tmp_path / f"{name}.toml"
+    private_authority = tmp_path / f"{name}-authority/AGENTS.md"
+    nginx_artifact = tmp_path / f"{name}-artifacts/nginx.conf"
+    service_artifact = tmp_path / f"{name}-artifacts/service.env"
+    if collision == "artifact-pair":
+        service_artifact = nginx_artifact
+    elif collision == "private-authority":
+        nginx_artifact = private_authority
+    else:
+        nginx_artifact = target
+
+    with pytest.raises(host.CalibrationError, match="file roles must differ"):
+        _init_enabled_review_profile(
+            tmp_path,
+            codex_home,
+            name,
+            private_authority=private_authority,
+            desired_nginx_artifact=nginx_artifact,
+            desired_service_artifact=service_artifact,
+        )
+    assert not target.exists()
+
+
+@pytest.mark.parametrize("alias_pair", ["source-artifact", "authority-artifact"])
+def test_enabled_dashboard_rejects_file_role_inode_aliases(
+    tmp_path: Path, codex_home: Path, alias_pair: str
+) -> None:
+    name = f"inode-alias-{alias_pair}"
+    private_authority = tmp_path / f"{name}-authority/AGENTS.md"
+    nginx_artifact = tmp_path / f"{name}-artifacts/nginx.conf"
+    profile = _init_enabled_review_profile(
+        tmp_path,
+        codex_home,
+        name,
+        private_authority=private_authority,
+        desired_nginx_artifact=nginx_artifact,
+    )
+    nginx_artifact.parent.mkdir(mode=0o700)
+    source = profile
+    if alias_pair == "authority-artifact":
+        private_authority.parent.mkdir(mode=0o700)
+        private_authority.write_text("private authority", encoding="utf-8")
+        private_authority.chmod(0o600)
+        source = private_authority
+    os.link(source, nginx_artifact)
+
+    with pytest.raises(host.CalibrationError, match="must not alias the same file"):
+        host.plan_profile(profile)
+
+
+def test_host_file_role_inspection_fails_closed(
+    tmp_path: Path,
+    codex_home: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    profile = _init_enabled_review_profile(
+        tmp_path, codex_home, "denied-file-role-inspection"
+    )
+    payload = host._canonical_v2(host._load_profile(profile))
+    config = codex_home / "config.toml"
+    original_lstat = Path.lstat
+
+    def denied_lstat(self: Path) -> os.stat_result:
+        if self == config:
+            raise PermissionError("denied")
+        return original_lstat(self)
+
+    monkeypatch.setattr(Path, "lstat", denied_lstat)
+    with pytest.raises(host.CalibrationError, match="cannot be inspected"):
+        host._validate_host_file_role_collisions(payload, profile)
+
+
+def test_existing_file_role_rejects_directory(tmp_path: Path) -> None:
+    directory = tmp_path / "file-role-directory"
+    directory.mkdir(mode=0o700)
+    with pytest.raises(host.CalibrationError, match="must be a regular file"):
+        host._validate_existing_path_role(
+            directory,
+            "file role",
+            directory=False,
+        )
+
+
+@pytest.mark.parametrize("service_role", ["desired", "rollback"])
+def test_enabled_dashboard_service_roles_differ_from_ao_daemon(
+    tmp_path: Path, codex_home: Path, service_role: str
+) -> None:
+    name = f"daemon-service-collision-{service_role}"
+    desired_service = (
+        "agent-orchestrator.service"
+        if service_role == "desired"
+        else "ao-dashboard.service"
+    )
+    rollback_service = (
+        "agent-orchestrator.service"
+        if service_role == "rollback"
+        else "ao-dashboard-rollback.service"
+    )
+
+    with pytest.raises(host.CalibrationError, match="service roles must differ"):
+        _init_enabled_review_profile(
+            tmp_path,
+            codex_home,
+            name,
+            desired_service=desired_service,
+            rollback_service=rollback_service,
+        )
+    assert not (tmp_path / f"{name}.toml").exists()
+
+
+@pytest.mark.parametrize(
+    "address",
+    [
+        "0.0.0.0",
+        "0.0.0.1",
+        "224.0.0.1",
+        "255.255.255.255",
+        "::",
+        "ff02::1",
+        "::ffff:0.0.0.1",
+        "::ffff:224.0.0.1",
+        "::ffff:255.255.255.255",
+    ],
+)
+def test_terminal_client_addresses_must_be_concrete_unicast(address: str) -> None:
+    common: dict[str, object] = {
+        "desired_enabled": True,
+        "allowed_client_ips": [address],
+        "allowed_origin": "https://console.example.test",
+        "path": "/mux",
+        "require_authentication_if": [
+            "multi-user",
+            "dynamic-address",
+            "public-network",
+        ],
+    }
+    legacy = {
+        **common,
+        "trust_model": "single-user-trusted-lan",
+        "upstream": "http://127.0.0.1:3001/mux",
+        "upstream_origin": "http://127.0.0.1:3001",
+    }
+    current = {
+        **common,
+        "trust_model": "trusted-single-user",
+        "upstream": "http://127.0.0.1:3001",
+        "upstream_origin": "",
+        "origin_mode": "preserve",
+    }
+
+    with pytest.raises(host.CalibrationError, match="concrete unicast"):
+        host._validate_terminal_v1(legacy)
+    with pytest.raises(host.CalibrationError, match="concrete unicast"):
+        host._validate_terminal(current)
+
+
+@pytest.mark.parametrize(
+    "address",
+    [
+        "127.0.0.1",
+        "169.254.1.1",
+        "203.0.113.7",
+        "::1",
+        "fd00::1",
+        "fe80::1",
+        "2001:db8::7",
+        "::ffff:192.0.2.1",
+    ],
+)
+def test_terminal_client_addresses_accept_concrete_unicast(address: str) -> None:
+    assert host._validate_terminal_client_address(address).version in {4, 6}
+
+
+def test_verify_rejects_candidate_inside_host_role_before_tree_read(
+    tmp_path: Path,
+    profile: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    safe_candidate = tmp_path / "safe-candidate"
+    host.render_profile(profile, safe_candidate)
+    payload = host._canonical_v2(host._load_profile(profile))
+    data_dir = Path(cast(str, cast(dict[str, object], payload["ao"])["data_dir"]))
+    data_dir.mkdir(mode=0o700)
+    candidate = data_dir / "candidate"
+    safe_candidate.rename(candidate)
+
+    def unexpected_tree_read(_root: Path) -> dict[str, bytes]:
+        raise AssertionError("candidate tree must not be read before role validation")
+
+    monkeypatch.setattr(host, "_tree_bytes", unexpected_tree_read)
+    with pytest.raises(
+        host.CalibrationError, match=r"verify candidate.*overlap ao\.data_dir"
+    ):
+        host.verify_profile(profile, candidate=candidate)
