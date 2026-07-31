@@ -320,6 +320,9 @@ def test_inspect_profile_context_cgroup_and_invalid_json(
     assert "AO-CODEX-HOME-CONFLICT" in cast(list[str], conflict["known_issues"])
     with pytest.raises(host.CalibrationError, match="context"):
         host.inspect_host(FakeRunner([]), context="remote")
+    invalid_context: object = []
+    with pytest.raises(host.CalibrationError, match="context"):
+        host.inspect_host(FakeRunner([]), context=cast(str, invalid_context))
 
 
 def test_full_probe_json_is_parsed_before_display_truncation() -> None:
@@ -966,6 +969,16 @@ def test_invalid_profile_and_init_rejections(
             'trusted_readonly_cidrs = ["bad"]',
             "valid CIDRs",
         ),
+        (
+            'trusted_readonly_cidrs = ["203.0.113.0/24"]',
+            'trusted_readonly_cidrs = ["203.0.113.7/255.255.255.0"]',
+            "valid CIDRs",
+        ),
+        (
+            'trusted_readonly_cidrs = ["203.0.113.0/24"]',
+            'trusted_readonly_cidrs = ["203.0.113.7/0.0.0.255"]',
+            "valid CIDRs",
+        ),
     ],
 )
 def test_dashboard_network_fields_fail_closed(
@@ -976,6 +989,36 @@ def test_dashboard_network_fields_fail_closed(
     profile.chmod(0o600)
     with pytest.raises(host.CalibrationError, match=message):
         host.plan_profile(profile)
+
+
+@pytest.mark.parametrize(
+    ("old", "new"),
+    [
+        (
+            'listen_host = "127.0.0.1"',
+            'listen_host = "fe80::1%eth0;\\n      allow all;\\n      #"',
+        ),
+        (
+            'trusted_readonly_cidrs = ["203.0.113.0/24"]',
+            'trusted_readonly_cidrs = ["fe80::1%eth0;\\n      allow all;\\n      #/0"]',
+        ),
+        (
+            "allowed_client_ips = []",
+            'allowed_client_ips = ["fe80::1%eth0;\\n      allow all;\\n      #"]',
+        ),
+    ],
+)
+def test_scoped_ipv6_values_cannot_reach_nginx_rendering(
+    tmp_path: Path, old: str, new: str
+) -> None:
+    profile = tmp_path / "scoped-ipv6.toml"
+    profile.write_text(V1_PROFILE.replace(old, new), encoding="utf-8")
+    profile.chmod(0o600)
+    with pytest.raises(host.CalibrationError):
+        host.plan_profile(profile)
+    with pytest.raises(host.CalibrationError):
+        host.render_profile(profile, tmp_path / "candidate")
+    assert not (tmp_path / "candidate").exists()
 
 
 def test_dashboard_listener_family_and_collision_fail_closed(
@@ -992,6 +1035,42 @@ def test_dashboard_listener_family_and_collision_fail_closed(
     mismatch.chmod(0o600)
     with pytest.raises(host.CalibrationError, match="listener family"):
         host.plan_profile(mismatch)
+
+    mixed_cidrs = tmp_path / "mixed-cidrs.toml"
+    mixed_cidrs.write_text(
+        V1_PROFILE.replace(
+            'trusted_readonly_cidrs = ["203.0.113.0/24"]',
+            'trusted_readonly_cidrs = ["203.0.113.0/24", "2001:db8::/32"]',
+        ),
+        encoding="utf-8",
+    )
+    mixed_cidrs.chmod(0o600)
+    with pytest.raises(host.CalibrationError, match="listener family"):
+        host.plan_profile(mixed_cidrs)
+
+    terminal_mismatch = tmp_path / "terminal-mismatch.toml"
+    terminal_mismatch.write_text(
+        LEGACY_V1_FIXTURE.read_text(encoding="utf-8").replace(
+            'allowed_client_ips = ["203.0.113.7", "203.0.113.8"]',
+            'allowed_client_ips = ["2001:db8::7"]',
+        ),
+        encoding="utf-8",
+    )
+    terminal_mismatch.chmod(0o600)
+    with pytest.raises(host.CalibrationError, match="listener family"):
+        host.plan_profile(terminal_mismatch)
+
+    mixed_clients = tmp_path / "mixed-clients.toml"
+    mixed_clients.write_text(
+        LEGACY_V1_FIXTURE.read_text(encoding="utf-8").replace(
+            'allowed_client_ips = ["203.0.113.7", "203.0.113.8"]',
+            'allowed_client_ips = ["203.0.113.7", "2001:db8::7"]',
+        ),
+        encoding="utf-8",
+    )
+    mixed_clients.chmod(0o600)
+    with pytest.raises(host.CalibrationError, match="listener family"):
+        host.plan_profile(mixed_clients)
 
     collision = tmp_path / "collision.toml"
     with pytest.raises(host.CalibrationError, match="must not collide"):
@@ -1023,15 +1102,47 @@ def test_dashboard_listener_family_and_collision_fail_closed(
         encoding="utf-8",
     )
     legacy.chmod(0o600)
-    assert host.plan_profile(legacy)["migration_required"] is True
+    with pytest.raises(host.CalibrationError, match="must not collide"):
+        host.plan_profile(legacy)
+    with pytest.raises(host.CalibrationError, match="must not collide"):
+        host.verify_profile(legacy)
     with pytest.raises(host.CalibrationError, match="must not collide"):
         host.render_profile(legacy, tmp_path / "candidate")
-    canonical = host._canonical_v2(host._load_profile(legacy))
+    canonical = host._canonical_v2(tomllib.loads(V1_PROFILE))
+    cast(dict[str, object], canonical["dashboard"])["listen_port"] = 3001
     cast(dict[str, object], canonical["ao"])["loopback_base_url"] = (
         "http://localhost:3001"
     )
     with pytest.raises(host.CalibrationError, match="must not collide"):
         host._validate_no_listener_collision(canonical)
+
+
+@pytest.mark.parametrize(
+    ("dashboard_host", "readonly_cidr", "ao_base"),
+    [
+        ("0.0.0.0", "0.0.0.0/0", "http://127.0.0.1:3001"),
+        ("::", "::/0", "http://[::1]:3001"),
+    ],
+)
+def test_unspecified_dashboard_listener_collision_fails_closed(
+    tmp_path: Path, dashboard_host: str, readonly_cidr: str, ao_base: str
+) -> None:
+    profile = tmp_path / "wildcard-collision.toml"
+    profile.write_text(
+        V1_PROFILE.replace(
+            'listen_host = "127.0.0.1"', f'listen_host = "{dashboard_host}"'
+        )
+        .replace("listen_port = 8443", "listen_port = 3001")
+        .replace(
+            'trusted_readonly_cidrs = ["203.0.113.0/24"]',
+            f'trusted_readonly_cidrs = ["{readonly_cidr}"]',
+        )
+        .replace("http://127.0.0.1:3001", ao_base),
+        encoding="utf-8",
+    )
+    profile.chmod(0o600)
+    with pytest.raises(host.CalibrationError, match="must not collide"):
+        host.render_profile(profile, tmp_path / "candidate")
 
 
 @pytest.mark.parametrize("field", ["data_dir", "state_root"])
@@ -1112,6 +1223,29 @@ def test_v2_storage_boundary_shape_rejections(
 def test_init_rejects_incomplete_or_invalid_dashboard_trust(
     tmp_path: Path, codex_home: Path
 ) -> None:
+    with pytest.raises(host.CalibrationError, match="exact listen IP"):
+        host.init_profile(
+            tmp_path / "disabled-host.toml",
+            trust_model="untrusted",
+            codex_home=codex_home,
+            data_dir=tmp_path / "data",
+            private_authority=tmp_path / "authority/AGENTS.md",
+            state_root=tmp_path / "state",
+            dashboard_listen_host="not-an-ip",
+        )
+    with pytest.raises(host.CalibrationError, match="listen port"):
+        host.init_profile(
+            tmp_path / "disabled-port.toml",
+            trust_model="untrusted",
+            codex_home=codex_home,
+            data_dir=tmp_path / "data",
+            private_authority=tmp_path / "authority/AGENTS.md",
+            state_root=tmp_path / "state",
+            dashboard_listen_port=70000,
+        )
+    assert not (tmp_path / "disabled-host.toml").exists()
+    assert not (tmp_path / "disabled-port.toml").exists()
+
     with pytest.raises(host.CalibrationError, match="explicit listen"):
         host.init_profile(
             tmp_path / "missing.toml",
@@ -1131,6 +1265,11 @@ def test_init_rejects_incomplete_or_invalid_dashboard_trust(
         cidrs: Sequence[str] = ("203.0.113.0/24",),
         terminal: bool = False,
         document_root: Path | None = None,
+        client_ips: Sequence[str] = (),
+        origin: str | None = None,
+        upstream: str | None = None,
+        upstream_origin: str | None = None,
+        origin_mode: str | None = None,
     ) -> None:
         host.init_profile(
             tmp_path / name,
@@ -1152,16 +1291,71 @@ def test_init_rejects_incomplete_or_invalid_dashboard_trust(
             desired_nginx_artifact=tmp_path / "state/nginx.conf",
             desired_service_artifact=tmp_path / "state/nginx.service",
             terminal=terminal,
+            client_ips=client_ips,
+            origin=origin,
+            upstream=upstream,
+            upstream_origin=upstream_origin,
+            origin_mode=origin_mode,
         )
 
     with pytest.raises(host.CalibrationError, match="listen port"):
         initialize("port.toml", listen_port=0)
+    with pytest.raises(host.CalibrationError, match="listen port"):
+        initialize("bool-port.toml", listen_port=True)
+    assert not (tmp_path / "bool-port.toml").exists()
     with pytest.raises(host.CalibrationError, match="exact listen IP"):
         initialize("host.toml", listen_host="bad host")
     with pytest.raises(host.CalibrationError, match="enabled terminal"):
         initialize("terminal.toml", terminal=True)
     with pytest.raises(host.CalibrationError, match="valid networks"):
         initialize("cidr.toml", cidrs=("bad",))
+    with pytest.raises(host.CalibrationError, match="valid networks"):
+        initialize("netmask-cidr.toml", cidrs=("203.0.113.7/255.255.255.0",))
+    with pytest.raises(host.CalibrationError, match="listener family"):
+        initialize("cidr-family.toml", cidrs=("2001:db8::/32",))
+    with pytest.raises(host.CalibrationError, match="listener family"):
+        initialize(
+            "mixed-cidr-family.toml",
+            cidrs=("203.0.113.0/24", "2001:db8::/32"),
+        )
+
+    def initialize_terminal(
+        name: str,
+        client_ips: Sequence[str],
+        *,
+        origin_mode: str = "preserve",
+    ) -> None:
+        rewrite = origin_mode == "edge-validated-rewrite"
+        initialize(
+            name,
+            terminal=True,
+            client_ips=client_ips,
+            origin="https://console.example.test",
+            upstream=(
+                "http://127.0.0.1:3001/mux" if rewrite else "http://127.0.0.1:3001"
+            ),
+            upstream_origin="http://127.0.0.1:3001" if rewrite else None,
+            origin_mode=origin_mode,
+        )
+
+    with pytest.raises(host.CalibrationError, match="listener family"):
+        initialize_terminal("client-family.toml", ("2001:db8::7",))
+    with pytest.raises(host.CalibrationError, match="listener family"):
+        initialize_terminal(
+            "mixed-client-family.toml",
+            ("203.0.113.7", "2001:db8::7"),
+            origin_mode="edge-validated-rewrite",
+        )
+    scoped = "fe80::1%eth0;\n      allow all;\n      #"
+    with pytest.raises(host.CalibrationError, match="exact listen IP"):
+        initialize("scoped-listener.toml", listen_host=scoped)
+    with pytest.raises(host.CalibrationError, match="valid networks"):
+        initialize("scoped-cidr.toml", cidrs=(f"{scoped}/128",))
+    with pytest.raises(host.CalibrationError, match="valid networks"):
+        initialize("scoped-cidr-zero.toml", cidrs=(f"{scoped}/0",))
+    with pytest.raises(host.CalibrationError, match="valid IPs"):
+        initialize_terminal("scoped-client.toml", (scoped,))
+    assert not any(tmp_path.glob("scoped-*.toml"))
     with pytest.raises(host.CalibrationError, match="must be absolute"):
         initialize("relative.toml", document_root=Path("relative"))
 
@@ -1648,7 +1842,7 @@ def test_generated_terminal_candidate_passes_nginx_test_when_available(
         desired_nginx_artifact=state / "nginx.conf",
         desired_service_artifact=state / "nginx.service",
         terminal=True,
-        client_ips=("203.0.113.7", "203.0.113.8"),
+        client_ips=("2001:db8::7", "2001:db8::8"),
         origin="https://console.example.test",
         upstream="http://127.0.0.1:3001/mux",
         upstream_origin="http://127.0.0.1:3001",
@@ -1931,6 +2125,37 @@ def test_loopback_port_zero_is_rejected_before_plan_or_render(
         host.render_profile(invalid, tmp_path / f"candidate-v{schema_version}-{field}")
 
 
+@pytest.mark.parametrize(
+    ("field", "suffix"),
+    [
+        ("loopback_base_url", "?"),
+        ("loopback_base_url", "#"),
+        ("upstream", "#"),
+    ],
+)
+def test_empty_url_delimiters_are_rejected_before_render(
+    tmp_path: Path, field: str, suffix: str
+) -> None:
+    originals = {
+        "loopback_base_url": 'loopback_base_url = "http://127.0.0.1:3001"',
+        "upstream": 'upstream = "http://127.0.0.1:3001/mux"',
+    }
+    original = originals[field]
+    profile = tmp_path / "empty-delimiter.toml"
+    profile.write_text(
+        LEGACY_V1_FIXTURE.read_text(encoding="utf-8").replace(
+            original,
+            f'{original[:-1]}{suffix}"',
+        ),
+        encoding="utf-8",
+    )
+    profile.chmod(0o600)
+    with pytest.raises(host.CalibrationError, match="HTTP loopback URL"):
+        host.plan_profile(profile)
+    with pytest.raises(host.CalibrationError, match="HTTP loopback URL"):
+        host.render_profile(profile, tmp_path / "candidate")
+
+
 def test_module_entrypoint(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("sys.argv", ["calibrate_ao_host.py", "plan"])
     with pytest.raises(SystemExit, match="2"):
@@ -1953,7 +2178,7 @@ def test_run_and_json_helpers(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_pure_state_and_issue_evaluators() -> None:
-    status = {
+    status: dict[str, object] = {
         "state": "ready",
         "pid": 42,
         "port": 3001,
@@ -2012,6 +2237,16 @@ def test_pure_state_and_issue_evaluators() -> None:
     missing_ao["ao-version"] = host.Evidence(
         "ao-version", "host", "fail", "FileNotFoundError: missing"
     )
+    assert (
+        host.evaluate_daemon_state(
+            missing_ao,
+            context="host",
+            status=status,
+            health=health,
+            ready=ready,
+        )
+        == "not_installed"
+    )
     missing_ao["healthz"] = host.Evidence("healthz", "daemon", "fail", "missing")
     assert (
         host.evaluate_daemon_state(
@@ -2027,6 +2262,7 @@ def test_pure_state_and_issue_evaluators() -> None:
     denied_ao["ao-version"] = host.Evidence(
         "ao-version", "host", "fail", "permission denied"
     )
+    denied_ao["healthz"] = probes["healthz"]
     assert (
         host.evaluate_daemon_state(
             denied_ao,
@@ -2037,6 +2273,99 @@ def test_pure_state_and_issue_evaluators() -> None:
         )
         == "indeterminate"
     )
+    denied_ao["healthz"] = missing_ao["healthz"]
+    assert (
+        host.evaluate_daemon_state(
+            denied_ao,
+            context="host",
+            status=status,
+            health=health,
+            ready=ready,
+        )
+        == "indeterminate"
+    )
+    failed_main_pid = dict(probes)
+    failed_main_pid["main-pid"] = host.Evidence("main-pid", "host", "fail", "42")
+    assert (
+        host.evaluate_daemon_state(
+            failed_main_pid,
+            context="host",
+            status=status,
+            health=health,
+            ready=ready,
+        )
+        == "indeterminate"
+    )
+    for invalid_port in (True, -1, 0, 3002, 65536):
+        invalid_status = dict(status)
+        invalid_status["port"] = invalid_port
+        assert (
+            host.evaluate_daemon_state(
+                probes,
+                context="host",
+                status=invalid_status,
+                health=health,
+                ready=ready,
+            )
+            == "indeterminate"
+        )
+    invalid_status = dict(status)
+    invalid_status["pid"] = True
+    assert (
+        host.evaluate_daemon_state(
+            probes,
+            context="host",
+            status=invalid_status,
+            health=health,
+            ready=ready,
+        )
+        == "indeterminate"
+    )
+    unicode_main_pid = dict(probes)
+    unicode_main_pid["main-pid"] = host.Evidence(
+        "main-pid", "host", "pass", "\uff14\uff12"
+    )
+    assert (
+        host.evaluate_daemon_state(
+            unicode_main_pid,
+            context="host",
+            status=status,
+            health=health,
+            ready=ready,
+        )
+        == "indeterminate"
+    )
+    unhashable_status = dict(status)
+    unhashable_status["state"] = []
+    assert (
+        host.evaluate_daemon_state(
+            probes,
+            context="host",
+            status=unhashable_status,
+            health=health,
+            ready=ready,
+        )
+        == "indeterminate"
+    )
+    for identity_field in (
+        "executablePath",
+        "workingDirectory",
+        "startupWorkingDirectory",
+    ):
+        empty_health = dict(health)
+        empty_ready = dict(ready)
+        empty_health[identity_field] = ""
+        empty_ready[identity_field] = ""
+        assert (
+            host.evaluate_daemon_state(
+                probes,
+                context="host",
+                status=status,
+                health=empty_health,
+                ready=empty_ready,
+            )
+            == "indeterminate"
+        )
     unavailable = dict(probes)
     unavailable["systemd-active"] = host.Evidence(
         "systemd-active", "host", "fail", "inactive"
@@ -2124,6 +2453,10 @@ def test_pure_state_and_issue_evaluators() -> None:
     )
     assert not host._version_before(None, (2, 38))
     assert not host._doctor_checks_structurally_valid({"ok": True})
+    invalid_doctor_level: list[object] = []
+    assert host._doctor_failure_classes(
+        {"checks": [{"name": "config", "level": invalid_doctor_level}]}
+    ) == (False, False)
     issues = host.evaluate_known_issues(
         probes=probes,
         status={"state": "stale", "extra": "kept"},
@@ -2148,6 +2481,19 @@ def test_pure_state_and_issue_evaluators() -> None:
         "AO-DASHBOARD-UPSTREAM-ORIGIN-REWRITE",
         "AO-PROCESS-CONTAINMENT-UNVERIFIED",
     ]
+    malformed_issues = host.evaluate_known_issues(
+        probes=probes,
+        status={"state": []},
+        doctor={"ok": True, "checks": []},
+        capabilities={
+            "glibc_version": "2.38",
+            "tmux_version": "3.5",
+            "codex_home_compatible": True,
+            "effective_process_containment": "systemd-scope-verified",
+        },
+        terminal=None,
+    )
+    assert malformed_issues == ["AO-HOST-CONTEXT-MISMATCH"]
 
 
 def test_probe_oserror_becomes_failed_evidence() -> None:
@@ -2182,8 +2528,150 @@ def test_mux_probe_requires_bounded_http_101_handshake() -> None:
         ("curl",),
     )
     assert handshake.status == "pass"
+    assert (
+        host._probe_mux(
+            FakeRunner(
+                [
+                    completed(
+                        (),
+                        out=websocket_response().replace(
+                            "Connection: Upgrade",
+                            "malformed-header\r\nConnection: Upgrade",
+                        ),
+                    )
+                ]
+            ),
+            "daemon",
+            ("curl",),
+        ).status
+        == "fail"
+    )
+    for malformed_response in (
+        websocket_response().replace("Upgrade:", "Upgrade :"),
+        websocket_response().replace("Upgrade:", " Upgrade:"),
+        websocket_response().replace(
+            "Connection: Upgrade",
+            "Bad Name: value\r\nConnection: Upgrade",
+        ),
+        websocket_response().replace(
+            "Connection: Upgrade",
+            "X-Test: value\x00tail\r\nConnection: Upgrade",
+        ),
+        websocket_response().replace(
+            "HTTP/1.1 101",
+            "HTTP/1.1\t101",
+        ),
+    ):
+        assert (
+            host._probe_mux(
+                FakeRunner([completed((), out=malformed_response)]),
+                "daemon",
+                ("curl",),
+            ).status
+            == "fail"
+        )
+    for false_line_break in ("\u0085", "\u2028", "\v", "\f"):
+        spliced_headers = (
+            "HTTP/1.1 101 Switching Protocols\r\n"
+            f"X-Test: value{false_line_break}"
+            f"Upgrade: websocket{false_line_break}"
+            f"Connection: Upgrade{false_line_break}"
+            "Sec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=\r\n\r\n"
+        )
+        assert (
+            host._probe_mux(
+                FakeRunner([completed((), out=spliced_headers)]),
+                "daemon",
+                ("curl",),
+            ).status
+            == "fail"
+        )
     assert generic.status == "fail"
     assert incomplete.status == "fail"
+    header_only_200 = websocket_response().replace(
+        "HTTP/1.1 101 Switching Protocols", "HTTP/1.1 200 OK"
+    )
+    for transcript in (
+        f"HTTP/1.1 101 Switching Protocols\r\n\r\n{header_only_200}",
+        f"{header_only_200}\r\nHTTP/1.1 101 Switching Protocols\r\n\r\n",
+    ):
+        assert (
+            host._probe_mux(
+                FakeRunner([completed((), out=transcript)]), "daemon", ("curl",)
+            ).status
+            == "fail"
+        )
+    assert (
+        host._probe_mux(
+            FakeRunner(
+                [
+                    completed(
+                        (),
+                        out=f"HTTP/1.1 200 Connection established\r\n\r\n"
+                        f"{websocket_response()}",
+                    )
+                ]
+            ),
+            "daemon",
+            ("curl",),
+        ).status
+        == "pass"
+    )
+    assert (
+        host._probe_mux(
+            FakeRunner([completed((), code=22, out=websocket_response())]),
+            "daemon",
+            ("curl",),
+        ).status
+        == "fail"
+    )
+    assert (
+        host._probe_mux(
+            FakeRunner(
+                [
+                    completed(
+                        (),
+                        out=websocket_response().replace("HTTP/1.1", "HTTP/2"),
+                    )
+                ]
+            ),
+            "daemon",
+            ("curl",),
+        ).status
+        == "fail"
+    )
+    for connection in ("X-Upgrade", "not-upgrade"):
+        assert (
+            host._probe_mux(
+                FakeRunner(
+                    [
+                        completed(
+                            (),
+                            out=websocket_response().replace(
+                                "Connection: Upgrade",
+                                f"Connection: {connection}",
+                            ),
+                        )
+                    ]
+                ),
+                "daemon",
+                ("curl",),
+            ).status
+            == "fail"
+        )
+    duplicate_accept = websocket_response().replace(
+        "Sec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=",
+        "Sec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=\r\n"
+        "Sec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=",
+    )
+    assert (
+        host._probe_mux(
+            FakeRunner([completed((), out=duplicate_accept)]),
+            "daemon",
+            ("curl",),
+        ).status
+        == "fail"
+    )
     wrong_case = websocket_response().replace(
         "s3pPLMBiTxaQ9kYGzzhZRbK+xOo=", "S3pPLMBiTxaQ9kYGzzhZRbK+xOo="
     )
@@ -2218,6 +2706,7 @@ def test_real_curl_mux_probe_sends_rfc6455_headers() -> None:
                 b"HTTP/1.1 101 Switching Protocols\r\n"
                 b"Connection: Upgrade\r\n"
                 b"Upgrade: websocket\r\n"
+                b"X-Test: \xff\r\n"
                 b"Sec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=\r\n\r\n"
             )
 
@@ -2424,6 +2913,7 @@ def test_schema_version_requires_exact_integer(tmp_path: Path, value: str) -> No
         "https://user@example.test",
         "https://example.test/path",
         "https://example{test}",
+        "https://example.test?",
     ],
 )
 def test_origin_rejects_nginx_metacharacters_and_non_origin_forms(
@@ -2574,6 +3064,7 @@ def test_v2_terminal_requires_read_only_dashboard(
             "process_containment",
         ),
         ('mode = "read-only"', 'mode = "disabled"', "terminal is enabled"),
+        ('mode = "read-only"', 'mode = ["read-only"]', "must be read-only"),
     ],
 )
 def test_v2_runtime_contract_values_fail_closed(

@@ -144,6 +144,8 @@ def _run(command: Sequence[str]) -> subprocess.CompletedProcess[str]:
         check=False,
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         env=os.environ.copy(),
         timeout=PROBE_TIMEOUT_SECONDS,
     )
@@ -166,21 +168,47 @@ def _probe_mux(runner: Runner, owner: str, command: Sequence[str]) -> Evidence:
     detail = result.stdout.strip() or result.stderr.strip() or "no output"
     if result.returncode == 45:
         return Evidence("mux", owner, "unknown", detail)
-    status_ok = re.search(r"^HTTP/\S+\s+101(?:\s|$)", detail, re.MULTILINE)
-    upgrade_ok = re.search(
-        r"^Upgrade:\s*websocket\s*$", detail, re.MULTILINE | re.IGNORECASE
+    if result.returncode not in {0, 28, 52}:
+        return Evidence("mux", owner, "fail", detail)
+    blocks = [
+        block.replace("\r\n", "\n").split("\n")
+        for block in re.split(r"\r?\n\r?\n", detail)
+        if re.match(r"^HTTP/\S+\s+\d{3}(?:\s|$)", block)
+    ]
+    final_block = blocks[-1] if blocks else []
+    status_ok = bool(
+        final_block
+        and re.fullmatch(
+            r"HTTP/1\.1 101(?:[ \t](?:[\t\x20-\x7e]|[^\x00-\x7f])*)?",
+            final_block[0],
+        )
     )
-    connection_ok = re.search(
-        r"^Connection:.*\bUpgrade\b.*$", detail, re.MULTILINE | re.IGNORECASE
+    headers: dict[str, list[str]] = {}
+    headers_valid = True
+    for line in final_block[1:]:
+        if ":" not in line:
+            headers_valid = False
+            break
+        name, value = line.split(":", 1)
+        if re.fullmatch(r"[!#$%&'*+\-.^_`|~0-9A-Za-z]+", name) is None or any(
+            (ord(character) < 0x20 and character != "\t") or ord(character) == 0x7F
+            for character in value
+        ):
+            headers_valid = False
+            break
+        headers.setdefault(name.casefold(), []).append(value.strip(" \t"))
+    upgrade_ok = any(
+        value.casefold() == "websocket" for value in headers.get("upgrade", [])
     )
-    accept_ok = any(
-        name.strip().casefold() == "sec-websocket-accept"
-        and value.strip() == "s3pPLMBiTxaQ9kYGzzhZRbK+xOo="
-        for line in detail.splitlines()
-        if ":" in line
-        for name, value in (line.split(":", 1),)
+    connection_ok = any(
+        token.strip().casefold() == "upgrade"
+        for value in headers.get("connection", [])
+        for token in value.split(",")
     )
-    handshake = status_ok and upgrade_ok and connection_ok and accept_ok
+    accept_ok = headers.get("sec-websocket-accept") == ["s3pPLMBiTxaQ9kYGzzhZRbK+xOo="]
+    handshake = (
+        status_ok and headers_valid and upgrade_ok and connection_ok and accept_ok
+    )
     return Evidence("mux", owner, "pass" if handshake else "fail", detail)
 
 
@@ -225,6 +253,10 @@ def _profile_base_url(profile: Path | None) -> str:
     return cast(str, ao["loopback_base_url"])
 
 
+def _valid_inspect_context(value: object) -> bool:
+    return isinstance(value, str) and value in {"auto", "host", "sandbox"}
+
+
 def _validate_loopback_url(value: object, label: str, *, mux_path: bool = False) -> str:
     if not isinstance(value, str):
         raise CalibrationError(f"{label} must be a string")
@@ -246,6 +278,8 @@ def _validate_loopback_url(value: object, label: str, *, mux_path: bool = False)
         or parsed.path != expected_path
         or parsed.query
         or parsed.fragment
+        or "?" in value
+        or "#" in value
     ):
         raise CalibrationError(f"{label} must be an HTTP loopback URL")
     return value
@@ -269,8 +303,25 @@ def _validate_service_unit(value: object, label: str) -> str:
     return value
 
 
+def _parse_unscoped_ip_address(
+    value: str,
+) -> ipaddress.IPv4Address | ipaddress.IPv6Address:
+    if "%" in value:
+        raise ValueError("scoped IP addresses are not supported")
+    return ipaddress.ip_address(value)
+
+
+def _parse_unscoped_ip_network(
+    value: str,
+) -> ipaddress.IPv4Network | ipaddress.IPv6Network:
+    _, separator, prefix = value.rpartition("/")
+    if "%" in value or separator != "/" or re.fullmatch(r"[0-9]+", prefix) is None:
+        raise ValueError("scoped IP networks are not supported")
+    return ipaddress.ip_network(value, strict=False)
+
+
 def _dashboard_url(host: str, port: int) -> str:
-    address = f"[{host}]" if ipaddress.ip_address(host).version == 6 else host
+    address = f"[{host}]" if _parse_unscoped_ip_address(host).version == 6 else host
     return f"http://{address}:{port}"
 
 
@@ -329,7 +380,7 @@ def _validate_origin(value: object, label: str) -> str:
         is None
         or any(character.isspace() for character in value)
         or any(ord(character) < 0x20 for character in value)
-        or any(character in value for character in "\"';#")
+        or any(character in value for character in "\"';#?")
     ):
         raise CalibrationError(f"{label} must be an exact Origin")
     return value
@@ -343,6 +394,7 @@ def evaluate_daemon_state(
     health: Mapping[str, object],
     ready: Mapping[str, object],
     core_doctor_failure: bool = False,
+    expected_port: int = 3001,
 ) -> str:
     """Classify daemon state from authoritative probe values only."""
     if context != "host":
@@ -351,22 +403,38 @@ def evaluate_daemon_state(
     health_probe = probes["healthz"]
     ready_probe = probes["readyz"]
     main_pid_text = probes["main-pid"].detail
-    main_pid = int(main_pid_text) if main_pid_text.isdecimal() else None
+    main_pid = (
+        int(main_pid_text)
+        if re.fullmatch(r"[1-9][0-9]*", main_pid_text) is not None
+        else None
+    )
     endpoint_identity = {
         "pid": int,
         "executablePath": str,
         "workingDirectory": str,
         "startupWorkingDirectory": str,
     }
+    identity_fields = (
+        "executablePath",
+        "workingDirectory",
+        "startupWorkingDirectory",
+    )
     identity_matches = (
-        main_pid is not None
-        and isinstance(status.get("pid"), int)
+        probes["main-pid"].status == "pass"
+        and main_pid is not None
+        and main_pid > 0
+        and type(status.get("pid")) is int
         and status.get("pid") == main_pid
-        and isinstance(status.get("port"), int)
+        and type(expected_port) is int
+        and 1 <= expected_port <= 65535
+        and type(status.get("port")) is int
+        and status.get("port") == expected_port
         and status.get("health") == "ok"
         and status.get("ready") == "ready"
         and _required_subset(health, endpoint_identity)
         and _required_subset(ready, endpoint_identity)
+        and type(health.get("pid")) is int
+        and type(ready.get("pid")) is int
         and health.get("pid") == main_pid
         and ready.get("pid") == main_pid
         and health.get("status") == "ok"
@@ -374,18 +442,20 @@ def evaluate_daemon_state(
         and health.get("service") == "agent-orchestrator-daemon"
         and ready.get("service") == "agent-orchestrator-daemon"
         and all(
-            health.get(field) == ready.get(field)
-            for field in (
-                "executablePath",
-                "workingDirectory",
-                "startupWorkingDirectory",
-            )
+            isinstance(health.get(field), str)
+            and bool(cast(str, health[field]).strip())
+            and isinstance(ready.get(field), str)
+            and bool(cast(str, ready[field]).strip())
+            for field in identity_fields
         )
+        and all(health.get(field) == ready.get(field) for field in identity_fields)
     )
     if (
-        service.status == "pass"
+        probes["ao-version"].status == "pass"
+        and service.status == "pass"
         and service.detail == "active"
         and probes["status"].status == "pass"
+        and isinstance(status.get("state"), str)
         and status.get("state") in {"ready", "running"}
         and health_probe.status == "pass"
         and ready_probe.status == "pass"
@@ -445,7 +515,11 @@ def _doctor_failure_classes(doctor: Mapping[str, object]) -> tuple[bool, bool]:
             item = cast(dict[str, object], raw_item)
             name = item.get("name")
             level = item.get("level")
-            if isinstance(name, str) and level in {"FAIL", "ERROR"}:
+            if (
+                isinstance(name, str)
+                and isinstance(level, str)
+                and level in {"FAIL", "ERROR"}
+            ):
                 if any(
                     token in name.casefold()
                     for token in ("auth", "github", "token", "integration")
@@ -502,9 +576,11 @@ def evaluate_known_issues(
 ) -> list[str]:
     """Return stable issue IDs from already collected, mutation-free evidence."""
     issues: list[str] = []
+    status_state = status.get("state")
     if (
         context == "auto"
-        or status.get("state") not in {"ready", "running"}
+        or not isinstance(status_state, str)
+        or status_state not in {"ready", "running"}
         or (
             context == "sandbox"
             and doctor.get("ok") is not True
@@ -548,7 +624,7 @@ def inspect_host(
         identity, and endpoint evidence. Sandbox-owned observations cannot
         establish host readiness.
     """
-    if context not in {"auto", "host", "sandbox"}:
+    if not _valid_inspect_context(context):
         raise CalibrationError("context must be auto, host, or sandbox")
     if profile is not None and not profile.exists():
         raise CalibrationError(f"{profile} does not exist")
@@ -576,17 +652,17 @@ def inspect_host(
                 listen_host,
                 cast(int, dashboard["listen_port"]),
             )
-            listen_ip = ipaddress.ip_address(listen_host)
+            listen_ip = _parse_unscoped_ip_address(listen_host)
             source_is_concrete = not (
                 listen_ip.is_unspecified or listen_ip.is_multicast
             )
             if source_is_concrete and any(
-                listen_ip in ipaddress.ip_network(cast(str, cidr), strict=False)
+                listen_ip in _parse_unscoped_ip_network(cast(str, cidr))
                 for cidr in cast(list[object], dashboard["trusted_readonly_cidrs"])
             ):
                 dashboard_source = listen_host
             allowed_client_ips = (
-                ipaddress.ip_address(cast(str, value))
+                _parse_unscoped_ip_address(cast(str, value))
                 for value in cast(list[object], terminal_profile["allowed_client_ips"])
             )
             if source_is_concrete and listen_ip in allowed_client_ips:
@@ -694,6 +770,7 @@ def inspect_host(
         health=health_payload,
         ready=ready_payload,
         core_doctor_failure=core_doctor_failure,
+        expected_port=cast(int, urllib.parse.urlsplit(base).port),
     )
     tmux_match = re.search(r"\btmux\s+(\d+(?:\.\d+)+)", by_name["tmux"].detail)
     glibc_match = re.search(r"(\d+(?:\.\d+)+)", by_name["glibc"].detail)
@@ -892,6 +969,28 @@ def _validate_storage_boundaries(boundaries: object) -> list[dict[str, object]]:
     return validated
 
 
+def _validate_listener_network_families(
+    listen_host: str,
+    readonly_cidrs: Sequence[str],
+    terminal: Mapping[str, object],
+) -> None:
+    listener_version = _parse_unscoped_ip_address(listen_host).version
+    if not all(
+        _parse_unscoped_ip_network(cidr).version == listener_version
+        for cidr in readonly_cidrs
+    ):
+        raise CalibrationError(
+            "read-only dashboard requires a trusted CIDR for its listener family"
+        )
+    if terminal.get("desired_enabled") is True and not all(
+        _parse_unscoped_ip_address(client).version == listener_version
+        for client in cast(list[str], terminal["allowed_client_ips"])
+    ):
+        raise CalibrationError(
+            "terminal requires an allowed client IP for its listener family"
+        )
+
+
 def _load_profile(path: Path) -> dict[str, object]:
     safe = _safe_path(path, may_create=False, directory=False)
     try:
@@ -964,7 +1063,7 @@ def _load_profile(path: Path) -> dict[str, object]:
     if not isinstance(listen_host, str):
         raise CalibrationError("dashboard.listen_host must be an IP address")
     try:
-        ipaddress.ip_address(listen_host)
+        _parse_unscoped_ip_address(listen_host)
     except ValueError as exc:
         raise CalibrationError("dashboard.listen_host must be an IP address") from exc
     if type(listen_port) is not int or listen_port < 0 or listen_port > 65535:
@@ -982,21 +1081,11 @@ def _load_profile(path: Path) -> dict[str, object]:
         raise CalibrationError("read-only dashboard requires trusted_readonly_cidrs")
     try:
         for value in cidr_values:
-            ipaddress.ip_network(cast(str, value), strict=False)
+            _parse_unscoped_ip_network(cast(str, value))
     except ValueError as exc:
         raise CalibrationError(
             "dashboard.trusted_readonly_cidrs must be valid CIDRs"
         ) from exc
-    if dashboard.get("mode", "read-only") == "read-only":
-        listen_version = ipaddress.ip_address(listen_host).version
-        if not any(
-            ipaddress.ip_network(cast(str, value), strict=False).version
-            == listen_version
-            for value in cidr_values
-        ):
-            raise CalibrationError(
-                "read-only dashboard requires a trusted CIDR for its listener family"
-            )
     absolute_fields = [
         ("ao.data_dir", ao["data_dir"]),
         ("ao.codex_home", ao["codex_home"]),
@@ -1035,7 +1124,11 @@ def _load_profile(path: Path) -> dict[str, object]:
             raise CalibrationError("ao.runtime_owner must be systemd-user")
         if ao.get("process_containment") != "legacy":
             raise CalibrationError("ao.process_containment must be legacy")
-        if dashboard.get("mode") not in {"disabled", "read-only"}:
+        dashboard_mode = dashboard.get("mode")
+        if not isinstance(dashboard_mode, str) or dashboard_mode not in {
+            "disabled",
+            "read-only",
+        }:
             raise CalibrationError(
                 "dashboard.mode must be read-only when enabled, or disabled"
             )
@@ -1048,23 +1141,31 @@ def _load_profile(path: Path) -> dict[str, object]:
                 "dashboard.mode must be read-only when terminal is enabled"
             )
         _validate_terminal(terminal)
-        _validate_no_listener_collision(profile)
+    _validate_no_listener_collision(profile)
+    if dashboard.get("mode", "read-only") == "read-only":
+        _validate_listener_network_families(
+            listen_host,
+            cast(list[str], cidr_values),
+            terminal,
+        )
     return cast(dict[str, object], profile)
 
 
 def _validate_no_listener_collision(profile: Mapping[str, object]) -> None:
     ao = _section(profile, "ao")
     dashboard = _section(profile, "dashboard")
-    if dashboard.get("mode") != "read-only":
+    if dashboard.get("mode", "read-only") != "read-only":
         return
     parsed = urllib.parse.urlsplit(cast(str, ao["loopback_base_url"]))
-    dashboard_ip = ipaddress.ip_address(cast(str, dashboard["listen_host"]))
+    dashboard_ip = _parse_unscoped_ip_address(cast(str, dashboard["listen_host"]))
     ao_host = cast(str, parsed.hostname)
-    host_collides = (
-        dashboard_ip.is_loopback
-        if ao_host == "localhost"
-        else dashboard_ip == ipaddress.ip_address(ao_host)
-    )
+    if ao_host == "localhost":
+        host_collides = dashboard_ip.is_loopback or dashboard_ip.is_unspecified
+    else:
+        ao_ip = _parse_unscoped_ip_address(ao_host)
+        host_collides = dashboard_ip == ao_ip or (
+            dashboard_ip.is_unspecified and dashboard_ip.version == ao_ip.version
+        )
     if host_collides and dashboard["listen_port"] == parsed.port:
         raise CalibrationError("Dashboard listener must not collide with AO loopback")
 
@@ -1080,7 +1181,7 @@ def _validate_terminal_v1(terminal: Mapping[str, object]) -> None:
     if not client_values or not all(isinstance(value, str) for value in client_values):
         raise CalibrationError("legacy terminal requires exact client IPs")
     for value in client_values:
-        ipaddress.ip_address(cast(str, value))
+        _parse_unscoped_ip_address(cast(str, value))
     _validate_origin(terminal.get("allowed_origin"), "legacy terminal Origin")
     if terminal.get("path") != "/mux":
         raise CalibrationError("legacy terminal path must be exactly /mux")
@@ -1110,7 +1211,7 @@ def _validate_terminal(terminal: Mapping[str, object]) -> None:
                 "terminal requires exact client IPs compatible with origin mode"
             )
         for value in client_values:
-            ipaddress.ip_address(cast(str, value))
+            _parse_unscoped_ip_address(cast(str, value))
         _validate_origin(terminal.get("allowed_origin"), "terminal Origin")
         if terminal.get("path") != "/mux":
             raise CalibrationError("terminal path must be exactly /mux")
@@ -1151,7 +1252,7 @@ def _validate_terminal_shapes(terminal: Mapping[str, object]) -> None:
         )
     try:
         for value in cast(list[str], client_values):
-            ipaddress.ip_address(value)
+            _parse_unscoped_ip_address(value)
     except ValueError as exc:
         raise CalibrationError(
             "dashboard.terminal.allowed_client_ips must be valid IPs"
@@ -1344,17 +1445,22 @@ def init_profile(
             "enabled dashboard requires explicit listen, CIDR, path, "
             "nginx, and service values"
         )
-    if dashboard_enabled:
-        if dashboard_listen_port is None or not 1 <= dashboard_listen_port <= 65535:
-            raise CalibrationError(
-                "enabled dashboard requires a listen port from 1 through 65535"
-            )
+    if dashboard_listen_host is not None:
         try:
-            ipaddress.ip_address(cast(str, dashboard_listen_host))
+            _parse_unscoped_ip_address(dashboard_listen_host)
         except ValueError as exc:
-            raise CalibrationError(
-                "enabled dashboard requires an exact listen IP"
-            ) from exc
+            raise CalibrationError("dashboard requires an exact listen IP") from exc
+    if dashboard_listen_port is not None and (
+        type(dashboard_listen_port) is not int
+        or not 0 <= dashboard_listen_port <= 65535
+    ):
+        raise CalibrationError(
+            "dashboard listen port must be an integer from 0 through 65535"
+        )
+    if dashboard_enabled and dashboard_listen_port == 0:
+        raise CalibrationError(
+            "enabled dashboard requires a listen port from 1 through 65535"
+        )
     if terminal and (
         not dashboard_enabled
         or not client_ips
@@ -1369,7 +1475,7 @@ def init_profile(
         )
     try:
         for cidr in readonly_cidrs:
-            ipaddress.ip_network(cidr, strict=False)
+            _parse_unscoped_ip_network(cidr)
     except ValueError as exc:
         raise CalibrationError("readonly CIDRs must be valid networks") from exc
     base = DEFAULT_BASE_URL
@@ -1462,6 +1568,12 @@ def init_profile(
     }
     canonical = _canonical_v2(profile)
     _validate_terminal(_section(_section(canonical, "dashboard"), "terminal"))
+    if dashboard_enabled:
+        _validate_listener_network_families(
+            dashboard_host,
+            readonly_cidrs,
+            _section(_section(canonical, "dashboard"), "terminal"),
+        )
     _validate_no_listener_collision(canonical)
     target.write_text(_toml(canonical), encoding="utf-8")
     target.chmod(0o600)
