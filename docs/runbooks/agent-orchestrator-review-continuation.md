@@ -164,6 +164,9 @@ including AO version text and GLIBC, tmux, cgroup v1/v2, Dashboard, mux,
 user-service, status, doctor, `healthz`, and `readyz` probes. Active systemd
 plus both passing endpoint probes establishes `daemon ready` even when
 sandbox-visible status is stale or doctor reports a read-only data directory.
+Status and doctor extension fields are preserved in JSON capabilities; focused
+pure evaluators classify daemon state, delivery state, and stable known-issue
+IDs without invoking probes or changing host state.
 
 The `init`, `plan`, `render`, and `verify` commands operate on an explicit
 profile path. Initialization requires explicit trust and defaults terminal

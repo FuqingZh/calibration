@@ -24,6 +24,24 @@ uses schema v2, retains those names, and adds `ao.runtime_owner`,
 candidate needs are explicit in `plan` and `verify` readback. Unknown keys fail
 closed.
 
+Inspect JSON has a fixed top-level shape: `schema_version`, `command`,
+`context`, `states`, `capabilities`, `probes`, `known_issues`, and
+`next_actions`. Every probe has `id`, `owner`, `status`, and `detail`.
+Daemon state is one of `not_installed`, `ready`, `unavailable`, or
+`indeterminate`; delivery state is one of `not_applicable`, `ready`,
+`degraded`, or `indeterminate`. AO status and doctor objects retain extension
+fields while required subsets are validated independently.
+
+Pure evaluators produce these stable issue IDs:
+
+- `AO-HOST-CONTEXT-MISMATCH`;
+- `AO-GLIBC-INCOMPATIBLE`;
+- `AO-TMUX-TOO-OLD`;
+- `AO-CODEX-HOME-CONFLICT`;
+- `AO-DASHBOARD-MUX-NOT-PROXIED`;
+- `AO-DASHBOARD-UPSTREAM-ORIGIN-REWRITE`; and
+- `AO-PROCESS-CONTAINMENT-UNVERIFIED`.
+
 ## Candidate Boundary
 
 Rendering produces review material, never deployed state. A candidate root is

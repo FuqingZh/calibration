@@ -84,9 +84,9 @@ class JsonArgumentParser(argparse.ArgumentParser):
 class Evidence:
     """One observation with its owning state and normalized result."""
 
+    id: str
     owner: str
-    probe: str
-    ok: bool
+    status: str
     detail: str
 
 
@@ -97,15 +97,26 @@ def _emit(
     result: Mapping[str, object] | None = None,
     error: Mapping[str, object] | None = None,
 ) -> None:
+    supplied = dict(result or {})
     payload: dict[str, object] = {
         "schema_version": JSON_SCHEMA_VERSION,
         "command": command,
-        "ok": ok,
+        "context": supplied.pop("context", "auto"),
+        "states": supplied.pop(
+            "states",
+            {
+                "daemon": "indeterminate",
+                "delivery": "not_applicable",
+                "operation": "ready" if ok else "unavailable",
+            },
+        ),
+        "capabilities": supplied.pop("capabilities", supplied),
+        "probes": supplied.pop("probes", []),
+        "known_issues": supplied.pop("known_issues", []),
+        "next_actions": supplied.pop("next_actions", []),
     }
-    if result is not None:
-        payload["result"] = dict(result)
     if error is not None:
-        payload["error"] = dict(error)
+        cast(dict[str, object], payload["capabilities"])["error"] = dict(error)
     print(json.dumps(payload, indent=2, sort_keys=True))
 
 
@@ -122,7 +133,7 @@ def _run(command: Sequence[str]) -> subprocess.CompletedProcess[str]:
 def _probe(runner: Runner, owner: str, name: str, command: Sequence[str]) -> Evidence:
     result = runner(command)
     detail = (result.stdout.strip() or result.stderr.strip() or "no output")[:1000]
-    return Evidence(owner, name, result.returncode == 0, detail)
+    return Evidence(name, owner, "pass" if result.returncode == 0 else "fail", detail)
 
 
 def _json_object(text: str) -> dict[str, object]:
@@ -151,6 +162,83 @@ def _profile_base_url(profile: Path | None) -> str:
         return DEFAULT_BASE_URL
     ao = cast(dict[str, object], parsed["ao"])
     return cast(str, ao["loopback_base_url"])
+
+
+def evaluate_daemon_state(probes: Mapping[str, Evidence], *, context: str) -> str:
+    """Classify daemon state from authoritative probe values only."""
+    service = probes["systemd-active"]
+    health = probes["healthz"]
+    ready = probes["readyz"]
+    if (
+        service.status == "pass"
+        and service.detail == "active"
+        and health.status == "pass"
+        and ready.status == "pass"
+    ):
+        return "ready"
+    if probes["ao-version"].status == "fail" and context == "host":
+        return "not_installed"
+    if (
+        context == "host"
+        and service.status == "pass"
+        and service.detail != "active"
+        and health.status == "fail"
+        and ready.status == "fail"
+    ):
+        return "unavailable"
+    return "indeterminate"
+
+
+def evaluate_delivery_state(
+    probes: Mapping[str, Evidence],
+    *,
+    daemon_state: str,
+    terminal_enabled: bool | None,
+) -> str:
+    """Classify Dashboard delivery independently from daemon readiness."""
+    if terminal_enabled is False:
+        return "not_applicable"
+    if terminal_enabled is None or daemon_state != "ready":
+        return "indeterminate"
+    return "ready" if probes["mux"].status == "pass" else "degraded"
+
+
+def _version_before(value: object, minimum: tuple[int, int]) -> bool:
+    if not isinstance(value, str):
+        return False
+    match = re.fullmatch(r"(\d+)\.(\d+)(?:\..*)?", value)
+    return match is not None and tuple(map(int, match.groups())) < minimum
+
+
+def evaluate_known_issues(
+    *,
+    probes: Mapping[str, Evidence],
+    status: Mapping[str, object],
+    doctor: Mapping[str, object],
+    capabilities: Mapping[str, object],
+    terminal: Mapping[str, object] | None,
+) -> list[str]:
+    """Return stable issue IDs from already collected, mutation-free evidence."""
+    issues: list[str] = []
+    if status.get("state") not in {"ready", "running"} or doctor.get("ok") is not True:
+        issues.append("AO-HOST-CONTEXT-MISMATCH")
+    if _version_before(capabilities.get("glibc_version"), (2, 38)):
+        issues.append("AO-GLIBC-INCOMPATIBLE")
+    if _version_before(capabilities.get("tmux_version"), (3, 5)):
+        issues.append("AO-TMUX-TOO-OLD")
+    if capabilities.get("codex_home_compatible") is False:
+        issues.append("AO-CODEX-HOME-CONFLICT")
+    if (
+        terminal is not None
+        and terminal.get("desired_enabled") is True
+        and probes["mux"].status == "fail"
+    ):
+        issues.append("AO-DASHBOARD-MUX-NOT-PROXIED")
+    if terminal is not None and terminal.get("origin_mode", "preserve") != "preserve":
+        issues.append("AO-DASHBOARD-UPSTREAM-ORIGIN-REWRITE")
+    if capabilities.get("process_containment") != "systemd-scope-verified":
+        issues.append("AO-PROCESS-CONTAINMENT-UNVERIFIED")
+    return issues
 
 
 def inspect_host(
@@ -204,34 +292,10 @@ def inspect_host(
             ("curl", "-fsS", "-o", "/dev/null", "-w", "%{http_code}", base + "/mux"),
         ),
     ]
-    by_name = {item.probe: item for item in evidence}
-    daemon_ready = (
-        by_name["systemd-active"].ok
-        and by_name["systemd-active"].detail == "active"
-        and by_name["healthz"].ok
-        and by_name["readyz"].ok
-    )
-    issues: list[str] = []
+    by_name = {item.id: item for item in evidence}
+    daemon_state = evaluate_daemon_state(by_name, context=context)
     status = _json_object(by_name["status"].detail)
-    if not (
-        by_name["status"].ok
-        and _required_subset(status, {"state": str})
-        and status["state"] in {"ready", "running"}
-    ):
-        issues.append("AO_STATUS_STALE")
     doctor = _json_object(by_name["doctor"].detail)
-    checks = doctor.get("checks")
-    check_items = cast(list[object], checks) if isinstance(checks, list) else []
-    readonly_check = False
-    for raw_item in check_items:
-        if isinstance(raw_item, dict):
-            item = cast(dict[str, object], raw_item)
-            readonly_check = readonly_check or (
-                item.get("name") == "data-dir-write"
-                and "read-only" in str(item.get("message", "")).casefold()
-            )
-    if readonly_check:
-        issues.append("AO_DOCTOR_DATA_DIR_READ_ONLY")
     tmux_match = re.search(r"\btmux\s+(\d+(?:\.\d+)+)", by_name["tmux"].detail)
     glibc_match = re.search(r"(\d+(?:\.\d+)+)", by_name["glibc"].detail)
     cgroup_text = by_name["cgroup"].detail
@@ -242,19 +306,59 @@ def inspect_host(
         if cgroup_text in {"tmpfs", "cgroup"}
         else "unknown"
     )
+    terminal: dict[str, object] | None = None
+    process_containment: object = None
+    codex_home_compatible: bool | None = None
+    if profile is not None and profile.exists():
+        parsed = _load_profile(profile)
+        terminal = _section(_section(parsed, "dashboard"), "terminal")
+        process_containment = _section(parsed, "ao").get("process_containment")
+        try:
+            _validate_codex_home(Path(cast(str, _section(parsed, "ao")["codex_home"])))
+            codex_home_compatible = True
+        except CalibrationError:
+            codex_home_compatible = False
+    capabilities: dict[str, object] = {
+        "loopback_base_url": base,
+        "ao_version_text": by_name["ao-version"].detail,
+        "glibc_version": glibc_match.group(1) if glibc_match else None,
+        "tmux_version": tmux_match.group(1) if tmux_match else None,
+        "cgroup_version": cgroup_version,
+        "codex_home_compatible": codex_home_compatible,
+        "process_containment": process_containment,
+        "ao_status": status,
+        "ao_doctor": doctor,
+        "status_required_subset_valid": _required_subset(status, {"state": str}),
+        "doctor_required_subset_valid": _required_subset(
+            doctor, {"ok": bool, "checks": list}
+        ),
+    }
+    delivery_state = evaluate_delivery_state(
+        by_name,
+        daemon_state=daemon_state,
+        terminal_enabled=(
+            cast(bool, terminal["desired_enabled"]) if terminal is not None else None
+        ),
+    )
+    issues = evaluate_known_issues(
+        probes=by_name,
+        status=status,
+        doctor=doctor,
+        capabilities=capabilities,
+        terminal=terminal,
+    )
     return {
-        "classification": "daemon ready" if daemon_ready else "indeterminate",
+        "schema_version": JSON_SCHEMA_VERSION,
+        "command": "inspect",
         "context": context,
-        "base_url": base,
-        "capabilities": {
-            "ao_version_text": by_name["ao-version"].detail,
-            "glibc_version": glibc_match.group(1) if glibc_match else None,
-            "tmux_version": tmux_match.group(1) if tmux_match else None,
-            "cgroup_version": cgroup_version,
+        "states": {
+            "daemon": daemon_state,
+            "delivery": delivery_state,
         },
-        "known_issue_ids": issues,
-        "evidence": [asdict(item) for item in evidence],
-        "profile_present": profile is not None and profile.exists(),
+        "capabilities": capabilities,
+        "probes": [asdict(item) for item in evidence],
+        "known_issues": issues,
+        "next_actions": [f"investigate {issue}" for issue in issues],
     }
 
 
@@ -687,7 +791,7 @@ def reconstruction_canary(root: Path, runner: Runner) -> dict[str, object]:
             else:
                 os.environ[name] = value
     return {
-        "inspect": inspection["classification"],
+        "inspect": cast(dict[str, object], inspection["states"])["daemon"],
         "plan": plan["mode"],
         "first_unchanged": first["unchanged"],
         "second_unchanged": second["unchanged"],
@@ -731,7 +835,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         if args.command == "inspect":
             result = inspect_host(profile=args.profile, context=args.context)
-            code = EXIT_OK if result["classification"] == "daemon ready" else EXIT_PROBE
+            code = (
+                EXIT_OK
+                if cast(dict[str, object], result["states"])["daemon"] == "ready"
+                else EXIT_PROBE
+            )
         elif args.command == "init":
             result = init_profile(
                 args.profile,

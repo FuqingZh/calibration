@@ -146,31 +146,58 @@ def test_status_stale_and_doctor_readonly_do_not_override_daemon_ready() -> None
 
     report = host.inspect_host(runner, context="host")
 
-    assert report["classification"] == "daemon ready"
-    assert report["base_url"] == "http://127.0.0.1:3001"
-    assert report["known_issue_ids"] == [
-        "AO_STATUS_STALE",
-        "AO_DOCTOR_DATA_DIR_READ_ONLY",
+    assert report["states"] == {
+        "daemon": "ready",
+        "delivery": "indeterminate",
+    }
+    assert report["known_issues"] == [
+        "AO-HOST-CONTEXT-MISMATCH",
+        "AO-PROCESS-CONTAINMENT-UNVERIFIED",
     ]
-    assert report["capabilities"] == {
-        "ao_version_text": "ao version 1.2.3",
-        "glibc_version": "2.39",
-        "tmux_version": "3.5",
-        "cgroup_version": "v2",
+    capabilities = cast(dict[str, object], report["capabilities"])
+    assert capabilities["loopback_base_url"] == "http://127.0.0.1:3001"
+    assert capabilities["ao_version_text"] == "ao version 1.2.3"
+    assert capabilities["glibc_version"] == "2.39"
+    assert capabilities["tmux_version"] == "3.5"
+    assert capabilities["cgroup_version"] == "v2"
+    assert cast(dict[str, object], capabilities["ao_status"])["state"] == "stale"
+    doctor_data = cast(dict[str, object], capabilities["ao_doctor"])
+    assert doctor_data["ok"] is False
+    assert set(report) == {
+        "schema_version",
+        "command",
+        "context",
+        "states",
+        "capabilities",
+        "probes",
+        "known_issues",
+        "next_actions",
+    }
+    assert set(cast(list[dict[str, object]], report["probes"])[0]) == {
+        "id",
+        "owner",
+        "status",
+        "detail",
     }
 
 
-def test_inspect_profile_context_cgroup_and_invalid_json(profile: Path) -> None:
+def test_inspect_profile_context_cgroup_and_invalid_json(
+    profile: Path, codex_home: Path
+) -> None:
     runner = FakeRunner(
         inspect_responses(
             status="not-json", doctor="not-json", cgroup="tmpfs", ready=False
         )
     )
     report = host.inspect_host(runner, profile=profile, context="sandbox")
-    assert report["classification"] == "indeterminate"
-    assert report["profile_present"] is True
+    assert cast(dict[str, object], report["states"])["daemon"] == "indeterminate"
     capabilities = cast(dict[str, object], report["capabilities"])
     assert capabilities["cgroup_version"] == "v1"
+    (codex_home / "config.toml").write_text("bad =", encoding="utf-8")
+    conflict = host.inspect_host(
+        FakeRunner(inspect_responses()), profile=profile, context="sandbox"
+    )
+    assert "AO-CODEX-HOME-CONFLICT" in cast(list[str], conflict["known_issues"])
     with pytest.raises(host.CalibrationError, match="context"):
         host.inspect_host(FakeRunner([]), context="remote")
 
@@ -462,7 +489,7 @@ def test_reconstruction_canary_executes_full_pipeline(tmp_path: Path) -> None:
     runner = FakeRunner(inspect_responses())
     result = host.reconstruction_canary(tmp_path / "isolated", runner)
     assert result == {
-        "inspect": "daemon ready",
+        "inspect": "ready",
         "plan": "plan",
         "first_unchanged": False,
         "second_unchanged": True,
@@ -480,9 +507,19 @@ def test_cli_fixed_json_schema_and_exit_codes(
     payload = json.loads(capsys.readouterr().out)
     assert payload["schema_version"] == 1
     assert payload["command"] == "plan"
-    assert payload["ok"] is True
+    assert set(payload) == {
+        "schema_version",
+        "command",
+        "context",
+        "states",
+        "capabilities",
+        "probes",
+        "known_issues",
+        "next_actions",
+    }
     assert host.main(["verify", "--profile", str(tmp_path / "missing")]) == 1
-    assert json.loads(capsys.readouterr().out)["error"]["kind"] == "invalid"
+    failed = json.loads(capsys.readouterr().out)
+    assert failed["capabilities"]["error"]["kind"] == "invalid"
 
     def fake_inspect(
         _runner: host.Runner = host._run,
@@ -491,15 +528,15 @@ def test_cli_fixed_json_schema_and_exit_codes(
         context: str = "auto",
     ) -> dict[str, object]:
         del _runner, profile, context
-        return {"classification": "indeterminate"}
+        return {"states": {"daemon": "indeterminate"}}
 
     monkeypatch.setattr(host, "inspect_host", fake_inspect)
     assert host.main(["inspect"]) == host.EXIT_PROBE
-    assert json.loads(capsys.readouterr().out)["ok"] is False
+    assert json.loads(capsys.readouterr().out)["states"]["daemon"] == "indeterminate"
     with pytest.raises(SystemExit, match="2"):
         host.main(["plan"])
     usage = json.loads(capsys.readouterr().out)
-    assert usage["error"]["kind"] == "usage"
+    assert usage["capabilities"]["error"]["kind"] == "usage"
     output = tmp_path / "cli-candidate"
     assert (
         host.main(["render", "--profile", str(profile), "--output", str(output)]) == 0
@@ -548,3 +585,76 @@ def test_run_and_json_helpers(monkeypatch: pytest.MonkeyPatch) -> None:
     assert host._json_object("[]") == {}
     assert host._required_subset({"name": "x", "extra": 1}, {"name": str})
     assert not host._required_subset({}, {"name": str})
+
+
+def test_pure_state_and_issue_evaluators() -> None:
+    probes = {
+        "ao-version": host.Evidence("ao-version", "sandbox", "pass", "ao 1"),
+        "systemd-active": host.Evidence("systemd-active", "host", "pass", "active"),
+        "healthz": host.Evidence("healthz", "daemon", "pass", "ok"),
+        "readyz": host.Evidence("readyz", "daemon", "pass", "ok"),
+        "mux": host.Evidence("mux", "daemon", "fail", "404"),
+    }
+    assert host.evaluate_daemon_state(probes, context="host") == "ready"
+    missing_ao = dict(probes)
+    missing_ao["ao-version"] = host.Evidence("ao-version", "sandbox", "fail", "missing")
+    missing_ao["healthz"] = host.Evidence("healthz", "daemon", "fail", "missing")
+    assert host.evaluate_daemon_state(missing_ao, context="host") == "not_installed"
+    unavailable = dict(probes)
+    unavailable["systemd-active"] = host.Evidence(
+        "systemd-active", "host", "pass", "inactive"
+    )
+    unavailable["healthz"] = host.Evidence("healthz", "daemon", "fail", "down")
+    unavailable["readyz"] = host.Evidence("readyz", "daemon", "fail", "down")
+    assert host.evaluate_daemon_state(unavailable, context="host") == "unavailable"
+    assert (
+        host.evaluate_delivery_state(
+            probes, daemon_state="ready", terminal_enabled=True
+        )
+        == "degraded"
+    )
+    assert (
+        host.evaluate_delivery_state(
+            probes, daemon_state="ready", terminal_enabled=False
+        )
+        == "not_applicable"
+    )
+    assert (
+        host.evaluate_delivery_state(
+            probes, daemon_state="indeterminate", terminal_enabled=True
+        )
+        == "indeterminate"
+    )
+    passing_mux = dict(probes)
+    passing_mux["mux"] = host.Evidence("mux", "daemon", "pass", "101")
+    assert (
+        host.evaluate_delivery_state(
+            passing_mux, daemon_state="ready", terminal_enabled=True
+        )
+        == "ready"
+    )
+    assert not host._version_before(None, (2, 38))
+    issues = host.evaluate_known_issues(
+        probes=probes,
+        status={"state": "stale", "extra": "kept"},
+        doctor={"ok": False, "checks": []},
+        capabilities={
+            "glibc_version": "2.37",
+            "tmux_version": "3.4",
+            "codex_home_compatible": False,
+            "process_containment": "assigned-workspace",
+        },
+        terminal={
+            "desired_enabled": True,
+            "origin_mode": "rewrite",
+        },
+    )
+    assert issues == [
+        "AO-HOST-CONTEXT-MISMATCH",
+        "AO-GLIBC-INCOMPATIBLE",
+        "AO-TMUX-TOO-OLD",
+        "AO-CODEX-HOME-CONFLICT",
+        "AO-DASHBOARD-MUX-NOT-PROXIED",
+        "AO-DASHBOARD-UPSTREAM-ORIGIN-REWRITE",
+        "AO-PROCESS-CONTAINMENT-UNVERIFIED",
+    ]
