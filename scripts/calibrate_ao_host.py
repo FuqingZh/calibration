@@ -9,6 +9,7 @@ import ipaddress
 import json
 import os
 import re
+import shutil
 import stat
 import subprocess
 import sys
@@ -1263,10 +1264,12 @@ def _candidate_files(profile: Mapping[str, object]) -> dict[str, bytes]:
             f"`{paths['desired_service_artifact']}`. Rollback service source: "
             f"`{dashboard['rollback_service']}`.\n\n"
             "Classify evidence by sandbox, worker, daemon, and host owner. Only "
-            "explicit host context may establish readiness. Require host systemd "
-            "state, AO ready/running status, matching MainPID plus executable/work/"
-            "startup identity across status, healthz, and readyz, valid healthz and "
-            "readyz state/service payloads, and readable clean doctor core checks. "
+            "explicit host context may establish readiness. Sandbox-only stale "
+            "status or read-only doctor evidence cannot negate a separate "
+            "authoritative host check. Require active host systemd state, AO "
+            "ready/running status, matching MainPID plus executable/work/startup "
+            "identity across status, healthz, and readyz, valid healthz and readyz "
+            "state/service payloads, and no host core doctor failure. "
             "External integration failures degrade delivery. Process "
             "containment remains unverified until OS-owned evidence proves it.\n\n"
             "## Storage routing\n\n"
@@ -1286,10 +1289,14 @@ def _candidate_files(profile: Mapping[str, object]) -> dict[str, bytes]:
             "Read live state from the user service manager, AO status and doctor, "
             f"`{ao['loopback_base_url']}{ao['health_path']}`, "
             f"`{ao['loopback_base_url']}{ao['ready_path']}`, and the configured "
-            "Dashboard listener. Ready requires host service state, AO ready/running "
-            "status, matching MainPID and executable/work/start identity, valid "
-            "healthz/readyz status and service fields, and clean readable core "
-            "doctor checks. An unreadable doctor result is not clean evidence.\n\n"
+            "Dashboard listener. Ready requires active host systemd state, AO "
+            "ready/running status, matching MainPID and executable/work/start "
+            "identity, valid healthz/readyz status and service fields, and no host "
+            "core doctor failure. Sandbox-only stale status or read-only doctor "
+            "evidence stays indeterminate and cannot negate a separate authoritative "
+            "host check. Without a profile, the Dashboard probe is unknown/not "
+            "configured and delivery is `not_applicable`. An unreadable doctor "
+            "result is not clean evidence.\n\n"
             "Use `calibrate_ao_host.py inspect --context host --profile <profile>` "
             "for attested observation, `plan --profile <profile>` for migration "
             "readback, `render --profile <profile> --output <new-private-root>` "
@@ -1562,6 +1569,25 @@ def _invoke_subprocess_cli(
     return result.returncode, cast(dict[str, object], payload)
 
 
+def _require_canary_stage(
+    stage: str,
+    result: tuple[int, dict[str, object]],
+    *,
+    expected_exit: int = EXIT_OK,
+) -> dict[str, object]:
+    code, payload = result
+    if code != expected_exit:
+        raise CalibrationError(
+            f"canary {stage} failed with exit {code}: "
+            + json.dumps(payload, sort_keys=True)
+        )
+    if payload.get("command") != stage:
+        raise CalibrationError(f"canary {stage} returned an invalid command payload")
+    if not isinstance(payload.get("capabilities"), dict):
+        raise CalibrationError(f"canary {stage} returned invalid capabilities")
+    return payload
+
+
 def _write_canary_probe_tools(root: Path) -> Path:
     fake_bin = root / "fake-bin"
     fake_bin.mkdir(mode=0o700)
@@ -1619,6 +1645,19 @@ elif name == "curl":
 
 def reconstruction_canary(root: Path, runner: Runner = _run) -> dict[str, object]:
     """Run the real JSON CLI boundary under isolated XDG roots and fake probes."""
+    discovered_nginx = shutil.which("nginx")
+    nginx_executable = (
+        str(Path(discovered_nginx).resolve())
+        if discovered_nginx is not None
+        else "/usr/sbin/nginx"
+    )
+    if root.exists():
+        if root.is_symlink() or not root.is_dir():
+            raise CalibrationError("canary root must be a real directory")
+    else:
+        root.mkdir(mode=0o700)
+    if stat.S_IMODE(root.stat().st_mode) != 0o700:
+        raise CalibrationError("canary root mode must be 0700")
     home = root / "home"
     config_home = root / "config"
     state_home = root / "state"
@@ -1645,92 +1684,115 @@ def reconstruction_canary(root: Path, runner: Runner = _run) -> dict[str, object
     initialized = config_home / "calibration" / "initialized.toml"
     state_root = state_home / "calibration"
     dashboard_root = state_root / "dashboard"
-    init_code, _initialized = _invoke_subprocess_cli(
-        (
-            "init",
-            "--profile",
-            str(initialized),
-            "--trust-model",
-            "trusted-single-user",
-            "--codex-home",
-            str(codex_home),
-            "--data-dir",
-            str(state_home / "ao"),
-            "--private-authority",
-            str(config_home / "calibration/AGENTS.md"),
-            "--state-root",
-            str(state_root),
-            "--enable-dashboard",
-            "--dashboard-listen-host",
-            "127.0.0.1",
-            "--dashboard-listen-port",
-            "18443",
-            "--readonly-cidr",
-            "203.0.113.0/24",
-            "--document-root",
-            str(dashboard_root),
-            "--nginx-executable",
-            "/usr/sbin/nginx",
-            "--nginx-pid-file",
-            str(state_root / "nginx.pid"),
-            "--active-config",
-            str(state_root / "active.conf"),
-            "--desired-service",
-            "ao-dashboard.service",
-            "--rollback-service",
-            "ao-dashboard-rollback.service",
-            "--desired-nginx-artifact",
-            str(state_root / "nginx.conf"),
-            "--desired-service-artifact",
-            str(state_root / "nginx.service"),
-            "--terminal",
-            "--client-ip",
-            "203.0.113.7",
-            "--origin",
-            "https://console.example.test",
-            "--upstream",
-            "http://127.0.0.1:3001/mux",
-            "--upstream-origin",
-            "http://127.0.0.1:3001",
-            "--origin-mode",
-            "edge-validated-rewrite",
-            "--storage-boundary",
-            json.dumps(
-                {
-                    "path": str(state_home / "aggregation"),
-                    "kind": "aggregation-root",
-                    "recursive_search": False,
-                }
+    init_code = EXIT_OK
+    _require_canary_stage(
+        "init",
+        _invoke_subprocess_cli(
+            (
+                "init",
+                "--profile",
+                str(initialized),
+                "--trust-model",
+                "trusted-single-user",
+                "--codex-home",
+                str(codex_home),
+                "--data-dir",
+                str(state_home / "ao"),
+                "--private-authority",
+                str(config_home / "calibration/AGENTS.md"),
+                "--state-root",
+                str(state_root),
+                "--enable-dashboard",
+                "--dashboard-listen-host",
+                "127.0.0.1",
+                "--dashboard-listen-port",
+                "18443",
+                "--readonly-cidr",
+                "203.0.113.0/24",
+                "--document-root",
+                str(dashboard_root),
+                "--nginx-executable",
+                nginx_executable,
+                "--nginx-pid-file",
+                str(state_root / "nginx.pid"),
+                "--active-config",
+                str(state_root / "active.conf"),
+                "--desired-service",
+                "ao-dashboard.service",
+                "--rollback-service",
+                "ao-dashboard-rollback.service",
+                "--desired-nginx-artifact",
+                str(state_root / "nginx.conf"),
+                "--desired-service-artifact",
+                str(state_root / "nginx.service"),
+                "--terminal",
+                "--client-ip",
+                "203.0.113.7",
+                "--origin",
+                "https://console.example.test",
+                "--upstream",
+                "http://127.0.0.1:3001/mux",
+                "--upstream-origin",
+                "http://127.0.0.1:3001",
+                "--origin-mode",
+                "edge-validated-rewrite",
+                "--storage-boundary",
+                json.dumps(
+                    {
+                        "path": str(state_home / "aggregation"),
+                        "kind": "aggregation-root",
+                        "recursive_search": False,
+                    }
+                ),
             ),
+            canary_env,
         ),
-        canary_env,
     )
     profile = initialized
-    inspect_code, _inspection = _invoke_subprocess_cli(
-        ("inspect", "--profile", str(profile), "--context", "sandbox"),
-        canary_env,
+    inspect_code = EXIT_PROBE
+    _require_canary_stage(
+        "inspect",
+        _invoke_subprocess_cli(
+            ("inspect", "--profile", str(profile), "--context", "sandbox"),
+            canary_env,
+        ),
+        expected_exit=EXIT_PROBE,
     )
-    plan_code, _plan = _invoke_subprocess_cli(
-        ("plan", "--profile", str(profile)), canary_env
+    plan_code = EXIT_OK
+    _require_canary_stage(
+        "plan",
+        _invoke_subprocess_cli(("plan", "--profile", str(profile)), canary_env),
     )
     candidate = root / "candidate"
-    first_code, first = _invoke_subprocess_cli(
-        ("render", "--profile", str(profile), "--output", str(candidate)),
-        canary_env,
-    )
-    second_code, second = _invoke_subprocess_cli(
-        ("render", "--profile", str(profile), "--output", str(candidate)),
-        canary_env,
-    )
-    verify_code, _verified = _invoke_subprocess_cli(
-        (
-            "verify",
-            "--profile",
-            str(profile),
-            "--candidate",
-            str(candidate),
+    first_code = EXIT_OK
+    first = _require_canary_stage(
+        "render",
+        _invoke_subprocess_cli(
+            ("render", "--profile", str(profile), "--output", str(candidate)),
+            canary_env,
         ),
-        canary_env,
+    )
+    second_code = EXIT_OK
+    second = _require_canary_stage(
+        "render",
+        _invoke_subprocess_cli(
+            ("render", "--profile", str(profile), "--output", str(candidate)),
+            canary_env,
+        ),
+    )
+    verify_code = EXIT_OK
+    _require_canary_stage(
+        "verify",
+        _invoke_subprocess_cli(
+            (
+                "verify",
+                "--profile",
+                str(profile),
+                "--candidate",
+                str(candidate),
+            ),
+            canary_env,
+        ),
     )
     dashboard = _section(_canonical_v2(_load_profile(profile)), "dashboard")
     nginx = cast(str, dashboard["nginx_executable"])
@@ -1739,7 +1801,8 @@ def reconstruction_canary(root: Path, runner: Runner = _run) -> dict[str, object
         state_root.mkdir(mode=0o700, parents=True, exist_ok=True)
         dashboard_root.mkdir(mode=0o700, parents=True, exist_ok=True)
         prefix = root / "nginx-prefix"
-        (prefix / "logs").mkdir(mode=0o700, parents=True)
+        prefix.mkdir(mode=0o700)
+        (prefix / "logs").mkdir(mode=0o700)
         nginx_result = runner(
             (
                 nginx,

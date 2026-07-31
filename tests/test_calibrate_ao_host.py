@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import runpy
 import shutil
 import socketserver
@@ -949,7 +950,13 @@ def test_verify_rejects_content_and_modes(tmp_path: Path, profile: Path) -> None
         host._validate_tree_shape(wrong_type, {"expected": b"content"})
 
 
-def test_reconstruction_canary_executes_full_pipeline(tmp_path: Path) -> None:
+def test_reconstruction_canary_executes_full_pipeline(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def missing_executable(_name: str) -> None:
+        return None
+
+    monkeypatch.setattr(host.shutil, "which", missing_executable)
     runner = FakeRunner(
         [
             completed((), out="nginx version"),
@@ -968,6 +975,54 @@ def test_reconstruction_canary_executes_full_pipeline(tmp_path: Path) -> None:
         "second_unchanged": True,
         "nginx_checked": True,
     }
+
+
+def test_reconstruction_canary_is_private_under_group_writable_umask(
+    tmp_path: Path,
+) -> None:
+    runner = FakeRunner(
+        [
+            completed((), out="nginx version"),
+            completed((), out="syntax is ok"),
+        ]
+    )
+    root = tmp_path / "umask-isolated"
+    previous_umask = os.umask(0o002)
+    try:
+        result = host.reconstruction_canary(root, runner)
+    finally:
+        os.umask(previous_umask)
+    assert result["second_unchanged"] is True
+    assert root.stat().st_mode & 0o777 == 0o700
+    assert (root / "nginx-prefix").stat().st_mode & 0o777 == 0o700
+
+
+def test_reconstruction_canary_validates_existing_root_and_stage_payloads(
+    tmp_path: Path,
+) -> None:
+    not_directory = tmp_path / "file"
+    not_directory.write_text("x", encoding="utf-8")
+    with pytest.raises(host.CalibrationError, match="real directory"):
+        host.reconstruction_canary(not_directory, FakeRunner([]))
+
+    unsafe = tmp_path / "unsafe"
+    unsafe.mkdir(mode=0o775)
+    unsafe.chmod(0o775)
+    with pytest.raises(host.CalibrationError, match="root mode must be 0700"):
+        host.reconstruction_canary(unsafe, FakeRunner([]))
+
+    with pytest.raises(host.CalibrationError, match="canary render failed with exit 1"):
+        host._require_canary_stage(
+            "render",
+            (1, {"command": "render", "capabilities": {}}),
+        )
+    with pytest.raises(host.CalibrationError, match="invalid command payload"):
+        host._require_canary_stage(
+            "render",
+            (0, {"command": "plan", "capabilities": {}}),
+        )
+    with pytest.raises(host.CalibrationError, match="invalid capabilities"):
+        host._require_canary_stage("render", (0, {"command": "render"}))
 
 
 def test_reconstruction_canary_passes_real_nginx_when_available(
