@@ -64,16 +64,19 @@ Local changes:
 - Retain the source for provenance while excluding it from installer management;
   Codex Plan Mode and the shared implementation-plan reference are active.
 
-## darwin-skill
+## darwin-skill (retired, not vendored)
 
 Imported from `alchaincyf/darwin-skill`.
 
-Local changes:
+Historical local changes:
 
 - Set `policy.allow_implicit_invocation: false` in `agents/openai.yaml`.
 - Shorten the frontmatter description while preserving the upstream body and
   assets.
-- Replace runtime-specific executable paths with runtime-neutral or
-  Codex-compatible paths.
-- Retain the source for provenance and study while excluding it from installer
-  management.
+- Replace runtime-specific paths in user-facing skill and README guidance.
+
+The retired tree was later removed rather than patching its unverified
+third-party screenshot runtime. `sources.tsv` retains the immutable imported
+and checked upstream refs. The installer retains owned-link cleanup for the
+retired name without claiming that the upstream utility is portable or
+supported by calibration.

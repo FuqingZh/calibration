@@ -404,9 +404,9 @@ def test_profiles_are_idempotent_and_convert_safely(tmp_path: Path) -> None:
     for name in MANAGED_THIRDPARTY_SKILLS[1:]:
         assert not (codex_home / "skills" / name).exists()
 
-    retired_owned = codex_home / "skills/writing-plans"
-    retired_owned.symlink_to(REPOSITORY_ROOT / "thirdparty/skills/writing-plans")
-    retired_foreign = codex_home / "skills/darwin-skill"
+    retired_owned = codex_home / "skills/darwin-skill"
+    retired_owned.symlink_to(REPOSITORY_ROOT / "thirdparty/skills/darwin-skill")
+    retired_foreign = codex_home / "skills/writing-plans"
     retired_foreign.symlink_to(foreign_target)
     worker_again = run_installer(
         None,
