@@ -28,6 +28,8 @@ configuration remains outside the public repository.
 - `docs/README.md`: current decision, evaluation, and implementation-plan map
 - `scripts/adopt_ao_repository.py`: optional plan/apply and readback gate for a
   repository using an already installed, CLI-capable AO
+- `scripts/calibrate_ao_host.py`: read-only inspection and deterministic
+  candidate renderer for an explicitly trusted private AO host profile
 - `thirdparty/`: vendored optional skills and their source/patch records
 - `pyproject.toml` and `pdm.lock`: locked repository validation environment and
   the canonical local/CI task entrypoints
@@ -95,6 +97,36 @@ and the skill validator. Installer behavior tests always use isolated temporary
 `CODEX_HOME` directories; the development gate does not modify the active
 Codex installation. Ruff linting uses the explicit stable baseline `E`, `F`,
 `I`, `UP`, `B`, `SIM`, and `RUF`; preview rules are not enabled.
+
+## AO Host Calibration
+
+The stdlib-only host calibration CLI emits JSON for every command:
+
+```bash
+python scripts/calibrate_ao_host.py inspect
+python scripts/calibrate_ao_host.py init \
+  --profile /private/config/calibration/host.toml \
+  --trust-model untrusted \
+  --codex-home /private/codex-home \
+  --data-dir /private/ao-data \
+  --private-authority /private/config/calibration/AGENTS.md \
+  --state-root /private/state/calibration
+python scripts/calibrate_ao_host.py plan --profile /private/config/calibration/host.toml
+python scripts/calibrate_ao_host.py render \
+  --profile /private/config/calibration/host.toml \
+  --output /private/candidate
+python scripts/calibrate_ao_host.py verify \
+  --profile /private/config/calibration/host.toml \
+  --candidate /private/candidate
+```
+
+`inspect` needs no profile, accepts `--context auto|host|sandbox`, and defaults
+its profile-free loopback probes to port 3001. `init` requires an explicit trust
+model and private reconstruction paths, and keeps terminal access disabled
+unless all terminal constraints are supplied.
+`plan` and `verify` are read-only. `render` writes only a new deterministic
+candidate tree, or accepts an existing byte-identical tree; it does not operate
+services or active host configuration.
 
 ## Intent
 

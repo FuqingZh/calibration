@@ -45,6 +45,8 @@ back to `$HOME/.config/calibration/AGENTS.md`.
 | Dashboard terminal boundary | `decisions/2026-07-30-dashboard-terminal-access-boundary.md` |
 | Portable orchestrator containment | `decisions/2026-07-31-portable-orchestrator-containment.md` |
 | CAL-1 implementation status | `implementation-plan/20260731-v2.1-portable-orchestrator-containment-implementation-plan.md` |
+| AO host calibration contract | `decisions/2026-07-31-ao-host-calibration-contract.md` |
+| CAL-2/CAL-3 implementation status | `implementation-plan/20260731-v2.2-ao-host-calibration-implementation-plan.md` |
 
 The current default is outcome autonomy within repository-local, reversible
 boundaries. AO is optional and conditional. Ordinary engineering tasks do not
@@ -92,6 +94,11 @@ already installed, CLI-capable AO on its supported Linux `systemd --user` and
 tmux profile. It is not a universal Desktop adapter and does not make AO a
 dependency of public skills or ordinary repository work. Other platforms use
 upstream Desktop directly.
+
+`scripts/calibrate_ao_host.py` is a separate stdlib-only JSON CLI. It inspects
+state without requiring a profile and renders deterministic, non-deployed
+candidate authority for explicit review. It reads schema v1 compatibly and
+renders canonical schema v2 without redefining v1.
 
 ## Open Evidence Gaps
 
@@ -141,3 +148,4 @@ evidence remains in its owning public decisions.
 - `implementation-plan/20260728-v1.9-persistent-linear-intake-and-no-product-canary-implementation-plan.md`
 - `implementation-plan/20260728-v2.0-three-scenario-linear-acceptance-implementation-plan.md`
 - `implementation-plan/20260731-v2.1-portable-orchestrator-containment-implementation-plan.md`
+- `implementation-plan/20260731-v2.2-ao-host-calibration-implementation-plan.md`

@@ -155,3 +155,18 @@ Internet merely because read-only Dashboard routes are available there.
 Deployment commands, service units, proxy configurations, credentials, and
 network values remain private host authority. This public guide intentionally
 contains no deployable host artifact.
+
+## Host Calibration Helper
+
+`scripts/calibrate_ao_host.py inspect` is the profile-independent diagnostic
+entrypoint. Its JSON evidence retains sandbox, worker, daemon, and host owners,
+including AO version text and GLIBC, tmux, cgroup v1/v2, Dashboard, mux,
+user-service, status, doctor, `healthz`, and `readyz` probes. Active systemd
+plus both passing endpoint probes establishes `daemon ready` even when
+sandbox-visible status is stale or doctor reports a read-only data directory.
+
+The `init`, `plan`, `render`, and `verify` commands operate on an explicit
+profile path. Initialization requires explicit trust and defaults terminal
+access off. Planning and verification are read-only. Rendering creates only a
+deterministic candidate tree for review and refuses a pre-existing tree unless
+its bytes are identical.
