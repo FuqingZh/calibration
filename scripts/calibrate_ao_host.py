@@ -28,6 +28,7 @@ EXIT_OK = 0
 EXIT_INVALID = 1
 EXIT_USAGE = 2
 EXIT_PROBE = 3
+PROBE_TIMEOUT_SECONDS = 10
 V1_KEYS = {
     "ao": {
         "cli",
@@ -144,13 +145,14 @@ def _run(command: Sequence[str]) -> subprocess.CompletedProcess[str]:
         capture_output=True,
         text=True,
         env=os.environ.copy(),
+        timeout=PROBE_TIMEOUT_SECONDS,
     )
 
 
 def _probe(runner: Runner, owner: str, name: str, command: Sequence[str]) -> Evidence:
     try:
         result = runner(command)
-    except OSError as exc:
+    except (OSError, subprocess.TimeoutExpired) as exc:
         return Evidence(name, owner, "fail", f"{type(exc).__name__}: {exc}")
     detail = result.stdout.strip() or result.stderr.strip() or "no output"
     return Evidence(name, owner, "pass" if result.returncode == 0 else "fail", detail)
@@ -285,8 +287,7 @@ def evaluate_daemon_state(
         return "not_installed"
     if (
         context == "host"
-        and service.status == "pass"
-        and service.detail != "active"
+        and service.detail in {"inactive", "failed"}
         and health_probe.status == "fail"
         and ready_probe.status == "fail"
     ):
@@ -308,7 +309,11 @@ def evaluate_delivery_state(
         return "not_applicable"
     if terminal_enabled is None or daemon_state != "ready":
         return "indeterminate"
-    return "ready" if probes["mux"].status == "pass" else "degraded"
+    return (
+        "ready"
+        if probes["dashboard"].status == "pass" and probes["mux"].status == "pass"
+        else "degraded"
+    )
 
 
 def _doctor_failure_classes(doctor: Mapping[str, object]) -> tuple[bool, bool]:
@@ -395,6 +400,8 @@ def inspect_host(
     """
     if context not in {"auto", "host", "sandbox"}:
         raise CalibrationError("context must be auto, host, or sandbox")
+    if profile is not None and not profile.exists():
+        raise CalibrationError(f"{profile} does not exist")
     base = _profile_base_url(profile)
     health = "/healthz"
     ready = "/readyz"
@@ -1177,6 +1184,7 @@ def _candidate_files(profile: Mapping[str, object]) -> dict[str, bytes]:
             "Restart=on-failure\n"
         ).encode()
     expected_modes = {name: "0600" for name in files}
+    expected_modes["MANIFEST.json"] = "0600"
     expected_modes.update(
         {
             str(Path(name).parent): "0700"
@@ -1212,6 +1220,22 @@ def _tree_bytes(root: Path) -> dict[str, bytes]:
     }
 
 
+def _validate_tree_shape(root: Path, files: Mapping[str, bytes]) -> None:
+    expected_files = set(files)
+    expected_directories: set[str] = set()
+    for name in expected_files:
+        parent = Path(name).parent
+        while parent != Path("."):
+            expected_directories.add(str(parent))
+            parent = parent.parent
+    actual = {str(item.relative_to(root)): item for item in root.rglob("*")}
+    if set(actual) != expected_files | expected_directories:
+        raise CalibrationError("candidate tree shape is not canonical")
+    for name, item in actual.items():
+        if name in expected_files and not item.is_file():
+            raise CalibrationError(f"{item} must be a regular file")
+
+
 def _validate_tree_modes(root: Path) -> None:
     if stat.S_IMODE(root.stat().st_mode) != 0o700:
         raise CalibrationError("candidate root mode must be 0700")
@@ -1229,6 +1253,7 @@ def render_profile(path: Path, output: Path) -> dict[str, object]:
     if target.exists():
         if not target.is_dir() or _tree_bytes(target) != files:
             raise CalibrationError("existing output has nonempty drift")
+        _validate_tree_shape(target, files)
         _validate_tree_modes(target)
         return {"mode": "render", "output": str(target), "unchanged": True}
     staging = target.with_name(f".{target.name}.staging")
@@ -1257,8 +1282,10 @@ def verify_profile(path: Path, *, candidate: Path | None = None) -> dict[str, ob
     version = cast(int, profile.get("schema_version", 1))
     if candidate is not None:
         root = _safe_path(candidate, may_create=False, directory=True)
-        if _tree_bytes(root) != _candidate_files(profile):
+        files = _candidate_files(profile)
+        if _tree_bytes(root) != files:
             raise CalibrationError("candidate does not match canonical rendering")
+        _validate_tree_shape(root, files)
         _validate_tree_modes(root)
     return {
         "mode": "verify",

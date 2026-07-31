@@ -378,6 +378,7 @@ def test_init_render_verify_round_trip_and_manifest(
     assert manifest["generator"] == "calibrate_ao_host.py"
     assert manifest["profile_schema"] == 2
     assert manifest["expected_modes"]["."] == "0700"
+    assert manifest["expected_modes"]["MANIFEST.json"] == "0600"
     assert "host.toml" in manifest["files"]
     service = (output / "service/ao-dashboard.service").read_text()
     for phrase in (
@@ -752,6 +753,16 @@ def test_verify_rejects_content_and_modes(tmp_path: Path, profile: Path) -> None
     with pytest.raises(host.CalibrationError, match="mode must be 0600"):
         host.verify_profile(profile, candidate=clean)
     agents.chmod(0o600)
+    extra = clean / "extra"
+    extra.mkdir(mode=0o700)
+    with pytest.raises(host.CalibrationError, match="tree shape"):
+        host.verify_profile(profile, candidate=clean)
+    extra.rmdir()
+    wrong_type = tmp_path / "wrong-type"
+    wrong_type.mkdir(mode=0o700)
+    (wrong_type / "expected").mkdir(mode=0o700)
+    with pytest.raises(host.CalibrationError, match="regular file"):
+        host._validate_tree_shape(wrong_type, {"expected": b"content"})
 
 
 def test_reconstruction_canary_executes_full_pipeline(tmp_path: Path) -> None:
@@ -1032,6 +1043,7 @@ def test_pure_state_and_issue_evaluators() -> None:
         "status": host.Evidence("status", "host", "pass", "ready"),
         "healthz": host.Evidence("healthz", "daemon", "pass", "ok"),
         "readyz": host.Evidence("readyz", "daemon", "pass", "ok"),
+        "dashboard": host.Evidence("dashboard", "daemon", "pass", "ok"),
         "mux": host.Evidence("mux", "daemon", "fail", "404"),
     }
     assert (
@@ -1071,7 +1083,7 @@ def test_pure_state_and_issue_evaluators() -> None:
     )
     unavailable = dict(probes)
     unavailable["systemd-active"] = host.Evidence(
-        "systemd-active", "host", "pass", "inactive"
+        "systemd-active", "host", "fail", "inactive"
     )
     unavailable["healthz"] = host.Evidence("healthz", "daemon", "fail", "down")
     unavailable["readyz"] = host.Evidence("readyz", "daemon", "fail", "down")
@@ -1147,6 +1159,13 @@ def test_probe_oserror_becomes_failed_evidence() -> None:
     assert evidence.status == "fail"
     assert "FileNotFoundError" in evidence.detail
 
+    def timed_out(_command: Sequence[str]) -> subprocess.CompletedProcess[str]:
+        raise subprocess.TimeoutExpired(("missing",), 10)
+
+    timeout = host._probe(timed_out, "sandbox", "ao-version", ("missing",))
+    assert timeout.status == "fail"
+    assert "TimeoutExpired" in timeout.detail
+
 
 def test_sandbox_probe_ownership_cannot_claim_host_ready() -> None:
     report = host.inspect_host(FakeRunner(inspect_responses()), context="sandbox")
@@ -1163,6 +1182,11 @@ def test_sandbox_probe_ownership_cannot_claim_host_ready() -> None:
         "mux",
     ):
         assert owned[probe_id] == "sandbox"
+
+
+def test_inspect_rejects_missing_explicit_profile(tmp_path: Path) -> None:
+    with pytest.raises(host.CalibrationError, match="does not exist"):
+        host.inspect_host(FakeRunner([]), profile=tmp_path / "missing.toml")
 
 
 def test_inspect_uses_profile_ao_cli(tmp_path: Path) -> None:
