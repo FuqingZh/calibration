@@ -275,12 +275,13 @@ def _validate_origin(value: object, label: str) -> str:
         raise CalibrationError(f"{label} must be an exact Origin")
     try:
         parsed = urllib.parse.urlsplit(value)
-        _ = parsed.port
+        port = parsed.port
     except ValueError as exc:
         raise CalibrationError(f"{label} must be an exact Origin") from exc
     if (
         parsed.scheme not in {"http", "https"}
         or parsed.hostname is None
+        or (port is not None and not 1 <= port <= 65535)
         or parsed.username is not None
         or parsed.password is not None
         or parsed.path
@@ -842,8 +843,12 @@ def _load_profile(path: Path) -> dict[str, object]:
     cidr_values = (
         cast(list[object], readonly_cidrs) if isinstance(readonly_cidrs, list) else []
     )
-    if not all(isinstance(value, str) for value in cidr_values):
+    if not isinstance(readonly_cidrs, list) or not all(
+        isinstance(value, str) for value in cidr_values
+    ):
         raise CalibrationError("dashboard.trusted_readonly_cidrs must be CIDR strings")
+    if dashboard.get("mode", "read-only") == "read-only" and not cidr_values:
+        raise CalibrationError("read-only dashboard requires trusted_readonly_cidrs")
     try:
         for value in cidr_values:
             ipaddress.ip_network(cast(str, value), strict=False)

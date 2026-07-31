@@ -692,6 +692,16 @@ def test_invalid_profile_and_init_rejections(
         ),
         (
             'trusted_readonly_cidrs = ["203.0.113.0/24"]',
+            "trusted_readonly_cidrs = 7",
+            "CIDR strings",
+        ),
+        (
+            'trusted_readonly_cidrs = ["203.0.113.0/24"]',
+            "trusted_readonly_cidrs = []",
+            "requires trusted_readonly_cidrs",
+        ),
+        (
+            'trusted_readonly_cidrs = ["203.0.113.0/24"]',
             'trusted_readonly_cidrs = ["bad"]',
             "valid CIDRs",
         ),
@@ -1423,6 +1433,69 @@ def test_disabled_terminal_malformed_shape_returns_json_invalid(
 
 
 @pytest.mark.parametrize(
+    ("replacement", "message"),
+    [
+        ("trusted_readonly_cidrs = 7", "must be CIDR strings"),
+        ("trusted_readonly_cidrs = []", "requires trusted_readonly_cidrs"),
+    ],
+)
+def test_dashboard_cidr_shape_render_returns_json_invalid(
+    tmp_path: Path,
+    codex_home: Path,
+    replacement: str,
+    message: str,
+) -> None:
+    profile = tmp_path / "dashboard.toml"
+    state = tmp_path / "state"
+    host.init_profile(
+        profile,
+        trust_model="trusted-single-user",
+        codex_home=codex_home,
+        data_dir=tmp_path / "data",
+        private_authority=tmp_path / "authority/AGENTS.md",
+        state_root=state,
+        dashboard_enabled=True,
+        dashboard_listen_host="127.0.0.1",
+        dashboard_listen_port=18443,
+        readonly_cidrs=("203.0.113.0/24",),
+        document_root=tmp_path / "dashboard",
+        nginx_executable=Path("/usr/sbin/nginx"),
+        nginx_pid_file=state / "nginx.pid",
+        active_config=state / "active.conf",
+        desired_service="ao-dashboard.service",
+        rollback_service="ao-dashboard-rollback.service",
+        desired_nginx_artifact=state / "nginx.conf",
+        desired_service_artifact=state / "nginx.service",
+    )
+    profile.write_text(
+        profile.read_text(encoding="utf-8").replace(
+            'trusted_readonly_cidrs = ["203.0.113.0/24"]',
+            replacement,
+        ),
+        encoding="utf-8",
+    )
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(REPOSITORY_ROOT / "scripts/calibrate_ao_host.py"),
+            "render",
+            "--profile",
+            str(profile),
+            "--output",
+            str(tmp_path / "candidate"),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    payload = json.loads(result.stdout)
+    assert result.returncode == host.EXIT_INVALID
+    assert payload["capabilities"]["error"]["kind"] == "invalid"
+    assert message in payload["capabilities"]["error"]["message"]
+    assert "Traceback" not in result.stderr
+
+
+@pytest.mark.parametrize(
     ("field", "value", "message"),
     [
         ("trust_model", 7, "trust_model must be a string"),
@@ -1931,6 +2004,8 @@ def test_url_validators_reject_types_and_invalid_ports() -> None:
         host._validate_origin(1, "origin")
     with pytest.raises(host.CalibrationError, match="exact Origin"):
         host._validate_origin("https://example.test:bad", "origin")
+    with pytest.raises(host.CalibrationError, match="exact Origin"):
+        host._validate_origin("https://example.test:0", "origin")
     with pytest.raises(host.CalibrationError, match="whitespace or controls"):
         host._validate_loopback_url("http://127.0.0.1:3001\n", "base")
 
