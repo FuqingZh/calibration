@@ -123,7 +123,13 @@ python scripts/calibrate_ao_host.py verify \
 `inspect` needs no profile, accepts `--context auto|host|sandbox`, and defaults
 its profile-free loopback probes to port 3001. `init` requires an explicit trust
 model and private reconstruction paths, and keeps terminal access disabled
-unless all terminal constraints are supplied.
+unless all terminal constraints are supplied. Enable a private nginx
+Dashboard with `--enable-dashboard` plus explicit `--dashboard-listen-host`,
+`--dashboard-listen-port`, repeatable `--readonly-cidr`, `--document-root`,
+nginx executable/PID/config paths, and desired/rollback service and artifact
+paths. Add `--terminal` only with repeatable exact `--client-ip`,
+`--origin`, loopback `/mux` `--upstream`, `--upstream-origin`, and an explicit
+`--origin-mode`. Inspection never infers these trust decisions.
 `plan` and `verify` are read-only. `render` writes only a new deterministic
 candidate tree, or accepts an existing byte-identical tree; it does not operate
 services or active host configuration.

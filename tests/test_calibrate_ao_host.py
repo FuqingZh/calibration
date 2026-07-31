@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import runpy
+import shutil
 import subprocess
 import tomllib
 from collections.abc import Sequence
@@ -80,6 +81,9 @@ def codex_home(tmp_path: Path) -> Path:
         encoding="utf-8",
     )
     config.chmod(0o600)
+    auth = path / "auth.json"
+    auth.write_text("{}\n", encoding="utf-8")
+    auth.chmod(0o600)
     return path
 
 
@@ -99,7 +103,9 @@ def profile(tmp_path: Path, codex_home: Path) -> Path:
 
 def inspect_responses(
     *,
-    status: str = '{"state":"ready"}',
+    status: str = (
+        '{"state":"ready","pid":42,"port":3001,"health":"ok","ready":"ready"}'
+    ),
     doctor: str = '{"ok":true,"checks":[]}',
     cgroup: str = "cgroup2fs",
     ready: bool = True,
@@ -110,10 +116,36 @@ def inspect_responses(
         completed((), out="tmux 3.5"),
         completed((), out=cgroup),
         completed((), out="active"),
+        completed((), out="42"),
         completed((), out=status),
         completed((), out=doctor),
-        completed((), out="ok"),
-        completed((), 0 if ready else 1, out="ready" if ready else "no"),
+        completed(
+            (),
+            out=json.dumps(
+                {
+                    "status": "ok",
+                    "service": "agent-orchestrator-daemon",
+                    "pid": 42,
+                    "executablePath": "/opt/example/ao",
+                    "workingDirectory": "/opt/example/work",
+                    "startupWorkingDirectory": "/opt/example/start",
+                }
+            ),
+        ),
+        completed(
+            (),
+            0 if ready else 1,
+            out=json.dumps(
+                {
+                    "status": "ready" if ready else "not-ready",
+                    "service": "agent-orchestrator-daemon",
+                    "pid": 42,
+                    "executablePath": "/opt/example/ao",
+                    "workingDirectory": "/opt/example/work",
+                    "startupWorkingDirectory": "/opt/example/start",
+                }
+            ),
+        ),
         completed((), out="HTTP/1.1 200 OK"),
         completed((), 22, out="403"),
     ]
@@ -149,6 +181,29 @@ def test_real_legacy_v1_shape_is_accepted_without_live_profile(
     assert verified["migration_required"] is True
 
 
+def test_legacy_v1_canonicalizes_to_self_readable_v2(tmp_path: Path) -> None:
+    legacy = tmp_path / "legacy.toml"
+    legacy.write_bytes(LEGACY_V1_FIXTURE.read_bytes())
+    legacy.chmod(0o600)
+    canonical = host._canonical_v2(host._load_profile(legacy))
+    migrated = tmp_path / "migrated.toml"
+    migrated.write_text(host._toml(canonical), encoding="utf-8")
+    migrated.chmod(0o600)
+
+    readback = host._load_profile(migrated)
+
+    terminal = cast(
+        dict[str, object],
+        cast(dict[str, object], readback["dashboard"])["terminal"],
+    )
+    assert terminal["allowed_client_ips"] == ["203.0.113.7", "203.0.113.8"]
+    assert terminal["origin_mode"] == "edge-validated-rewrite"
+    assert terminal["upstream"] == "http://127.0.0.1:3001/mux"
+    storage = cast(dict[str, object], readback["storage"])
+    for boundary in cast(list[dict[str, object]], storage["boundaries"]):
+        assert set(boundary) == {"path", "kind", "recursive_search"}
+
+
 @pytest.mark.parametrize(
     ("update", "message"),
     [
@@ -156,7 +211,7 @@ def test_real_legacy_v1_shape_is_accepted_without_live_profile(
         ({"allowed_client_ips": []}, "exact client IPs"),
         ({"allowed_origin": "not-an-origin"}, "exact Origin"),
         ({"path": "/other"}, "exactly /mux"),
-        ({"upstream": "http://example.test/mux"}, "loopback /mux"),
+        ({"upstream": "http://example.test/mux"}, "HTTP loopback URL"),
         ({"trust_model": "other"}, "single-user-trusted-lan"),
     ],
 )
@@ -170,7 +225,7 @@ def test_legacy_v1_validation_failures(update: dict[str, object], message: str) 
         host._validate_terminal_v1(terminal)
 
 
-def test_status_stale_and_doctor_readonly_do_not_override_daemon_ready() -> None:
+def test_host_status_stale_and_core_doctor_failure_block_ready() -> None:
     doctor = json.dumps(
         {
             "ok": False,
@@ -188,7 +243,7 @@ def test_status_stale_and_doctor_readonly_do_not_override_daemon_ready() -> None
     report = host.inspect_host(runner, context="host")
 
     assert report["states"] == {
-        "daemon": "ready",
+        "daemon": "indeterminate",
         "delivery": "indeterminate",
     }
     assert report["known_issues"] == [
@@ -243,6 +298,30 @@ def test_inspect_profile_context_cgroup_and_invalid_json(
         host.inspect_host(FakeRunner([]), context="remote")
 
 
+def test_full_probe_json_is_parsed_before_display_truncation() -> None:
+    extension = "x" * 3000
+    status = json.dumps(
+        {
+            "state": "ready",
+            "pid": 42,
+            "port": 3001,
+            "health": "ok",
+            "ready": "ready",
+            "extension": extension,
+        }
+    )
+    doctor = json.dumps({"ok": True, "checks": [], "extension": extension})
+    report = host.inspect_host(
+        FakeRunner(inspect_responses(status=status, doctor=doctor)),
+        context="host",
+    )
+    capabilities = cast(dict[str, object], report["capabilities"])
+    assert cast(dict[str, object], capabilities["ao_status"])["extension"] == extension
+    assert cast(dict[str, object], capabilities["ao_doctor"])["extension"] == extension
+    probes = cast(list[dict[str, object]], report["probes"])
+    assert all(len(cast(str, probe["detail"])) <= 1000 for probe in probes)
+
+
 def test_init_render_verify_round_trip_and_manifest(
     tmp_path: Path, codex_home: Path
 ) -> None:
@@ -254,9 +333,24 @@ def test_init_render_verify_round_trip_and_manifest(
         data_dir=tmp_path / "data",
         private_authority=tmp_path / "authority" / "AGENTS.md",
         state_root=tmp_path / "state",
+        dashboard_enabled=True,
+        dashboard_listen_host="127.0.0.1",
+        dashboard_listen_port=8443,
+        readonly_cidrs=("203.0.113.0/24",),
+        document_root=tmp_path / "dashboard",
+        nginx_executable=Path("/usr/sbin/nginx"),
+        nginx_pid_file=tmp_path / "state/nginx.pid",
+        active_config=tmp_path / "state/active.conf",
+        desired_service=tmp_path / "state/dashboard.service",
+        rollback_service=tmp_path / "state/dashboard.rollback.service",
+        desired_nginx_artifact=tmp_path / "state/nginx.conf",
+        desired_service_artifact=tmp_path / "state/nginx.service",
         terminal=True,
-        client_ip="203.0.113.7",
+        client_ips=("203.0.113.7", "203.0.113.8"),
         origin="https://console.example.test",
+        upstream="http://127.0.0.1:3001/mux",
+        upstream_origin="http://127.0.0.1:3001",
+        origin_mode="edge-validated-rewrite",
     )
     assert created["schema_version"] == 2
     assert profile.stat().st_mode & 0o777 == 0o600
@@ -273,7 +367,7 @@ def test_init_render_verify_round_trip_and_manifest(
     for phrase in (
         "location = /mux",
         "allow 203.0.113.7",
-        "limit_except GET",
+        "return 405",
         "https://console.example.test",
         "Upgrade",
         "127.0.0.1:3001",
@@ -281,7 +375,21 @@ def test_init_render_verify_round_trip_and_manifest(
         assert phrase in nginx
     manifest = json.loads((output / "MANIFEST.json").read_text())
     assert manifest["profile_sha256"]
+    assert manifest["generator"] == "calibrate_ao_host.py"
+    assert manifest["profile_schema"] == 2
+    assert manifest["expected_modes"]["."] == "0700"
     assert "host.toml" in manifest["files"]
+    service = (output / "service/ao-dashboard.service").read_text()
+    for phrase in (
+        "Type=forking",
+        "ExecStart=",
+        "ExecReload=",
+        "ExecStop=",
+        "PIDFile=",
+        "Restart=on-failure",
+        "UMask=0077",
+    ):
+        assert phrase in service
 
 
 @pytest.mark.parametrize(
@@ -291,7 +399,7 @@ def test_init_render_verify_round_trip_and_manifest(
         (("top", "extra = true"), "unknown top-level"),
         (("remove", 'cli = "ao"'), "missing keys"),
         (("ao-extra", 'surprise = "x"'), "unknown keys"),
-        (("relative", 'codex_home = "relative"'), "must be absolute"),
+        (("relative", 'codex_home = "relative"'), "absolute path"),
     ],
 )
 def test_profile_shape_rejections(
@@ -320,7 +428,7 @@ def test_profile_shape_rejections(
     ("update", "message"),
     [
         ({"desired_enabled": "yes"}, "boolean"),
-        ({"desired_enabled": True}, "exactly one client"),
+        ({"desired_enabled": True}, "exact client IPs"),
         (
             {"desired_enabled": True, "allowed_client_ips": ["203.0.113.1"]},
             "exact Origin",
@@ -414,6 +522,23 @@ def test_codex_home_extensible_subset_and_rejections(
         host._validate_codex_home(file_home)
 
 
+def test_codex_auth_file_type_json_and_permissions(codex_home: Path) -> None:
+    auth = codex_home / "auth.json"
+    auth.chmod(0o644)
+    with pytest.raises(host.CalibrationError, match="group or other"):
+        host._validate_codex_home(codex_home)
+    auth.chmod(0o600)
+    auth.write_text("[]\n", encoding="utf-8")
+    with pytest.raises(host.CalibrationError, match="JSON object"):
+        host._validate_codex_home(codex_home)
+    auth.write_text("bad", encoding="utf-8")
+    with pytest.raises(host.CalibrationError, match="valid JSON"):
+        host._validate_codex_home(codex_home)
+    auth.unlink()
+    with pytest.raises(host.CalibrationError, match="authentication file"):
+        host._validate_codex_home(codex_home)
+
+
 def test_safe_path_and_render_drift_rejections(tmp_path: Path, profile: Path) -> None:
     with pytest.raises(host.CalibrationError, match="absolute"):
         host._safe_path(Path("relative"), may_create=True)
@@ -469,7 +594,7 @@ def test_invalid_profile_and_init_rejections(
     with pytest.raises(host.CalibrationError, match="must be a string"):
         host.plan_profile(nonstring)
     with pytest.raises(host.CalibrationError, match="unsupported TOML"):
-        host._quote({"bad": True})
+        host._quote(("bad",))
     with pytest.raises(host.CalibrationError, match="already exists"):
         host.init_profile(
             profile,
@@ -491,6 +616,109 @@ def test_invalid_profile_and_init_rejections(
             private_authority=tmp_path / "private2" / "AGENTS.md",
             state_root=tmp_path / "state2",
         )
+
+
+@pytest.mark.parametrize(
+    ("old", "new", "message"),
+    [
+        ('listen_host = "127.0.0.1"', "listen_host = 1", "listen_host"),
+        ('listen_host = "127.0.0.1"', 'listen_host = "bad host"', "listen_host"),
+        ("listen_port = 3001", "listen_port = true", "listen_port"),
+        (
+            'trusted_readonly_cidrs = ["203.0.113.0/24"]',
+            "trusted_readonly_cidrs = [1]",
+            "CIDR strings",
+        ),
+        (
+            'trusted_readonly_cidrs = ["203.0.113.0/24"]',
+            'trusted_readonly_cidrs = ["bad"]',
+            "valid CIDRs",
+        ),
+    ],
+)
+def test_dashboard_network_fields_fail_closed(
+    tmp_path: Path, old: str, new: str, message: str
+) -> None:
+    profile = tmp_path / "host.toml"
+    profile.write_text(V1_PROFILE.replace(old, new), encoding="utf-8")
+    profile.chmod(0o600)
+    with pytest.raises(host.CalibrationError, match=message):
+        host.plan_profile(profile)
+
+
+@pytest.mark.parametrize(
+    ("boundaries", "message"),
+    [
+        ([], "must not be empty"),
+        (["bad"], "entries must be objects"),
+        ([{"path": "/tmp", "kind": "state"}], "requires path"),
+    ],
+)
+def test_v2_storage_boundary_shape_rejections(
+    tmp_path: Path, profile: Path, boundaries: list[object], message: str
+) -> None:
+    parsed = host._canonical_v2(host._load_profile(profile))
+    cast(dict[str, object], parsed["storage"])["boundaries"] = boundaries
+    text = host._toml(parsed)
+    target = tmp_path / f"boundary-{len(boundaries)}.toml"
+    target.write_text(text, encoding="utf-8")
+    target.chmod(0o600)
+    with pytest.raises(host.CalibrationError, match=message):
+        host.plan_profile(target)
+
+
+def test_init_rejects_incomplete_or_invalid_dashboard_trust(
+    tmp_path: Path, codex_home: Path
+) -> None:
+    with pytest.raises(host.CalibrationError, match="explicit listen"):
+        host.init_profile(
+            tmp_path / "missing.toml",
+            trust_model="trusted-single-user",
+            codex_home=codex_home,
+            data_dir=tmp_path / "data",
+            private_authority=tmp_path / "authority/AGENTS.md",
+            state_root=tmp_path / "state",
+            dashboard_enabled=True,
+        )
+
+    def initialize(
+        name: str,
+        *,
+        listen_host: str = "127.0.0.1",
+        listen_port: int = 8443,
+        cidrs: Sequence[str] = ("203.0.113.0/24",),
+        terminal: bool = False,
+    ) -> None:
+        host.init_profile(
+            tmp_path / name,
+            trust_model="trusted-single-user",
+            codex_home=codex_home,
+            data_dir=tmp_path / "data",
+            private_authority=tmp_path / "authority/AGENTS.md",
+            state_root=tmp_path / "state",
+            dashboard_enabled=True,
+            dashboard_listen_host=listen_host,
+            dashboard_listen_port=listen_port,
+            readonly_cidrs=cidrs,
+            document_root=tmp_path / "dashboard",
+            nginx_executable=Path("/usr/sbin/nginx"),
+            nginx_pid_file=tmp_path / "state/nginx.pid",
+            active_config=tmp_path / "state/active.conf",
+            desired_service=tmp_path / "state/dashboard.service",
+            rollback_service=tmp_path / "state/dashboard.rollback.service",
+            desired_nginx_artifact=tmp_path / "state/nginx.conf",
+            desired_service_artifact=tmp_path / "state/nginx.service",
+            terminal=terminal,
+        )
+
+    with pytest.raises(host.CalibrationError, match="listen port"):
+        initialize("port.toml", listen_port=0)
+    with pytest.raises(host.CalibrationError, match="exact listen IP"):
+        initialize("host.toml", listen_host="bad host")
+    with pytest.raises(host.CalibrationError, match="enabled terminal"):
+        initialize("terminal.toml", terminal=True)
+    with pytest.raises(host.CalibrationError, match="valid networks"):
+        initialize("cidr.toml", cidrs=("bad",))
 
 
 def test_render_cleans_failed_staging(
@@ -527,15 +755,37 @@ def test_verify_rejects_content_and_modes(tmp_path: Path, profile: Path) -> None
 
 
 def test_reconstruction_canary_executes_full_pipeline(tmp_path: Path) -> None:
-    runner = FakeRunner(inspect_responses())
+    runner = FakeRunner(
+        [
+            *inspect_responses(),
+            completed((), out="nginx version"),
+            completed((), out="syntax is ok"),
+        ]
+    )
     result = host.reconstruction_canary(tmp_path / "isolated", runner)
     assert result == {
-        "inspect": "ready",
-        "plan": "plan",
+        "init_exit": 0,
+        "inspect_exit": 3,
+        "plan_exit": 0,
+        "first_exit": 0,
+        "second_exit": 0,
+        "verify_exit": 0,
         "first_unchanged": False,
         "second_unchanged": True,
-        "verified": True,
+        "nginx_checked": True,
     }
+
+
+def test_reconstruction_canary_rejects_nginx_failure(tmp_path: Path) -> None:
+    runner = FakeRunner(
+        [
+            *inspect_responses(),
+            completed((), out="nginx version"),
+            completed((), code=1, err="invalid candidate"),
+        ]
+    )
+    with pytest.raises(host.CalibrationError, match="invalid candidate"):
+        host.reconstruction_canary(tmp_path / "isolated", runner)
 
 
 def test_cli_fixed_json_schema_and_exit_codes(
@@ -607,6 +857,129 @@ def test_cli_init_path(
     assert json.loads(capsys.readouterr().out)["command"] == "init"
 
 
+def test_cli_init_accepts_explicit_single_user_dashboard_contract(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path, codex_home: Path
+) -> None:
+    profile = tmp_path / "private" / "host.toml"
+    state = tmp_path / "state"
+    argv = [
+        "init",
+        "--profile",
+        str(profile),
+        "--trust-model",
+        "trusted-single-user",
+        "--codex-home",
+        str(codex_home),
+        "--data-dir",
+        str(tmp_path / "ao-data"),
+        "--private-authority",
+        str(tmp_path / "authority" / "AGENTS.md"),
+        "--state-root",
+        str(state),
+        "--enable-dashboard",
+        "--dashboard-listen-host",
+        "127.0.0.1",
+        "--dashboard-listen-port",
+        "8443",
+        "--readonly-cidr",
+        "203.0.113.0/24",
+        "--document-root",
+        str(tmp_path / "dashboard"),
+        "--nginx-executable",
+        "/usr/sbin/nginx",
+        "--nginx-pid-file",
+        str(state / "nginx.pid"),
+        "--active-config",
+        str(state / "active.conf"),
+        "--desired-service",
+        str(state / "dashboard.service"),
+        "--rollback-service",
+        str(state / "dashboard.rollback.service"),
+        "--desired-nginx-artifact",
+        str(state / "nginx.conf"),
+        "--desired-service-artifact",
+        str(state / "nginx.service"),
+        "--terminal",
+        "--client-ip",
+        "203.0.113.7",
+        "--client-ip",
+        "203.0.113.8",
+        "--origin",
+        "https://console.example.test",
+        "--upstream",
+        "http://127.0.0.1:3001/mux",
+        "--upstream-origin",
+        "http://127.0.0.1:3001",
+        "--origin-mode",
+        "edge-validated-rewrite",
+    ]
+    assert host.main(argv) == host.EXIT_OK
+    capsys.readouterr()
+    parsed = host._load_profile(profile)
+    dashboard = cast(dict[str, object], parsed["dashboard"])
+    terminal = cast(dict[str, object], dashboard["terminal"])
+    assert dashboard["listen_port"] == 8443
+    assert terminal["allowed_client_ips"] == ["203.0.113.7", "203.0.113.8"]
+    assert terminal["origin_mode"] == "edge-validated-rewrite"
+
+
+def test_generated_terminal_candidate_passes_nginx_test_when_available(
+    tmp_path: Path, codex_home: Path
+) -> None:
+    nginx = shutil.which("nginx")
+    if nginx is None:
+        pytest.skip("nginx is unavailable")
+    state = tmp_path / "state"
+    dashboard_root = tmp_path / "dashboard"
+    state.mkdir(mode=0o700)
+    dashboard_root.mkdir(mode=0o700)
+    profile = tmp_path / "host.toml"
+    host.init_profile(
+        profile,
+        trust_model="trusted-single-user",
+        codex_home=codex_home,
+        data_dir=tmp_path / "ao-data",
+        private_authority=tmp_path / "authority/AGENTS.md",
+        state_root=state,
+        dashboard_enabled=True,
+        dashboard_listen_host="127.0.0.1",
+        dashboard_listen_port=18443,
+        readonly_cidrs=("203.0.113.0/24",),
+        document_root=dashboard_root,
+        nginx_executable=Path(nginx),
+        nginx_pid_file=state / "nginx.pid",
+        active_config=state / "active.conf",
+        desired_service=state / "dashboard.service",
+        rollback_service=state / "dashboard.rollback.service",
+        desired_nginx_artifact=state / "nginx.conf",
+        desired_service_artifact=state / "nginx.service",
+        terminal=True,
+        client_ips=("203.0.113.7", "203.0.113.8"),
+        origin="https://console.example.test",
+        upstream="http://127.0.0.1:3001/mux",
+        upstream_origin="http://127.0.0.1:3001",
+        origin_mode="edge-validated-rewrite",
+    )
+    candidate = tmp_path / "candidate"
+    host.render_profile(profile, candidate)
+    prefix = tmp_path / "nginx-prefix"
+    (prefix / "logs").mkdir(mode=0o700, parents=True)
+    result = subprocess.run(
+        [
+            nginx,
+            "-t",
+            "-p",
+            str(prefix) + "/",
+            "-c",
+            str(candidate / "nginx/ao-terminal.conf"),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+
+
 def test_module_entrypoint(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("sys.argv", ["calibrate_ao_host.py", "plan"])
     with pytest.raises(SystemExit, match="2"):
@@ -629,25 +1002,89 @@ def test_run_and_json_helpers(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_pure_state_and_issue_evaluators() -> None:
+    status = {
+        "state": "ready",
+        "pid": 42,
+        "port": 3001,
+        "health": "ok",
+        "ready": "ready",
+    }
+    health = {
+        "status": "ok",
+        "service": "agent-orchestrator-daemon",
+        "pid": 42,
+        "executablePath": "/opt/example/ao",
+        "workingDirectory": "/opt/example/work",
+        "startupWorkingDirectory": "/opt/example/start",
+    }
+    ready = {
+        "status": "ready",
+        "service": "agent-orchestrator-daemon",
+        "pid": 42,
+        "executablePath": "/opt/example/ao",
+        "workingDirectory": "/opt/example/work",
+        "startupWorkingDirectory": "/opt/example/start",
+    }
     probes = {
         "ao-version": host.Evidence("ao-version", "sandbox", "pass", "ao 1"),
         "systemd-active": host.Evidence("systemd-active", "host", "pass", "active"),
+        "main-pid": host.Evidence("main-pid", "host", "pass", "42"),
+        "status": host.Evidence("status", "host", "pass", "ready"),
         "healthz": host.Evidence("healthz", "daemon", "pass", "ok"),
         "readyz": host.Evidence("readyz", "daemon", "pass", "ok"),
         "mux": host.Evidence("mux", "daemon", "fail", "404"),
     }
-    assert host.evaluate_daemon_state(probes, context="host") == "ready"
+    assert (
+        host.evaluate_daemon_state(
+            probes,
+            context="host",
+            status=status,
+            health=health,
+            ready=ready,
+        )
+        == "ready"
+    )
+    incomplete_health = dict(health)
+    incomplete_health.pop("executablePath")
+    assert (
+        host.evaluate_daemon_state(
+            probes,
+            context="host",
+            status=status,
+            health=incomplete_health,
+            ready=ready,
+        )
+        == "indeterminate"
+    )
     missing_ao = dict(probes)
     missing_ao["ao-version"] = host.Evidence("ao-version", "sandbox", "fail", "missing")
     missing_ao["healthz"] = host.Evidence("healthz", "daemon", "fail", "missing")
-    assert host.evaluate_daemon_state(missing_ao, context="host") == "not_installed"
+    assert (
+        host.evaluate_daemon_state(
+            missing_ao,
+            context="host",
+            status=status,
+            health=health,
+            ready=ready,
+        )
+        == "not_installed"
+    )
     unavailable = dict(probes)
     unavailable["systemd-active"] = host.Evidence(
         "systemd-active", "host", "pass", "inactive"
     )
     unavailable["healthz"] = host.Evidence("healthz", "daemon", "fail", "down")
     unavailable["readyz"] = host.Evidence("readyz", "daemon", "fail", "down")
-    assert host.evaluate_daemon_state(unavailable, context="host") == "unavailable"
+    assert (
+        host.evaluate_daemon_state(
+            unavailable,
+            context="host",
+            status=status,
+            health=health,
+            ready=ready,
+        )
+        == "unavailable"
+    )
     assert (
         host.evaluate_delivery_state(
             probes, daemon_state="ready", terminal_enabled=True
@@ -683,7 +1120,7 @@ def test_pure_state_and_issue_evaluators() -> None:
             "glibc_version": "2.37",
             "tmux_version": "3.4",
             "codex_home_compatible": False,
-            "process_containment": "assigned-workspace",
+            "effective_process_containment": "unverified",
         },
         terminal={
             "desired_enabled": True,
@@ -699,3 +1136,320 @@ def test_pure_state_and_issue_evaluators() -> None:
         "AO-DASHBOARD-UPSTREAM-ORIGIN-REWRITE",
         "AO-PROCESS-CONTAINMENT-UNVERIFIED",
     ]
+
+
+def test_probe_oserror_becomes_failed_evidence() -> None:
+    def missing(_command: Sequence[str]) -> subprocess.CompletedProcess[str]:
+        raise FileNotFoundError("missing-tool")
+
+    evidence = host._probe(missing, "sandbox", "ao-version", ("missing",))
+
+    assert evidence.status == "fail"
+    assert "FileNotFoundError" in evidence.detail
+
+
+def test_sandbox_probe_ownership_cannot_claim_host_ready() -> None:
+    report = host.inspect_host(FakeRunner(inspect_responses()), context="sandbox")
+    states = cast(dict[str, object], report["states"])
+    assert states["daemon"] == "indeterminate"
+    probes = cast(list[dict[str, object]], report["probes"])
+    owned = {probe["id"]: probe["owner"] for probe in probes}
+    for probe_id in (
+        "systemd-active",
+        "doctor",
+        "healthz",
+        "readyz",
+        "dashboard",
+        "mux",
+    ):
+        assert owned[probe_id] == "sandbox"
+
+
+def test_inspect_uses_profile_ao_cli(tmp_path: Path) -> None:
+    profile = tmp_path / "host.toml"
+    profile.write_text(
+        V1_PROFILE.replace('cli = "ao"', 'cli = "/opt/example/ao-wrapper"'),
+        encoding="utf-8",
+    )
+    profile.chmod(0o600)
+    runner = FakeRunner(inspect_responses())
+
+    host.inspect_host(runner, profile=profile, context="host")
+
+    assert runner.commands[0] == ("/opt/example/ao-wrapper", "version")
+    assert runner.commands[6] == (
+        "/opt/example/ao-wrapper",
+        "status",
+        "--json",
+    )
+    assert runner.commands[7] == (
+        "/opt/example/ao-wrapper",
+        "doctor",
+        "--json",
+    )
+
+
+@pytest.mark.parametrize(
+    ("replacement", "message"),
+    [
+        (
+            'loopback_base_url = "https://example.test:3001"',
+            "HTTP loopback URL",
+        ),
+        ("health_path = 1", "ao.health_path must be a string"),
+        ('data_dir = "../data"', "ao.data_dir must be an absolute path"),
+        ('cli = "relative/wrapper"', "ao.cli path must be absolute"),
+    ],
+)
+def test_profile_probe_and_path_fields_fail_closed(
+    tmp_path: Path, replacement: str, message: str
+) -> None:
+    originals = {
+        "loopback_base_url": 'loopback_base_url = "http://127.0.0.1:3001"',
+        "health_path": 'health_path = "/healthz"',
+        "data_dir": 'data_dir = "/opt/example/ao-data"',
+        "cli": 'cli = "ao"',
+    }
+    key = replacement.split(" =", maxsplit=1)[0]
+    profile = tmp_path / "host.toml"
+    profile.write_text(
+        V1_PROFILE.replace(originals[key], replacement),
+        encoding="utf-8",
+    )
+    profile.chmod(0o600)
+    with pytest.raises(host.CalibrationError, match=message):
+        host.plan_profile(profile)
+
+
+@pytest.mark.parametrize("value", ["true", "1.0"])
+def test_schema_version_requires_exact_integer(tmp_path: Path, value: str) -> None:
+    profile = tmp_path / "host.toml"
+    profile.write_text(f"schema_version = {value}\n" + V1_PROFILE, encoding="utf-8")
+    profile.chmod(0o600)
+    with pytest.raises(host.CalibrationError, match="unsupported schema_version"):
+        host.plan_profile(profile)
+
+
+@pytest.mark.parametrize(
+    "origin",
+    [
+        'https://host"; return 200; #',
+        "https://host name",
+        "https://user@example.test",
+        "https://example.test/path",
+    ],
+)
+def test_origin_rejects_nginx_metacharacters_and_non_origin_forms(
+    origin: str,
+) -> None:
+    with pytest.raises(host.CalibrationError, match="exact Origin"):
+        host._validate_origin(origin, "terminal Origin")
+
+
+def test_url_validators_reject_types_and_invalid_ports() -> None:
+    with pytest.raises(host.CalibrationError, match="must be a string"):
+        host._validate_loopback_url(1, "base")
+    with pytest.raises(host.CalibrationError, match="valid loopback URL"):
+        host._validate_loopback_url("http://127.0.0.1:bad", "base")
+    with pytest.raises(host.CalibrationError, match="exact Origin"):
+        host._validate_origin(1, "origin")
+    with pytest.raises(host.CalibrationError, match="exact Origin"):
+        host._validate_origin("https://example.test:bad", "origin")
+
+
+def test_safe_path_rejects_symlink_in_any_ancestor(tmp_path: Path) -> None:
+    real = tmp_path / "real"
+    (real / "child").mkdir(parents=True)
+    link = tmp_path / "link"
+    link.symlink_to(real, target_is_directory=True)
+    with pytest.raises(host.CalibrationError, match="symlink"):
+        host._safe_path(link / "child" / "output", may_create=True)
+
+
+def test_unchanged_render_rejects_insecure_modes(tmp_path: Path, profile: Path) -> None:
+    output = tmp_path / "candidate"
+    host.render_profile(profile, output)
+    agents = output / "AGENTS.md"
+    agents.chmod(0o644)
+    with pytest.raises(host.CalibrationError, match="mode must be 0600"):
+        host.render_profile(profile, output)
+    agents.chmod(0o600)
+
+
+def test_v2_preserves_storage_boundaries(profile: Path, tmp_path: Path) -> None:
+    extra = tmp_path / "extra-boundary"
+    content = profile.read_text(encoding="utf-8")
+    content = content.replace(
+        "boundaries = [",
+        (
+            "boundaries = [{ "
+            f'path = {json.dumps(str(extra))}, kind = "shared", '
+            "recursive_search = false }, "
+        ),
+    )
+    profile.write_text(content, encoding="utf-8")
+    parsed = host._load_profile(profile)
+
+    canonical = host._canonical_v2(parsed)
+
+    storage = cast(dict[str, object], canonical["storage"])
+    boundaries = cast(list[dict[str, object]], storage["boundaries"])
+    assert any(boundary["path"] == str(extra) for boundary in boundaries)
+
+
+def test_v2_terminal_requires_read_only_dashboard(
+    tmp_path: Path, codex_home: Path
+) -> None:
+    profile = tmp_path / "host.toml"
+    host.init_profile(
+        profile,
+        trust_model="trusted-single-user",
+        codex_home=codex_home,
+        data_dir=tmp_path / "data",
+        private_authority=tmp_path / "private" / "AGENTS.md",
+        state_root=tmp_path / "state",
+        dashboard_enabled=True,
+        dashboard_listen_host="127.0.0.1",
+        dashboard_listen_port=8443,
+        readonly_cidrs=("203.0.113.0/24",),
+        document_root=tmp_path / "dashboard",
+        nginx_executable=Path("/usr/sbin/nginx"),
+        nginx_pid_file=tmp_path / "state/nginx.pid",
+        active_config=tmp_path / "state/active.conf",
+        desired_service=tmp_path / "state/dashboard.service",
+        rollback_service=tmp_path / "state/dashboard.rollback.service",
+        desired_nginx_artifact=tmp_path / "state/nginx.conf",
+        desired_service_artifact=tmp_path / "state/nginx.service",
+        terminal=True,
+        client_ips=("203.0.113.9",),
+        origin="https://console.example.test",
+        upstream="http://127.0.0.1:3001/mux",
+        upstream_origin="http://127.0.0.1:3001",
+        origin_mode="edge-validated-rewrite",
+    )
+    profile.write_text(
+        profile.read_text(encoding="utf-8").replace(
+            'mode = "read-only"', 'mode = "write"'
+        ),
+        encoding="utf-8",
+    )
+    with pytest.raises(host.CalibrationError, match="must be read-only"):
+        host.verify_profile(profile)
+
+
+def test_external_doctor_failure_degrades_delivery() -> None:
+    doctor = json.dumps(
+        {
+            "ok": False,
+            "checks": [
+                {
+                    "name": "github-token",
+                    "level": "FAIL",
+                    "message": "authentication failed",
+                }
+            ],
+        }
+    )
+    report = host.inspect_host(
+        FakeRunner(inspect_responses(doctor=doctor)), context="host"
+    )
+    states = cast(dict[str, object], report["states"])
+    assert states == {"daemon": "ready", "delivery": "degraded"}
+
+
+def test_doctor_three_way_classification_matrix() -> None:
+    readonly = json.dumps(
+        {
+            "ok": False,
+            "checks": [
+                {
+                    "name": "data-dir-write",
+                    "level": "FAIL",
+                    "message": "read-only file system",
+                }
+            ],
+        }
+    )
+    sandbox = host.inspect_host(
+        FakeRunner(inspect_responses(doctor=readonly)), context="sandbox"
+    )
+    assert cast(dict[str, object], sandbox["states"])["daemon"] == "indeterminate"
+    assert "AO-HOST-CONTEXT-MISMATCH" in cast(list[str], sandbox["known_issues"])
+
+    core = host.inspect_host(
+        FakeRunner(inspect_responses(doctor=readonly)), context="host"
+    )
+    assert cast(dict[str, object], core["states"])["daemon"] == "indeterminate"
+    assert "AO-HOST-CONTEXT-MISMATCH" not in cast(list[str], core["known_issues"])
+
+    external = json.dumps(
+        {
+            "ok": False,
+            "checks": [{"name": "future-auth-integration", "level": "ERROR"}],
+        }
+    )
+    degraded = host.inspect_host(
+        FakeRunner(inspect_responses(doctor=external)), context="host"
+    )
+    assert cast(dict[str, object], degraded["states"]) == {
+        "daemon": "ready",
+        "delivery": "degraded",
+    }
+
+
+def test_auto_requires_matching_host_identity() -> None:
+    ready = host.inspect_host(FakeRunner(inspect_responses()), context="auto")
+    assert cast(dict[str, object], ready["states"])["daemon"] == "ready"
+
+    mismatched = inspect_responses()
+    mismatched[5] = completed((), out="99")
+    report = host.inspect_host(FakeRunner(mismatched), context="auto")
+    assert cast(dict[str, object], report["states"])["daemon"] == "indeterminate"
+
+
+def test_additional_profile_field_validation(tmp_path: Path, profile: Path) -> None:
+    probes = {
+        "ao-version": host.Evidence("ao-version", "host", "pass", "ao 1"),
+        "systemd-active": host.Evidence("systemd-active", "host", "fail", "unknown"),
+        "main-pid": host.Evidence("main-pid", "host", "fail", "unknown"),
+        "status": host.Evidence("status", "host", "fail", "unknown"),
+        "healthz": host.Evidence("healthz", "daemon", "fail", "down"),
+        "readyz": host.Evidence("readyz", "daemon", "pass", "up"),
+    }
+    assert (
+        host.evaluate_daemon_state(
+            probes, context="host", status={}, health={}, ready={}
+        )
+        == "indeterminate"
+    )
+
+    bad_cli = tmp_path / "bad-cli.toml"
+    bad_cli.write_text(
+        V1_PROFILE.replace('cli = "ao"', 'cli = "bad name"'),
+        encoding="utf-8",
+    )
+    bad_cli.chmod(0o600)
+    with pytest.raises(host.CalibrationError, match="executable name"):
+        host.plan_profile(bad_cli)
+
+    bad_health = tmp_path / "bad-health.toml"
+    bad_health.write_text(
+        V1_PROFILE.replace('health_path = "/healthz"', 'health_path = "healthz"'),
+        encoding="utf-8",
+    )
+    bad_health.chmod(0o600)
+    with pytest.raises(host.CalibrationError, match="absolute URL path"):
+        host.plan_profile(bad_health)
+
+    profile.write_text(
+        profile.read_text(encoding="utf-8").replace(
+            "boundaries = [",
+            (
+                'boundaries = [{ path = "relative", kind = "shared", '
+                "recursive_search = false }, "
+            ),
+        ),
+        encoding="utf-8",
+    )
+    with pytest.raises(host.CalibrationError, match="invalid types"):
+        host.plan_profile(profile)

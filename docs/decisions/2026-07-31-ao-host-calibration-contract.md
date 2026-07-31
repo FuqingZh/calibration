@@ -2,18 +2,19 @@
 
 Date: 2026-07-31
 
-Status: accepted
+Status: in progress
 
 ## Decision
 
 Calibration provides a stdlib-only JSON CLI for inspecting, initializing,
 planning, rendering, and verifying an explicitly trusted private AO host
 profile. Inspection is profile-independent and keeps sandbox, worker, daemon,
-and host evidence separate. Sandbox-visible stale paths or read-only failures
-cannot override an active user service plus passing `healthz` and `readyz`
-probes. AO status is evidence but is not a readiness prerequisite. A doctor
-data-dir-write failure caused by a read-only sandbox is a known issue, not a
-daemon failure.
+and host evidence separate. Daemon readiness requires host-owned systemd and
+AO ready/running status evidence plus matching MainPID/status/health/ready
+process identity and validated health and readiness payloads. Sandbox-visible
+stale status or a read-only data-dir-write failure remains indeterminate and
+cannot be promoted to host evidence. External doctor failures degrade delivery;
+host-owned core doctor failures affect daemon readiness.
 
 The CLI recognizes the existing schema v1 `[ao]`, `[dashboard]`,
 `[dashboard.terminal]`, and `[paths]` sections when `schema_version` is absent
@@ -22,7 +23,8 @@ uses schema v2, retains those names, and adds `ao.runtime_owner`,
 `ao.process_containment`, `dashboard.mode`,
 `dashboard.terminal.origin_mode`, and `storage.boundaries`. Migration and
 candidate needs are explicit in `plan` and `verify` readback. Unknown keys fail
-closed.
+closed. Storage boundaries are structured path/kind/recursive-search values,
+and desired process containment never certifies observed containment.
 
 Legacy v1 terminal validation remains distinct from v2 policy. V1 accepts its
 deployed `single-user-trusted-lan` trust name, multiple exact client IPs, and a
@@ -57,11 +59,13 @@ private and faithfully retains the explicit absolute paths and trusted
 addresses required to reconstruct the requested host semantics. Public
 portability applies to tracked source, templates, and synthetic tests.
 
-Terminal output is conditional and off by default. It requires a trusted
-single-user model, exact client IP, exact Origin, exact `/mux` location,
-GET-and-Upgrade handling, a loopback upstream, and a read-only API boundary.
-Origin rewriting remains rejected without paired pre-change and post-change
-probe evidence.
+Dashboard and Terminal output are conditional and off by default. Enabling
+them requires explicit listen, CIDR, document-root, nginx, service, exact
+client-IP, external-Origin, loopback-upstream, upstream-Origin, and origin-mode
+inputs as applicable. The generated full nginx candidate keeps static and API
+access GET-only and CIDR-restricted, while exact `/mux` requires every exact
+client IP, exact Origin, GET, WebSocket Upgrade, and the proven loopback Origin
+rewrite. Inspection may discover runtime facts but never chooses trust values.
 
 ## Compatibility
 
@@ -75,6 +79,7 @@ outside this public change.
 Focused tests require 100 percent line coverage, a real schema v1 fixture,
 deterministic rendering, profile and mode rejection, evidence precedence,
 terminal constraints, and an isolated XDG reconstruction canary using a fake
-runner. The canary executes init, inspect, plan, render, verify, and a
-byte-identical second render. The canonical repository gate retains public
-portability and Markdown-link checks.
+runner. The canary executes the JSON boundary for init, inspect, plan, render,
+verify, and a byte-identical second render, and validates the complete nginx
+candidate when nginx is available. The canonical repository gate retains
+public portability and Markdown-link checks.
