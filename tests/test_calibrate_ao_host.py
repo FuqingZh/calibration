@@ -33,7 +33,7 @@ ready_path = "/readyz"
 
 [dashboard]
 listen_host = "127.0.0.1"
-listen_port = 3001
+listen_port = 8443
 trusted_readonly_cidrs = ["203.0.113.0/24"]
 document_root = "/opt/example/dashboard"
 active_config = "/opt/example/active.conf"
@@ -62,6 +62,15 @@ def completed(
     command: Sequence[str], code: int = 0, out: str = "", err: str = ""
 ) -> subprocess.CompletedProcess[str]:
     return subprocess.CompletedProcess(command, code, out, err)
+
+
+def websocket_response() -> str:
+    return (
+        "HTTP/1.1 101 Switching Protocols\r\n"
+        "Connection: Upgrade\r\n"
+        "Upgrade: websocket\r\n"
+        "Sec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=\r\n\r\n"
+    )
 
 
 class FakeRunner:
@@ -393,7 +402,7 @@ def test_ao_and_dashboard_probe_owners_are_separate(
         [
             *inspect_responses(),
             completed((), out="ok"),
-            completed((), out="HTTP/1.1 101 Switching Protocols\r\n"),
+            completed((), out=websocket_response()),
         ]
     )
     report = host.inspect_host(runner, profile=profile, context=context)
@@ -477,7 +486,7 @@ def test_ipv6_canonical_client_identity_authorizes_source_probe(
     )
     profile.chmod(0o600)
     responses = inspect_responses()
-    responses[-1] = completed((), out="HTTP/1.1 101 Switching Protocols")
+    responses[-1] = completed((), out=websocket_response())
     runner = FakeRunner(responses)
     report = host.inspect_host(runner, profile=profile, context="host")
     assert runner.commands[10][3:5] == ("--interface", "::1")
@@ -927,7 +936,7 @@ def test_invalid_profile_and_init_rejections(
     [
         ('listen_host = "127.0.0.1"', "listen_host = 1", "listen_host"),
         ('listen_host = "127.0.0.1"', 'listen_host = "bad host"', "listen_host"),
-        ("listen_port = 3001", "listen_port = true", "listen_port"),
+        ("listen_port = 8443", "listen_port = true", "listen_port"),
         (
             'trusted_readonly_cidrs = ["203.0.113.0/24"]',
             "trusted_readonly_cidrs = [1]",
@@ -958,6 +967,110 @@ def test_dashboard_network_fields_fail_closed(
     profile.chmod(0o600)
     with pytest.raises(host.CalibrationError, match=message):
         host.plan_profile(profile)
+
+
+def test_dashboard_listener_family_and_collision_fail_closed(
+    tmp_path: Path, codex_home: Path
+) -> None:
+    mismatch = tmp_path / "mismatch.toml"
+    mismatch.write_text(
+        V1_PROFILE.replace(
+            'trusted_readonly_cidrs = ["203.0.113.0/24"]',
+            'trusted_readonly_cidrs = ["2001:db8::/32"]',
+        ),
+        encoding="utf-8",
+    )
+    mismatch.chmod(0o600)
+    with pytest.raises(host.CalibrationError, match="listener family"):
+        host.plan_profile(mismatch)
+
+    collision = tmp_path / "collision.toml"
+    with pytest.raises(host.CalibrationError, match="must not collide"):
+        host.init_profile(
+            collision,
+            trust_model="trusted-single-user",
+            codex_home=codex_home,
+            data_dir=tmp_path / "data",
+            private_authority=tmp_path / "authority/AGENTS.md",
+            state_root=tmp_path / "state",
+            dashboard_enabled=True,
+            dashboard_listen_host="127.0.0.1",
+            dashboard_listen_port=3001,
+            readonly_cidrs=("127.0.0.1/32",),
+            document_root=tmp_path / "dashboard",
+            nginx_executable=Path("/usr/sbin/nginx"),
+            nginx_pid_file=tmp_path / "state/nginx.pid",
+            active_config=tmp_path / "state/active.conf",
+            desired_service="ao-dashboard.service",
+            rollback_service="ao-dashboard-rollback.service",
+            desired_nginx_artifact=tmp_path / "state/nginx.conf",
+            desired_service_artifact=tmp_path / "state/nginx.service",
+        )
+    assert not collision.exists()
+
+    legacy = tmp_path / "legacy-collision.toml"
+    legacy.write_text(
+        V1_PROFILE.replace("listen_port = 8443", "listen_port = 3001"),
+        encoding="utf-8",
+    )
+    legacy.chmod(0o600)
+    assert host.plan_profile(legacy)["migration_required"] is True
+    with pytest.raises(host.CalibrationError, match="must not collide"):
+        host.render_profile(legacy, tmp_path / "candidate")
+
+
+@pytest.mark.parametrize("field", ["data_dir", "state_root"])
+def test_existing_files_are_rejected_for_directory_fields(
+    tmp_path: Path, codex_home: Path, profile: Path, field: str
+) -> None:
+    regular = tmp_path / f"{field}.file"
+    regular.write_text("x", encoding="utf-8")
+    regular.chmod(0o600)
+    if field == "data_dir":
+        with pytest.raises(host.CalibrationError, match="directory"):
+            host.init_profile(
+                tmp_path / "init.toml",
+                trust_model="untrusted",
+                codex_home=codex_home,
+                data_dir=regular,
+                private_authority=tmp_path / "authority/AGENTS.md",
+                state_root=tmp_path / "state",
+            )
+        old = f'data_dir = "{tmp_path / "data"}"'
+    else:
+        old = f'state_root = "{tmp_path / "state"}"'
+    profile.write_text(
+        profile.read_text(encoding="utf-8").replace(old, f'{field} = "{regular}"'),
+        encoding="utf-8",
+    )
+    with pytest.raises(host.CalibrationError, match="directory"):
+        host.plan_profile(profile)
+    with pytest.raises(host.CalibrationError, match="directory"):
+        host.render_profile(profile, tmp_path / f"{field}-candidate")
+
+
+def test_init_creates_every_missing_profile_ancestor_private(
+    tmp_path: Path, codex_home: Path
+) -> None:
+    target = tmp_path / "one/two/three/host.toml"
+    previous_umask = os.umask(0o002)
+    try:
+        host.init_profile(
+            target,
+            trust_model="untrusted",
+            codex_home=codex_home,
+            data_dir=tmp_path / "data",
+            private_authority=tmp_path / "authority/AGENTS.md",
+            state_root=tmp_path / "state",
+        )
+    finally:
+        os.umask(previous_umask)
+    for directory in (
+        tmp_path / "one",
+        tmp_path / "one/two",
+        tmp_path / "one/two/three",
+    ):
+        assert directory.stat().st_mode & 0o777 == 0o700
 
 
 @pytest.mark.parametrize(
@@ -1510,7 +1623,7 @@ def test_generated_terminal_candidate_passes_nginx_test_when_available(
         dashboard_enabled=True,
         dashboard_listen_host="::1",
         dashboard_listen_port=18443,
-        readonly_cidrs=("203.0.113.0/24",),
+        readonly_cidrs=("2001:db8::/32",),
         document_root=dashboard_root,
         nginx_executable=Path(nginx),
         nginx_pid_file=state / "nginx.pid",
@@ -1881,7 +1994,9 @@ def test_pure_state_and_issue_evaluators() -> None:
         == "indeterminate"
     )
     missing_ao = dict(probes)
-    missing_ao["ao-version"] = host.Evidence("ao-version", "sandbox", "fail", "missing")
+    missing_ao["ao-version"] = host.Evidence(
+        "ao-version", "host", "fail", "FileNotFoundError: missing"
+    )
     missing_ao["healthz"] = host.Evidence("healthz", "daemon", "fail", "missing")
     assert (
         host.evaluate_daemon_state(
@@ -1892,6 +2007,20 @@ def test_pure_state_and_issue_evaluators() -> None:
             ready=ready,
         )
         == "not_installed"
+    )
+    denied_ao = dict(missing_ao)
+    denied_ao["ao-version"] = host.Evidence(
+        "ao-version", "host", "fail", "permission denied"
+    )
+    assert (
+        host.evaluate_daemon_state(
+            denied_ao,
+            context="host",
+            status=status,
+            health=health,
+            ready=ready,
+        )
+        == "indeterminate"
     )
     unavailable = dict(probes)
     unavailable["systemd-active"] = host.Evidence(
@@ -2025,17 +2154,21 @@ def test_probe_oserror_becomes_failed_evidence() -> None:
 
 def test_mux_probe_requires_bounded_http_101_handshake() -> None:
     handshake = host._probe_mux(
-        FakeRunner(
-            [completed((), code=28, out="HTTP/1.1 101 Switching Protocols\r\n")]
-        ),
+        FakeRunner([completed((), code=28, out=websocket_response())]),
         "daemon",
         ("curl",),
     )
     generic = host._probe_mux(
         FakeRunner([completed((), out="200")]), "daemon", ("curl",)
     )
+    incomplete = host._probe_mux(
+        FakeRunner([completed((), out="HTTP/1.1 101 Switching Protocols")]),
+        "daemon",
+        ("curl",),
+    )
     assert handshake.status == "pass"
     assert generic.status == "fail"
+    assert incomplete.status == "fail"
     missing = host._probe_mux(
         lambda _command: (_ for _ in ()).throw(FileNotFoundError("curl")),
         "daemon",
@@ -2054,7 +2187,8 @@ def test_real_curl_mux_probe_sends_rfc6455_headers() -> None:
             self.request.sendall(
                 b"HTTP/1.1 101 Switching Protocols\r\n"
                 b"Connection: Upgrade\r\n"
-                b"Upgrade: websocket\r\n\r\n"
+                b"Upgrade: websocket\r\n"
+                b"Sec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=\r\n\r\n"
             )
 
     with socketserver.TCPServer(("127.0.0.1", 0), Handler) as server:
@@ -2136,7 +2270,7 @@ def test_inspect_uses_profile_ao_cli(tmp_path: Path) -> None:
     )
     profile.chmod(0o600)
     responses = inspect_responses()
-    responses[-1] = completed((), code=28, out="HTTP/1.1 101 Switching Protocols\r\n")
+    responses[-1] = completed((), code=28, out=websocket_response())
     runner = FakeRunner(responses)
 
     report = host.inspect_host(runner, profile=profile, context="host")

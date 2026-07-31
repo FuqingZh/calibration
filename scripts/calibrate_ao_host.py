@@ -166,7 +166,19 @@ def _probe_mux(runner: Runner, owner: str, command: Sequence[str]) -> Evidence:
     detail = result.stdout.strip() or result.stderr.strip() or "no output"
     if result.returncode == 45:
         return Evidence("mux", owner, "unknown", detail)
-    handshake = re.search(r"^HTTP/\S+\s+101(?:\s|$)", detail, re.MULTILINE)
+    status_ok = re.search(r"^HTTP/\S+\s+101(?:\s|$)", detail, re.MULTILINE)
+    upgrade_ok = re.search(
+        r"^Upgrade:\s*websocket\s*$", detail, re.MULTILINE | re.IGNORECASE
+    )
+    connection_ok = re.search(
+        r"^Connection:.*\bUpgrade\b.*$", detail, re.MULTILINE | re.IGNORECASE
+    )
+    accept_ok = re.search(
+        r"^Sec-WebSocket-Accept:\s*s3pPLMBiTxaQ9kYGzzhZRbK\+xOo=\s*$",
+        detail,
+        re.MULTILINE | re.IGNORECASE,
+    )
+    handshake = status_ok and upgrade_ok and connection_ok and accept_ok
     return Evidence("mux", owner, "pass" if handshake else "fail", detail)
 
 
@@ -373,7 +385,11 @@ def evaluate_daemon_state(
         and not core_doctor_failure
     ):
         return "ready"
-    if probes["ao-version"].status == "fail" and context == "host":
+    if (
+        probes["ao-version"].status == "fail"
+        and context == "host"
+        and probes["ao-version"].detail.startswith("FileNotFoundError:")
+    ):
         return "not_installed"
     if (
         context == "host"
@@ -771,6 +787,17 @@ def _safe_path(path: Path, *, may_create: bool, directory: bool | None = None) -
     return expanded.resolve()
 
 
+def _mkdir_private_chain(path: Path) -> None:
+    missing: list[Path] = []
+    current = path
+    while not current.exists():
+        missing.append(current)
+        current = current.parent
+    for directory in reversed(missing):
+        directory.mkdir(mode=0o700)
+        directory.chmod(0o700)
+
+
 def _validate_codex_home(path: Path) -> Path:
     home = _safe_path(path, may_create=False, directory=True)
     config = home / "config.toml"
@@ -952,6 +979,16 @@ def _load_profile(path: Path) -> dict[str, object]:
         raise CalibrationError(
             "dashboard.trusted_readonly_cidrs must be valid CIDRs"
         ) from exc
+    if dashboard.get("mode", "read-only") == "read-only":
+        listen_version = ipaddress.ip_address(listen_host).version
+        if not any(
+            ipaddress.ip_network(cast(str, value), strict=False).version
+            == listen_version
+            for value in cidr_values
+        ):
+            raise CalibrationError(
+                "read-only dashboard requires a trusted CIDR for its listener family"
+            )
     absolute_fields = [
         ("ao.data_dir", ao["data_dir"]),
         ("ao.codex_home", ao["codex_home"]),
@@ -970,6 +1007,13 @@ def _load_profile(path: Path) -> dict[str, object]:
         if not isinstance(value, str) or not Path(value).is_absolute():
             raise CalibrationError(f"{label} must be an absolute path")
         _validate_interpolated_scalar(value, label)
+    for label, value in (
+        ("ao.data_dir", ao["data_dir"]),
+        ("paths.state_root", paths["state_root"]),
+    ):
+        candidate = Path(cast(str, value))
+        if candidate.exists() and not candidate.is_dir():
+            raise CalibrationError(f"{label} must be a directory")
     _validate_service_unit(
         dashboard.get("desired_service"), "dashboard.desired_service"
     )
@@ -996,7 +1040,22 @@ def _load_profile(path: Path) -> dict[str, object]:
                 "dashboard.mode must be read-only when terminal is enabled"
             )
         _validate_terminal(terminal)
+        _validate_no_listener_collision(profile)
     return cast(dict[str, object], profile)
+
+
+def _validate_no_listener_collision(profile: Mapping[str, object]) -> None:
+    ao = _section(profile, "ao")
+    dashboard = _section(profile, "dashboard")
+    if dashboard.get("mode") != "read-only":
+        return
+    parsed = urllib.parse.urlsplit(cast(str, ao["loopback_base_url"]))
+    if (
+        ipaddress.ip_address(cast(str, dashboard["listen_host"]))
+        == ipaddress.ip_address(cast(str, parsed.hostname))
+        and dashboard["listen_port"] == parsed.port
+    ):
+        raise CalibrationError("Dashboard listener must not collide with AO loopback")
 
 
 def _validate_terminal_v1(terminal: Mapping[str, object]) -> None:
@@ -1250,10 +1309,10 @@ def init_profile(
         raise CalibrationError(
             f"{target.parent} must not be accessible by group or other"
         )
-    target.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    _mkdir_private_chain(target.parent)
     home = _validate_codex_home(codex_home)
     for private in (data_dir, private_authority.parent, state_root):
-        _safe_path(private, may_create=True)
+        _safe_path(private, may_create=True, directory=True)
     dashboard_values = (
         dashboard_listen_host,
         dashboard_listen_port,
@@ -1391,6 +1450,7 @@ def init_profile(
     }
     canonical = _canonical_v2(profile)
     _validate_terminal(_section(_section(canonical, "dashboard"), "terminal"))
+    _validate_no_listener_collision(canonical)
     target.write_text(_toml(canonical), encoding="utf-8")
     target.chmod(0o600)
     return canonical
@@ -1417,6 +1477,7 @@ def plan_profile(path: Path) -> dict[str, object]:
 
 def _candidate_files(profile: Mapping[str, object]) -> dict[str, bytes]:
     canonical = _canonical_v2(profile)
+    _validate_no_listener_collision(canonical)
     ao = _section(canonical, "ao")
     dashboard = _section(canonical, "dashboard")
     terminal = _section(_section(canonical, "dashboard"), "terminal")

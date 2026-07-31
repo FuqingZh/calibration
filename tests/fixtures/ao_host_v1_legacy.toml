@@ -9,7 +9,7 @@ ready_path = "/readyz"
 
 [dashboard]
 listen_host = "127.0.0.1"
-listen_port = 3001
+listen_port = 8443
 trusted_readonly_cidrs = ["203.0.113.0/24"]
 document_root = "/opt/example/dashboard"
 active_config = "/opt/example/active.conf"
