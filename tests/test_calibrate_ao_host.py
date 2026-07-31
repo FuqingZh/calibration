@@ -165,6 +165,25 @@ def inspect_responses(
     ]
 
 
+def unavailable_inspect_responses(
+    *, confirmation_recovers: bool = False
+) -> list[subprocess.CompletedProcess[str]]:
+    initial = inspect_responses()
+    initial[4] = completed((), code=3, out="inactive")
+    initial[8] = completed((), code=7, err="health unavailable")
+    initial[9] = completed((), code=7, err="ready unavailable")
+    if confirmation_recovers:
+        healthy = inspect_responses()
+        confirmation = [healthy[4], healthy[8], healthy[9]]
+    else:
+        confirmation = [
+            completed((), code=3, out="inactive"),
+            completed((), code=7, err="health unavailable"),
+            completed((), code=7, err="ready unavailable"),
+        ]
+    return initial[:10] + confirmation
+
+
 def test_existing_v1_is_readable_and_requests_v2_candidate(tmp_path: Path) -> None:
     path = tmp_path / "host.toml"
     path.write_text(V1_PROFILE, encoding="utf-8")
@@ -317,12 +336,75 @@ def test_inspect_profile_context_cgroup_and_invalid_json(
     conflict = host.inspect_host(
         FakeRunner(inspect_responses()), profile=profile, context="sandbox"
     )
-    assert "AO-CODEX-HOME-CONFLICT" in cast(list[str], conflict["known_issues"])
+    conflict_capabilities = cast(dict[str, object], conflict["capabilities"])
+    assert conflict_capabilities["codex_home_compatible"] is None
+    assert "AO-CODEX-HOME-CONFLICT" not in cast(list[str], conflict["known_issues"])
+    auto = host.inspect_host(
+        FakeRunner(inspect_responses()), profile=profile, context="auto"
+    )
+    auto_capabilities = cast(dict[str, object], auto["capabilities"])
+    assert auto_capabilities["codex_home_compatible"] is None
+    assert "AO-CODEX-HOME-CONFLICT" not in cast(list[str], auto["known_issues"])
+    host_conflict = host.inspect_host(
+        FakeRunner(inspect_responses()), profile=profile, context="host"
+    )
+    host_capabilities = cast(dict[str, object], host_conflict["capabilities"])
+    assert host_capabilities["codex_home_compatible"] is False
+    assert "AO-CODEX-HOME-CONFLICT" in cast(list[str], host_conflict["known_issues"])
     with pytest.raises(host.CalibrationError, match="context"):
         host.inspect_host(FakeRunner([]), context="remote")
     invalid_context: object = []
     with pytest.raises(host.CalibrationError, match="context"):
         host.inspect_host(FakeRunner([]), context=cast(str, invalid_context))
+
+
+def test_unavailable_requires_repeated_host_observation(
+    monkeypatch: pytest.MonkeyPatch, profile: Path
+) -> None:
+    sleeps: list[float] = []
+    monkeypatch.setattr(host.time, "sleep", sleeps.append)
+    repeated_runner = FakeRunner(unavailable_inspect_responses())
+
+    repeated = host.inspect_host(repeated_runner, profile=profile, context="host")
+
+    assert cast(dict[str, object], repeated["states"])["daemon"] == "unavailable"
+    repeated_probes = {
+        cast(str, item["id"]): item
+        for item in cast(list[dict[str, object]], repeated["probes"])
+    }
+    assert {
+        "systemd-active-confirmation",
+        "healthz-confirmation",
+        "readyz-confirmation",
+    } <= repeated_probes.keys()
+    assert repeated_runner.responses == []
+    assert sleeps == [host.UNAVAILABLE_CONFIRMATION_DELAY_SECONDS]
+
+    recovered_runner = FakeRunner(
+        unavailable_inspect_responses(confirmation_recovers=True)
+    )
+    recovered = host.inspect_host(recovered_runner, profile=profile, context="host")
+
+    assert cast(dict[str, object], recovered["states"])["daemon"] == "indeterminate"
+    assert recovered_runner.responses == []
+    assert sleeps == [
+        host.UNAVAILABLE_CONFIRMATION_DELAY_SECONDS,
+        host.UNAVAILABLE_CONFIRMATION_DELAY_SECONDS,
+    ]
+
+    missing_responses = unavailable_inspect_responses()[:10]
+    missing_responses[0] = completed(
+        (), code=127, err="FileNotFoundError: ao is unavailable"
+    )
+    missing_runner = FakeRunner(missing_responses)
+    missing = host.inspect_host(missing_runner, profile=profile, context="host")
+
+    assert cast(dict[str, object], missing["states"])["daemon"] == "not_installed"
+    assert missing_runner.responses == []
+    assert sleeps == [
+        host.UNAVAILABLE_CONFIRMATION_DELAY_SECONDS,
+        host.UNAVAILABLE_CONFIRMATION_DELAY_SECONDS,
+    ]
 
 
 def test_inspect_loads_explicit_profile_once(
@@ -600,6 +682,20 @@ def test_init_render_verify_round_trip_and_manifest(
     candidate_profile = (output / "host.toml").read_text()
     assert str(codex_home) in candidate_profile
     nginx = (output / "nginx/ao-terminal.conf").read_text()
+    mime_types = (
+        "  default_type application/octet-stream;\n"
+        "  types {\n"
+        "    text/html html;\n"
+        "    text/css css;\n"
+        "    application/javascript js;\n"
+        "    application/json json;\n"
+        "    image/png png;\n"
+        "    image/svg+xml svg;\n"
+        "    font/woff2 woff2;\n"
+        "  }\n"
+    )
+    assert mime_types in nginx
+    assert "mime.types" not in nginx
     for phrase in (
         "location = /mux",
         "allow 203.0.113.7",
@@ -2472,6 +2568,17 @@ def test_pure_state_and_issue_evaluators() -> None:
             health=health,
             ready=ready,
         )
+        == "indeterminate"
+    )
+    assert (
+        host.evaluate_daemon_state(
+            unavailable,
+            context="host",
+            status=status,
+            health=health,
+            ready=ready,
+            unavailable_confirmed=True,
+        )
         == "unavailable"
     )
     assert (
@@ -2573,6 +2680,20 @@ def test_pure_state_and_issue_evaluators() -> None:
         "AO-DASHBOARD-UPSTREAM-ORIGIN-REWRITE",
         "AO-PROCESS-CONTAINMENT-UNVERIFIED",
     ]
+    sandbox_issues = host.evaluate_known_issues(
+        probes=probes,
+        status={"state": "stale"},
+        doctor={"ok": False, "checks": []},
+        capabilities={
+            "glibc_version": "2.38",
+            "tmux_version": "3.5",
+            "codex_home_compatible": False,
+            "effective_process_containment": "systemd-scope-verified",
+        },
+        terminal=None,
+        context="sandbox",
+    )
+    assert "AO-CODEX-HOME-CONFLICT" not in sandbox_issues
     malformed_issues = host.evaluate_known_issues(
         probes=probes,
         status={"state": []},

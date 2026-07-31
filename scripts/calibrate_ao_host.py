@@ -14,6 +14,7 @@ import shutil
 import stat
 import subprocess
 import sys
+import time
 import tomllib
 import urllib.parse
 from collections.abc import Callable, Mapping, Sequence
@@ -30,6 +31,7 @@ EXIT_INVALID = 1
 EXIT_USAGE = 2
 EXIT_PROBE = 3
 PROBE_TIMEOUT_SECONDS = 10
+UNAVAILABLE_CONFIRMATION_DELAY_SECONDS = 1.0
 V1_KEYS = {
     "ao": {
         "cli",
@@ -391,6 +393,26 @@ def _validate_origin(value: object, label: str) -> str:
     return value
 
 
+def _is_unavailable_observation(probes: Mapping[str, Evidence]) -> bool:
+    """Return whether one host observation has the exact unavailable signature."""
+    service = probes["systemd-active"]
+    health_probe = probes["healthz"]
+    ready_probe = probes["readyz"]
+    return (
+        service.status == "fail"
+        and service.detail in {"inactive", "failed"}
+        and health_probe.status == "fail"
+        and ready_probe.status == "fail"
+    )
+
+
+def _is_ao_not_installed_observation(probes: Mapping[str, Evidence]) -> bool:
+    ao_version = probes["ao-version"]
+    return ao_version.status == "fail" and ao_version.detail.startswith(
+        "FileNotFoundError:"
+    )
+
+
 def evaluate_daemon_state(
     probes: Mapping[str, Evidence],
     *,
@@ -400,6 +422,7 @@ def evaluate_daemon_state(
     ready: Mapping[str, object],
     core_doctor_failure: bool = False,
     expected_port: int = 3001,
+    unavailable_confirmed: bool = False,
 ) -> str:
     """Classify daemon state from authoritative probe values only."""
     if context != "host":
@@ -468,18 +491,9 @@ def evaluate_daemon_state(
         and not core_doctor_failure
     ):
         return "ready"
-    if (
-        probes["ao-version"].status == "fail"
-        and context == "host"
-        and probes["ao-version"].detail.startswith("FileNotFoundError:")
-    ):
+    if context == "host" and _is_ao_not_installed_observation(probes):
         return "not_installed"
-    if (
-        context == "host"
-        and service.detail in {"inactive", "failed"}
-        and health_probe.status == "fail"
-        and ready_probe.status == "fail"
-    ):
+    if unavailable_confirmed and _is_unavailable_observation(probes):
         return "unavailable"
     return "indeterminate"
 
@@ -597,7 +611,7 @@ def evaluate_known_issues(
         issues.append("AO-GLIBC-INCOMPATIBLE")
     if _version_before(capabilities.get("tmux_version"), (3, 5)):
         issues.append("AO-TMUX-TOO-OLD")
-    if capabilities.get("codex_home_compatible") is False:
+    if context == "host" and capabilities.get("codex_home_compatible") is False:
         issues.append("AO-CODEX-HOME-CONFLICT")
     if (
         terminal is not None
@@ -709,6 +723,42 @@ def inspect_host(
             ("curl", "--noproxy", "*", "-fsS", base + ready),
         ),
     ]
+    unavailable_confirmed = False
+    initial_by_name = {item.id: item for item in evidence}
+    if (
+        context == "host"
+        and not _is_ao_not_installed_observation(initial_by_name)
+        and _is_unavailable_observation(initial_by_name)
+    ):
+        time.sleep(UNAVAILABLE_CONFIRMATION_DELAY_SECONDS)
+        confirmation = [
+            _probe(
+                runner,
+                authoritative_owner,
+                "systemd-active-confirmation",
+                ("systemctl", "--user", "is-active", service),
+            ),
+            _probe(
+                runner,
+                daemon_endpoint_owner,
+                "healthz-confirmation",
+                ("curl", "--noproxy", "*", "-fsS", base + health),
+            ),
+            _probe(
+                runner,
+                daemon_endpoint_owner,
+                "readyz-confirmation",
+                ("curl", "--noproxy", "*", "-fsS", base + ready),
+            ),
+        ]
+        evidence.extend(confirmation)
+        unavailable_confirmed = _is_unavailable_observation(
+            {
+                "systemd-active": confirmation[0],
+                "healthz": confirmation[1],
+                "readyz": confirmation[2],
+            }
+        )
     evidence.append(
         _probe_dashboard(
             runner,
@@ -778,6 +828,7 @@ def inspect_host(
         ready=ready_payload,
         core_doctor_failure=core_doctor_failure,
         expected_port=cast(int, urllib.parse.urlsplit(base).port),
+        unavailable_confirmed=unavailable_confirmed,
     )
     tmux_match = re.search(r"\btmux\s+(\d+(?:\.\d+)+)", by_name["tmux"].detail)
     glibc_match = re.search(r"(\d+(?:\.\d+)+)", by_name["glibc"].detail)
@@ -794,11 +845,12 @@ def inspect_host(
     codex_home_compatible: bool | None = None
     if ao_profile is not None:
         desired_process_containment = ao_profile.get("process_containment", "legacy")
-        try:
-            _validate_codex_home(Path(cast(str, ao_profile["codex_home"])))
-            codex_home_compatible = True
-        except CalibrationError:
-            codex_home_compatible = False
+        if context == "host":
+            try:
+                _validate_codex_home(Path(cast(str, ao_profile["codex_home"])))
+                codex_home_compatible = True
+            except CalibrationError:
+                codex_home_compatible = False
     capabilities: dict[str, object] = {
         "loopback_base_url": base,
         "ao_version_text": by_name["ao-version"].detail,
@@ -1756,6 +1808,16 @@ def _candidate_files(profile: Mapping[str, object]) -> dict[str, bytes]:
             "events { worker_connections 64; }\n"
             "http {\n"
             "  access_log off;\n"
+            "  default_type application/octet-stream;\n"
+            "  types {\n"
+            "    text/html html;\n"
+            "    text/css css;\n"
+            "    application/javascript js;\n"
+            "    application/json json;\n"
+            "    image/png png;\n"
+            "    image/svg+xml svg;\n"
+            "    font/woff2 woff2;\n"
+            "  }\n"
             f"  client_body_temp_path {paths['state_root']}/nginx-client-body;\n"
             f"  proxy_temp_path {paths['state_root']}/nginx-proxy;\n"
             f"  fastcgi_temp_path {paths['state_root']}/nginx-fastcgi;\n"
