@@ -34,6 +34,12 @@ EXIT_PROBE = 3
 PROBE_TIMEOUT_SECONDS = 10
 UNAVAILABLE_CONFIRMATION_DELAY_SECONDS = 1.0
 CURL_PROBE_PREFIX = ("curl", "-q", "--noproxy", "*")
+AO_PROBE_ENVIRONMENT_OVERRIDES = (
+    "AO_DATA_DIR",
+    "AO_PORT",
+    "AO_RUN_FILE",
+    "CODEX_HOME",
+)
 V1_KEYS = {
     "ao": {
         "cli",
@@ -75,20 +81,7 @@ V2_ADDITIONS = {
     "dashboard": {"mode", "nginx_executable", "pid_file"},
     "terminal": {"origin_mode"},
 }
-DOCTOR_CORE_CHECKS = {
-    "config",
-    "data-dir",
-    "data-dir-write",
-    "sqlite",
-    "hooks-log",
-    "daemon",
-    "git",
-    "tmux",
-    "ao-binary",
-    "claude-code",
-    "codex",
-    "codex-launch-flags",
-}
+DOCTOR_EXTERNAL_CHECKS = {"github-token"}
 
 
 class CalibrationError(RuntimeError):
@@ -143,7 +136,11 @@ def _emit(
     print(json.dumps(payload, indent=2, sort_keys=True))
 
 
-def _run(command: Sequence[str]) -> subprocess.CompletedProcess[str]:
+def _run(
+    command: Sequence[str],
+    *,
+    environment: Mapping[str, str] | None = None,
+) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         list(command),
         check=False,
@@ -151,9 +148,35 @@ def _run(command: Sequence[str]) -> subprocess.CompletedProcess[str]:
         text=True,
         encoding="utf-8",
         errors="replace",
-        env=os.environ.copy(),
+        env=dict(environment) if environment is not None else os.environ.copy(),
         timeout=PROBE_TIMEOUT_SECONDS,
     )
+
+
+def _inspection_environment(
+    profile: Mapping[str, object] | None,
+) -> dict[str, str]:
+    environment = os.environ.copy()
+    for name in AO_PROBE_ENVIRONMENT_OVERRIDES:
+        environment.pop(name, None)
+    if profile is not None:
+        ao = cast(dict[str, object], profile["ao"])
+        port = urllib.parse.urlsplit(cast(str, ao["loopback_base_url"])).port
+        environment.update(
+            {
+                "AO_DATA_DIR": cast(str, ao["data_dir"]),
+                "AO_PORT": str(port),
+                "CODEX_HOME": cast(str, ao["codex_home"]),
+            }
+        )
+    return environment
+
+
+def _environment_runner(environment: Mapping[str, str]) -> Runner:
+    def run(command: Sequence[str]) -> subprocess.CompletedProcess[str]:
+        return _run(command, environment=environment)
+
+    return run
 
 
 def _probe(runner: Runner, owner: str, name: str, command: Sequence[str]) -> Evidence:
@@ -553,12 +576,9 @@ def _doctor_failure_classes(doctor: Mapping[str, object]) -> tuple[bool, bool]:
                 and isinstance(level, str)
                 and level in {"FAIL", "ERROR"}
             ):
-                if any(
-                    token in name.casefold()
-                    for token in ("auth", "github", "token", "integration")
-                ):
+                if name in DOCTOR_EXTERNAL_CHECKS:
                     external_failure = True
-                elif name in DOCTOR_CORE_CHECKS or name:
+                else:
                     core_failure = True
     return external_failure, core_failure
 
@@ -628,12 +648,18 @@ def evaluate_known_issues(
     if context == "host" and capabilities.get("codex_home_compatible") is False:
         issues.append("AO-CODEX-HOME-CONFLICT")
     if (
-        terminal is not None
+        context == "host"
+        and terminal is not None
         and terminal.get("desired_enabled") is True
+        and probes["mux"].owner == "host"
         and probes["mux"].status == "fail"
     ):
         issues.append("AO-DASHBOARD-MUX-NOT-PROXIED")
-    if terminal is not None and terminal.get("origin_mode", "preserve") != "preserve":
+    if (
+        terminal is not None
+        and terminal.get("desired_enabled") is True
+        and terminal.get("origin_mode", "preserve") != "preserve"
+    ):
         issues.append("AO-DASHBOARD-UPSTREAM-ORIGIN-REWRITE")
     if capabilities.get("effective_process_containment") != "systemd-scope-verified":
         issues.append("AO-PROCESS-CONTAINMENT-UNVERIFIED")
@@ -641,7 +667,7 @@ def evaluate_known_issues(
 
 
 def inspect_host(
-    runner: Runner = _run,
+    runner: Runner | None = None,
     *,
     profile: Path | None = None,
     context: str = "auto",
@@ -662,6 +688,8 @@ def inspect_host(
     if profile is not None and not profile.exists():
         raise CalibrationError(f"{profile} does not exist")
     parsed_profile = _load_profile(profile) if profile is not None else None
+    if runner is None:
+        runner = _environment_runner(_inspection_environment(parsed_profile))
     base = DEFAULT_BASE_URL
     health = "/healthz"
     ready = "/readyz"
@@ -1014,6 +1042,23 @@ def _mkdir_private_chain(path: Path) -> None:
         directory.chmod(0o700)
 
 
+def _validate_profile_host_path_ancestors(
+    profile: Mapping[str, object],
+) -> None:
+    ao = _section(profile, "ao")
+    paths = _section(profile, "paths")
+    directories = (
+        Path(cast(str, ao["data_dir"])),
+        Path(cast(str, ao["codex_home"])),
+        Path(cast(str, paths["private_authority"])).parent,
+        Path(cast(str, paths["desired_nginx_artifact"])).parent,
+        Path(cast(str, paths["desired_service_artifact"])).parent,
+        Path(cast(str, paths["state_root"])),
+    )
+    for directory in dict.fromkeys(directories):
+        _private_chain_missing_components(directory)
+
+
 def _validate_codex_home(path: Path) -> Path:
     home = _safe_path(path, may_create=False, directory=True)
     config = home / "config.toml"
@@ -1163,6 +1208,22 @@ def _validate_existing_path_role(
 def _validate_dashboard_path_roles(dashboard: Mapping[str, object]) -> None:
     if dashboard.get("mode", "read-only") != "read-only":
         return
+    role_paths = {
+        "document_root": Path(cast(str, dashboard["document_root"])),
+        "active_config": Path(cast(str, dashboard["active_config"])),
+        "nginx_executable": Path(cast(str, dashboard["nginx_executable"])),
+        "pid_file": Path(cast(str, dashboard["pid_file"])),
+    }
+    resolved_roles: dict[Path, str] = {}
+    for role, path in role_paths.items():
+        resolved = path.resolve(strict=False)
+        previous = resolved_roles.get(resolved)
+        if previous is not None:
+            raise CalibrationError(
+                "dashboard paths assigned incompatible roles must differ: "
+                f"{previous} and {role}"
+            )
+        resolved_roles[resolved] = role
     _validate_existing_path_role(
         Path(cast(str, dashboard["document_root"])),
         "dashboard.document_root",
@@ -1190,6 +1251,7 @@ def _validate_dashboard_path_roles(dashboard: Mapping[str, object]) -> None:
 
 def _load_profile(path: Path) -> dict[str, object]:
     safe = _safe_path(path, may_create=False, directory=False)
+    _private_chain_missing_components(safe.parent)
     try:
         profile = tomllib.loads(safe.read_text(encoding="utf-8"))
     except (OSError, tomllib.TOMLDecodeError) as exc:
@@ -1254,19 +1316,23 @@ def _load_profile(path: Path) -> dict[str, object]:
             or re.fullmatch(r"/[A-Za-z0-9/_-]*", value) is None
         ):
             raise CalibrationError(f"ao.{key} must be an absolute URL path")
+    if ao["health_path"] == ao["ready_path"]:
+        raise CalibrationError("ao.health_path and ao.ready_path must differ")
     listen_host = dashboard.get("listen_host")
     listen_port = dashboard.get("listen_port")
     readonly_cidrs = dashboard.get("trusted_readonly_cidrs")
     if not isinstance(listen_host, str):
         raise CalibrationError("dashboard.listen_host must be an IP address")
     try:
-        _parse_unscoped_ip_address(listen_host)
+        listen_ip = _parse_unscoped_ip_address(listen_host)
     except ValueError as exc:
         raise CalibrationError("dashboard.listen_host must be an IP address") from exc
     if type(listen_port) is not int or listen_port < 0 or listen_port > 65535:
         raise CalibrationError("dashboard.listen_port must be an integer port")
     if dashboard.get("mode", "read-only") == "read-only" and listen_port == 0:
         raise CalibrationError("enabled dashboard listen_port must be 1 through 65535")
+    if dashboard.get("mode", "read-only") == "read-only" and listen_ip.is_multicast:
+        raise CalibrationError("enabled dashboard listen_host must not be multicast")
     cidr_values = (
         cast(list[object], readonly_cidrs) if isinstance(readonly_cidrs, list) else []
     )
@@ -1344,12 +1410,14 @@ def _load_profile(path: Path) -> dict[str, object]:
             )
         _validate_terminal(terminal)
     _validate_no_listener_collision(profile)
+    canonical = _canonical_v2(profile)
+    _validate_profile_host_path_ancestors(canonical)
     if dashboard.get("mode", "read-only") == "read-only":
         if desired_service == rollback_service:
             raise CalibrationError(
                 "dashboard desired_service and rollback_service must differ"
             )
-        _validate_dashboard_path_roles(_section(_canonical_v2(profile), "dashboard"))
+        _validate_dashboard_path_roles(_section(canonical, "dashboard"))
         _validate_listener_network_families(
             listen_host,
             cast(list[str], cidr_values),
@@ -1405,6 +1473,9 @@ def _validate_terminal_v1(terminal: Mapping[str, object]) -> None:
 def _validate_terminal(terminal: Mapping[str, object]) -> None:
     _validate_terminal_shapes(terminal)
     enabled = terminal.get("desired_enabled")
+    trust_model = terminal.get("trust_model")
+    if trust_model not in {"untrusted", "trusted-single-user"}:
+        raise CalibrationError("terminal trust_model must be a supported value")
     origin_mode = terminal.get("origin_mode")
     if origin_mode is not None and origin_mode not in {
         "preserve",
@@ -1432,7 +1503,7 @@ def _validate_terminal(terminal: Mapping[str, object]) -> None:
             "terminal upstream",
             mux_path=origin_mode == "edge-validated-rewrite",
         )
-        if terminal.get("trust_model") != "trusted-single-user":
+        if trust_model != "trusted-single-user":
             raise CalibrationError("terminal requires trusted-single-user")
         if origin_mode is None:
             raise CalibrationError("terminal requires an explicit Origin mode")
@@ -1659,9 +1730,13 @@ def init_profile(
         )
     if dashboard_listen_host is not None:
         try:
-            _parse_unscoped_ip_address(dashboard_listen_host)
+            dashboard_address = _parse_unscoped_ip_address(dashboard_listen_host)
         except ValueError as exc:
             raise CalibrationError("dashboard requires an exact listen IP") from exc
+        if dashboard_enabled and dashboard_address.is_multicast:
+            raise CalibrationError(
+                "enabled dashboard listen host must not be multicast"
+            )
     if dashboard_listen_port is not None and (
         type(dashboard_listen_port) is not int
         or not 0 <= dashboard_listen_port <= 65535
@@ -1784,6 +1859,7 @@ def init_profile(
         "storage": {"boundaries": boundary_values},
     }
     canonical = _canonical_v2(profile)
+    _validate_profile_host_path_ancestors(canonical)
     _validate_dashboard_path_roles(_section(canonical, "dashboard"))
     _validate_terminal(_section(_section(canonical, "dashboard"), "terminal"))
     if dashboard_enabled:
@@ -2501,7 +2577,7 @@ def _parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main(argv: Sequence[str] | None = None, *, runner: Runner = _run) -> int:
+def main(argv: Sequence[str] | None = None, *, runner: Runner | None = None) -> int:
     """Run the fixed-schema JSON CLI with stable exit categories."""
     args = _parser().parse_args(argv)
     try:

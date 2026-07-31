@@ -10,7 +10,7 @@ import subprocess
 import sys
 import threading
 import tomllib
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import cast
 
@@ -24,8 +24,8 @@ LEGACY_V1_FIXTURE = REPOSITORY_ROOT / "tests/fixtures/ao_host_v1_legacy.toml"
 V1_PROFILE = """
 [ao]
 cli = "ao"
-data_dir = "/opt/example/ao-data"
-codex_home = "/opt/example/codex"
+data_dir = "/var/opt/example/ao-data"
+codex_home = "/var/opt/example/codex"
 daemon_service = "agent-orchestrator.service"
 loopback_base_url = "http://127.0.0.1:3001"
 health_path = "/healthz"
@@ -35,8 +35,8 @@ ready_path = "/readyz"
 listen_host = "127.0.0.1"
 listen_port = 8443
 trusted_readonly_cidrs = ["203.0.113.0/24"]
-document_root = "/opt/example/dashboard"
-active_config = "/opt/example/active.conf"
+document_root = "/var/opt/example/dashboard"
+active_config = "/var/opt/example/active.conf"
 desired_service = "ao-dashboard.service"
 rollback_service = "ao-dashboard-rollback.service"
 
@@ -51,10 +51,10 @@ upstream_origin = "http://127.0.0.1:3001"
 require_authentication_if = ["multi-user", "dynamic-address", "public-network"]
 
 [paths]
-private_authority = "/opt/example/private/AGENTS.md"
-desired_nginx_artifact = "/opt/example/nginx.conf"
-desired_service_artifact = "/opt/example/service.env"
-state_root = "/opt/example/state"
+private_authority = "/var/opt/example/private/AGENTS.md"
+desired_nginx_artifact = "/var/opt/example/nginx.conf"
+desired_service_artifact = "/var/opt/example/service.env"
+state_root = "/var/opt/example/state"
 """.lstrip()
 
 
@@ -543,13 +543,9 @@ def test_unauthorized_local_probe_source_is_unknown_not_degraded(
     assert len(runner.commands) == 10
 
 
-@pytest.mark.parametrize(
-    ("listen_host", "readonly_cidr"),
-    [("0.0.0.0", "0.0.0.0/0"), ("224.0.0.1", "224.0.0.0/4")],
-)
-def test_unspecified_or_multicast_listener_is_not_a_proven_source(
-    tmp_path: Path, listen_host: str, readonly_cidr: str
-) -> None:
+def test_unspecified_listener_is_not_a_proven_source(tmp_path: Path) -> None:
+    listen_host = "0.0.0.0"
+    readonly_cidr = "0.0.0.0/0"
     profile = tmp_path / "host.toml"
     profile.write_text(
         LEGACY_V1_FIXTURE.read_text(encoding="utf-8")
@@ -575,6 +571,66 @@ def test_unspecified_or_multicast_listener_is_not_a_proven_source(
     assert probes["dashboard-ui"]["status"] == "unknown"
     assert probes["mux"]["status"] == "unknown"
     assert len(runner.commands) == 10
+
+
+@pytest.mark.parametrize(
+    ("listen_host", "readonly_cidr"),
+    [("224.0.0.1", "224.0.0.0/4"), ("ff02::1", "ff00::/8")],
+)
+def test_enabled_multicast_listener_is_rejected(
+    tmp_path: Path,
+    codex_home: Path,
+    listen_host: str,
+    readonly_cidr: str,
+) -> None:
+    profile = tmp_path / f"multicast-{listen_host.replace(':', '-')}.toml"
+    profile.write_text(
+        V1_PROFILE.replace(
+            'listen_host = "127.0.0.1"', f'listen_host = "{listen_host}"'
+        ).replace(
+            'trusted_readonly_cidrs = ["203.0.113.0/24"]',
+            f'trusted_readonly_cidrs = ["{readonly_cidr}"]',
+        ),
+        encoding="utf-8",
+    )
+    profile.chmod(0o600)
+    with pytest.raises(host.CalibrationError, match="must not be multicast"):
+        host.plan_profile(profile)
+
+    if listen_host == "224.0.0.1":
+        with pytest.raises(host.CalibrationError, match="must not be multicast"):
+            host.init_profile(
+                tmp_path / "multicast-init.toml",
+                trust_model="trusted-single-user",
+                codex_home=codex_home,
+                data_dir=tmp_path / "multicast-data",
+                private_authority=tmp_path / "multicast-authority/AGENTS.md",
+                state_root=tmp_path / "multicast-state",
+                dashboard_enabled=True,
+                dashboard_listen_host=listen_host,
+                dashboard_listen_port=8443,
+                readonly_cidrs=(readonly_cidr,),
+                document_root=tmp_path / "multicast-dashboard",
+                nginx_executable=Path("/usr/sbin/nginx"),
+                nginx_pid_file=tmp_path / "multicast-state/nginx.pid",
+                active_config=tmp_path / "multicast-state/active.conf",
+                desired_service="ao-dashboard.service",
+                rollback_service="ao-dashboard-rollback.service",
+                desired_nginx_artifact=tmp_path / "multicast-state/nginx.conf",
+                desired_service_artifact=tmp_path / "multicast-state/nginx.service",
+            )
+
+    disabled = tmp_path / f"disabled-{listen_host.replace(':', '-')}.toml"
+    host.init_profile(
+        disabled,
+        trust_model="untrusted",
+        codex_home=codex_home,
+        data_dir=tmp_path / "disabled-data",
+        private_authority=tmp_path / "disabled-authority/AGENTS.md",
+        state_root=tmp_path / "disabled-state",
+        dashboard_listen_host=listen_host,
+    )
+    assert host.plan_profile(disabled)["schema_render"] == 2
 
 
 def test_ipv6_canonical_client_identity_authorizes_source_probe(
@@ -886,7 +942,7 @@ def test_profile_shape_rejections(
     elif kind == "ao-extra":
         text = text.replace("[ao]\n", f"[ao]\n{value}\n")
     else:
-        text = text.replace('codex_home = "/opt/example/codex"', value)
+        text = text.replace('codex_home = "/var/opt/example/codex"', value)
     path = tmp_path / "host.toml"
     path.write_text(text, encoding="utf-8")
     path.chmod(0o600)
@@ -1158,7 +1214,7 @@ def test_invalid_profile_and_init_rejections(
         host._section({"ao": {}}, "dashboard")
     nonstring = tmp_path / "nonstring.toml"
     nonstring.write_text(
-        V1_PROFILE.replace('codex_home = "/opt/example/codex"', "codex_home = 4"),
+        V1_PROFILE.replace('codex_home = "/var/opt/example/codex"', "codex_home = 4"),
         encoding="utf-8",
     )
     nonstring.chmod(0o600)
@@ -1251,6 +1307,91 @@ def test_init_rejects_writable_ancestor_above_private_parent(
 
 
 @pytest.mark.parametrize(
+    "field",
+    [
+        "data_dir",
+        "private_authority",
+        "state_root",
+        "codex_home",
+        "desired_nginx_artifact",
+    ],
+)
+def test_private_host_paths_require_trusted_ancestors_on_init_and_load(
+    tmp_path: Path, codex_home: Path, field: str
+) -> None:
+    shared = tmp_path / "shared-host-path"
+    shared.mkdir(mode=0o770)
+    shared.chmod(0o770)
+    selected = shared / field
+    selected.mkdir(mode=0o700)
+
+    selected_codex_home = codex_home
+    data_dir = tmp_path / "data"
+    private_authority = tmp_path / "authority/AGENTS.md"
+    state_root = tmp_path / "state"
+    nginx_artifact = tmp_path / "artifacts/nginx.conf"
+    if field == "data_dir":
+        data_dir = selected
+    elif field == "private_authority":
+        private_authority = selected / "AGENTS.md"
+    elif field == "state_root":
+        state_root = selected
+    elif field == "codex_home":
+        selected_codex_home = selected
+        for name in ("config.toml", "auth.json"):
+            destination = selected / name
+            destination.write_bytes((codex_home / name).read_bytes())
+            destination.chmod(0o600)
+    else:
+        nginx_artifact = selected / "nginx.conf"
+
+    target = tmp_path / f"unsafe-{field}.toml"
+
+    def initialize() -> dict[str, object]:
+        return host.init_profile(
+            target,
+            trust_model="untrusted",
+            codex_home=selected_codex_home,
+            data_dir=data_dir,
+            private_authority=private_authority,
+            state_root=state_root,
+            desired_nginx_artifact=nginx_artifact,
+        )
+
+    with pytest.raises(host.CalibrationError, match="existing ancestor"):
+        initialize()
+    assert not target.exists()
+
+    shared.chmod(0o1777)
+    assert initialize()["schema_version"] == 2
+
+    shared.chmod(0o770)
+    with pytest.raises(host.CalibrationError, match="existing ancestor"):
+        host.plan_profile(target)
+
+
+def test_load_rejects_missing_private_target_below_unsafe_ancestor(
+    tmp_path: Path,
+) -> None:
+    unsafe_parent = tmp_path / "shared-host-path"
+    unsafe_parent.mkdir(mode=0o770)
+    unsafe_parent.chmod(0o770)
+    missing_data_dir = unsafe_parent / "missing-data"
+    profile = tmp_path / "missing-below-unsafe.toml"
+    profile.write_text(
+        V1_PROFILE.replace(
+            'data_dir = "/var/opt/example/ao-data"',
+            f'data_dir = "{missing_data_dir}"',
+        ),
+        encoding="utf-8",
+    )
+    profile.chmod(0o600)
+
+    with pytest.raises(host.CalibrationError, match="existing ancestor"):
+        host.plan_profile(profile)
+
+
+@pytest.mark.parametrize(
     ("old", "new", "message"),
     [
         ('listen_host = "127.0.0.1"', "listen_host = 1", "listen_host"),
@@ -1296,6 +1437,19 @@ def test_dashboard_network_fields_fail_closed(
     profile.chmod(0o600)
     with pytest.raises(host.CalibrationError, match=message):
         host.plan_profile(profile)
+
+
+def test_health_and_readiness_paths_must_differ(tmp_path: Path) -> None:
+    profile = tmp_path / "same-health-ready.toml"
+    profile.write_text(
+        V1_PROFILE.replace('ready_path = "/readyz"', 'ready_path = "/healthz"'),
+        encoding="utf-8",
+    )
+    profile.chmod(0o600)
+    with pytest.raises(host.CalibrationError, match="must differ"):
+        host.plan_profile(profile)
+    with pytest.raises(host.CalibrationError, match="must differ"):
+        host.render_profile(profile, tmp_path / "candidate")
 
 
 @pytest.mark.parametrize(
@@ -1810,6 +1964,32 @@ def test_enabled_dashboard_validates_path_roles_and_distinct_services(
         )
     assert not (tmp_path / "same-service.toml").exists()
 
+    collision = tmp_path / "missing-role-collision"
+    with pytest.raises(host.CalibrationError, match="incompatible roles"):
+        initialize(
+            "role-collision",
+            document_root=collision,
+            active_config=collision,
+        )
+    assert not (tmp_path / "role-collision.toml").exists()
+
+    nested_state = tmp_path / "nested-state"
+    nested = initialize(
+        "nested-roles",
+        state_root=nested_state,
+        document_root=nested_state,
+        active_config=nested_state / "active.conf",
+        nginx_pid_file=nested_state / "nginx.pid",
+    )
+    assert nested.exists()
+    nested_payload = host._canonical_v2(host._load_profile(nested))
+    nested_dashboard = cast(dict[str, object], nested_payload["dashboard"])
+    nested_dashboard["active_config"] = nested_dashboard["document_root"]
+    nested.write_text(host._toml(nested_payload), encoding="utf-8")
+    nested.chmod(0o600)
+    with pytest.raises(host.CalibrationError, match="incompatible roles"):
+        host.plan_profile(nested)
+
     valid = initialize("valid")
     canonical = host._canonical_v2(host._load_profile(valid))
     cast(dict[str, object], canonical["dashboard"])["document_root"] = str(
@@ -1832,6 +2012,28 @@ def test_enabled_dashboard_validates_path_roles_and_distinct_services(
         rollback_service="ao-dashboard.service",
     )
     assert host.plan_profile(disabled)["schema_render"] == 2
+
+    invalid_trust = tmp_path / "disabled-invalid-trust.toml"
+    invalid_trust.write_text(
+        disabled.read_text(encoding="utf-8").replace(
+            'trust_model = "untrusted"', 'trust_model = "typo"'
+        ),
+        encoding="utf-8",
+    )
+    invalid_trust.chmod(0o600)
+    with pytest.raises(host.CalibrationError, match="supported value"):
+        host.plan_profile(invalid_trust)
+
+    disabled_trusted = tmp_path / "disabled-trusted.toml"
+    host.init_profile(
+        disabled_trusted,
+        trust_model="trusted-single-user",
+        codex_home=codex_home,
+        data_dir=tmp_path / "disabled-trusted-data",
+        private_authority=tmp_path / "disabled-trusted-authority/AGENTS.md",
+        state_root=tmp_path / "disabled-trusted-state",
+    )
+    assert host.plan_profile(disabled_trusted)["schema_render"] == 2
 
     legacy = tmp_path / "legacy-same-service.toml"
     legacy.write_text(
@@ -2698,6 +2900,69 @@ def test_run_and_json_helpers(monkeypatch: pytest.MonkeyPatch) -> None:
     assert not host._required_subset({}, {"name": str})
 
 
+def test_default_inspection_runner_neutralizes_ambient_ao_environment(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    profile: Path,
+) -> None:
+    ambient = {
+        "AO_DATA_DIR": "/tmp/ambient-data",
+        "AO_PORT": "9876",
+        "AO_RUN_FILE": "/tmp/ambient-running.json",
+        "CODEX_HOME": "/tmp/ambient-codex",
+    }
+    for name, value in ambient.items():
+        monkeypatch.setenv(name, value)
+
+    parsed = host._load_profile(profile)
+    configured = host._inspection_environment(parsed)
+    ao = cast(dict[str, object], parsed["ao"])
+    assert configured["AO_DATA_DIR"] == ao["data_dir"]
+    assert configured["AO_PORT"] == "3001"
+    assert configured["CODEX_HOME"] == ao["codex_home"]
+    assert "AO_RUN_FILE" not in configured
+    assert (
+        not set(host.AO_PROBE_ENVIRONMENT_OVERRIDES)
+        & host._inspection_environment(None).keys()
+    )
+
+    responses = inspect_responses()[:10]
+    observed: list[dict[str, str]] = []
+
+    def fake_run(
+        _command: Sequence[str],
+        *,
+        environment: Mapping[str, str] | None = None,
+    ) -> subprocess.CompletedProcess[str]:
+        assert environment is not None
+        observed.append(dict(environment))
+        return responses.pop(0)
+
+    monkeypatch.setattr(host, "_run", fake_run)
+    host.inspect_host(profile=profile, context="sandbox")
+    assert responses == []
+    assert observed and all(environment == configured for environment in observed)
+
+    responses.extend(inspect_responses()[:10])
+    observed.clear()
+    host.inspect_host(context="sandbox")
+    assert responses == []
+    assert observed and all(
+        not set(host.AO_PROBE_ENVIRONMENT_OVERRIDES) & environment.keys()
+        for environment in observed
+    )
+
+    responses.extend(inspect_responses()[:10])
+    observed.clear()
+    assert (
+        host.main(["inspect", "--profile", str(profile), "--context", "sandbox"])
+        == host.EXIT_PROBE
+    )
+    capsys.readouterr()
+    assert responses == []
+    assert observed and all(environment == configured for environment in observed)
+
+
 def test_pure_state_and_issue_evaluators() -> None:
     status: dict[str, object] = {
         "state": "ready",
@@ -2731,7 +2996,7 @@ def test_pure_state_and_issue_evaluators() -> None:
         "readyz": host.Evidence("readyz", "daemon", "pass", "ok"),
         "dashboard": host.Evidence("dashboard", "daemon", "pass", "ok"),
         "dashboard-ui": host.Evidence("dashboard-ui", "daemon", "pass", "text/html"),
-        "mux": host.Evidence("mux", "daemon", "fail", "404"),
+        "mux": host.Evidence("mux", "host", "fail", "404"),
     }
     assert (
         host.evaluate_daemon_state(
@@ -3052,6 +3317,40 @@ def test_pure_state_and_issue_evaluators() -> None:
         context="sandbox",
     )
     assert "AO-CODEX-HOME-CONFLICT" not in sandbox_issues
+    sandbox_mux = dict(probes)
+    sandbox_mux["mux"] = host.Evidence("mux", "sandbox", "fail", "unreachable")
+    sandbox_delivery_issues = host.evaluate_known_issues(
+        probes=sandbox_mux,
+        status={"state": "stale"},
+        doctor={"ok": False, "checks": []},
+        capabilities={
+            "glibc_version": "2.38",
+            "tmux_version": "3.5",
+            "codex_home_compatible": None,
+            "effective_process_containment": "systemd-scope-verified",
+        },
+        terminal={"desired_enabled": True, "origin_mode": "preserve"},
+        context="sandbox",
+    )
+    assert "AO-DASHBOARD-MUX-NOT-PROXIED" not in sandbox_delivery_issues
+
+    disabled_rewrite_issues = host.evaluate_known_issues(
+        probes=probes,
+        status={"state": "ready"},
+        doctor={"ok": True, "checks": []},
+        capabilities={
+            "glibc_version": "2.38",
+            "tmux_version": "3.5",
+            "codex_home_compatible": True,
+            "effective_process_containment": "systemd-scope-verified",
+        },
+        terminal={
+            "desired_enabled": False,
+            "origin_mode": "edge-validated-rewrite",
+        },
+        context="host",
+    )
+    assert "AO-DASHBOARD-UPSTREAM-ORIGIN-REWRITE" not in disabled_rewrite_issues
     malformed_issues = host.evaluate_known_issues(
         probes=probes,
         status={"state": []},
@@ -3451,7 +3750,7 @@ def test_profile_probe_and_path_fields_fail_closed(
     originals = {
         "loopback_base_url": 'loopback_base_url = "http://127.0.0.1:3001"',
         "health_path": 'health_path = "/healthz"',
-        "data_dir": 'data_dir = "/opt/example/ao-data"',
+        "data_dir": 'data_dir = "/var/opt/example/ao-data"',
         "cli": 'cli = "ao"',
     }
     key = replacement.split(" =", maxsplit=1)[0]
@@ -3533,8 +3832,8 @@ def test_url_validators_reject_types_and_invalid_ports() -> None:
     ("old", "new", "message"),
     [
         (
-            'data_dir = "/opt/example/ao-data"',
-            'data_dir = "/opt/example/ao-data;evil"',
+            'data_dir = "/var/opt/example/ao-data"',
+            'data_dir = "/var/opt/example/ao-data;evil"',
             "unsafe configuration syntax",
         ),
         (
@@ -3761,19 +4060,30 @@ def test_doctor_three_way_classification_matrix() -> None:
     assert cast(dict[str, object], core["states"])["daemon"] == "indeterminate"
     assert "AO-HOST-CONTEXT-MISMATCH" not in cast(list[str], core["known_issues"])
 
-    external = json.dumps(
+    unknown = json.dumps(
         {
             "ok": False,
             "checks": [{"name": "future-auth-integration", "level": "ERROR"}],
         }
     )
-    degraded = host.inspect_host(
-        FakeRunner(inspect_responses(doctor=external)), context="host"
+    conservative = host.inspect_host(
+        FakeRunner(inspect_responses(doctor=unknown)), context="host"
     )
-    assert cast(dict[str, object], degraded["states"]) == {
-        "daemon": "ready",
-        "delivery": "degraded",
+    assert cast(dict[str, object], conservative["states"]) == {
+        "daemon": "indeterminate",
+        "delivery": "not_applicable",
     }
+    assert host._doctor_failure_classes(
+        {"checks": [{"name": "tokenizer-cache", "level": "FAIL"}]}
+    ) == (False, True)
+    assert host._doctor_failure_classes(
+        {
+            "checks": [
+                {"name": "github-token", "level": "FAIL"},
+                {"name": "future-check", "level": "ERROR"},
+            ]
+        }
+    ) == (True, True)
 
 
 def test_auto_remains_indeterminate_without_explicit_host_attestation() -> None:
