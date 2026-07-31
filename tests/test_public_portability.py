@@ -22,6 +22,7 @@ PRIVATE_DEPLOYMENT_NETWORKS = tuple(
         "192." + "168.0.0/16",
     )
 )
+KNOWN_PRIVATE_TOKENS = (b"fq" + b"zhang",)
 # Vendored source may retain a private value when provenance requires it. Keep
 # each exception exact and reviewable instead of excluding thirdparty wholesale.
 THIRDPARTY_PROVENANCE_ALLOWLIST: dict[str, tuple[bytes, ...]] = {}
@@ -42,18 +43,19 @@ def tracked_text() -> dict[str, bytes]:
         path = REPOSITORY_ROOT / relative
         if not path.is_file():
             continue
-        content = path.read_bytes()
-        if b"\0" not in content:
-            tracked[relative] = content
+        tracked[relative] = path.read_bytes()
     return tracked
 
 
 def private_values(content: bytes) -> set[bytes]:
-    values = {
-        match.group()
-        for pattern in PERSONAL_HOME_PATTERNS
-        for match in pattern.finditer(content)
-    }
+    values = {token for token in KNOWN_PRIVATE_TOKENS if token in content}
+    values.update(
+        {
+            match.group()
+            for pattern in PERSONAL_HOME_PATTERNS
+            for match in pattern.finditer(content)
+        }
+    )
     for match in IPV4_CANDIDATE.finditer(content):
         candidate = match.group()
         try:
@@ -104,6 +106,23 @@ def test_private_value_detection_is_structural() -> None:
     )
     for sample in samples:
         assert private_values(sample)
+
+
+def test_known_private_username_is_denied_outside_home_paths() -> None:
+    samples = (
+        b"build-" + b"fq" + b"zhang.local",
+        b"/tmp/" + b"fq" + b"zhang-cache",
+    )
+    for sample in samples:
+        assert KNOWN_PRIVATE_TOKENS[0] in private_values(sample)
+
+
+def test_binary_tracked_content_is_scanned_without_decoding() -> None:
+    private_binary = b"\x89PNG\r\n\x1a\n\0host=" + b"fq" + b"zhang.local"
+    tracked = {"assets/private.png": private_binary}
+
+    expected = f"assets/private.png: {KNOWN_PRIVATE_TOKENS[0].decode()!r}"
+    assert portability_violations(tracked, thirdparty=False) == [expected]
 
 
 def test_retired_darwin_source_keeps_immutable_provenance_only() -> None:
