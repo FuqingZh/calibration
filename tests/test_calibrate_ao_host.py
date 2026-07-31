@@ -425,6 +425,106 @@ def test_unauthorized_local_probe_source_is_unknown_not_degraded(
     assert len(runner.commands) == 10
 
 
+@pytest.mark.parametrize(
+    ("listen_host", "readonly_cidr"),
+    [("0.0.0.0", "0.0.0.0/0"), ("224.0.0.1", "224.0.0.0/4")],
+)
+def test_unspecified_or_multicast_listener_is_not_a_proven_source(
+    tmp_path: Path, listen_host: str, readonly_cidr: str
+) -> None:
+    profile = tmp_path / "host.toml"
+    profile.write_text(
+        LEGACY_V1_FIXTURE.read_text(encoding="utf-8")
+        .replace('listen_host = "127.0.0.1"', f'listen_host = "{listen_host}"')
+        .replace(
+            'trusted_readonly_cidrs = ["203.0.113.0/24"]',
+            f'trusted_readonly_cidrs = ["{readonly_cidr}"]',
+        )
+        .replace(
+            'allowed_client_ips = ["203.0.113.7", "203.0.113.8"]',
+            f'allowed_client_ips = ["{listen_host}"]',
+        ),
+        encoding="utf-8",
+    )
+    profile.chmod(0o600)
+    runner = FakeRunner(inspect_responses())
+    report = host.inspect_host(runner, profile=profile, context="host")
+    probes = {
+        cast(str, probe["id"]): probe
+        for probe in cast(list[dict[str, object]], report["probes"])
+    }
+    assert probes["dashboard"]["status"] == "unknown"
+    assert probes["mux"]["status"] == "unknown"
+    assert len(runner.commands) == 10
+
+
+def test_ipv6_canonical_client_identity_authorizes_source_probe(
+    tmp_path: Path,
+) -> None:
+    profile = tmp_path / "host.toml"
+    profile.write_text(
+        LEGACY_V1_FIXTURE.read_text(encoding="utf-8")
+        .replace('listen_host = "127.0.0.1"', 'listen_host = "::1"')
+        .replace(
+            'trusted_readonly_cidrs = ["203.0.113.0/24"]',
+            'trusted_readonly_cidrs = ["::1/128"]',
+        )
+        .replace(
+            'allowed_client_ips = ["203.0.113.7", "203.0.113.8"]',
+            'allowed_client_ips = ["0:0:0:0:0:0:0:1"]',
+        ),
+        encoding="utf-8",
+    )
+    profile.chmod(0o600)
+    responses = inspect_responses()
+    responses[-1] = completed((), out="HTTP/1.1 101 Switching Protocols")
+    runner = FakeRunner(responses)
+    report = host.inspect_host(runner, profile=profile, context="host")
+    assert runner.commands[10][3:5] == ("--interface", "::1")
+    assert runner.commands[11][-3:-1] == ("--interface", "::1")
+    assert cast(dict[str, object], report["states"])["delivery"] == "ready"
+
+
+def test_bound_source_curl_45_is_unknown_but_external_failure_still_degrades(
+    tmp_path: Path,
+) -> None:
+    profile = tmp_path / "host.toml"
+    profile.write_text(
+        LEGACY_V1_FIXTURE.read_text(encoding="utf-8")
+        .replace(
+            'trusted_readonly_cidrs = ["203.0.113.0/24"]',
+            'trusted_readonly_cidrs = ["127.0.0.1/32"]',
+        )
+        .replace(
+            'allowed_client_ips = ["203.0.113.7", "203.0.113.8"]',
+            'allowed_client_ips = ["127.0.0.1"]',
+        ),
+        encoding="utf-8",
+    )
+    profile.chmod(0o600)
+    external = json.dumps(
+        {
+            "ok": False,
+            "failures": 1,
+            "checks": [{"name": "github-token", "level": "FAIL"}],
+        }
+    )
+    responses = inspect_responses(doctor=external)
+    responses[-2] = completed((), code=45, err="curl: (45) bind failed")
+    responses[-1] = completed((), code=45, err="curl: (45) bind failed")
+    report = host.inspect_host(FakeRunner(responses), profile=profile, context="host")
+    probes = {
+        cast(str, probe["id"]): probe
+        for probe in cast(list[dict[str, object]], report["probes"])
+    }
+    assert probes["dashboard"]["status"] == "unknown"
+    assert probes["mux"]["status"] == "unknown"
+    assert cast(dict[str, object], report["states"]) == {
+        "daemon": "ready",
+        "delivery": "degraded",
+    }
+
+
 def test_init_render_verify_round_trip_and_manifest(
     tmp_path: Path, codex_home: Path
 ) -> None:
@@ -523,16 +623,65 @@ def test_non_bmp_toml_round_trips_through_render_plan_and_verify(
     parsed = host._load_profile(profile)
     dashboard = cast(dict[str, object], parsed["dashboard"])
     terminal = cast(dict[str, object], dashboard["terminal"])
-    terminal["require_authentication_if"] = ["future-\U0001f680-policy"]
+    terminal["require_authentication_if"] = ["future-\U0001f680-policy", "del-\x7f"]
     profile.write_text(host._toml(parsed), encoding="utf-8")
     candidate = tmp_path / "unicode-candidate"
     host.render_profile(profile, candidate)
     rendered = candidate / "host.toml"
-    assert "\U0001f680" in rendered.read_text(encoding="utf-8")
+    rendered_text = rendered.read_text(encoding="utf-8")
+    assert "\U0001f680" in rendered_text
+    assert "\\u007f" in rendered_text
+    assert "\x7f" not in rendered_text
     assert host.plan_profile(rendered)["schema_read"] == 2
     assert host.verify_profile(profile, candidate=candidate)["valid"] is True
+    second = tmp_path / "unicode-candidate-second"
+    host.render_profile(rendered, second)
+    assert host.verify_profile(rendered, candidate=second)["valid"] is True
     with pytest.raises(host.CalibrationError, match="lone surrogates"):
         host._quote("\ud800")
+
+
+def test_init_lone_surrogate_fails_before_target_and_json_envelope_is_printable(
+    tmp_path: Path,
+    codex_home: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    target = tmp_path / "direct.toml"
+    with pytest.raises(host.CalibrationError):
+        host.init_profile(
+            target,
+            trust_model="untrusted",
+            codex_home=codex_home,
+            data_dir=tmp_path / "data",
+            private_authority=Path("/tmp/\ud800/AGENTS.md"),
+            state_root=tmp_path / "state",
+        )
+    assert not target.exists()
+    cli_target = tmp_path / "cli.toml"
+    assert (
+        host.main(
+            [
+                "init",
+                "--profile",
+                str(cli_target),
+                "--trust-model",
+                "untrusted",
+                "--codex-home",
+                str(codex_home),
+                "--data-dir",
+                str(tmp_path / "cli-data"),
+                "--private-authority",
+                "/tmp/\ud800/AGENTS.md",
+                "--state-root",
+                str(tmp_path / "cli-state"),
+            ]
+        )
+        == host.EXIT_INVALID
+    )
+    assert json.loads(capsys.readouterr().out)["capabilities"]["error"]["kind"] == (
+        "invalid"
+    )
+    assert not cli_target.exists()
 
 
 @pytest.mark.parametrize(
@@ -2417,6 +2566,9 @@ def test_unreadable_doctor_cannot_prove_host_ready(doctor: str) -> None:
         ["not-an-object"],
         [{"name": 7, "level": "PASS"}],
         [{"name": "config", "level": 7}],
+        [{"name": "", "level": "PASS"}],
+        [{"name": "config", "level": ""}],
+        [{"name": "config", "level": "MAYBE"}],
     ],
 )
 def test_malformed_doctor_checks_cannot_prove_host_ready(
@@ -2435,9 +2587,41 @@ def test_malformed_doctor_checks_cannot_prove_host_ready(
     )
     assert cast(dict[str, object], report["states"])["daemon"] == "indeterminate"
     capabilities = cast(dict[str, object], report["capabilities"])
+    assert capabilities["doctor_required_subset_valid"] is False
     assert cast(dict[str, object], capabilities["ao_doctor"])["extension"] == {
         "future": "preserved"
     }
+
+
+@pytest.mark.parametrize(
+    "doctor",
+    [
+        {"ok": True, "checks": [], "failures": -1},
+        {"ok": True, "checks": [], "failures": True},
+        {
+            "ok": True,
+            "checks": [{"name": "config", "level": "FAIL"}],
+            "failures": 1,
+        },
+        {
+            "ok": False,
+            "checks": [{"name": "config", "level": "FAIL"}],
+            "failures": 0,
+        },
+    ],
+)
+def test_doctor_failure_summary_contradictions_block_readiness(
+    doctor: dict[str, object],
+) -> None:
+    report = host.inspect_host(
+        FakeRunner(inspect_responses(doctor=json.dumps(doctor))),
+        context="host",
+    )
+    assert cast(dict[str, object], report["states"])["daemon"] == "indeterminate"
+    assert (
+        cast(dict[str, object], report["capabilities"])["doctor_required_subset_valid"]
+        is False
+    )
 
 
 def test_doctor_not_ok_without_external_failure_blocks_readiness() -> None:

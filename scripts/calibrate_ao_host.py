@@ -164,8 +164,17 @@ def _probe_mux(runner: Runner, owner: str, command: Sequence[str]) -> Evidence:
     except (OSError, subprocess.TimeoutExpired) as exc:
         return Evidence("mux", owner, "fail", f"{type(exc).__name__}: {exc}")
     detail = result.stdout.strip() or result.stderr.strip() or "no output"
+    if result.returncode == 45:
+        return Evidence("mux", owner, "unknown", detail)
     handshake = re.search(r"^HTTP/\S+\s+101(?:\s|$)", detail, re.MULTILINE)
     return Evidence("mux", owner, "pass" if handshake else "fail", detail)
+
+
+def _probe_dashboard(runner: Runner, owner: str, command: Sequence[str]) -> Evidence:
+    evidence = _probe(runner, owner, "dashboard", command)
+    if evidence.status == "fail" and "curl: (45)" in evidence.detail:
+        return Evidence("dashboard", owner, "unknown", evidence.detail)
+    return evidence
 
 
 def _json_object(text: str) -> dict[str, object]:
@@ -424,18 +433,30 @@ def _doctor_failure_classes(doctor: Mapping[str, object]) -> tuple[bool, bool]:
 
 
 def _doctor_checks_structurally_valid(doctor: Mapping[str, object]) -> bool:
-    checks = doctor.get("checks")
-    if not isinstance(checks, list):
+    if not _required_subset(doctor, {"ok": bool, "checks": list}):
         return False
+    checks = doctor.get("checks")
+    failure_count = 0
     for raw_item in cast(list[object], checks):
         if not isinstance(raw_item, dict):
             return False
         item = cast(dict[str, object], raw_item)
-        if not isinstance(item.get("name"), str) or not isinstance(
-            item.get("level"), str
+        name = item.get("name")
+        level = item.get("level")
+        if (
+            not isinstance(name, str)
+            or not name
+            or not isinstance(level, str)
+            or level not in {"PASS", "WARN", "FAIL", "ERROR"}
         ):
             return False
-    return True
+        failure_count += int(level in {"FAIL", "ERROR"})
+    failures = doctor.get("failures")
+    if failures is not None and (
+        type(failures) is not int or failures < 0 or failures != failure_count
+    ):
+        return False
+    return doctor["ok"] is (failure_count == 0)
 
 
 def _version_before(value: object, minimum: tuple[int, int]) -> bool:
@@ -532,14 +553,19 @@ def inspect_host(
                 cast(int, dashboard["listen_port"]),
             )
             listen_ip = ipaddress.ip_address(listen_host)
-            if any(
+            source_is_concrete = not (
+                listen_ip.is_unspecified or listen_ip.is_multicast
+            )
+            if source_is_concrete and any(
                 listen_ip in ipaddress.ip_network(cast(str, cidr), strict=False)
                 for cidr in cast(list[object], dashboard["trusted_readonly_cidrs"])
             ):
                 dashboard_source = listen_host
-            if listen_host in cast(
-                list[object], terminal_profile["allowed_client_ips"]
-            ):
+            allowed_client_ips = (
+                ipaddress.ip_address(cast(str, value))
+                for value in cast(list[object], terminal_profile["allowed_client_ips"])
+            )
+            if source_is_concrete and listen_ip in allowed_client_ips:
                 mux_source = listen_host
     authoritative_owner = "host" if context == "host" else "sandbox"
     daemon_endpoint_owner = "daemon" if context == "host" else "sandbox"
@@ -577,10 +603,9 @@ def inspect_host(
         ),
     ]
     evidence.append(
-        _probe(
+        _probe_dashboard(
             runner,
             dashboard_owner,
-            "dashboard",
             (
                 "curl",
                 "--noproxy",
@@ -634,16 +659,7 @@ def inspect_host(
     status = _json_object(by_name["status"].detail)
     doctor = _json_object(by_name["doctor"].detail)
     external_doctor_failure, core_doctor_failure = _doctor_failure_classes(doctor)
-    doctor_valid = _required_subset(
-        doctor, {"ok": bool, "checks": list}
-    ) and _doctor_checks_structurally_valid(doctor)
-    if (
-        doctor_valid
-        and doctor["ok"] is False
-        and not external_doctor_failure
-        and not core_doctor_failure
-    ):
-        core_doctor_failure = True
+    doctor_valid = _doctor_checks_structurally_valid(doctor)
     core_doctor_failure = core_doctor_failure or not doctor_valid
     health_payload = _json_object(by_name["healthz"].detail)
     ready_payload = _json_object(by_name["readyz"].detail)
@@ -693,9 +709,7 @@ def inspect_host(
         "healthz": health_payload,
         "readyz": ready_payload,
         "status_required_subset_valid": _required_subset(status, {"state": str}),
-        "doctor_required_subset_valid": _required_subset(
-            doctor, {"ok": bool, "checks": list}
-        ),
+        "doctor_required_subset_valid": doctor_valid,
     }
     delivery_state = evaluate_delivery_state(
         by_name,
@@ -1092,9 +1106,8 @@ def _quote(value: object) -> str:
     if isinstance(value, int):
         return str(value)
     if isinstance(value, str):
-        if any(0xD800 <= ord(character) <= 0xDFFF for character in value):
-            raise CalibrationError("TOML strings must not contain lone surrogates")
-        return json.dumps(value, ensure_ascii=False)
+        _reject_lone_surrogates(value, "TOML string")
+        return json.dumps(value, ensure_ascii=False).replace("\x7f", "\\u007f")
     if isinstance(value, list):
         return "[" + ", ".join(_quote(item) for item in cast(list[object], value)) + "]"
     if isinstance(value, dict):
@@ -1105,6 +1118,11 @@ def _quote(value: object) -> str:
             + " }"
         )
     raise CalibrationError(f"unsupported TOML value: {value!r}")
+
+
+def _reject_lone_surrogates(value: str, label: str) -> None:
+    if any(0xD800 <= ord(character) <= 0xDFFF for character in value):
+        raise CalibrationError(f"{label} must not contain lone surrogates")
 
 
 def _canonical_v2(profile: Mapping[str, object]) -> dict[str, object]:
@@ -1201,6 +1219,30 @@ def init_profile(
     origin_mode: str | None = None,
 ) -> dict[str, object]:
     """Create a canonical schema v2 profile with terminal disabled by default."""
+    init_scalars = (
+        path,
+        codex_home,
+        data_dir,
+        private_authority,
+        state_root,
+        document_root,
+        nginx_executable,
+        nginx_pid_file,
+        active_config,
+        desired_service,
+        rollback_service,
+        desired_nginx_artifact,
+        desired_service_artifact,
+        origin,
+        upstream,
+        upstream_origin,
+        origin_mode,
+        *readonly_cidrs,
+        *client_ips,
+    )
+    for scalar in init_scalars:
+        if scalar is not None:
+            _reject_lone_surrogates(str(scalar), "init input")
     target = _safe_path(path, may_create=True)
     if target.exists():
         raise CalibrationError(f"{target} already exists")
