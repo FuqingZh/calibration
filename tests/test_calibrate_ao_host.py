@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import os
 import runpy
@@ -11,7 +12,7 @@ import subprocess
 import sys
 import threading
 import tomllib
-from collections.abc import Mapping, Sequence
+from collections.abc import Generator, Iterator, Mapping, Sequence
 from pathlib import Path
 from typing import cast
 
@@ -100,6 +101,24 @@ def codex_home(tmp_path: Path) -> Path:
     auth.write_text("{}\n", encoding="utf-8")
     auth.chmod(0o600)
     return path
+
+
+@pytest.fixture(autouse=True)
+def normalize_sandbox_system_prefix(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Keep unit fixtures independent of a remapped writable-looking /usr."""
+    original_statvfs = os.statvfs
+
+    def normalized_statvfs(path: os.PathLike[str] | str) -> os.statvfs_result:
+        result = original_statvfs(path)
+        if Path(path) != Path("/usr"):
+            return result
+        fields = list(result)
+        fields[8] |= os.ST_RDONLY
+        return os.statvfs_result(fields)
+
+    monkeypatch.setattr(os, "statvfs", normalized_statvfs)
 
 
 @pytest.fixture
@@ -247,6 +266,59 @@ def test_legacy_v1_canonicalizes_to_self_readable_v2(tmp_path: Path) -> None:
     storage = cast(dict[str, object], readback["storage"])
     for boundary in cast(list[dict[str, object]], storage["boundaries"]):
         assert set(boundary) == {"path", "kind", "recursive_search"}
+
+
+@pytest.mark.parametrize(
+    ("trust_model", "canonical_trust_model"),
+    [
+        ("single-user-trusted-lan", "trusted-single-user"),
+        ("trusted-single-user", "trusted-single-user"),
+        ("untrusted", "untrusted"),
+    ],
+)
+def test_disabled_v1_trust_models_render_self_readable_v2(
+    tmp_path: Path, trust_model: str, canonical_trust_model: str
+) -> None:
+    profile = tmp_path / f"{trust_model}.toml"
+    profile.write_text(
+        V1_PROFILE.replace(
+            'trust_model = "trusted-single-user"',
+            f'trust_model = "{trust_model}"',
+        ),
+        encoding="utf-8",
+    )
+    profile.chmod(0o600)
+    candidate = tmp_path / f"candidate-{trust_model}"
+
+    host.plan_profile(profile)
+    host.render_profile(profile, candidate)
+    migrated = candidate / "host.toml"
+    host.plan_profile(migrated)
+    host.verify_profile(migrated)
+
+    payload = tomllib.loads(migrated.read_text(encoding="utf-8"))
+    assert payload["dashboard"]["terminal"]["trust_model"] == canonical_trust_model
+
+
+def test_disabled_v1_unknown_trust_model_fails_before_render(tmp_path: Path) -> None:
+    profile = tmp_path / "invalid.toml"
+    profile.write_text(
+        V1_PROFILE.replace(
+            'trust_model = "trusted-single-user"', 'trust_model = "typo"'
+        ),
+        encoding="utf-8",
+    )
+    profile.chmod(0o600)
+    candidate = tmp_path / "candidate"
+
+    with pytest.raises(host.CalibrationError, match="trust_model must be supported"):
+        host.plan_profile(profile)
+    with pytest.raises(host.CalibrationError, match="trust_model must be supported"):
+        host.render_profile(profile, candidate)
+    with pytest.raises(host.CalibrationError, match="trust_model must be supported"):
+        host.verify_profile(profile)
+    assert not candidate.exists()
+    assert not (tmp_path / ".candidate.staging").exists()
 
 
 @pytest.mark.parametrize(
@@ -1160,6 +1232,71 @@ def test_codex_auth_file_type_json_and_permissions(codex_home: Path) -> None:
         host._validate_codex_home(codex_home)
 
 
+def test_codex_auth_rejects_symlink_hardlink_and_foreign_owner(
+    codex_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    auth = codex_home / "auth.json"
+    external = tmp_path / "external-auth.json"
+    external.write_text("{}\n", encoding="utf-8")
+    external.chmod(0o600)
+
+    auth.unlink()
+    auth.symlink_to(external)
+    with pytest.raises(host.CalibrationError, match="real, singly linked"):
+        host._validate_codex_home(codex_home)
+
+    auth.unlink()
+    auth.write_text("{}\n", encoding="utf-8")
+    auth.chmod(0o600)
+    alias = tmp_path / "auth-alias.json"
+    os.link(auth, alias)
+    with pytest.raises(host.CalibrationError, match="real, singly linked"):
+        host._validate_codex_home(codex_home)
+    alias.unlink()
+
+    original_lstat = Path.lstat
+
+    def foreign_auth_lstat(self: Path) -> os.stat_result:
+        metadata = original_lstat(self)
+        if self != auth:
+            return metadata
+        fields = list(metadata)
+        fields[4] = os.geteuid() + 1
+        return os.stat_result(fields)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(Path, "lstat", foreign_auth_lstat)
+        with pytest.raises(host.CalibrationError, match="owned by the current user"):
+            host._validate_codex_home(codex_home)
+
+    def denied_auth_lstat(self: Path) -> os.stat_result:
+        if self == auth:
+            raise PermissionError("denied")
+        return original_lstat(self)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(Path, "lstat", denied_auth_lstat)
+        with pytest.raises(host.CalibrationError, match="cannot be inspected"):
+            host._validate_codex_home(codex_home)
+
+
+def test_profile_operations_recheck_codex_auth_link_identity(
+    profile: Path, codex_home: Path, tmp_path: Path
+) -> None:
+    alias = tmp_path / "published-auth.json"
+    os.link(codex_home / "auth.json", alias)
+    candidate = tmp_path / "candidate"
+
+    with pytest.raises(host.CalibrationError, match="real, singly linked"):
+        host.plan_profile(profile)
+    with pytest.raises(host.CalibrationError, match="real, singly linked"):
+        host.render_profile(profile, candidate)
+    with pytest.raises(host.CalibrationError, match="real, singly linked"):
+        host.verify_profile(profile)
+    assert not candidate.exists()
+    assert not (tmp_path / ".candidate.staging").exists()
+
+
 def test_safe_path_and_render_drift_rejections(
     tmp_path: Path, profile: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -1237,6 +1374,83 @@ def test_safe_path_and_render_drift_rejections(
         host.render_profile(profile, tmp_path / "missing" / "candidate")
 
 
+@pytest.mark.parametrize(
+    "role",
+    [
+        "ao.data_dir",
+        "ao.codex_home",
+        "ao.cli",
+        "dashboard.active_config",
+        "dashboard.nginx_executable",
+        "dashboard.pid_file",
+        "paths.private_authority",
+        "paths.desired_nginx_artifact",
+        "paths.desired_service_artifact",
+        "paths.state_root",
+    ],
+)
+def test_render_rejects_target_equal_to_configured_host_role(
+    profile: Path, tmp_path: Path, role: str
+) -> None:
+    payload = host._canonical_v2(host._load_profile(profile))
+    ao = cast(dict[str, object], payload["ao"])
+    dashboard = cast(dict[str, object], payload["dashboard"])
+    paths = cast(dict[str, object], payload["paths"])
+    target = tmp_path / "candidate"
+
+    section_name, key = role.split(".", maxsplit=1)
+    section = {"ao": ao, "dashboard": dashboard, "paths": paths}[section_name]
+    section[key] = str(target)
+    if role == "dashboard.pid_file":
+        paths["state_root"] = str(tmp_path)
+    elif role == "paths.state_root":
+        dashboard["pid_file"] = str(target / "nginx.pid")
+    profile.write_text(host._toml(payload), encoding="utf-8")
+    profile.chmod(0o600)
+
+    with pytest.raises(host.CalibrationError, match="overlap"):
+        host.render_profile(profile, target)
+    assert not target.exists()
+    assert not (tmp_path / ".candidate.staging").exists()
+
+
+def test_render_rejects_bidirectional_and_staging_host_role_overlap(
+    profile: Path, tmp_path: Path
+) -> None:
+    target = tmp_path / "candidate"
+    payload = host._canonical_v2(host._load_profile(profile))
+    ao = cast(dict[str, object], payload["ao"])
+    paths = cast(dict[str, object], payload["paths"])
+
+    ao["data_dir"] = str(tmp_path / "runtime" / "candidate-data")
+    nested_profile = tmp_path / "nested.toml"
+    nested_profile.write_text(host._toml(payload), encoding="utf-8")
+    nested_profile.chmod(0o600)
+    with pytest.raises(host.CalibrationError, match=r"overlap ao\.data_dir"):
+        host.render_profile(nested_profile, tmp_path / "runtime")
+
+    ao["data_dir"] = str(target / "live-data")
+    containing_profile = tmp_path / "containing.toml"
+    containing_profile.write_text(host._toml(payload), encoding="utf-8")
+    containing_profile.chmod(0o600)
+    with pytest.raises(host.CalibrationError, match=r"overlap ao\.data_dir"):
+        host.render_profile(containing_profile, target)
+
+    ao["data_dir"] = str(tmp_path / "data")
+    staging = tmp_path / ".candidate.staging"
+    paths["desired_nginx_artifact"] = str(staging)
+    staging_profile = tmp_path / "staging.toml"
+    staging_profile.write_text(host._toml(payload), encoding="utf-8")
+    staging_profile.chmod(0o600)
+    with pytest.raises(host.CalibrationError, match="render sibling staging"):
+        host.render_profile(staging_profile, target)
+
+    with pytest.raises(host.CalibrationError, match="overlap source profile"):
+        host.render_profile(profile, profile.parent)
+    assert not target.exists()
+    assert not staging.exists()
+
+
 def test_private_ancestor_and_external_role_inspection_fail_closed(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -1308,6 +1522,13 @@ def test_private_ancestor_and_external_role_inspection_fail_closed(
         )
     with pytest.raises(host.CalibrationError, match="regular file"):
         host._validate_control_path(dangling, "dashboard.active_config")
+
+    regular_file = tmp_path / "regular-file"
+    regular_file.write_text("file", encoding="utf-8")
+    with pytest.raises(host.CalibrationError, match="must be a directory"):
+        host._validate_existing_path_role(
+            regular_file, "dashboard.document_root", directory=True
+        )
 
     shared_target = tmp_path / "shared-target"
     shared_target.mkdir(mode=0o770)
@@ -1455,10 +1676,13 @@ def test_group_writable_ancestor_statvfs_failure_is_closed(
         host._private_chain_missing_components(system_directory / "missing")
 
 
-def test_root_owned_root_group_writable_ancestor_is_trusted(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+@pytest.mark.parametrize("read_only", [False, True])
+def test_root_owned_root_group_writable_ancestor_requires_readonly_filesystem(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, read_only: bool
 ) -> None:
     original_lstat = Path.lstat
+    original_statvfs = os.statvfs
+    original_euid = os.geteuid()
 
     root_group_directory = tmp_path / "root-group-directory"
     root_group_directory.mkdir(mode=0o775)
@@ -1466,17 +1690,32 @@ def test_root_owned_root_group_writable_ancestor_is_trusted(
 
     def root_group_lstat(self: Path) -> os.stat_result:
         metadata = original_lstat(self)
-        if self != root_group_directory:
+        if self != root_group_directory and metadata.st_uid != original_euid:
             return metadata
         fields = list(metadata)
         fields[4] = 0
-        fields[5] = 0
+        if self == root_group_directory:
+            fields[5] = 0
         return os.stat_result(fields)
 
+    def controlled_statvfs(path: os.PathLike[str] | str) -> os.statvfs_result:
+        fields = list(original_statvfs(path))
+        if read_only:
+            fields[8] |= os.ST_RDONLY
+        else:
+            fields[8] &= ~os.ST_RDONLY
+        return os.statvfs_result(fields)
+
     monkeypatch.setattr(Path, "lstat", root_group_lstat)
-    assert host._private_chain_missing_components(root_group_directory / "missing") == [
-        root_group_directory / "missing"
-    ]
+    monkeypatch.setattr(os, "geteuid", lambda: 0)
+    monkeypatch.setattr(os, "statvfs", controlled_statvfs)
+    if read_only:
+        assert host._private_chain_missing_components(
+            root_group_directory / "missing"
+        ) == [root_group_directory / "missing"]
+    else:
+        with pytest.raises(host.CalibrationError, match="existing ancestor"):
+            host._private_chain_missing_components(root_group_directory / "missing")
 
 
 def test_invalid_profile_and_init_rejections(
@@ -2479,6 +2718,240 @@ def test_enabled_dashboard_validates_path_roles_and_distinct_services(
         host.plan_profile(legacy)
 
 
+def test_dashboard_document_tree_is_real_trusted_and_bounded(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = tmp_path / "dashboard"
+    nested = root / "assets"
+    nested.mkdir(parents=True, mode=0o755)
+    root.chmod(0o755)
+    nested.chmod(0o755)
+    asset = nested / "app.js"
+    asset.write_text("safe", encoding="utf-8")
+    asset.chmod(0o644)
+
+    host._validate_dashboard_document_tree(root, protected_file_identities=())
+
+    root.chmod(0o1777)
+    with pytest.raises(host.CalibrationError, match="group/other-writable"):
+        host._validate_dashboard_document_tree(root, protected_file_identities=())
+    root.chmod(0o755)
+
+    nested.chmod(0o770)
+    with pytest.raises(host.CalibrationError, match="group/other-writable"):
+        host._validate_dashboard_document_tree(root, protected_file_identities=())
+    nested.chmod(0o755)
+
+    metadata = asset.lstat()
+    with pytest.raises(host.CalibrationError, match="aliases a protected file"):
+        host._validate_dashboard_document_tree(
+            root,
+            protected_file_identities=((metadata.st_dev, metadata.st_ino),),
+        )
+
+    asset.chmod(0o664)
+    with pytest.raises(host.CalibrationError, match="group/other-writable"):
+        host._validate_dashboard_document_tree(root, protected_file_identities=())
+    asset.chmod(0o644)
+
+    linked = root / "linked.js"
+    linked.symlink_to(asset)
+    with pytest.raises(host.CalibrationError, match="real directory or regular file"):
+        host._validate_dashboard_document_tree(root, protected_file_identities=())
+    linked.unlink()
+
+    fifo = root / "events"
+    os.mkfifo(fifo)
+    with pytest.raises(host.CalibrationError, match="real directory or regular file"):
+        host._validate_dashboard_document_tree(root, protected_file_identities=())
+    fifo.unlink()
+
+    with monkeypatch.context() as patch:
+        patch.setattr(host, "DASHBOARD_TREE_ENTRY_LIMIT", 1)
+        with pytest.raises(host.CalibrationError, match="bounded metadata"):
+            host._validate_dashboard_document_tree(root, protected_file_identities=())
+
+    original_lstat = Path.lstat
+
+    def foreign_asset_lstat(self: Path) -> os.stat_result:
+        item_metadata = original_lstat(self)
+        if self != asset:
+            return item_metadata
+        fields = list(item_metadata)
+        fields[4] = max(0, os.geteuid(), Path("/").lstat().st_uid) + 1
+        return os.stat_result(fields)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(Path, "lstat", foreign_asset_lstat)
+        with pytest.raises(host.CalibrationError, match="trusted owner"):
+            host._validate_dashboard_document_tree(root, protected_file_identities=())
+
+    original_scandir = os.scandir
+
+    def denied_scandir(path: os.PathLike[str] | str) -> Iterator[os.DirEntry[str]]:
+        if Path(path) == root:
+            raise PermissionError("denied")
+        return original_scandir(path)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(os, "scandir", denied_scandir)
+        with pytest.raises(host.CalibrationError, match="cannot be scanned"):
+            host._validate_dashboard_document_tree(root, protected_file_identities=())
+
+
+def test_dashboard_tree_limit_stops_directory_enumeration(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = tmp_path / "dashboard"
+    root.mkdir(mode=0o700)
+    for name in ("one", "two", "three"):
+        item = root / name
+        item.write_text("safe", encoding="utf-8")
+        item.chmod(0o600)
+    original_scandir = os.scandir
+    consumed = 0
+
+    @contextlib.contextmanager
+    def counting_scandir(
+        path: os.PathLike[str] | str,
+    ) -> Generator[Iterator[os.DirEntry[str]]]:
+        nonlocal consumed
+        with original_scandir(path) as entries:
+            if Path(path) != root:
+                yield entries
+                return
+
+            def counted_entries() -> Iterator[os.DirEntry[str]]:
+                nonlocal consumed
+                for entry in entries:
+                    consumed += 1
+                    yield entry
+
+            yield counted_entries()
+
+    monkeypatch.setattr(os, "scandir", counting_scandir)
+    monkeypatch.setattr(host, "DASHBOARD_TREE_ENTRY_LIMIT", 2)
+    with pytest.raises(host.CalibrationError, match="bounded metadata"):
+        host._validate_dashboard_document_tree(root, protected_file_identities=())
+    assert consumed == 2
+
+
+def test_dashboard_document_tree_inspection_errors_fail_closed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = tmp_path / "dashboard"
+    root.mkdir(mode=0o700)
+    asset = root / "index.html"
+    asset.write_text("safe", encoding="utf-8")
+    asset.chmod(0o600)
+    original_lstat = Path.lstat
+
+    def denied_root_lstat(self: Path) -> os.stat_result:
+        if self == root:
+            raise PermissionError("root denied")
+        return original_lstat(self)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(Path, "lstat", denied_root_lstat)
+        with pytest.raises(host.CalibrationError, match="document_root cannot"):
+            host._validate_dashboard_document_tree(root, protected_file_identities=())
+
+    missing = tmp_path / "missing-dashboard"
+    boundary_calls = 0
+
+    def denied_creation_boundary_lstat(self: Path) -> os.stat_result:
+        nonlocal boundary_calls
+        if self == tmp_path:
+            boundary_calls += 1
+            if boundary_calls == 3:
+                raise PermissionError("boundary denied")
+        return original_lstat(self)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(Path, "lstat", denied_creation_boundary_lstat)
+        with pytest.raises(host.CalibrationError, match="creation boundary"):
+            host._validate_dashboard_document_tree(
+                missing, protected_file_identities=()
+            )
+
+    anchor_calls = 0
+
+    def denied_trust_anchor_lstat(self: Path) -> os.stat_result:
+        nonlocal anchor_calls
+        if self == Path("/"):
+            anchor_calls += 1
+            if anchor_calls == 2:
+                raise PermissionError("anchor denied")
+        return original_lstat(self)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(Path, "lstat", denied_trust_anchor_lstat)
+        with pytest.raises(host.CalibrationError, match="document_root cannot"):
+            host._validate_dashboard_document_tree(root, protected_file_identities=())
+
+    def denied_asset_lstat(self: Path) -> os.stat_result:
+        if self == asset:
+            raise PermissionError("asset denied")
+        return original_lstat(self)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(Path, "lstat", denied_asset_lstat)
+        with pytest.raises(host.CalibrationError, match=r"entry .* cannot"):
+            host._validate_dashboard_document_tree(root, protected_file_identities=())
+
+
+def test_dashboard_document_root_creation_and_symlink_boundaries(
+    tmp_path: Path, codex_home: Path
+) -> None:
+    nginx = tmp_path / "bin" / "nginx"
+    nginx.parent.mkdir(mode=0o700)
+    nginx.write_text("#!/bin/sh\n", encoding="utf-8")
+    nginx.chmod(0o700)
+
+    def initialize(name: str, document_root: Path, *, enabled: bool = True) -> Path:
+        state = tmp_path / f"{name}-state"
+        target = tmp_path / f"{name}.toml"
+        host.init_profile(
+            target,
+            trust_model="untrusted",
+            codex_home=codex_home,
+            data_dir=tmp_path / f"{name}-data",
+            private_authority=tmp_path / f"{name}-private/AGENTS.md",
+            state_root=state,
+            dashboard_enabled=enabled,
+            dashboard_listen_host="127.0.0.1",
+            dashboard_listen_port=18443,
+            readonly_cidrs=("127.0.0.1/32",),
+            document_root=document_root,
+            nginx_executable=nginx,
+            nginx_pid_file=state / "nginx.pid",
+            active_config=state / "active.conf",
+            desired_service="ao-dashboard.service",
+            rollback_service="ao-dashboard-rollback.service",
+            desired_nginx_artifact=state / "nginx.conf",
+            desired_service_artifact=state / "nginx.service",
+        )
+        return target
+
+    real_root = tmp_path / "real-dashboard"
+    real_root.mkdir(mode=0o755)
+    linked_root = tmp_path / "linked-dashboard"
+    linked_root.symlink_to(real_root, target_is_directory=True)
+    with pytest.raises(host.CalibrationError, match="real directory"):
+        initialize("linked", linked_root)
+    assert initialize("disabled-linked", linked_root, enabled=False).exists()
+
+    sticky = tmp_path / "sticky"
+    sticky.mkdir(mode=0o1777)
+    sticky.chmod(0o1777)
+    with pytest.raises(host.CalibrationError, match="creation boundary"):
+        initialize("sticky-missing", sticky / "dashboard")
+
+    private = tmp_path / "private-parent"
+    private.mkdir(mode=0o700)
+    assert initialize("private-missing", private / "dashboard").exists()
+
+
 def test_terminal_requires_explicit_origin_mode(
     tmp_path: Path, codex_home: Path
 ) -> None:
@@ -2825,6 +3298,13 @@ def test_reconstruction_canary_validates_existing_root_and_stage_payloads(
         )
     with pytest.raises(host.CalibrationError, match="invalid capabilities"):
         host._require_canary_stage("render", (0, {"command": "render"}))
+    with pytest.raises(host.CalibrationError, match="invalid probes"):
+        host._require_canary_probe_statuses({"probes": {}}, {"dashboard": "pass"})
+    with pytest.raises(host.CalibrationError, match="probe status mismatch"):
+        host._require_canary_probe_statuses(
+            {"probes": [{"id": "dashboard", "status": "unknown"}, "ignored"]},
+            {"dashboard": "pass", "mux": "pass"},
+        )
 
 
 def test_reconstruction_canary_passes_real_nginx_when_available(

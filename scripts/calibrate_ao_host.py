@@ -33,6 +33,7 @@ EXIT_USAGE = 2
 EXIT_PROBE = 3
 PROBE_TIMEOUT_SECONDS = 10
 UNAVAILABLE_CONFIRMATION_DELAY_SECONDS = 1.0
+DASHBOARD_TREE_ENTRY_LIMIT = 10_000
 CURL_PROBE_PREFIX = ("curl", "-q", "--noproxy", "*")
 AO_PROBE_ENVIRONMENT_OVERRIDES = (
     "AO_DATA_DIR",
@@ -1052,11 +1053,8 @@ def _has_untrusted_directory_write(
     metadata: os.stat_result,
 ) -> bool:
     mode = stat.S_IMODE(metadata.st_mode)
-    trusted_system_group = metadata.st_uid == 0 and metadata.st_gid == 0
     read_only_filesystem = False
-    needs_read_only_proof = bool(mode & 0o002) or (
-        bool(mode & 0o020) and not trusted_system_group
-    )
+    needs_read_only_proof = bool(mode & 0o022)
     if needs_read_only_proof:
         try:
             read_only_filesystem = bool(os.statvfs(path).f_flag & os.ST_RDONLY)
@@ -1064,9 +1062,7 @@ def _has_untrusted_directory_write(
             raise CalibrationError(
                 f"{path} filesystem cannot be inspected: {exc}"
             ) from exc
-    unsafe_group_write = bool(mode & 0o020) and not (
-        trusted_system_group or read_only_filesystem
-    )
+    unsafe_group_write = bool(mode & 0o020) and not read_only_filesystem
     unsafe_other_write = bool(mode & 0o002) and not read_only_filesystem
     return unsafe_group_write or unsafe_other_write
 
@@ -1165,6 +1161,31 @@ def _validate_profile_host_path_ancestors(
         _validate_control_path(Path(cli), "ao.cli", executable=True)
 
 
+def _validate_codex_auth_file(home: Path) -> os.stat_result:
+    auth = home / "auth.json"
+    try:
+        auth_metadata = auth.lstat()
+    except FileNotFoundError:
+        raise CalibrationError(f"{auth} must be an authentication file") from None
+    except OSError as exc:
+        raise CalibrationError(f"{auth} cannot be inspected: {exc}") from exc
+    if not stat.S_ISREG(auth_metadata.st_mode) or auth_metadata.st_nlink != 1:
+        raise CalibrationError(
+            f"{auth} must be a real, singly linked authentication file"
+        )
+    if auth_metadata.st_uid != os.geteuid():
+        raise CalibrationError(f"{auth} must be owned by the current user")
+    if stat.S_IMODE(auth_metadata.st_mode) & 0o077:
+        raise CalibrationError(f"{auth} must not be accessible by group or other")
+    try:
+        auth_payload = json.loads(auth.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise CalibrationError(f"{auth} must contain valid JSON: {exc}") from exc
+    if not isinstance(auth_payload, dict):
+        raise CalibrationError(f"{auth} must contain a JSON object")
+    return auth_metadata
+
+
 def _validate_codex_home(path: Path) -> Path:
     home = _safe_path(path, may_create=False, directory=True)
     config = home / "config.toml"
@@ -1184,17 +1205,7 @@ def _validate_codex_home(path: Path) -> Path:
         raise CalibrationError(f"{config} requires apps=false and plugins=false")
     if "mcp_servers" in parsed:
         raise CalibrationError(f"{config} must not define top-level mcp_servers")
-    auth = home / "auth.json"
-    if not auth.is_file():
-        raise CalibrationError(f"{auth} must resolve to an authentication file")
-    if stat.S_IMODE(auth.stat().st_mode) & 0o077:
-        raise CalibrationError(f"{auth} must not be accessible by group or other")
-    try:
-        auth_payload = json.loads(auth.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
-        raise CalibrationError(f"{auth} must contain valid JSON: {exc}") from exc
-    if not isinstance(auth_payload, dict):
-        raise CalibrationError(f"{auth} must contain a JSON object")
+    _validate_codex_auth_file(home)
     return home
 
 
@@ -1361,7 +1372,7 @@ def _validate_control_path(
     )
 
 
-def _validate_dashboard_path_roles(dashboard: Mapping[str, object]) -> None:
+def _validate_dashboard_role_collisions(dashboard: Mapping[str, object]) -> None:
     if dashboard.get("mode", "read-only") != "read-only":
         return
     role_paths = {
@@ -1380,10 +1391,19 @@ def _validate_dashboard_path_roles(dashboard: Mapping[str, object]) -> None:
                 f"{previous} and {role}"
             )
         resolved_roles[resolved] = role
-    _validate_existing_path_role(
+
+
+def _validate_dashboard_path_roles(
+    dashboard: Mapping[str, object],
+    *,
+    protected_file_identities: Sequence[tuple[int, int]] = (),
+) -> None:
+    if dashboard.get("mode", "read-only") != "read-only":
+        return
+    _validate_dashboard_role_collisions(dashboard)
+    _validate_dashboard_document_tree(
         Path(cast(str, dashboard["document_root"])),
-        "dashboard.document_root",
-        directory=True,
+        protected_file_identities=protected_file_identities,
     )
     _validate_control_path(
         Path(cast(str, dashboard["active_config"])),
@@ -1401,6 +1421,98 @@ def _validate_dashboard_path_roles(dashboard: Mapping[str, object]) -> None:
             "dashboard.pid_file",
             directory=False,
         )
+
+
+def _validate_dashboard_document_tree(
+    path: Path,
+    *,
+    protected_file_identities: Sequence[tuple[int, int]],
+) -> None:
+    """Validate one enabled Dashboard tree without following filesystem aliases."""
+    try:
+        root_metadata = path.lstat()
+    except FileNotFoundError:
+        root_metadata = None
+    except OSError as exc:
+        raise CalibrationError(
+            f"dashboard.document_root cannot be inspected: {exc}"
+        ) from exc
+    if root_metadata is not None and (
+        stat.S_ISLNK(root_metadata.st_mode) or not stat.S_ISDIR(root_metadata.st_mode)
+    ):
+        raise CalibrationError(
+            "dashboard.document_root must be a real directory when it exists"
+        )
+    missing = _private_chain_missing_components(path)
+    if root_metadata is None:
+        creation_boundary = missing[-1].parent
+        try:
+            boundary_metadata = creation_boundary.lstat()
+        except OSError as exc:
+            raise CalibrationError(
+                f"dashboard.document_root creation boundary cannot be inspected: {exc}"
+            ) from exc
+        if _has_untrusted_directory_write(creation_boundary, boundary_metadata):
+            raise CalibrationError(
+                "dashboard.document_root missing path must not depend on a creation "
+                "boundary writable by an untrusted group or other identity"
+            )
+        return
+
+    try:
+        trust_anchor = Path(path.anchor).lstat()
+    except OSError as exc:
+        raise CalibrationError(
+            f"dashboard.document_root cannot be inspected: {exc}"
+        ) from exc
+    trusted_owner_uids = {0, os.geteuid(), trust_anchor.st_uid}
+    protected = set(protected_file_identities)
+    pending = [path]
+    scheduled = 1
+    while pending:
+        current = pending.pop()
+        try:
+            metadata = current.lstat()
+        except OSError as exc:
+            raise CalibrationError(
+                f"dashboard document tree entry {current} cannot be inspected: {exc}"
+            ) from exc
+        if stat.S_ISLNK(metadata.st_mode) or not (
+            stat.S_ISDIR(metadata.st_mode) or stat.S_ISREG(metadata.st_mode)
+        ):
+            raise CalibrationError(
+                f"dashboard document tree entry {current} must be a real directory "
+                "or regular file"
+            )
+        if metadata.st_uid not in trusted_owner_uids:
+            raise CalibrationError(
+                f"dashboard document tree entry {current} must have a trusted owner"
+            )
+        if _has_untrusted_directory_write(current, metadata):
+            raise CalibrationError(
+                f"dashboard document tree entry {current} must not be "
+                "group/other-writable"
+            )
+        if stat.S_ISREG(metadata.st_mode):
+            if (metadata.st_dev, metadata.st_ino) in protected:
+                raise CalibrationError(
+                    f"dashboard document tree entry {current} aliases a protected file"
+                )
+            continue
+        try:
+            with os.scandir(current) as entries:
+                for entry in entries:
+                    scheduled += 1
+                    if scheduled > DASHBOARD_TREE_ENTRY_LIMIT:
+                        raise CalibrationError(
+                            "dashboard document tree exceeds the bounded metadata "
+                            f"inspection limit of {DASHBOARD_TREE_ENTRY_LIMIT} entries"
+                        )
+                    pending.append(Path(entry.path))
+        except OSError as exc:
+            raise CalibrationError(
+                f"dashboard document tree directory {current} cannot be scanned: {exc}"
+            ) from exc
 
 
 def _validate_dashboard_public_root(
@@ -1436,6 +1548,83 @@ def _validate_dashboard_public_root(
         except ValueError:
             continue
         raise CalibrationError(f"dashboard.document_root must not contain {label}")
+
+
+def _configured_host_role_paths(
+    profile: Mapping[str, object], source_profile: Path
+) -> tuple[tuple[str, Path], ...]:
+    ao = _section(profile, "ao")
+    dashboard = _section(profile, "dashboard")
+    paths = _section(profile, "paths")
+    roles: list[tuple[str, Path]] = [
+        ("source profile", source_profile),
+        ("ao.data_dir", Path(cast(str, ao["data_dir"]))),
+        ("ao.codex_home", Path(cast(str, ao["codex_home"]))),
+        (
+            "dashboard.document_root",
+            Path(cast(str, dashboard["document_root"])),
+        ),
+        (
+            "dashboard.active_config",
+            Path(cast(str, dashboard["active_config"])),
+        ),
+        (
+            "dashboard.nginx_executable",
+            Path(cast(str, dashboard["nginx_executable"])),
+        ),
+        ("dashboard.pid_file", Path(cast(str, dashboard["pid_file"]))),
+        (
+            "paths.private_authority",
+            Path(cast(str, paths["private_authority"])),
+        ),
+        (
+            "paths.desired_nginx_artifact",
+            Path(cast(str, paths["desired_nginx_artifact"])),
+        ),
+        (
+            "paths.desired_service_artifact",
+            Path(cast(str, paths["desired_service_artifact"])),
+        ),
+        ("paths.state_root", Path(cast(str, paths["state_root"]))),
+    ]
+    cli = Path(cast(str, ao["cli"]))
+    if cli.is_absolute():
+        roles.append(("ao.cli", cli))
+    return tuple(roles)
+
+
+def _paths_overlap(first: Path, second: Path) -> bool:
+    resolved_first = first.resolve(strict=False)
+    resolved_second = second.resolve(strict=False)
+    for child, parent in (
+        (resolved_first, resolved_second),
+        (resolved_second, resolved_first),
+    ):
+        try:
+            child.relative_to(parent)
+        except ValueError:
+            continue
+        return True
+    return False
+
+
+def _validate_render_destination_roles(
+    profile: Mapping[str, object],
+    *,
+    source_profile: Path,
+    target: Path,
+    staging: Path,
+) -> None:
+    roles = _configured_host_role_paths(profile, source_profile)
+    for destination_label, destination in (
+        ("render candidate", target),
+        ("render sibling staging", staging),
+    ):
+        for role_label, role_path in roles:
+            if _paths_overlap(destination, role_path):
+                raise CalibrationError(
+                    f"{destination_label} must not overlap {role_label}"
+                )
 
 
 def _load_profile(path: Path) -> dict[str, object]:
@@ -1601,15 +1790,24 @@ def _load_profile(path: Path) -> dict[str, object]:
     _validate_no_listener_collision(profile)
     canonical = _canonical_v2(profile)
     _validate_profile_host_path_ancestors(canonical)
+    codex_home = Path(cast(str, _section(canonical, "ao")["codex_home"]))
+    protected_file_identities: tuple[tuple[int, int], ...] = ()
+    if codex_home.exists():
+        auth_metadata = _validate_codex_auth_file(codex_home)
+        protected_file_identities = ((auth_metadata.st_dev, auth_metadata.st_ino),)
     if dashboard.get("mode", "read-only") == "read-only":
         if desired_service == rollback_service:
             raise CalibrationError(
                 "dashboard desired_service and rollback_service must differ"
             )
-        _validate_dashboard_path_roles(_section(canonical, "dashboard"))
+        _validate_dashboard_role_collisions(_section(canonical, "dashboard"))
         _validate_dashboard_public_root(
             canonical,
             (("source profile", safe),),
+        )
+        _validate_dashboard_path_roles(
+            _section(canonical, "dashboard"),
+            protected_file_identities=protected_file_identities,
         )
         _validate_listener_network_families(
             listen_host,
@@ -1642,6 +1840,15 @@ def _validate_terminal_v1(terminal: Mapping[str, object]) -> None:
     """Validate the deployed legacy terminal contract without v2 reinterpretation."""
     _validate_terminal_shapes(terminal)
     enabled = terminal.get("desired_enabled")
+    trust_model = terminal.get("trust_model")
+    if enabled and trust_model != "single-user-trusted-lan":
+        raise CalibrationError("legacy terminal requires single-user-trusted-lan")
+    if not enabled and trust_model not in {
+        "single-user-trusted-lan",
+        "trusted-single-user",
+        "untrusted",
+    }:
+        raise CalibrationError("legacy terminal trust_model must be supported")
     if not enabled:
         return
     clients = terminal.get("allowed_client_ips")
@@ -1659,8 +1866,6 @@ def _validate_terminal_v1(terminal: Mapping[str, object]) -> None:
     _validate_loopback_url(
         terminal.get("upstream_origin"), "legacy terminal upstream Origin"
     )
-    if terminal.get("trust_model") != "single-user-trusted-lan":
-        raise CalibrationError("legacy terminal requires single-user-trusted-lan")
 
 
 def _validate_terminal(terminal: Mapping[str, object]) -> None:
@@ -2053,10 +2258,15 @@ def init_profile(
     }
     canonical = _canonical_v2(profile)
     _validate_profile_host_path_ancestors(canonical)
-    _validate_dashboard_path_roles(_section(canonical, "dashboard"))
+    auth_metadata = (home / "auth.json").lstat()
+    _validate_dashboard_role_collisions(_section(canonical, "dashboard"))
     _validate_dashboard_public_root(
         canonical,
         (("source profile", target),),
+    )
+    _validate_dashboard_path_roles(
+        _section(canonical, "dashboard"),
+        protected_file_identities=((auth_metadata.st_dev, auth_metadata.st_ino),),
     )
     _validate_terminal(_section(_section(canonical, "dashboard"), "terminal"))
     if dashboard_enabled:
@@ -2356,11 +2566,20 @@ def _validate_publish_parent(parent: Path) -> None:
 def render_profile(path: Path, output: Path) -> dict[str, object]:
     """Publish a deterministic private candidate through sibling staging."""
     profile = _load_profile(path)
+    source_profile = _safe_path(path, may_create=False, directory=False)
+    canonical = _canonical_v2(profile)
     files = _candidate_files(profile)
     target = _safe_path(output, may_create=True)
+    staging = target.with_name(f".{target.name}.staging")
     _validate_dashboard_public_root(
-        _canonical_v2(profile),
+        canonical,
         (("render candidate", target),),
+    )
+    _validate_render_destination_roles(
+        canonical,
+        source_profile=source_profile,
+        target=target,
+        staging=staging,
     )
     _validate_publish_parent(target.parent)
     if target.exists():
@@ -2369,7 +2588,6 @@ def render_profile(path: Path, output: Path) -> dict[str, object]:
         _validate_tree_shape(target, files)
         _validate_tree_modes(target)
         return {"mode": "render", "output": str(target), "unchanged": True}
-    staging = target.with_name(f".{target.name}.staging")
     if staging.exists() or staging.is_symlink():
         raise CalibrationError("sibling staging path must be absent")
     staging.mkdir(mode=0o700, parents=False)
@@ -2461,6 +2679,33 @@ def _require_canary_stage(
     return payload
 
 
+def _require_canary_probe_statuses(
+    payload: Mapping[str, object], expected: Mapping[str, str]
+) -> None:
+    probes = payload.get("probes")
+    if not isinstance(probes, list):
+        raise CalibrationError("canary inspect returned invalid probes")
+    statuses: dict[str, str] = {}
+    for raw_probe in cast(list[object], probes):
+        if not isinstance(raw_probe, dict):
+            continue
+        probe = cast(dict[str, object], raw_probe)
+        probe_id = probe.get("id")
+        status = probe.get("status")
+        if isinstance(probe_id, str) and isinstance(status, str):
+            statuses[probe_id] = status
+    mismatches = {
+        name: statuses.get(name)
+        for name, status in expected.items()
+        if statuses.get(name) != status
+    }
+    if mismatches:
+        raise CalibrationError(
+            "canary inspect probe status mismatch: "
+            + json.dumps(mismatches, sort_keys=True)
+        )
+
+
 def _write_canary_probe_tools(root: Path) -> Path:
     fake_bin = root / "fake-bin"
     fake_bin.mkdir(mode=0o700)
@@ -2503,10 +2748,18 @@ elif name == "curl":
         print(json.dumps({"status":"ok",**identity}))
     elif url.endswith("/readyz"):
         print(json.dumps({"status":"ready",**identity}))
+    elif url.endswith("/dashboard-health"):
+        print("200")
+        print("application/json")
     elif url.endswith("/mux"):
         print("HTTP/1.1 101 Switching Protocols")
+        print("Connection: Upgrade")
+        print("Upgrade: websocket")
+        print("Sec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=")
+        print()
     elif url.endswith("/"):
-        print("text/html")
+        print("200")
+        print("text/html; charset=utf-8")
     else:
         print("ok")
 """
@@ -2521,11 +2774,6 @@ elif name == "curl":
 def reconstruction_canary(root: Path, runner: Runner = _run) -> dict[str, object]:
     """Run the real JSON CLI boundary under isolated XDG roots and fake probes."""
     discovered_nginx = shutil.which("nginx")
-    nginx_executable = (
-        str(Path(discovered_nginx).resolve())
-        if discovered_nginx is not None
-        else "/usr/sbin/nginx"
-    )
     if root.exists():
         if root.is_symlink() or not root.is_dir():
             raise CalibrationError("canary root must be a real directory")
@@ -2546,6 +2794,21 @@ def reconstruction_canary(root: Path, runner: Runner = _run) -> dict[str, object
     auth.write_text("{}\n", encoding="utf-8")
     auth.chmod(0o600)
     fake_bin = _write_canary_probe_tools(root)
+    nginx_wrapper = fake_bin / "nginx-wrapper"
+    wrapped_nginx = (
+        str(Path(discovered_nginx).resolve()) if discovered_nginx is not None else ""
+    )
+    nginx_wrapper.write_text(
+        "#!"
+        + sys.executable
+        + "\nimport os\nimport sys\n"
+        + f"target = {json.dumps(wrapped_nginx)}\n"
+        + "if not target:\n    raise SystemExit(127)\n"
+        + "os.execv(target, [target, *sys.argv[1:]])\n",
+        encoding="utf-8",
+    )
+    nginx_wrapper.chmod(0o700)
+    nginx_executable = str(nginx_wrapper)
     canary_env = os.environ.copy()
     canary_env.update(
         {
@@ -2583,7 +2846,7 @@ def reconstruction_canary(root: Path, runner: Runner = _run) -> dict[str, object
                 "--dashboard-listen-port",
                 "18443",
                 "--readonly-cidr",
-                "203.0.113.0/24",
+                "127.0.0.1/32",
                 "--document-root",
                 str(dashboard_root),
                 "--nginx-executable",
@@ -2602,7 +2865,7 @@ def reconstruction_canary(root: Path, runner: Runner = _run) -> dict[str, object
                 str(state_root / "nginx.service"),
                 "--terminal",
                 "--client-ip",
-                "203.0.113.7",
+                "127.0.0.1",
                 "--origin",
                 "https://console.example.test",
                 "--upstream",
@@ -2625,13 +2888,17 @@ def reconstruction_canary(root: Path, runner: Runner = _run) -> dict[str, object
     )
     profile = initialized
     inspect_code = EXIT_PROBE
-    _require_canary_stage(
+    inspected = _require_canary_stage(
         "inspect",
         _invoke_subprocess_cli(
             ("inspect", "--profile", str(profile), "--context", "sandbox"),
             canary_env,
         ),
         expected_exit=EXIT_PROBE,
+    )
+    _require_canary_probe_statuses(
+        inspected,
+        {"dashboard": "pass", "dashboard-ui": "pass", "mux": "pass"},
     )
     plan_code = EXIT_OK
     _require_canary_stage(
