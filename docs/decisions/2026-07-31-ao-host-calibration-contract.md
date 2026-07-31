@@ -41,7 +41,7 @@ Fresh init identifies its in-memory profile as schema v2 before
 canonicalization, so an explicitly selected v2 Origin mode is preserved.
 Terminal init requires that Origin mode explicitly. Preserve forwards the
 validated client Origin unchanged and does not require an upstream Origin;
-edge-validated-rewrite requires and emits the proven loopback Origin.
+edge-validated-rewrite requires and emits a proven HTTP loopback Origin.
 The v1 and v2 Dashboard service fields remain systemd unit identifiers;
 artifact destinations remain the absolute paths under `[paths]`.
 
@@ -85,8 +85,9 @@ inputs as applicable. The generated full nginx candidate keeps static and API
 access GET-only and CIDR-restricted, while exact `/mux` requires every exact
 client IP, exact Origin, GET, WebSocket Upgrade, and the proven loopback Origin
 rewrite. The service grants write access only to the explicit runtime state
-root under its strict filesystem sandbox. Inspection may discover runtime facts
-but never chooses trust values.
+root under its strict filesystem sandbox and declares its default user target
+enablement semantics. Inspection may discover runtime facts but never chooses
+trust values.
 
 ## Compatibility
 

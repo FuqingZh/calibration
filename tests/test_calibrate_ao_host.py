@@ -4,8 +4,10 @@ import argparse
 import json
 import runpy
 import shutil
+import socketserver
 import subprocess
 import sys
+import threading
 import tomllib
 from collections.abc import Sequence
 from pathlib import Path
@@ -44,7 +46,7 @@ allowed_client_ips = []
 allowed_origin = "https://console.example.test"
 path = "/mux"
 upstream = "http://127.0.0.1:3001"
-upstream_origin = "https://console.example.test"
+upstream_origin = "http://127.0.0.1:3001"
 require_authentication_if = ["multi-user", "dynamic-address", "public-network"]
 
 [paths]
@@ -414,6 +416,8 @@ def test_init_render_verify_round_trip_and_manifest(
         "Restart=on-failure",
         "UMask=0077",
         "ReadWritePaths=",
+        "[Install]",
+        "WantedBy=default.target",
     ):
         assert phrase in service
     authority = (output / "AGENTS.md").read_text()
@@ -616,6 +620,18 @@ def test_safe_path_and_render_drift_rejections(tmp_path: Path, profile: Path) ->
     (tree / "link").symlink_to(profile)
     with pytest.raises(host.CalibrationError, match="symlinks"):
         host._tree_bytes(tree)
+    unsafe_parent = tmp_path / "writable-parent"
+    unsafe_parent.mkdir(mode=0o777)
+    unsafe_parent.chmod(0o777)
+    with pytest.raises(host.CalibrationError, match="without sticky bit"):
+        host.render_profile(profile, unsafe_parent / "candidate")
+    unsafe_parent.chmod(0o1777)
+    assert (
+        host.render_profile(profile, unsafe_parent / "sticky-candidate")["unchanged"]
+        is False
+    )
+    with pytest.raises(host.CalibrationError, match="parent must exist"):
+        host.render_profile(profile, tmp_path / "missing" / "candidate")
 
 
 def test_invalid_profile_and_init_rejections(
@@ -952,6 +968,17 @@ def test_reconstruction_canary_executes_full_pipeline(tmp_path: Path) -> None:
         "second_unchanged": True,
         "nginx_checked": True,
     }
+
+
+def test_reconstruction_canary_passes_real_nginx_when_available(
+    tmp_path: Path,
+) -> None:
+    if shutil.which("nginx") is None:
+        pytest.skip("nginx is unavailable")
+    result = host.reconstruction_canary(tmp_path / "real-isolated")
+    assert result["nginx_checked"] is True
+    assert result["first_unchanged"] is False
+    assert result["second_unchanged"] is True
 
 
 def test_reconstruction_canary_rejects_nginx_failure(tmp_path: Path) -> None:
@@ -1515,6 +1542,37 @@ def test_mux_probe_requires_bounded_http_101_handshake() -> None:
     assert missing.status == "fail"
 
 
+def test_real_curl_mux_probe_sends_rfc6455_headers() -> None:
+    requests: list[str] = []
+
+    class Handler(socketserver.BaseRequestHandler):
+        def handle(self) -> None:
+            request = self.request.recv(8192).decode("ascii")
+            requests.append(request)
+            self.request.sendall(
+                b"HTTP/1.1 101 Switching Protocols\r\n"
+                b"Connection: Upgrade\r\n"
+                b"Upgrade: websocket\r\n\r\n"
+            )
+
+    with socketserver.TCPServer(("127.0.0.1", 0), Handler) as server:
+        port = server.server_address[1]
+        thread = threading.Thread(target=server.handle_request)
+        thread.start()
+        evidence = host._probe_mux(
+            host._run,
+            "daemon",
+            host._mux_probe_command(
+                f"http://127.0.0.1:{port}", "https://console.example.test"
+            ),
+        )
+        thread.join(timeout=3)
+    assert evidence.status == "pass"
+    request = requests[0]
+    assert "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" in request
+    assert "Sec-WebSocket-Version: 13" in request
+
+
 def test_sandbox_probe_ownership_cannot_claim_host_ready() -> None:
     report = host.inspect_host(FakeRunner(inspect_responses()), context="sandbox")
     states = cast(dict[str, object], report["states"])
@@ -1535,6 +1593,24 @@ def test_sandbox_probe_ownership_cannot_claim_host_ready() -> None:
 def test_inspect_rejects_missing_explicit_profile(tmp_path: Path) -> None:
     with pytest.raises(host.CalibrationError, match="does not exist"):
         host.inspect_host(FakeRunner([]), profile=tmp_path / "missing.toml")
+
+
+def test_inspect_error_envelope_preserves_requested_context(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    assert (
+        host.main(
+            [
+                "inspect",
+                "--context",
+                "host",
+                "--profile",
+                str(tmp_path / "missing.toml"),
+            ]
+        )
+        == host.EXIT_INVALID
+    )
+    assert json.loads(capsys.readouterr().out)["context"] == "host"
 
 
 def test_inspect_uses_profile_ao_cli(tmp_path: Path) -> None:
@@ -1568,16 +1644,28 @@ def test_inspect_uses_profile_ao_cli(tmp_path: Path) -> None:
         "-fsS",
         "http://127.0.0.1:8443/dashboard-health",
     )
-    assert runner.commands[11][-7:] == (
+    assert runner.commands[11][-11:] == (
         "-H",
         "Origin: https://console.example.test",
         "-H",
         "Connection: Upgrade",
         "-H",
         "Upgrade: websocket",
+        "-H",
+        "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==",
+        "-H",
+        "Sec-WebSocket-Version: 13",
         "http://127.0.0.1:8443/mux",
     )
     assert cast(dict[str, object], report["states"])["delivery"] == "ready"
+    assert cast(list[dict[str, object]], report["probes"])[0]["owner"] == "host"
+
+
+def test_sandbox_ao_version_failure_cannot_declare_not_installed() -> None:
+    responses = inspect_responses()
+    responses[0] = completed((), code=127, err="ao missing in sandbox")
+    report = host.inspect_host(FakeRunner(responses), context="sandbox")
+    assert cast(dict[str, object], report["states"])["daemon"] == "indeterminate"
 
 
 @pytest.mark.parametrize(
@@ -1612,13 +1700,21 @@ def test_profile_probe_and_path_fields_fail_closed(
         host.plan_profile(profile)
 
 
-def test_service_fields_require_safe_unit_identifiers(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    ("field", "original"),
+    [
+        ("daemon_service", 'daemon_service = "agent-orchestrator.service"'),
+        ("desired_service", 'desired_service = "ao-dashboard.service"'),
+        ("rollback_service", 'rollback_service = "ao-dashboard-rollback.service"'),
+    ],
+)
+@pytest.mark.parametrize("unsafe", ["--system", "--system.service", "/tmp/x.service"])
+def test_service_fields_require_safe_unit_identifiers(
+    tmp_path: Path, field: str, original: str, unsafe: str
+) -> None:
     profile = tmp_path / "host.toml"
     profile.write_text(
-        V1_PROFILE.replace(
-            'desired_service = "ao-dashboard.service"',
-            'desired_service = "/tmp/dashboard.service"',
-        ),
+        V1_PROFILE.replace(original, f'{field} = "{unsafe}"'),
         encoding="utf-8",
     )
     profile.chmod(0o600)
@@ -1674,9 +1770,9 @@ def test_url_validators_reject_types_and_invalid_ports() -> None:
             "unsafe configuration syntax",
         ),
         (
-            'upstream_origin = "https://console.example.test"',
-            'upstream_origin = "https://console.example.test;evil"',
-            "exact Origin",
+            'upstream_origin = "http://127.0.0.1:3001"',
+            'upstream_origin = "https://external.example.test"',
+            "HTTP loopback URL",
         ),
         (
             'loopback_base_url = "http://127.0.0.1:3001"',
@@ -1774,6 +1870,64 @@ def test_v2_terminal_requires_read_only_dashboard(
         encoding="utf-8",
     )
     with pytest.raises(host.CalibrationError, match="must be read-only"):
+        host.verify_profile(profile)
+
+
+@pytest.mark.parametrize(
+    ("original", "replacement", "message"),
+    [
+        (
+            'runtime_owner = "systemd-user"',
+            'runtime_owner = "process"',
+            "runtime_owner",
+        ),
+        (
+            'process_containment = "legacy"',
+            'process_containment = "profile-certified"',
+            "process_containment",
+        ),
+        ('mode = "read-only"', 'mode = "disabled"', "terminal is enabled"),
+    ],
+)
+def test_v2_runtime_contract_values_fail_closed(
+    tmp_path: Path,
+    codex_home: Path,
+    original: str,
+    replacement: str,
+    message: str,
+) -> None:
+    profile = tmp_path / "host.toml"
+    host.init_profile(
+        profile,
+        trust_model="trusted-single-user",
+        codex_home=codex_home,
+        data_dir=tmp_path / "data",
+        private_authority=tmp_path / "private" / "AGENTS.md",
+        state_root=tmp_path / "state",
+        dashboard_enabled=True,
+        dashboard_listen_host="127.0.0.1",
+        dashboard_listen_port=8443,
+        readonly_cidrs=("203.0.113.0/24",),
+        document_root=tmp_path / "dashboard",
+        nginx_executable=Path("/usr/sbin/nginx"),
+        nginx_pid_file=tmp_path / "state/nginx.pid",
+        active_config=tmp_path / "state/active.conf",
+        desired_service="ao-dashboard.service",
+        rollback_service="ao-dashboard-rollback.service",
+        desired_nginx_artifact=tmp_path / "state/nginx.conf",
+        desired_service_artifact=tmp_path / "state/nginx.service",
+        terminal=True,
+        client_ips=("203.0.113.9",),
+        origin="https://console.example.test",
+        upstream="http://127.0.0.1:3001/mux",
+        upstream_origin="http://127.0.0.1:3001",
+        origin_mode="edge-validated-rewrite",
+    )
+    profile.write_text(
+        profile.read_text(encoding="utf-8").replace(original, replacement),
+        encoding="utf-8",
+    )
+    with pytest.raises(host.CalibrationError, match=message):
         host.verify_profile(profile)
 
 

@@ -23,7 +23,7 @@ allowed_client_ips = ["203.0.113.7", "203.0.113.8"]
 allowed_origin = "https://console.example.test"
 path = "/mux"
 upstream = "http://127.0.0.1:3001/mux"
-upstream_origin = "https://console.example.test"
+upstream_origin = "http://127.0.0.1:3001"
 require_authentication_if = ["multi-user", "dynamic-address", "public-network"]
 
 [paths]
