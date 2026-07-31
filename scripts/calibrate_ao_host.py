@@ -470,8 +470,38 @@ def _load_profile(path: Path) -> dict[str, object]:
         raise CalibrationError("ao.codex_home must be a string")
     if not Path(ao["codex_home"]).is_absolute():
         raise CalibrationError("ao.codex_home must be absolute")
-    _validate_terminal(terminal)
+    if version == 1:
+        _validate_terminal_v1(terminal)
+    else:
+        _validate_terminal(terminal)
     return cast(dict[str, object], profile)
+
+
+def _validate_terminal_v1(terminal: Mapping[str, object]) -> None:
+    """Validate the deployed legacy terminal contract without v2 reinterpretation."""
+    enabled = terminal.get("desired_enabled")
+    if not isinstance(enabled, bool):
+        raise CalibrationError("dashboard.terminal.desired_enabled must be boolean")
+    if not enabled:
+        return
+    clients = terminal.get("allowed_client_ips")
+    client_values = cast(list[object], clients) if isinstance(clients, list) else []
+    if not client_values or not all(isinstance(value, str) for value in client_values):
+        raise CalibrationError("legacy terminal requires exact client IPs")
+    for value in client_values:
+        ipaddress.ip_address(cast(str, value))
+    origin = terminal.get("allowed_origin")
+    if not isinstance(origin, str) or not re.fullmatch(r"https?://[^/*]+", origin):
+        raise CalibrationError("legacy terminal requires an exact Origin")
+    if terminal.get("path") != "/mux":
+        raise CalibrationError("legacy terminal path must be exactly /mux")
+    upstream = terminal.get("upstream")
+    if not isinstance(upstream, str) or not re.fullmatch(
+        r"http://(?:127\.0\.0\.1|localhost):\d+/mux", upstream
+    ):
+        raise CalibrationError("legacy terminal upstream must be loopback /mux")
+    if terminal.get("trust_model") != "single-user-trusted-lan":
+        raise CalibrationError("legacy terminal requires single-user-trusted-lan")
 
 
 def _validate_terminal(terminal: Mapping[str, object]) -> None:

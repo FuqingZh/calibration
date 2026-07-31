@@ -1,0 +1,33 @@
+[ao]
+cli = "ao"
+data_dir = "/opt/example/ao-data"
+codex_home = "/opt/example/codex"
+daemon_service = "agent-orchestrator.service"
+loopback_base_url = "http://127.0.0.1:3001"
+health_path = "/healthz"
+ready_path = "/readyz"
+
+[dashboard]
+listen_host = "127.0.0.1"
+listen_port = 3001
+trusted_readonly_cidrs = ["203.0.113.0/24"]
+document_root = "/opt/example/dashboard"
+active_config = "/opt/example/active.conf"
+desired_service = "/opt/example/dashboard.service"
+rollback_service = "/opt/example/dashboard.rollback.service"
+
+[dashboard.terminal]
+desired_enabled = true
+trust_model = "single-user-trusted-lan"
+allowed_client_ips = ["203.0.113.7", "203.0.113.8"]
+allowed_origin = "https://console.example.test"
+path = "/mux"
+upstream = "http://127.0.0.1:3001/mux"
+upstream_origin = "https://console.example.test"
+require_authentication_if = ["multi-user", "dynamic-address", "public-network"]
+
+[paths]
+private_authority = "/opt/example/private/AGENTS.md"
+desired_nginx_artifact = "/opt/example/nginx.conf"
+desired_service_artifact = "/opt/example/service.env"
+state_root = "/opt/example/state"

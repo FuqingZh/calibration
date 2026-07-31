@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import runpy
 import subprocess
+import tomllib
 from collections.abc import Sequence
 from pathlib import Path
 from typing import cast
@@ -10,6 +11,9 @@ from typing import cast
 import pytest
 
 import scripts.calibrate_ao_host as host
+
+REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+LEGACY_V1_FIXTURE = REPOSITORY_ROOT / "tests/fixtures/ao_host_v1_legacy.toml"
 
 V1_PROFILE = """
 [ao]
@@ -127,6 +131,43 @@ def test_existing_v1_is_readable_and_requests_v2_candidate(tmp_path: Path) -> No
     assert plan["schema_render"] == 2
     assert plan["migration_required"] is True
     assert verified["migration_required"] is True
+
+
+def test_real_legacy_v1_shape_is_accepted_without_live_profile(
+    tmp_path: Path,
+) -> None:
+    profile = tmp_path / "host.toml"
+    profile.write_bytes(LEGACY_V1_FIXTURE.read_bytes())
+    profile.chmod(0o600)
+
+    plan = host.plan_profile(profile)
+    verified = host.verify_profile(profile)
+
+    assert plan["schema_read"] == 1
+    assert plan["migration_required"] is True
+    assert verified["schema_read"] == 1
+    assert verified["migration_required"] is True
+
+
+@pytest.mark.parametrize(
+    ("update", "message"),
+    [
+        ({"desired_enabled": "yes"}, "boolean"),
+        ({"allowed_client_ips": []}, "exact client IPs"),
+        ({"allowed_origin": "not-an-origin"}, "exact Origin"),
+        ({"path": "/other"}, "exactly /mux"),
+        ({"upstream": "http://example.test/mux"}, "loopback /mux"),
+        ({"trust_model": "other"}, "single-user-trusted-lan"),
+    ],
+)
+def test_legacy_v1_validation_failures(update: dict[str, object], message: str) -> None:
+    profile = tomllib.loads(LEGACY_V1_FIXTURE.read_text(encoding="utf-8"))
+    dashboard = cast(dict[str, object], profile["dashboard"])
+    terminal = cast(dict[str, object], dashboard["terminal"])
+    terminal.update(update)
+
+    with pytest.raises(host.CalibrationError, match=message):
+        host._validate_terminal_v1(terminal)
 
 
 def test_status_stale_and_doctor_readonly_do_not_override_daemon_ready() -> None:

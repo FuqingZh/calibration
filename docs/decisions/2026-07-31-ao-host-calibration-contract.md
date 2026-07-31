@@ -24,6 +24,11 @@ uses schema v2, retains those names, and adds `ao.runtime_owner`,
 candidate needs are explicit in `plan` and `verify` readback. Unknown keys fail
 closed.
 
+Legacy v1 terminal validation remains distinct from v2 policy. V1 accepts its
+deployed `single-user-trusted-lan` trust name, multiple exact client IPs, and a
+loopback upstream ending in `/mux`. Fresh and canonical v2 profiles retain the
+stricter terminal safety contract; compatibility reads do not redefine it.
+
 Inspect JSON has a fixed top-level shape: `schema_version`, `command`,
 `context`, `states`, `capabilities`, `probes`, `known_issues`, and
 `next_actions`. Every probe has `id`, `owner`, `status`, and `detail`.
