@@ -519,8 +519,8 @@ def test_bound_source_curl_45_is_unknown_but_external_failure_still_degrades(
         }
     )
     responses = inspect_responses(doctor=external)
-    responses[-2] = completed((), code=45, err="curl: (45) bind failed")
-    responses[-1] = completed((), code=45, err="curl: (45) bind failed")
+    responses[-2] = completed((), code=45, err="localized bind detail")
+    responses[-1] = completed((), code=45, err="localized bind detail")
     report = host.inspect_host(FakeRunner(responses), profile=profile, context="host")
     probes = {
         cast(str, probe["id"]): probe
@@ -641,11 +641,20 @@ def test_non_bmp_toml_round_trips_through_render_plan_and_verify(
     assert "\U0001f680" in rendered_text
     assert "\\u007f" in rendered_text
     assert "\x7f" not in rendered_text
+    reloaded = host._load_profile(rendered)
+    reloaded_terminal = cast(
+        dict[str, object], cast(dict[str, object], reloaded["dashboard"])["terminal"]
+    )
+    assert reloaded_terminal["require_authentication_if"] == [
+        "future-\U0001f680-policy",
+        "del-\x7f",
+    ]
     assert host.plan_profile(rendered)["schema_read"] == 2
     assert host.verify_profile(profile, candidate=candidate)["valid"] is True
     second = tmp_path / "unicode-candidate-second"
     host.render_profile(rendered, second)
     assert host.verify_profile(rendered, candidate=second)["valid"] is True
+    assert host.render_profile(rendered, second)["unchanged"] is True
     with pytest.raises(host.CalibrationError, match="lone surrogates"):
         host._quote("\ud800")
 
@@ -659,10 +668,10 @@ def test_init_lone_surrogate_fails_before_target_and_json_envelope_is_printable(
     with pytest.raises(host.CalibrationError):
         host.init_profile(
             target,
-            trust_model="untrusted",
+            trust_model="\ud800",
             codex_home=codex_home,
             data_dir=tmp_path / "data",
-            private_authority=Path("/tmp/\ud800/AGENTS.md"),
+            private_authority=tmp_path / "authority/AGENTS.md",
             state_root=tmp_path / "state",
         )
     assert not target.exists()
@@ -1017,6 +1026,12 @@ def test_dashboard_listener_family_and_collision_fail_closed(
     assert host.plan_profile(legacy)["migration_required"] is True
     with pytest.raises(host.CalibrationError, match="must not collide"):
         host.render_profile(legacy, tmp_path / "candidate")
+    canonical = host._canonical_v2(host._load_profile(legacy))
+    cast(dict[str, object], canonical["ao"])["loopback_base_url"] = (
+        "http://localhost:3001"
+    )
+    with pytest.raises(host.CalibrationError, match="must not collide"):
+        host._validate_no_listener_collision(canonical)
 
 
 @pytest.mark.parametrize("field", ["data_dir", "state_root"])
@@ -2169,12 +2184,27 @@ def test_mux_probe_requires_bounded_http_101_handshake() -> None:
     assert handshake.status == "pass"
     assert generic.status == "fail"
     assert incomplete.status == "fail"
+    wrong_case = websocket_response().replace(
+        "s3pPLMBiTxaQ9kYGzzhZRbK+xOo=", "S3pPLMBiTxaQ9kYGzzhZRbK+xOo="
+    )
+    assert (
+        host._probe_mux(
+            FakeRunner([completed((), out=wrong_case)]), "daemon", ("curl",)
+        ).status
+        == "fail"
+    )
     missing = host._probe_mux(
         lambda _command: (_ for _ in ()).throw(FileNotFoundError("curl")),
         "daemon",
         ("curl",),
     )
     assert missing.status == "fail"
+    missing_dashboard = host._probe_dashboard(
+        lambda _command: (_ for _ in ()).throw(FileNotFoundError("curl")),
+        "host",
+        ("curl",),
+    )
+    assert missing_dashboard.status == "fail"
 
 
 def test_real_curl_mux_probe_sends_rfc6455_headers() -> None:
@@ -2701,6 +2731,7 @@ def test_unreadable_doctor_cannot_prove_host_ready(doctor: str) -> None:
         [{"name": 7, "level": "PASS"}],
         [{"name": "config", "level": 7}],
         [{"name": "", "level": "PASS"}],
+        [{"name": "   ", "level": "PASS"}],
         [{"name": "config", "level": ""}],
         [{"name": "config", "level": "MAYBE"}],
     ],
@@ -2732,6 +2763,7 @@ def test_malformed_doctor_checks_cannot_prove_host_ready(
     [
         {"ok": True, "checks": [], "failures": -1},
         {"ok": True, "checks": [], "failures": True},
+        {"ok": True, "checks": [], "failures": None},
         {
             "ok": True,
             "checks": [{"name": "config", "level": "FAIL"}],

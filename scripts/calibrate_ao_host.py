@@ -173,20 +173,28 @@ def _probe_mux(runner: Runner, owner: str, command: Sequence[str]) -> Evidence:
     connection_ok = re.search(
         r"^Connection:.*\bUpgrade\b.*$", detail, re.MULTILINE | re.IGNORECASE
     )
-    accept_ok = re.search(
-        r"^Sec-WebSocket-Accept:\s*s3pPLMBiTxaQ9kYGzzhZRbK\+xOo=\s*$",
-        detail,
-        re.MULTILINE | re.IGNORECASE,
+    accept_ok = any(
+        name.strip().casefold() == "sec-websocket-accept"
+        and value.strip() == "s3pPLMBiTxaQ9kYGzzhZRbK+xOo="
+        for line in detail.splitlines()
+        if ":" in line
+        for name, value in (line.split(":", 1),)
     )
     handshake = status_ok and upgrade_ok and connection_ok and accept_ok
     return Evidence("mux", owner, "pass" if handshake else "fail", detail)
 
 
 def _probe_dashboard(runner: Runner, owner: str, command: Sequence[str]) -> Evidence:
-    evidence = _probe(runner, owner, "dashboard", command)
-    if evidence.status == "fail" and "curl: (45)" in evidence.detail:
-        return Evidence("dashboard", owner, "unknown", evidence.detail)
-    return evidence
+    try:
+        result = runner(command)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return Evidence("dashboard", owner, "fail", f"{type(exc).__name__}: {exc}")
+    detail = result.stdout.strip() or result.stderr.strip() or "no output"
+    if result.returncode == 45:
+        return Evidence("dashboard", owner, "unknown", detail)
+    return Evidence(
+        "dashboard", owner, "pass" if result.returncode == 0 else "fail", detail
+    )
 
 
 def _json_object(text: str) -> dict[str, object]:
@@ -461,14 +469,14 @@ def _doctor_checks_structurally_valid(doctor: Mapping[str, object]) -> bool:
         level = item.get("level")
         if (
             not isinstance(name, str)
-            or not name
+            or not name.strip()
             or not isinstance(level, str)
             or level not in {"PASS", "WARN", "FAIL", "ERROR"}
         ):
             return False
         failure_count += int(level in {"FAIL", "ERROR"})
     failures = doctor.get("failures")
-    if failures is not None and (
+    if "failures" in doctor and (
         type(failures) is not int or failures < 0 or failures != failure_count
     ):
         return False
@@ -1050,11 +1058,14 @@ def _validate_no_listener_collision(profile: Mapping[str, object]) -> None:
     if dashboard.get("mode") != "read-only":
         return
     parsed = urllib.parse.urlsplit(cast(str, ao["loopback_base_url"]))
-    if (
-        ipaddress.ip_address(cast(str, dashboard["listen_host"]))
-        == ipaddress.ip_address(cast(str, parsed.hostname))
-        and dashboard["listen_port"] == parsed.port
-    ):
+    dashboard_ip = ipaddress.ip_address(cast(str, dashboard["listen_host"]))
+    ao_host = cast(str, parsed.hostname)
+    host_collides = (
+        dashboard_ip.is_loopback
+        if ao_host == "localhost"
+        else dashboard_ip == ipaddress.ip_address(ao_host)
+    )
+    if host_collides and dashboard["listen_port"] == parsed.port:
         raise CalibrationError("Dashboard listener must not collide with AO loopback")
 
 
@@ -1279,6 +1290,7 @@ def init_profile(
 ) -> dict[str, object]:
     """Create a canonical schema v2 profile with terminal disabled by default."""
     init_scalars = (
+        trust_model,
         path,
         codex_home,
         data_dir,
