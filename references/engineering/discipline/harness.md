@@ -159,6 +159,23 @@ unavailable or the repository has not adopted it, continue through the normal
 isolated-Worktree delivery path and report that bounded fallback instead of
 asking the user to diagnose infrastructure.
 
+## Orchestrator Containment
+
+Treat each task workspace as the default filesystem discovery and mutation
+boundary. An orchestrated worker must not recursively enumerate an aggregation
+root that contains sibling worktrees, sessions, repositories, or unrelated
+user data merely because that root is reachable. Resolve the assigned
+repository and task workspace first, run discovery from that boundary, and
+name any additional repository or external path before accessing it.
+
+This is a portable orchestrator invariant, independent of a particular service
+manager or host layout. Repository instructions and orchestration adapters
+should make the assigned workspace discoverable and keep mutations scoped to
+it. Process-level enforcement, such as a service-manager scope that constrains
+descendant processes, is a stronger defense in depth when the upstream
+orchestrator supports it; documentation must not describe a proposed
+containment mechanism as current AO behavior.
+
 ## Accepted Orchestrator Repository Adoption
 
 For an explicitly opted-in repository on a host whose orchestrator, identity,

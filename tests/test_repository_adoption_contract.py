@@ -107,6 +107,47 @@ def test_generated_agents_is_the_only_private_profile_discovery_path() -> None:
             assert "Agent Orchestrator" not in skill.read_text(encoding="utf-8")
 
 
+def test_orchestrator_containment_is_portable_and_bounded() -> None:
+    harness = compact("references/engineering/discipline/harness.md")
+    template = compact("codex/AGENTS.md.template")
+    runbook = compact("docs/runbooks/agent-orchestrator-review-continuation.md")
+    decision = compact("docs/decisions/2026-07-31-portable-orchestrator-containment.md")
+    plan = compact(
+        "docs/implementation-plan/"
+        "20260731-v2.1-portable-orchestrator-containment-implementation-plan.md"
+    )
+
+    for authority in (harness, runbook, decision):
+        assert "assigned" in authority and "workspace" in authority
+        assert "aggregation root" in authority
+        assert "sibling worktrees" in authority
+    for authority in (template, runbook, decision):
+        assert "remote mount" in authority
+        assert "network filesystem" in authority
+        assert "large shared filesystem" in authority
+        assert "file type" in authority
+        assert "depth" in authority
+        assert "result count" in authority
+
+    assert "{{HOST_AUTHORITY}}" in text("codex/AGENTS.md.template")
+    assert "explicit" in template and "host-operation tasks only" in template
+    for authority in (harness, runbook, decision, plan):
+        assert "proposed" in authority
+        assert "current AO behavior" in authority
+    assert "CAL-1 implemented and closed" in plan
+    assert "does not modify" in plan
+    assert "agent-orchestrator" not in plan
+
+
+def test_shared_aggregation_root_has_behavioral_prompt_coverage() -> None:
+    prompts = text("skills/calibration/test-prompts.json")
+
+    assert "共享聚合根下的递归搜索边界" in prompts
+    assert "sibling worktrees" in prompts
+    assert "targeted search" in prompts
+    assert "upstream proposal" in prompts
+
+
 def test_adoption_adapter_and_installer_have_distinct_codex_home_contracts() -> None:
     decision = compact(
         "docs/decisions/2026-07-30-ao-host-context-and-config-compatibility.md"
@@ -133,7 +174,9 @@ def test_adoption_adapter_and_installer_have_distinct_codex_home_contracts() -> 
 def test_docs_restore_stable_authority_and_historical_navigation() -> None:
     docs = compact("docs/README.md")
 
-    assert "stable maintenance mode with no active implementation plan" in docs
+    assert "stable maintenance mode" in docs
+    assert "CAL-1 containment increment is implemented and closed" in docs
+    assert "systemd containment remains a proposal" in docs
     assert "Five-phase convergence result" in docs
     assert "## Open Evidence Gaps" in docs
     assert "### Architecture And Documentation" in docs

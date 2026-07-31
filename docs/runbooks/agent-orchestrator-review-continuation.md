@@ -21,6 +21,27 @@ and recovery commands belong in local authority. The generated global
 only. Skills and references must not discover private host configuration
 directly.
 
+## Portable Containment Boundary
+
+An AO worker's assigned task workspace is its default filesystem discovery and
+mutation boundary. Do not recursively search a parent aggregation root that
+contains sibling worktrees, sessions, repositories, or unrelated user data.
+Resolve the assigned workspace first and make any additional repository or
+external path explicit.
+
+On remote mounts, network filesystems, and large shared filesystems, narrow
+recursive discovery to relevant subdirectories and bound it by file type,
+depth, or result count. Private mount topology, exclusions, and host-specific
+safe paths belong to rendered local authority and are consulted only for
+explicit host-operation tasks.
+
+This is a portable operating invariant; process containment is not current AO
+behavior established by this guide. A service-manager scope for each worker
+and its descendants is proposed to upstream AO as defense in depth. Until
+upstream implements and documents that behavior, repository and
+generated-agent boundaries remain the active controls; calibration ships no
+service unit or deployed host artifact.
+
 ## State Ownership And Diagnosis
 
 Classify every observation by its owner:
