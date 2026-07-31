@@ -376,7 +376,18 @@ def test_ao_and_dashboard_probe_owners_are_separate(
     tmp_path: Path, context: str, expected: dict[str, str]
 ) -> None:
     profile = tmp_path / "host.toml"
-    profile.write_text(LEGACY_V1_FIXTURE.read_text(encoding="utf-8"), encoding="utf-8")
+    profile.write_text(
+        LEGACY_V1_FIXTURE.read_text(encoding="utf-8")
+        .replace(
+            'trusted_readonly_cidrs = ["203.0.113.0/24"]',
+            'trusted_readonly_cidrs = ["127.0.0.1/32"]',
+        )
+        .replace(
+            'allowed_client_ips = ["203.0.113.7", "203.0.113.8"]',
+            'allowed_client_ips = ["127.0.0.1"]',
+        ),
+        encoding="utf-8",
+    )
     profile.chmod(0o600)
     runner = FakeRunner(
         [
@@ -391,6 +402,27 @@ def test_ao_and_dashboard_probe_owners_are_separate(
         for probe in cast(list[dict[str, object]], report["probes"])
     }
     assert {probe: owners[probe] for probe in expected} == expected
+
+
+def test_unauthorized_local_probe_source_is_unknown_not_degraded(
+    tmp_path: Path,
+) -> None:
+    profile = tmp_path / "host.toml"
+    profile.write_text(LEGACY_V1_FIXTURE.read_text(encoding="utf-8"), encoding="utf-8")
+    profile.chmod(0o600)
+    runner = FakeRunner(inspect_responses())
+    report = host.inspect_host(runner, profile=profile, context="host")
+    probes = {
+        cast(str, probe["id"]): probe
+        for probe in cast(list[dict[str, object]], report["probes"])
+    }
+    assert probes["dashboard"]["status"] == "unknown"
+    assert probes["mux"]["status"] == "unknown"
+    assert cast(dict[str, object], report["states"]) == {
+        "daemon": "ready",
+        "delivery": "indeterminate",
+    }
+    assert len(runner.commands) == 10
 
 
 def test_init_render_verify_round_trip_and_manifest(
@@ -483,6 +515,24 @@ def test_init_render_verify_round_trip_and_manifest(
         "unreadable doctor result",
     ):
         assert phrase in runbook
+
+
+def test_non_bmp_toml_round_trips_through_render_plan_and_verify(
+    profile: Path, tmp_path: Path
+) -> None:
+    parsed = host._load_profile(profile)
+    dashboard = cast(dict[str, object], parsed["dashboard"])
+    terminal = cast(dict[str, object], dashboard["terminal"])
+    terminal["require_authentication_if"] = ["future-\U0001f680-policy"]
+    profile.write_text(host._toml(parsed), encoding="utf-8")
+    candidate = tmp_path / "unicode-candidate"
+    host.render_profile(profile, candidate)
+    rendered = candidate / "host.toml"
+    assert "\U0001f680" in rendered.read_text(encoding="utf-8")
+    assert host.plan_profile(rendered)["schema_read"] == 2
+    assert host.verify_profile(profile, candidate=candidate)["valid"] is True
+    with pytest.raises(host.CalibrationError, match="lone surrogates"):
+        host._quote("\ud800")
 
 
 @pytest.mark.parametrize(
@@ -1748,6 +1798,17 @@ def test_pure_state_and_issue_evaluators() -> None:
         )
         == "ready"
     )
+    unknown_mux = dict(passing_mux)
+    unknown_mux["mux"] = host.Evidence("mux", "host", "unknown", "source unknown")
+    assert (
+        host.evaluate_delivery_state(
+            unknown_mux,
+            daemon_state="ready",
+            dashboard_enabled=True,
+            terminal_enabled=True,
+        )
+        == "indeterminate"
+    )
     failed_dashboard = dict(passing_mux)
     failed_dashboard["dashboard"] = host.Evidence("dashboard", "daemon", "fail", "down")
     assert (
@@ -1769,6 +1830,7 @@ def test_pure_state_and_issue_evaluators() -> None:
         == "ready"
     )
     assert not host._version_before(None, (2, 38))
+    assert not host._doctor_checks_structurally_valid({"ok": True})
     issues = host.evaluate_known_issues(
         probes=probes,
         status={"state": "stale", "extra": "kept"},
@@ -1862,6 +1924,9 @@ def test_real_curl_mux_probe_sends_rfc6455_headers() -> None:
     request = requests[0]
     assert "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" in request
     assert "Sec-WebSocket-Version: 13" in request
+    assert host._mux_probe_command("http://127.0.0.1:3001", "https://example.test")[
+        :3
+    ] == ("curl", "--noproxy", "*")
 
 
 def test_sandbox_probe_ownership_cannot_claim_host_ready() -> None:
@@ -1909,7 +1974,15 @@ def test_inspect_uses_profile_ao_cli(tmp_path: Path) -> None:
     profile.write_text(
         LEGACY_V1_FIXTURE.read_text()
         .replace('cli = "ao"', 'cli = "/opt/example/ao-wrapper"')
-        .replace("listen_port = 3001", "listen_port = 8443"),
+        .replace("listen_port = 3001", "listen_port = 8443")
+        .replace(
+            'trusted_readonly_cidrs = ["203.0.113.0/24"]',
+            'trusted_readonly_cidrs = ["127.0.0.1/32"]',
+        )
+        .replace(
+            'allowed_client_ips = ["203.0.113.7", "203.0.113.8"]',
+            'allowed_client_ips = ["127.0.0.1"]',
+        ),
         encoding="utf-8",
     )
     profile.chmod(0o600)
@@ -1932,10 +2005,14 @@ def test_inspect_uses_profile_ao_cli(tmp_path: Path) -> None:
     )
     assert runner.commands[10] == (
         "curl",
+        "--noproxy",
+        "*",
+        "--interface",
+        "127.0.0.1",
         "-fsS",
         "http://127.0.0.1:8443/dashboard-health",
     )
-    assert runner.commands[11][-11:] == (
+    assert runner.commands[11][-13:] == (
         "-H",
         "Origin: https://console.example.test",
         "-H",
@@ -1946,8 +2023,12 @@ def test_inspect_uses_profile_ao_cli(tmp_path: Path) -> None:
         "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==",
         "-H",
         "Sec-WebSocket-Version: 13",
+        "--interface",
+        "127.0.0.1",
         "http://127.0.0.1:8443/mux",
     )
+    assert runner.commands[8][:3] == ("curl", "--noproxy", "*")
+    assert runner.commands[9][:3] == ("curl", "--noproxy", "*")
     assert cast(dict[str, object], report["states"])["delivery"] == "ready"
     assert cast(list[dict[str, object]], report["probes"])[0]["owner"] == "host"
 
@@ -2328,6 +2409,35 @@ def test_unreadable_doctor_cannot_prove_host_ready(doctor: str) -> None:
         context="host",
     )
     assert cast(dict[str, object], report["states"])["daemon"] == "indeterminate"
+
+
+@pytest.mark.parametrize(
+    "checks",
+    [
+        ["not-an-object"],
+        [{"name": 7, "level": "PASS"}],
+        [{"name": "config", "level": 7}],
+    ],
+)
+def test_malformed_doctor_checks_cannot_prove_host_ready(
+    checks: list[object],
+) -> None:
+    doctor = json.dumps(
+        {
+            "ok": True,
+            "checks": checks,
+            "extension": {"future": "preserved"},
+        }
+    )
+    report = host.inspect_host(
+        FakeRunner(inspect_responses(doctor=doctor)),
+        context="host",
+    )
+    assert cast(dict[str, object], report["states"])["daemon"] == "indeterminate"
+    capabilities = cast(dict[str, object], report["capabilities"])
+    assert cast(dict[str, object], capabilities["ao_doctor"])["extension"] == {
+        "future": "preserved"
+    }
 
 
 def test_doctor_not_ok_without_external_failure_blocks_readiness() -> None:

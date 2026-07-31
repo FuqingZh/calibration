@@ -245,9 +245,13 @@ def _dashboard_url(host: str, port: int) -> str:
     return f"http://{address}:{port}"
 
 
-def _mux_probe_command(base_url: str, origin: object) -> tuple[str, ...]:
-    return (
+def _mux_probe_command(
+    base_url: str, origin: object, *, interface: str | None = None
+) -> tuple[str, ...]:
+    command = (
         "curl",
+        "--noproxy",
+        "*",
         "--http1.1",
         "--max-time",
         "2",
@@ -266,8 +270,10 @@ def _mux_probe_command(base_url: str, origin: object) -> tuple[str, ...]:
         "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==",
         "-H",
         "Sec-WebSocket-Version: 13",
-        base_url + "/mux",
     )
+    if interface is not None:
+        command += ("--interface", interface)
+    return (*command, base_url + "/mux")
 
 
 def _validate_origin(value: object, label: str) -> str:
@@ -385,9 +391,13 @@ def evaluate_delivery_state(
         return "not_applicable"
     if dashboard_enabled is None or daemon_state != "ready":
         return "indeterminate"
-    if probes["dashboard"].status != "pass":
+    if probes["dashboard"].status == "unknown":
+        return "indeterminate"
+    if probes["dashboard"].status == "fail":
         return "degraded"
-    if terminal_enabled is True and probes["mux"].status != "pass":
+    if terminal_enabled is True and probes["mux"].status == "unknown":
+        return "indeterminate"
+    if terminal_enabled is True and probes["mux"].status == "fail":
         return "degraded"
     return "ready"
 
@@ -411,6 +421,21 @@ def _doctor_failure_classes(doctor: Mapping[str, object]) -> tuple[bool, bool]:
                 elif name in DOCTOR_CORE_CHECKS or name:
                     core_failure = True
     return external_failure, core_failure
+
+
+def _doctor_checks_structurally_valid(doctor: Mapping[str, object]) -> bool:
+    checks = doctor.get("checks")
+    if not isinstance(checks, list):
+        return False
+    for raw_item in cast(list[object], checks):
+        if not isinstance(raw_item, dict):
+            return False
+        item = cast(dict[str, object], raw_item)
+        if not isinstance(item.get("name"), str) or not isinstance(
+            item.get("level"), str
+        ):
+            return False
+    return True
 
 
 def _version_before(value: object, minimum: tuple[int, int]) -> bool:
@@ -488,6 +513,8 @@ def inspect_host(
     service = "agent-orchestrator.service"
     ao_cli = "ao"
     dashboard_base: str | None = None
+    dashboard_source: str | None = None
+    mux_source: str | None = None
     terminal_profile: dict[str, object] | None = None
     if profile is not None and profile.exists():
         parsed = _load_profile(profile)
@@ -499,10 +526,21 @@ def inspect_host(
         service = cast(str, ao["daemon_service"])
         ao_cli = cast(str, ao["cli"])
         if dashboard.get("mode", "read-only") == "read-only":
+            listen_host = cast(str, dashboard["listen_host"])
             dashboard_base = _dashboard_url(
-                cast(str, dashboard["listen_host"]),
+                listen_host,
                 cast(int, dashboard["listen_port"]),
             )
+            listen_ip = ipaddress.ip_address(listen_host)
+            if any(
+                listen_ip in ipaddress.ip_network(cast(str, cidr), strict=False)
+                for cidr in cast(list[object], dashboard["trusted_readonly_cidrs"])
+            ):
+                dashboard_source = listen_host
+            if listen_host in cast(
+                list[object], terminal_profile["allowed_client_ips"]
+            ):
+                mux_source = listen_host
     authoritative_owner = "host" if context == "host" else "sandbox"
     daemon_endpoint_owner = "daemon" if context == "host" else "sandbox"
     dashboard_owner = "host" if context == "host" else "sandbox"
@@ -529,13 +567,13 @@ def inspect_host(
             runner,
             daemon_endpoint_owner,
             "healthz",
-            ("curl", "-fsS", base + health),
+            ("curl", "--noproxy", "*", "-fsS", base + health),
         ),
         _probe(
             runner,
             daemon_endpoint_owner,
             "readyz",
-            ("curl", "-fsS", base + ready),
+            ("curl", "--noproxy", "*", "-fsS", base + ready),
         ),
     ]
     evidence.append(
@@ -543,29 +581,62 @@ def inspect_host(
             runner,
             dashboard_owner,
             "dashboard",
-            ("curl", "-fsS", dashboard_base + "/dashboard-health"),
+            (
+                "curl",
+                "--noproxy",
+                "*",
+                "--interface",
+                dashboard_source,
+                "-fsS",
+                dashboard_base + "/dashboard-health",
+            ),
         )
-        if dashboard_base is not None
+        if dashboard_base is not None and dashboard_source is not None
         else Evidence(
-            "dashboard", dashboard_owner, "unknown", "Dashboard not configured"
+            "dashboard",
+            dashboard_owner,
+            "unknown",
+            (
+                "Dashboard source identity not authorized"
+                if dashboard_base is not None
+                else "Dashboard not configured"
+            ),
         )
     )
     evidence.append(
         _probe_mux(
             runner,
             dashboard_owner,
-            _mux_probe_command(dashboard_base, terminal_profile["allowed_origin"]),
+            _mux_probe_command(
+                dashboard_base,
+                terminal_profile["allowed_origin"],
+                interface=mux_source,
+            ),
         )
         if dashboard_base is not None
+        and mux_source is not None
         and terminal_profile is not None
         and terminal_profile.get("desired_enabled") is True
-        else Evidence("mux", dashboard_owner, "unknown", "Terminal not configured")
+        else Evidence(
+            "mux",
+            dashboard_owner,
+            "unknown",
+            (
+                "mux source identity not authorized"
+                if dashboard_base is not None
+                and terminal_profile is not None
+                and terminal_profile.get("desired_enabled") is True
+                else "Terminal not configured"
+            ),
+        )
     )
     by_name = {item.id: item for item in evidence}
     status = _json_object(by_name["status"].detail)
     doctor = _json_object(by_name["doctor"].detail)
     external_doctor_failure, core_doctor_failure = _doctor_failure_classes(doctor)
-    doctor_valid = _required_subset(doctor, {"ok": bool, "checks": list})
+    doctor_valid = _required_subset(
+        doctor, {"ok": bool, "checks": list}
+    ) and _doctor_checks_structurally_valid(doctor)
     if (
         doctor_valid
         and doctor["ok"] is False
@@ -1021,7 +1092,9 @@ def _quote(value: object) -> str:
     if isinstance(value, int):
         return str(value)
     if isinstance(value, str):
-        return json.dumps(value)
+        if any(0xD800 <= ord(character) <= 0xDFFF for character in value):
+            raise CalibrationError("TOML strings must not contain lone surrogates")
+        return json.dumps(value, ensure_ascii=False)
     if isinstance(value, list):
         return "[" + ", ".join(_quote(item) for item in cast(list[object], value)) + "]"
     if isinstance(value, dict):
