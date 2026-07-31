@@ -4,8 +4,10 @@ This directory records calibration decisions, evaluations, historical plans,
 and portable integration guidance. Reusable cross-project engineering guidance
 lives under `../references/engineering/`.
 
-Calibration is in stable maintenance mode with no active implementation plan.
-New work begins from a concrete conversation-authorized task.
+Calibration is in stable maintenance mode. The bounded CAL-1 containment
+public contract is delivered without a behavioral-improvement claim. A future
+evaluation is not an active phase; upstream systemd containment remains a
+proposal rather than current AO behavior.
 
 ## Public Architecture
 
@@ -41,6 +43,8 @@ back to `$HOME/.config/calibration/AGENTS.md`.
 | Default repository quality gate | `decisions/2026-07-30-default-repository-quality-gate.md` |
 | Codex-home adoption compatibility | `decisions/2026-07-30-ao-host-context-and-config-compatibility.md` |
 | Dashboard terminal boundary | `decisions/2026-07-30-dashboard-terminal-access-boundary.md` |
+| Portable orchestrator containment | `decisions/2026-07-31-portable-orchestrator-containment.md` |
+| CAL-1 implementation status | `implementation-plan/20260731-v2.1-portable-orchestrator-containment-implementation-plan.md` |
 
 The current default is outcome autonomy within repository-local, reversible
 boundaries. AO is optional and conditional. Ordinary engineering tasks do not
@@ -75,9 +79,13 @@ portable fixtures, reviewed findings, and reconstructable public evidence.
 
 The portable AO guide keeps sandbox, worker, daemon, and host state distinct;
 defines registered, configured, runtime-ready, and continuation-proven
-adoption; and retains exact-head pull-request safety. AO installation and
-upgrades belong to upstream Desktop. Calibration does not ship host deployment
-artifacts.
+adoption; retains exact-head pull-request safety; and bounds recursive
+discovery and mutation to the assigned workspace. It also requires an empty
+OS-owned containment boundary before process release can be reported, with
+incomplete release kept observable and retryable. AO installation, upgrades,
+and proposed per-worker systemd process containment belong upstream. Current
+AO behavior does not provide that proposed systemd guarantee, and calibration
+does not ship host deployment artifacts.
 
 `scripts/adopt_ao_repository.py` is an optional plan/apply adapter for an
 already installed, CLI-capable AO on its supported Linux `systemd --user` and
@@ -132,3 +140,4 @@ evidence remains in its owning public decisions.
 - `implementation-plan/20260727-v1.8-ai-native-calibration-convergence-implementation-plan.md`
 - `implementation-plan/20260728-v1.9-persistent-linear-intake-and-no-product-canary-implementation-plan.md`
 - `implementation-plan/20260728-v2.0-three-scenario-linear-acceptance-implementation-plan.md`
+- `implementation-plan/20260731-v2.1-portable-orchestrator-containment-implementation-plan.md`

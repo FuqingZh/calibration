@@ -159,6 +159,42 @@ unavailable or the repository has not adopted it, continue through the normal
 isolated-Worktree delivery path and report that bounded fallback instead of
 asking the user to diagnose infrastructure.
 
+## Orchestrator Containment
+
+Treat each task workspace as the default filesystem discovery and mutation
+boundary. An orchestrated worker must not recursively enumerate an aggregation
+root that contains sibling worktrees, sessions, repositories, or unrelated
+user data merely because that root is reachable. Resolve the assigned
+repository and task workspace first, run discovery from that boundary, and
+name any additional repository or external path before accessing it.
+
+This is a portable orchestrator invariant, independent of a particular service
+manager or host layout. Repository instructions and orchestration adapters
+should make the assigned workspace discoverable and keep mutations scoped to
+it. Process-level enforcement, such as a service-manager scope that constrains
+descendant processes, is a stronger defense in depth when the upstream
+orchestrator supports it; documentation must not describe a proposed
+containment mechanism as current AO behavior.
+
+## Orchestrator Process Release
+
+Treat process release as a separate portable lifecycle invariant. An
+orchestrator may treat worker termination as complete or mark its runtime
+released only after the OS-owned containment boundary assigned to that worker
+is empty. A worker or session may enter a terminated state while cleanup
+remains pending. A terminal, tmux pane, shell, harness session, or orchestrator
+session disappearing is not proof that descendant processes have exited.
+
+When the containment boundary is not empty or cannot be authoritatively read,
+keep the incomplete release observable and retryable. Preserve enough worker
+identity and containment state for the owning control plane to retry cleanup
+and verify emptiness; do not silently convert a partial teardown into a
+released state.
+
+This is a portable release contract, not a claim about current enforcement.
+Per-worker systemd scopes are one proposed upstream mechanism for providing an
+OS-owned boundary. Current AO does not yet enforce those scopes.
+
 ## Accepted Orchestrator Repository Adoption
 
 For an explicitly opted-in repository on a host whose orchestrator, identity,
