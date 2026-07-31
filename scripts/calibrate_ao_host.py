@@ -34,6 +34,8 @@ EXIT_PROBE = 3
 PROBE_TIMEOUT_SECONDS = 10
 UNAVAILABLE_CONFIRMATION_DELAY_SECONDS = 1.0
 DASHBOARD_TREE_ENTRY_LIMIT = 10_000
+DASHBOARD_HEALTH_BODY_LIMIT = 64 * 1024
+DASHBOARD_HEALTH_MARKER = "\nCALIBRATION_DASHBOARD_HEALTH_META\t"
 CURL_PROBE_PREFIX = ("curl", "-q", "--noproxy", "*")
 AO_PROBE_ENVIRONMENT_OVERRIDES = (
     "AO_DATA_DIR",
@@ -269,6 +271,74 @@ def _probe_dashboard(
     return Evidence(name, owner, "pass" if passed else "fail", detail)
 
 
+def _dashboard_health_probe_command(
+    base_url: str, *, interface: str | None = None
+) -> tuple[str, ...]:
+    command = (
+        *CURL_PROBE_PREFIX,
+        "--max-filesize",
+        str(DASHBOARD_HEALTH_BODY_LIMIT),
+        "--write-out",
+        (
+            f"{DASHBOARD_HEALTH_MARKER}%{{http_code}}\t"
+            "%{content_type}\t%{size_download}"
+        ),
+    )
+    if interface is not None:
+        command += ("--interface", interface)
+    return (*command, "-fsS", base_url + "/dashboard-health")
+
+
+def _probe_dashboard_health(
+    runner: Runner,
+    owner: str,
+    command: Sequence[str],
+    *,
+    expected_pid: int | None,
+) -> Evidence:
+    try:
+        result = runner(command)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return Evidence("dashboard", owner, "fail", f"{type(exc).__name__}: {exc}")
+    fallback_detail = (result.stdout.strip() or result.stderr.strip() or "no output")[
+        :512
+    ]
+    if result.returncode == 45:
+        return Evidence("dashboard", owner, "unknown", fallback_detail)
+    body, marker, metadata = result.stdout.rpartition(DASHBOARD_HEALTH_MARKER)
+    fields = metadata.rstrip("\r\n").split("\t") if marker else []
+    if len(fields) != 3:
+        return Evidence("dashboard", owner, "fail", "missing health metadata")
+    status_code, content_type, downloaded_text = fields
+    media_type = content_type.partition(";")[0].strip().casefold()
+    try:
+        downloaded = int(downloaded_text)
+    except ValueError:
+        downloaded = -1
+    body_size = len(body.encode("utf-8"))
+    payload = _json_object(body)
+    pid = payload.get("pid")
+    passed = (
+        result.returncode == 0
+        and status_code == "200"
+        and media_type == "application/json"
+        and 0 < downloaded <= DASHBOARD_HEALTH_BODY_LIMIT
+        and body_size == downloaded
+        and body_size <= DASHBOARD_HEALTH_BODY_LIMIT
+        and payload.get("status") == "ok"
+        and payload.get("service") == "agent-orchestrator-daemon"
+        and type(pid) is int
+        and pid > 0
+        and (expected_pid is None or pid == expected_pid)
+    )
+    detail = (
+        f"{status_code} {media_type} pid={pid}"
+        if passed
+        else f"{status_code or 'unknown'} {media_type or 'unknown'} invalid AO health"
+    )
+    return Evidence("dashboard", owner, "pass" if passed else "fail", detail)
+
+
 def _reject_json_constant(value: str) -> NoReturn:
     raise ValueError(f"non-finite JSON constant: {value}")
 
@@ -359,17 +429,20 @@ def _parse_unscoped_ip_address(
     return ipaddress.ip_address(value)
 
 
+def _ip_transport_identity(
+    address: ipaddress.IPv4Address | ipaddress.IPv6Address,
+) -> ipaddress.IPv4Address | ipaddress.IPv6Address:
+    if isinstance(address, ipaddress.IPv6Address) and address.ipv4_mapped is not None:
+        return address.ipv4_mapped
+    return address
+
+
 def _validate_terminal_client_address(
     value: str,
 ) -> ipaddress.IPv4Address | ipaddress.IPv6Address:
     """Require an exact address that can identify a concrete unicast client."""
     address = _parse_unscoped_ip_address(value)
-    classification = (
-        address.ipv4_mapped
-        if isinstance(address, ipaddress.IPv6Address)
-        and address.ipv4_mapped is not None
-        else address
-    )
+    classification = _ip_transport_identity(address)
     limited_broadcast = isinstance(classification, ipaddress.IPv4Address) and int(
         classification
     ) == (2**32 - 1)
@@ -875,21 +948,22 @@ def inspect_host(
                 "readyz": confirmation[2],
             }
         )
+    direct_health = _json_object(initial_by_name["healthz"].detail)
+    direct_health_pid = direct_health.get("pid")
+    expected_dashboard_pid = (
+        direct_health_pid
+        if type(direct_health_pid) is int and direct_health_pid > 0
+        else None
+    )
     evidence.append(
-        _probe_dashboard(
+        _probe_dashboard_health(
             runner,
             dashboard_owner,
-            (
-                *CURL_PROBE_PREFIX,
-                "--interface",
-                dashboard_source,
-                "-o",
-                "/dev/null",
-                "--write-out",
-                "%{http_code}\n%{content_type}",
-                "-fsS",
-                dashboard_base + "/dashboard-health",
+            _dashboard_health_probe_command(
+                dashboard_base,
+                interface=dashboard_source,
             ),
+            expected_pid=expected_dashboard_pid,
         )
         if dashboard_base is not None and dashboard_source is not None
         else Evidence(
@@ -1730,6 +1804,32 @@ def _paths_overlap(first: Path, second: Path) -> bool:
     return False
 
 
+def _validate_dashboard_state_write_scope(
+    profile: Mapping[str, object], source_profile: Path
+) -> None:
+    dashboard = _section(profile, "dashboard")
+    if dashboard.get("mode", "read-only") != "read-only":
+        return
+    paths = _section(profile, "paths")
+    state_root = Path(cast(str, paths["state_root"]))
+    excluded_roles = {"paths.state_root", "dashboard.pid_file"}
+    protected_roles = [
+        role
+        for role in _configured_host_role_paths(profile, source_profile)
+        if role[0] not in excluded_roles
+    ]
+    storage = _section(profile, "storage")
+    for index, boundary in enumerate(
+        cast(list[dict[str, object]], storage.get("boundaries", []))
+    ):
+        boundary_path = Path(cast(str, boundary["path"]))
+        if boundary_path.resolve(strict=False) != state_root.resolve(strict=False):
+            protected_roles.append((f"storage.boundaries[{index}]", boundary_path))
+    for label, protected_path in protected_roles:
+        if _paths_overlap(state_root, protected_path):
+            raise CalibrationError(f"paths.state_root must not overlap {label}")
+
+
 def _validate_render_destination_roles(
     profile: Mapping[str, object],
     *,
@@ -1913,6 +2013,7 @@ def _load_profile(path: Path) -> dict[str, object]:
     _validate_no_listener_collision(profile)
     canonical = _canonical_v2(profile)
     _validate_profile_host_path_ancestors(canonical)
+    _validate_dashboard_state_write_scope(canonical, safe)
     codex_home = Path(cast(str, _section(canonical, "ao")["codex_home"]))
     if codex_home.exists():
         _validate_codex_auth_file(codex_home)
@@ -1942,12 +2043,14 @@ def _validate_no_listener_collision(profile: Mapping[str, object]) -> None:
     if dashboard.get("mode", "read-only") != "read-only":
         return
     parsed = urllib.parse.urlsplit(cast(str, ao["loopback_base_url"]))
-    dashboard_ip = _parse_unscoped_ip_address(cast(str, dashboard["listen_host"]))
+    dashboard_ip = _ip_transport_identity(
+        _parse_unscoped_ip_address(cast(str, dashboard["listen_host"]))
+    )
     ao_host = cast(str, parsed.hostname)
     if ao_host == "localhost":
         host_collides = dashboard_ip.is_loopback or dashboard_ip.is_unspecified
     else:
-        ao_ip = _parse_unscoped_ip_address(ao_host)
+        ao_ip = _ip_transport_identity(_parse_unscoped_ip_address(ao_host))
         host_collides = dashboard_ip == ao_ip or (
             dashboard_ip.is_unspecified and dashboard_ip.version == ao_ip.version
         )
@@ -2377,6 +2480,7 @@ def init_profile(
     }
     canonical = _canonical_v2(profile)
     _validate_profile_host_path_ancestors(canonical)
+    _validate_dashboard_state_write_scope(canonical, target)
     _validate_dashboard_service_roles(canonical)
     protected_file_identities = _validate_host_file_role_collisions(canonical, target)
     _validate_dashboard_role_collisions(_section(canonical, "dashboard"))
@@ -2878,8 +2982,11 @@ elif name == "curl":
     elif url.endswith("/readyz"):
         print(json.dumps({"status":"ready",**identity}))
     elif url.endswith("/dashboard-health"):
-        print("200")
-        print("application/json")
+        payload = json.dumps({"status":"ok",**identity})
+        print(payload, end="")
+        meta = "\\nCALIBRATION_DASHBOARD_HEALTH_META\\t200\\t"
+        meta += "application/json; charset=utf-8\\t"
+        print(meta + str(len(payload.encode())))
     elif url.endswith("/mux"):
         print("HTTP/1.1 101 Switching Protocols")
         print("Connection: Upgrade")
@@ -2950,7 +3057,9 @@ def reconstruction_canary(root: Path, runner: Runner = _run) -> dict[str, object
     )
     initialized = config_home / "calibration" / "initialized.toml"
     state_root = state_home / "calibration"
-    dashboard_root = state_root / "dashboard"
+    dashboard_root = root / "dashboard"
+    active_config = config_home / "calibration/active.conf"
+    artifact_root = config_home / "calibration/artifacts"
     init_code = EXIT_OK
     _require_canary_stage(
         "init",
@@ -2983,15 +3092,15 @@ def reconstruction_canary(root: Path, runner: Runner = _run) -> dict[str, object
                 "--nginx-pid-file",
                 str(state_root / "nginx.pid"),
                 "--active-config",
-                str(state_root / "active.conf"),
+                str(active_config),
                 "--desired-service",
                 "ao-dashboard.service",
                 "--rollback-service",
                 "ao-dashboard-rollback.service",
                 "--desired-nginx-artifact",
-                str(state_root / "nginx.conf"),
+                str(artifact_root / "nginx.conf"),
                 "--desired-service-artifact",
-                str(state_root / "nginx.service"),
+                str(artifact_root / "nginx.service"),
                 "--terminal",
                 "--client-ip",
                 "127.0.0.1",

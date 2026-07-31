@@ -4,6 +4,7 @@ import argparse
 import contextlib
 import json
 import os
+import re
 import runpy
 import shutil
 import socketserver
@@ -73,6 +74,28 @@ def websocket_response() -> str:
         "Upgrade: websocket\r\n"
         "Sec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=\r\n\r\n"
     )
+
+
+def dashboard_health_response(
+    body: str | None = None,
+    *,
+    status: str = "200",
+    content_type: str = "application/json; charset=utf-8",
+    downloaded: int | None = None,
+) -> str:
+    if body is None:
+        body = json.dumps(
+            {
+                "status": "ok",
+                "service": "agent-orchestrator-daemon",
+                "pid": 42,
+                "executablePath": "/opt/example/ao",
+                "workingDirectory": "/opt/example/work",
+                "startupWorkingDirectory": "/opt/example/start",
+            }
+        )
+    size = len(body.encode("utf-8")) if downloaded is None else downloaded
+    return f"{body}{host.DASHBOARD_HEALTH_MARKER}{status}\t{content_type}\t{size}"
 
 
 class FakeRunner:
@@ -180,7 +203,7 @@ def inspect_responses(
                 }
             ),
         ),
-        completed((), out="200\napplication/json"),
+        completed((), out=dashboard_health_response()),
         completed((), out="200\ntext/html; charset=utf-8"),
         completed((), 22, out="403"),
     ]
@@ -723,11 +746,11 @@ def test_enabled_multicast_listener_is_rejected(
                 document_root=tmp_path / "multicast-dashboard",
                 nginx_executable=Path("/usr/sbin/nginx"),
                 nginx_pid_file=tmp_path / "multicast-state/nginx.pid",
-                active_config=tmp_path / "multicast-state/active.conf",
+                active_config=tmp_path / "multicast-config/active.conf",
                 desired_service="ao-dashboard.service",
                 rollback_service="ao-dashboard-rollback.service",
-                desired_nginx_artifact=tmp_path / "multicast-state/nginx.conf",
-                desired_service_artifact=tmp_path / "multicast-state/nginx.service",
+                desired_nginx_artifact=tmp_path / "multicast-artifacts/nginx.conf",
+                desired_service_artifact=tmp_path / "multicast-artifacts/nginx.service",
             )
 
     disabled = tmp_path / f"disabled-{listen_host.replace(':', '-')}.toml"
@@ -765,8 +788,16 @@ def test_ipv6_canonical_client_identity_authorizes_source_probe(
     responses[-1] = completed((), out=websocket_response())
     runner = FakeRunner(responses)
     report = host.inspect_host(runner, profile=profile, context="host")
-    assert runner.commands[10][4:6] == ("--interface", "::1")
-    assert runner.commands[11][4:6] == ("--interface", "::1")
+    health_interface = runner.commands[10].index("--interface")
+    ui_interface = runner.commands[11].index("--interface")
+    assert runner.commands[10][health_interface : health_interface + 2] == (
+        "--interface",
+        "::1",
+    )
+    assert runner.commands[11][ui_interface : ui_interface + 2] == (
+        "--interface",
+        "::1",
+    )
     assert runner.commands[12][-3:-1] == ("--interface", "::1")
     assert cast(dict[str, object], report["states"])["delivery"] == "ready"
 
@@ -801,6 +832,134 @@ def test_dashboard_ui_media_type_is_required_for_delivery_ready(
     assert probes["dashboard"]["status"] == "pass"
     assert probes["dashboard-ui"]["status"] == "fail"
     assert cast(dict[str, object], report["states"])["delivery"] == "degraded"
+
+
+@pytest.mark.parametrize(
+    "response",
+    [
+        dashboard_health_response("{}"),
+        dashboard_health_response("[]"),
+        dashboard_health_response("not-json"),
+        dashboard_health_response(
+            '{"status":"ready","service":"agent-orchestrator-daemon","pid":42}'
+        ),
+        dashboard_health_response('{"status":"ok","service":"other","pid":42}'),
+        dashboard_health_response(
+            '{"status":"ok","service":"agent-orchestrator-daemon"}'
+        ),
+        dashboard_health_response(
+            '{"status":"ok","service":"agent-orchestrator-daemon","pid":true}'
+        ),
+        dashboard_health_response(
+            '{"status":"ok","service":"agent-orchestrator-daemon","pid":0}'
+        ),
+        dashboard_health_response(
+            '{"status":"ok","service":"agent-orchestrator-daemon","pid":43}'
+        ),
+        dashboard_health_response(content_type="text/plain"),
+        dashboard_health_response(downloaded=1),
+        dashboard_health_response(status="204"),
+    ],
+)
+def test_dashboard_health_requires_matching_ao_identity(response: str) -> None:
+    evidence = host._probe_dashboard_health(
+        FakeRunner([completed((), out=response)]),
+        "host",
+        ("curl",),
+        expected_pid=42,
+    )
+    assert evidence.status == "fail"
+
+
+def test_dashboard_health_probe_accepts_bounded_additive_payload() -> None:
+    evidence = host._probe_dashboard_health(
+        FakeRunner([completed((), out=dashboard_health_response())]),
+        "host",
+        ("curl",),
+        expected_pid=42,
+    )
+    assert evidence.status == "pass"
+    assert evidence.detail == "200 application/json pid=42"
+
+
+def test_dashboard_health_probe_fails_closed_on_runner_error() -> None:
+    evidence = host._probe_dashboard_health(
+        lambda _command: (_ for _ in ()).throw(FileNotFoundError("curl")),
+        "host",
+        ("curl",),
+        expected_pid=42,
+    )
+    assert evidence.status == "fail"
+    assert evidence.detail.startswith("FileNotFoundError:")
+
+
+@pytest.mark.parametrize(
+    "response",
+    [
+        "200\napplication/json",
+        (
+            '{"status":"ok","service":"agent-orchestrator-daemon","pid":42}'
+            f"{host.DASHBOARD_HEALTH_MARKER}200\tapplication/json\tnot-a-size"
+        ),
+    ],
+)
+def test_dashboard_health_probe_rejects_invalid_metadata(response: str) -> None:
+    evidence = host._probe_dashboard_health(
+        FakeRunner([completed((), out=response)]),
+        "host",
+        ("curl",),
+        expected_pid=42,
+    )
+    assert evidence.status == "fail"
+
+
+def test_dashboard_health_probe_rejects_oversized_payload(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    body = json.dumps(
+        {
+            "status": "ok",
+            "service": "agent-orchestrator-daemon",
+            "pid": 42,
+            "padding": "x" * 128,
+        }
+    )
+    monkeypatch.setattr(host, "DASHBOARD_HEALTH_BODY_LIMIT", 64)
+    response = dashboard_health_response(body)
+    evidence = host._probe_dashboard_health(
+        FakeRunner([completed((), out=response)]),
+        "host",
+        ("curl",),
+        expected_pid=42,
+    )
+    assert evidence.status == "fail"
+
+
+def test_real_dashboard_health_probe_rejects_unrelated_http_200() -> None:
+    class Handler(socketserver.BaseRequestHandler):
+        def handle(self) -> None:
+            self.request.recv(8192)
+            body = b"{}"
+            self.request.sendall(
+                b"HTTP/1.1 200 OK\r\n"
+                b"Content-Type: application/json\r\n"
+                + f"Content-Length: {len(body)}\r\n".encode()
+                + b"Connection: close\r\n\r\n"
+                + body
+            )
+
+    with socketserver.TCPServer(("127.0.0.1", 0), Handler) as server:
+        port = server.server_address[1]
+        thread = threading.Thread(target=server.handle_request)
+        thread.start()
+        evidence = host._probe_dashboard_health(
+            host._run,
+            "host",
+            host._dashboard_health_probe_command(f"http://127.0.0.1:{port}"),
+            expected_pid=42,
+        )
+        thread.join(timeout=3)
+    assert evidence.status == "fail"
 
 
 def test_bound_source_curl_45_is_unknown_but_external_failure_still_degrades(
@@ -863,11 +1022,11 @@ def test_init_render_verify_round_trip_and_manifest(
         document_root=tmp_path / "dashboard",
         nginx_executable=Path("/usr/sbin/nginx"),
         nginx_pid_file=tmp_path / "state/nginx.pid",
-        active_config=tmp_path / "state/active.conf",
+        active_config=tmp_path / "config/active.conf",
         desired_service="ao-dashboard.service",
         rollback_service="ao-dashboard-rollback.service",
-        desired_nginx_artifact=tmp_path / "state/nginx.conf",
-        desired_service_artifact=tmp_path / "state/nginx.service",
+        desired_nginx_artifact=tmp_path / "artifacts/nginx.conf",
+        desired_service_artifact=tmp_path / "artifacts/nginx.service",
         terminal=True,
         client_ips=("203.0.113.7", "203.0.113.8"),
         origin="https://console.example.test",
@@ -975,11 +1134,11 @@ def test_public_dashboard_root_excludes_profile_and_candidate_trees(
             document_root=public_root,
             nginx_executable=Path("/usr/sbin/nginx"),
             nginx_pid_file=private_root / "state/nginx.pid",
-            active_config=private_root / "state/active.conf",
+            active_config=private_root / "config/active.conf",
             desired_service="ao-dashboard.service",
             rollback_service="ao-dashboard-rollback.service",
-            desired_nginx_artifact=private_root / "state/nginx.conf",
-            desired_service_artifact=private_root / "state/nginx.service",
+            desired_nginx_artifact=private_root / "artifacts/nginx.conf",
+            desired_service_artifact=private_root / "artifacts/nginx.service",
         )
         return target
 
@@ -2148,11 +2307,11 @@ def test_dashboard_listener_family_and_collision_fail_closed(
             document_root=tmp_path / "dashboard",
             nginx_executable=Path("/usr/sbin/nginx"),
             nginx_pid_file=tmp_path / "state/nginx.pid",
-            active_config=tmp_path / "state/active.conf",
+            active_config=tmp_path / "config/active.conf",
             desired_service="ao-dashboard.service",
             rollback_service="ao-dashboard-rollback.service",
-            desired_nginx_artifact=tmp_path / "state/nginx.conf",
-            desired_service_artifact=tmp_path / "state/nginx.service",
+            desired_nginx_artifact=tmp_path / "artifacts/nginx.conf",
+            desired_service_artifact=tmp_path / "artifacts/nginx.service",
         )
     assert not collision.exists()
 
@@ -2203,6 +2362,59 @@ def test_unspecified_dashboard_listener_collision_fails_closed(
     profile.chmod(0o600)
     with pytest.raises(host.CalibrationError, match="must not collide"):
         host.render_profile(profile, tmp_path / "candidate")
+
+
+def test_mapped_ipv4_dashboard_listener_collision_fails_closed(
+    tmp_path: Path, codex_home: Path
+) -> None:
+    target = tmp_path / "mapped-collision.toml"
+    state = tmp_path / "state"
+    with pytest.raises(host.CalibrationError, match="must not collide"):
+        host.init_profile(
+            target,
+            trust_model="trusted-single-user",
+            codex_home=codex_home,
+            data_dir=tmp_path / "data",
+            private_authority=tmp_path / "authority/AGENTS.md",
+            state_root=state,
+            dashboard_enabled=True,
+            dashboard_listen_host="::ffff:127.0.0.1",
+            dashboard_listen_port=3001,
+            readonly_cidrs=("::ffff:127.0.0.1/128",),
+            document_root=tmp_path / "dashboard",
+            nginx_executable=Path("/usr/sbin/nginx"),
+            nginx_pid_file=state / "nginx.pid",
+            active_config=tmp_path / "config/active.conf",
+            desired_service="ao-dashboard.service",
+            rollback_service="ao-dashboard-rollback.service",
+            desired_nginx_artifact=tmp_path / "artifacts/nginx.conf",
+            desired_service_artifact=tmp_path / "artifacts/nginx.service",
+        )
+    assert not target.exists()
+
+
+@pytest.mark.parametrize(
+    ("dashboard_host", "dashboard_port", "should_collide"),
+    [
+        ("::ffff:0.0.0.0", 3001, True),
+        ("::ffff:127.0.0.1", 3002, False),
+        ("::ffff:127.0.0.2", 3001, False),
+        ("::1", 3001, False),
+        ("2001:db8::1", 3001, False),
+    ],
+)
+def test_mapped_ipv4_listener_transport_identity(
+    dashboard_host: str, dashboard_port: int, should_collide: bool
+) -> None:
+    canonical = host._canonical_v2(tomllib.loads(V1_PROFILE))
+    dashboard = cast(dict[str, object], canonical["dashboard"])
+    dashboard["listen_host"] = dashboard_host
+    dashboard["listen_port"] = dashboard_port
+    if should_collide:
+        with pytest.raises(host.CalibrationError, match="must not collide"):
+            host._validate_no_listener_collision(canonical)
+    else:
+        host._validate_no_listener_collision(canonical)
 
 
 @pytest.mark.parametrize("field", ["data_dir", "state_root"])
@@ -2413,11 +2625,11 @@ def test_init_rejects_incomplete_or_invalid_dashboard_trust(
             document_root=document_root or tmp_path / "dashboard",
             nginx_executable=Path("/usr/sbin/nginx"),
             nginx_pid_file=tmp_path / "state/nginx.pid",
-            active_config=tmp_path / "state/active.conf",
+            active_config=tmp_path / "config/active.conf",
             desired_service="ao-dashboard.service",
             rollback_service="ao-dashboard-rollback.service",
-            desired_nginx_artifact=tmp_path / "state/nginx.conf",
-            desired_service_artifact=tmp_path / "state/nginx.service",
+            desired_nginx_artifact=tmp_path / "artifacts/nginx.conf",
+            desired_service_artifact=tmp_path / "artifacts/nginx.service",
             terminal=terminal,
             client_ips=client_ips,
             origin=origin,
@@ -2518,11 +2730,11 @@ def test_enabled_dashboard_validates_path_roles_and_distinct_services(
             document_root=document_root or tmp_path / f"{name}-dashboard",
             nginx_executable=nginx_executable or Path("/usr/sbin/nginx"),
             nginx_pid_file=nginx_pid_file or state / "nginx.pid",
-            active_config=active_config or state / "active.conf",
+            active_config=active_config or tmp_path / f"{name}-config/active.conf",
             desired_service=desired_service,
             rollback_service=rollback_service,
-            desired_nginx_artifact=state / "nginx.conf",
-            desired_service_artifact=state / "nginx.service",
+            desired_nginx_artifact=tmp_path / f"{name}-artifacts/nginx.conf",
+            desired_service_artifact=tmp_path / f"{name}-artifacts/nginx.service",
         )
         return target
 
@@ -2576,11 +2788,10 @@ def test_enabled_dashboard_validates_path_roles_and_distinct_services(
     with pytest.raises(host.CalibrationError, match=r"nginx_executable.*writable"):
         initialize("nginx-writable", nginx_executable=nginx_writable)
     with pytest.raises(host.CalibrationError, match=r"active_config.*regular file"):
-        initialize("active", state_root=active_state, active_config=active_directory)
+        initialize("active-directory", active_config=active_directory)
     with pytest.raises(host.CalibrationError, match=r"active_config.*writable"):
         initialize(
             "active-writable",
-            state_root=active_state,
             active_config=active_writable,
         )
     with pytest.raises(host.CalibrationError, match="existing ancestor"):
@@ -2593,7 +2804,6 @@ def test_enabled_dashboard_validates_path_roles_and_distinct_services(
         initialize("pid", state_root=pid_state, nginx_pid_file=pid_directory)
     assert initialize(
         "active-readable",
-        state_root=active_state,
         active_config=active_readable,
     ).exists()
     for name in (
@@ -2601,7 +2811,7 @@ def test_enabled_dashboard_validates_path_roles_and_distinct_services(
         "nginx-directory",
         "nginx-mode",
         "nginx-writable",
-        "active",
+        "active-directory",
         "active-writable",
         "active-replaceable",
         "active-missing-sticky",
@@ -2633,8 +2843,12 @@ def test_enabled_dashboard_validates_path_roles_and_distinct_services(
 
     public_root_profile = initialize("public-root-load")
     public_root_payload = host._canonical_v2(host._load_profile(public_root_profile))
+    public_container = tmp_path / "public-container"
     cast(dict[str, object], public_root_payload["dashboard"])["document_root"] = str(
-        tmp_path
+        public_container
+    )
+    cast(dict[str, object], public_root_payload["ao"])["data_dir"] = str(
+        public_container / "ao-data"
     )
     public_root_profile.write_text(host._toml(public_root_payload), encoding="utf-8")
     public_root_profile.chmod(0o600)
@@ -2642,11 +2856,12 @@ def test_enabled_dashboard_validates_path_roles_and_distinct_services(
         host.plan_profile(public_root_profile)
 
     nested_state = tmp_path / "nested-state"
+    nested_control = tmp_path / "nested-control"
     nested = initialize(
         "nested-roles",
         state_root=nested_state,
-        document_root=nested_state / "dashboard",
-        active_config=nested_state / "active.conf",
+        document_root=nested_control / "dashboard",
+        active_config=nested_control / "active.conf",
         nginx_pid_file=nested_state / "nginx.pid",
     )
     assert nested.exists()
@@ -2925,11 +3140,11 @@ def test_dashboard_document_root_creation_and_symlink_boundaries(
             document_root=document_root,
             nginx_executable=nginx,
             nginx_pid_file=state / "nginx.pid",
-            active_config=state / "active.conf",
+            active_config=tmp_path / f"{name}-config/active.conf",
             desired_service="ao-dashboard.service",
             rollback_service="ao-dashboard-rollback.service",
-            desired_nginx_artifact=state / "nginx.conf",
-            desired_service_artifact=state / "nginx.service",
+            desired_nginx_artifact=tmp_path / f"{name}-artifacts/nginx.conf",
+            desired_service_artifact=tmp_path / f"{name}-artifacts/nginx.service",
         )
         return target
 
@@ -2971,11 +3186,11 @@ def test_terminal_requires_explicit_origin_mode(
             document_root=tmp_path / "dashboard",
             nginx_executable=Path("/usr/sbin/nginx"),
             nginx_pid_file=state / "nginx.pid",
-            active_config=state / "active.conf",
+            active_config=tmp_path / "config/active.conf",
             desired_service="ao-dashboard.service",
             rollback_service="ao-dashboard-rollback.service",
-            desired_nginx_artifact=state / "nginx.conf",
-            desired_service_artifact=state / "nginx.service",
+            desired_nginx_artifact=tmp_path / "artifacts/nginx.conf",
+            desired_service_artifact=tmp_path / "artifacts/nginx.service",
             terminal=True,
             client_ips=("203.0.113.7",),
             origin="https://console.example.test",
@@ -3002,11 +3217,11 @@ def test_v2_terminal_profile_requires_origin_mode(
         document_root=tmp_path / "dashboard",
         nginx_executable=Path("/usr/sbin/nginx"),
         nginx_pid_file=state / "nginx.pid",
-        active_config=state / "active.conf",
+        active_config=tmp_path / "config/active.conf",
         desired_service="ao-dashboard.service",
         rollback_service="ao-dashboard-rollback.service",
-        desired_nginx_artifact=state / "nginx.conf",
-        desired_service_artifact=state / "nginx.service",
+        desired_nginx_artifact=tmp_path / "artifacts/nginx.conf",
+        desired_service_artifact=tmp_path / "artifacts/nginx.service",
         terminal=True,
         client_ips=("203.0.113.7",),
         origin="https://console.example.test",
@@ -3491,15 +3706,15 @@ def test_cli_init_accepts_explicit_single_user_dashboard_contract(
         "--nginx-pid-file",
         str(state / "nginx.pid"),
         "--active-config",
-        str(state / "active.conf"),
+        str(tmp_path / "config/active.conf"),
         "--desired-service",
         "ao-dashboard.service",
         "--rollback-service",
         "ao-dashboard-rollback.service",
         "--desired-nginx-artifact",
-        str(state / "nginx.conf"),
+        str(tmp_path / "artifacts/nginx.conf"),
         "--desired-service-artifact",
-        str(state / "nginx.service"),
+        str(tmp_path / "artifacts/nginx.service"),
         "--terminal",
         "--client-ip",
         "203.0.113.7",
@@ -3549,11 +3764,11 @@ def test_generated_terminal_candidate_passes_nginx_test_when_available(
         document_root=dashboard_root,
         nginx_executable=Path(nginx),
         nginx_pid_file=state / "nginx.pid",
-        active_config=state / "active.conf",
+        active_config=tmp_path / "config/active.conf",
         desired_service="ao-dashboard.service",
         rollback_service="ao-dashboard-rollback.service",
-        desired_nginx_artifact=state / "nginx.conf",
-        desired_service_artifact=state / "nginx.service",
+        desired_nginx_artifact=tmp_path / "artifacts/nginx.conf",
+        desired_service_artifact=tmp_path / "artifacts/nginx.service",
         terminal=True,
         client_ips=("2001:db8::7", "2001:db8::8"),
         origin="https://console.example.test",
@@ -3601,11 +3816,11 @@ def test_preserve_origin_mode_forwards_validated_client_origin(
         document_root=tmp_path / "dashboard",
         nginx_executable=Path("/usr/sbin/nginx"),
         nginx_pid_file=state / "nginx.pid",
-        active_config=state / "active.conf",
+        active_config=tmp_path / "config/active.conf",
         desired_service="ao-dashboard.service",
         rollback_service="ao-dashboard-rollback.service",
-        desired_nginx_artifact=state / "nginx.conf",
-        desired_service_artifact=state / "nginx.service",
+        desired_nginx_artifact=tmp_path / "artifacts/nginx.conf",
+        desired_service_artifact=tmp_path / "artifacts/nginx.service",
         terminal=True,
         client_ips=("203.0.113.7",),
         origin="https://console.example.test",
@@ -3638,11 +3853,11 @@ def test_dashboard_only_profile_renders_base_nginx_and_service(
         document_root=tmp_path / "dashboard",
         nginx_executable=Path("/usr/sbin/nginx"),
         nginx_pid_file=state / "nginx.pid",
-        active_config=state / "active.conf",
+        active_config=tmp_path / "config/active.conf",
         desired_service="ao-dashboard.service",
         rollback_service="ao-dashboard-rollback.service",
-        desired_nginx_artifact=state / "nginx.conf",
-        desired_service_artifact=state / "nginx.service",
+        desired_nginx_artifact=tmp_path / "artifacts/nginx.conf",
+        desired_service_artifact=tmp_path / "artifacts/nginx.service",
     )
     assert "nginx/ao-terminal.conf" in cast(
         list[str], host.plan_profile(profile)["artifacts"]
@@ -3676,11 +3891,11 @@ def test_disabled_terminal_malformed_shape_returns_json_invalid(
         document_root=tmp_path / "dashboard",
         nginx_executable=Path("/usr/sbin/nginx"),
         nginx_pid_file=state / "nginx.pid",
-        active_config=state / "active.conf",
+        active_config=tmp_path / "config/active.conf",
         desired_service="ao-dashboard.service",
         rollback_service="ao-dashboard-rollback.service",
-        desired_nginx_artifact=state / "nginx.conf",
-        desired_service_artifact=state / "nginx.service",
+        desired_nginx_artifact=tmp_path / "artifacts/nginx.conf",
+        desired_service_artifact=tmp_path / "artifacts/nginx.service",
     )
     profile.write_text(
         profile.read_text(encoding="utf-8").replace(
@@ -3739,11 +3954,11 @@ def test_dashboard_cidr_shape_render_returns_json_invalid(
         document_root=tmp_path / "dashboard",
         nginx_executable=Path("/usr/sbin/nginx"),
         nginx_pid_file=state / "nginx.pid",
-        active_config=state / "active.conf",
+        active_config=tmp_path / "config/active.conf",
         desired_service="ao-dashboard.service",
         rollback_service="ao-dashboard-rollback.service",
-        desired_nginx_artifact=state / "nginx.conf",
-        desired_service_artifact=state / "nginx.service",
+        desired_nginx_artifact=tmp_path / "artifacts/nginx.conf",
+        desired_service_artifact=tmp_path / "artifacts/nginx.service",
     )
     profile.write_text(
         profile.read_text(encoding="utf-8").replace(
@@ -4753,12 +4968,15 @@ def test_inspect_uses_profile_ao_cli(tmp_path: Path) -> None:
         "-q",
         "--noproxy",
         "*",
+        "--max-filesize",
+        str(host.DASHBOARD_HEALTH_BODY_LIMIT),
+        "--write-out",
+        (
+            f"{host.DASHBOARD_HEALTH_MARKER}%{{http_code}}\t"
+            "%{content_type}\t%{size_download}"
+        ),
         "--interface",
         "127.0.0.1",
-        "-o",
-        "/dev/null",
-        "--write-out",
-        "%{http_code}\n%{content_type}",
         "-fsS",
         "http://127.0.0.1:8443/dashboard-health",
     )
@@ -5061,11 +5279,11 @@ def test_v2_terminal_requires_read_only_dashboard(
         document_root=tmp_path / "dashboard",
         nginx_executable=Path("/usr/sbin/nginx"),
         nginx_pid_file=tmp_path / "state/nginx.pid",
-        active_config=tmp_path / "state/active.conf",
+        active_config=tmp_path / "config/active.conf",
         desired_service="ao-dashboard.service",
         rollback_service="ao-dashboard-rollback.service",
-        desired_nginx_artifact=tmp_path / "state/nginx.conf",
-        desired_service_artifact=tmp_path / "state/nginx.service",
+        desired_nginx_artifact=tmp_path / "artifacts/nginx.conf",
+        desired_service_artifact=tmp_path / "artifacts/nginx.service",
         terminal=True,
         client_ips=("203.0.113.9",),
         origin="https://console.example.test",
@@ -5122,11 +5340,11 @@ def test_v2_runtime_contract_values_fail_closed(
         document_root=tmp_path / "dashboard",
         nginx_executable=Path("/usr/sbin/nginx"),
         nginx_pid_file=tmp_path / "state/nginx.pid",
-        active_config=tmp_path / "state/active.conf",
+        active_config=tmp_path / "config/active.conf",
         desired_service="ao-dashboard.service",
         rollback_service="ao-dashboard-rollback.service",
-        desired_nginx_artifact=tmp_path / "state/nginx.conf",
-        desired_service_artifact=tmp_path / "state/nginx.service",
+        desired_nginx_artifact=tmp_path / "artifacts/nginx.conf",
+        desired_service_artifact=tmp_path / "artifacts/nginx.service",
         terminal=True,
         client_ips=("203.0.113.9",),
         origin="https://console.example.test",
@@ -5432,11 +5650,15 @@ def _init_enabled_review_profile(
         document_root=document_root or tmp_path / f"{name}-dashboard",
         nginx_executable=Path("/usr/sbin/nginx"),
         nginx_pid_file=state / "nginx.pid",
-        active_config=state / "active.conf",
+        active_config=tmp_path / f"{name}-config/active.conf",
         desired_service=desired_service,
         rollback_service=rollback_service,
-        desired_nginx_artifact=(desired_nginx_artifact or state / "nginx.conf"),
-        desired_service_artifact=(desired_service_artifact or state / "nginx.service"),
+        desired_nginx_artifact=(
+            desired_nginx_artifact or tmp_path / f"{name}-artifacts/nginx.conf"
+        ),
+        desired_service_artifact=(
+            desired_service_artifact or tmp_path / f"{name}-artifacts/nginx.service"
+        ),
     )
     return target
 
@@ -5598,6 +5820,114 @@ def test_enabled_dashboard_service_roles_differ_from_ao_daemon(
             rollback_service=rollback_service,
         )
     assert not (tmp_path / f"{name}.toml").exists()
+
+
+@pytest.mark.parametrize("relation", ["equal", "state-parent", "state-child"])
+def test_enabled_dashboard_state_root_isolated_from_codex_home(
+    tmp_path: Path, relation: str
+) -> None:
+    protected_root = tmp_path / "protected"
+    codex_home = protected_root / "codex"
+    protected_root.mkdir(mode=0o700)
+    codex_home.mkdir(mode=0o700)
+    (codex_home / "config.toml").write_text(
+        "[features]\napps = false\nplugins = false\n", encoding="utf-8"
+    )
+    (codex_home / "config.toml").chmod(0o600)
+    (codex_home / "auth.json").write_text("{}\n", encoding="utf-8")
+    (codex_home / "auth.json").chmod(0o600)
+    state_root = {
+        "equal": codex_home,
+        "state-parent": protected_root,
+        "state-child": codex_home / "dashboard-state",
+    }[relation]
+    target = tmp_path / f"state-codex-{relation}.toml"
+
+    with pytest.raises(host.CalibrationError, match=r"state_root.*ao\.codex_home"):
+        host.init_profile(
+            target,
+            trust_model="trusted-single-user",
+            codex_home=codex_home,
+            data_dir=tmp_path / "data",
+            private_authority=tmp_path / "authority/AGENTS.md",
+            state_root=state_root,
+            dashboard_enabled=True,
+            dashboard_listen_host="127.0.0.1",
+            dashboard_listen_port=8443,
+            readonly_cidrs=("127.0.0.1/32",),
+            document_root=tmp_path / "dashboard",
+            nginx_executable=Path("/usr/sbin/nginx"),
+            nginx_pid_file=state_root / "nginx.pid",
+            active_config=tmp_path / "config/active.conf",
+            desired_service="ao-dashboard.service",
+            rollback_service="ao-dashboard-rollback.service",
+            desired_nginx_artifact=tmp_path / "artifacts/nginx.conf",
+            desired_service_artifact=tmp_path / "artifacts/nginx.service",
+        )
+    assert not target.exists()
+
+
+def test_disabled_dashboard_preserves_inert_state_overlap(
+    tmp_path: Path, codex_home: Path
+) -> None:
+    target = tmp_path / "disabled-state-overlap.toml"
+    host.init_profile(
+        target,
+        trust_model="untrusted",
+        codex_home=codex_home,
+        data_dir=tmp_path / "data",
+        private_authority=tmp_path / "authority/AGENTS.md",
+        state_root=codex_home,
+    )
+    candidate = tmp_path / "candidate"
+    host.render_profile(target, candidate)
+    assert not (candidate / "service/ao-dashboard.service").exists()
+    assert all(
+        b"ReadWritePaths=" not in content
+        for content in host._candidate_files(host._load_profile(target)).values()
+    )
+
+
+def test_state_write_scope_protects_all_host_roles(
+    tmp_path: Path, codex_home: Path
+) -> None:
+    profile = _init_enabled_review_profile(tmp_path, codex_home, "state-role-isolation")
+    canonical = host._canonical_v2(host._load_profile(profile))
+    roles = host._configured_host_role_paths(canonical, profile)
+    for label, path in roles:
+        if label in {"paths.state_root", "dashboard.pid_file"}:
+            continue
+        mutated = host._canonical_v2(canonical)
+        cast(dict[str, object], mutated["paths"])["state_root"] = str(path)
+        with pytest.raises(host.CalibrationError, match=rf"overlap {re.escape(label)}"):
+            host._validate_dashboard_state_write_scope(mutated, profile)
+
+
+@pytest.mark.parametrize("command", ["plan", "render", "verify"])
+def test_profile_operations_reject_state_root_inside_private_authority(
+    tmp_path: Path, codex_home: Path, command: str
+) -> None:
+    name = f"state-authority-{command}"
+    profile = _init_enabled_review_profile(tmp_path, codex_home, name)
+    canonical = host._canonical_v2(host._load_profile(profile))
+    authority = Path(
+        cast(str, cast(dict[str, object], canonical["paths"])["private_authority"])
+    )
+    state_root = authority.parent
+    cast(dict[str, object], canonical["paths"])["state_root"] = str(state_root)
+    cast(dict[str, object], canonical["dashboard"])["pid_file"] = str(
+        state_root / "nginx.pid"
+    )
+    profile.write_text(host._toml(canonical), encoding="utf-8")
+    profile.chmod(0o600)
+
+    with pytest.raises(host.CalibrationError, match=r"state_root.*private_authority"):
+        if command == "plan":
+            host.plan_profile(profile)
+        elif command == "render":
+            host.render_profile(profile, tmp_path / "candidate")
+        else:
+            host.verify_profile(profile)
 
 
 @pytest.mark.parametrize(
