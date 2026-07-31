@@ -349,6 +349,50 @@ def test_profile_free_dashboard_delivery_is_explicitly_unknown() -> None:
     assert len(runner.commands) == 10
 
 
+@pytest.mark.parametrize(
+    ("context", "expected"),
+    [
+        (
+            "host",
+            {
+                "healthz": "daemon",
+                "readyz": "daemon",
+                "dashboard": "host",
+                "mux": "host",
+            },
+        ),
+        (
+            "sandbox",
+            {
+                "healthz": "sandbox",
+                "readyz": "sandbox",
+                "dashboard": "sandbox",
+                "mux": "sandbox",
+            },
+        ),
+    ],
+)
+def test_ao_and_dashboard_probe_owners_are_separate(
+    tmp_path: Path, context: str, expected: dict[str, str]
+) -> None:
+    profile = tmp_path / "host.toml"
+    profile.write_text(LEGACY_V1_FIXTURE.read_text(encoding="utf-8"), encoding="utf-8")
+    profile.chmod(0o600)
+    runner = FakeRunner(
+        [
+            *inspect_responses(),
+            completed((), out="ok"),
+            completed((), out="HTTP/1.1 101 Switching Protocols\r\n"),
+        ]
+    )
+    report = host.inspect_host(runner, profile=profile, context=context)
+    owners = {
+        cast(str, probe["id"]): cast(str, probe["owner"])
+        for probe in cast(list[dict[str, object]], report["probes"])
+    }
+    assert {probe: owners[probe] for probe in expected} == expected
+
+
 def test_init_render_verify_round_trip_and_manifest(
     tmp_path: Path, codex_home: Path
 ) -> None:

@@ -504,7 +504,8 @@ def inspect_host(
                 cast(int, dashboard["listen_port"]),
             )
     authoritative_owner = "host" if context == "host" else "sandbox"
-    endpoint_owner = "daemon" if context == "host" else "sandbox"
+    daemon_endpoint_owner = "daemon" if context == "host" else "sandbox"
+    dashboard_owner = "host" if context == "host" else "sandbox"
     evidence = [
         _probe(runner, authoritative_owner, "ao-version", (ao_cli, "version")),
         _probe(runner, "sandbox", "glibc", ("ldd", "--version")),
@@ -524,31 +525,41 @@ def inspect_host(
         ),
         _probe(runner, authoritative_owner, "status", (ao_cli, "status", "--json")),
         _probe(runner, authoritative_owner, "doctor", (ao_cli, "doctor", "--json")),
-        _probe(runner, endpoint_owner, "healthz", ("curl", "-fsS", base + health)),
-        _probe(runner, endpoint_owner, "readyz", ("curl", "-fsS", base + ready)),
+        _probe(
+            runner,
+            daemon_endpoint_owner,
+            "healthz",
+            ("curl", "-fsS", base + health),
+        ),
+        _probe(
+            runner,
+            daemon_endpoint_owner,
+            "readyz",
+            ("curl", "-fsS", base + ready),
+        ),
     ]
     evidence.append(
         _probe(
             runner,
-            endpoint_owner,
+            dashboard_owner,
             "dashboard",
             ("curl", "-fsS", dashboard_base + "/dashboard-health"),
         )
         if dashboard_base is not None
         else Evidence(
-            "dashboard", endpoint_owner, "unknown", "Dashboard not configured"
+            "dashboard", dashboard_owner, "unknown", "Dashboard not configured"
         )
     )
     evidence.append(
         _probe_mux(
             runner,
-            endpoint_owner,
+            dashboard_owner,
             _mux_probe_command(dashboard_base, terminal_profile["allowed_origin"]),
         )
         if dashboard_base is not None
         and terminal_profile is not None
         and terminal_profile.get("desired_enabled") is True
-        else Evidence("mux", endpoint_owner, "unknown", "Terminal not configured")
+        else Evidence("mux", dashboard_owner, "unknown", "Terminal not configured")
     )
     by_name = {item.id: item for item in evidence}
     status = _json_object(by_name["status"].detail)
