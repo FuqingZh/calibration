@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import csv
 import ipaddress
 import re
 import subprocess
@@ -103,6 +104,20 @@ def test_private_value_detection_is_structural() -> None:
     )
     for sample in samples:
         assert private_values(sample)
+
+
+def test_retired_darwin_source_keeps_immutable_provenance_only() -> None:
+    with (REPOSITORY_ROOT / "thirdparty/sources.tsv").open(
+        encoding="utf-8", newline=""
+    ) as source_file:
+        rows = {row["name"]: row for row in csv.DictReader(source_file, delimiter="\t")}
+
+    darwin = rows["darwin-skill"]
+    expected_ref = "7c7b7909b630dc3b5cbb91bd4bcb1b10bfb1f894"
+    assert darwin["imported_ref"] == expected_ref
+    assert darwin["upstream_ref_checked"] == expected_ref
+    assert darwin["local_policy"] == "retired-not-vendored"
+    assert not (REPOSITORY_ROOT / "thirdparty/skills/darwin-skill").exists()
 
 
 def test_public_repository_has_no_deployable_ao_artifacts() -> None:
