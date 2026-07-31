@@ -255,9 +255,15 @@ def _probe_dashboard(
     detail = result.stdout.strip() or result.stderr.strip() or "no output"
     if result.returncode == 45:
         return Evidence(name, owner, "unknown", detail)
-    media_type = detail.partition(";")[0].strip().casefold()
-    passed = result.returncode == 0 and (
-        expected_media_type is None or media_type == expected_media_type.casefold()
+    lines = detail.splitlines()
+    status_code = lines[0].strip() if lines else ""
+    media_type = lines[1].partition(";")[0].strip().casefold() if len(lines) > 1 else ""
+    passed = (
+        result.returncode == 0
+        and status_code == "200"
+        and (
+            expected_media_type is None or media_type == expected_media_type.casefold()
+        )
     )
     return Evidence(name, owner, "pass" if passed else "fail", detail)
 
@@ -422,6 +428,27 @@ def _validate_origin(value: object, label: str) -> str:
         or any(character in value for character in "\"';#?")
     ):
         raise CalibrationError(f"{label} must be an exact Origin")
+    hostname = parsed.hostname
+    try:
+        address = ipaddress.ip_address(hostname)
+    except ValueError:
+        final_label = hostname.rstrip(".").rsplit(".", 1)[-1]
+        if re.fullmatch(r"(?:0[xX][0-9A-Fa-f]*|[0-9]+)", final_label):
+            raise CalibrationError(
+                f"{label} must be an exact Origin using canonical browser serialization"
+            ) from None
+        canonical_host = hostname.casefold()
+    else:
+        canonical_host = address.compressed
+        if address.version == 6:
+            canonical_host = f"[{canonical_host}]"
+    default_port = 80 if parsed.scheme == "http" else 443
+    canonical_port = "" if port is None or port == default_port else f":{port}"
+    canonical = f"{parsed.scheme}://{canonical_host}{canonical_port}"
+    if value != canonical:
+        raise CalibrationError(
+            f"{label} must be an exact Origin using canonical browser serialization"
+        )
     return value
 
 
@@ -735,9 +762,14 @@ def inspect_host(
     dashboard_owner = "host" if context == "host" else "sandbox"
     evidence = [
         _probe(runner, authoritative_owner, "ao-version", (ao_cli, "version")),
-        _probe(runner, "sandbox", "glibc", ("ldd", "--version")),
-        _probe(runner, "worker", "tmux", ("tmux", "-V")),
-        _probe(runner, "worker", "cgroup", ("stat", "-fc", "%T", "/sys/fs/cgroup")),
+        _probe(runner, authoritative_owner, "glibc", ("ldd", "--version")),
+        _probe(runner, authoritative_owner, "tmux", ("tmux", "-V")),
+        _probe(
+            runner,
+            authoritative_owner,
+            "cgroup",
+            ("stat", "-fc", "%T", "/sys/fs/cgroup"),
+        ),
         _probe(
             runner,
             authoritative_owner,
@@ -809,6 +841,10 @@ def inspect_host(
                 *CURL_PROBE_PREFIX,
                 "--interface",
                 dashboard_source,
+                "-o",
+                "/dev/null",
+                "--write-out",
+                "%{http_code}\n%{content_type}",
                 "-fsS",
                 dashboard_base + "/dashboard-health",
             ),
@@ -836,7 +872,7 @@ def inspect_host(
                 "-o",
                 "/dev/null",
                 "--write-out",
-                "%{content_type}",
+                "%{http_code}\n%{content_type}",
                 "-fsS",
                 dashboard_base + "/",
             ),
@@ -977,7 +1013,10 @@ def inspect_host(
 
 
 def _safe_path(path: Path, *, may_create: bool, directory: bool | None = None) -> Path:
-    expanded = path.expanduser()
+    try:
+        expanded = path.expanduser()
+    except RuntimeError as exc:
+        raise CalibrationError(f"{path} cannot expand its user home: {exc}") from exc
     if not expanded.is_absolute():
         raise CalibrationError(f"{path} must be absolute")
     current = Path(expanded.anchor)
@@ -1203,6 +1242,10 @@ def _validate_existing_path_role(
         raise CalibrationError(f"{label} must be a regular file when it exists")
     if executable and not os.access(path, os.X_OK):
         raise CalibrationError(f"{label} must be executable when it exists")
+    if executable and stat.S_IMODE(metadata.st_mode) & 0o022:
+        raise CalibrationError(
+            f"{label} must not be group/other-writable when it exists"
+        )
 
 
 def _validate_dashboard_path_roles(dashboard: Mapping[str, object]) -> None:
@@ -1247,6 +1290,41 @@ def _validate_dashboard_path_roles(dashboard: Mapping[str, object]) -> None:
             "dashboard.pid_file",
             directory=False,
         )
+
+
+def _validate_dashboard_public_root(
+    profile: Mapping[str, object],
+    additional_protected_paths: Sequence[tuple[str, Path]] = (),
+) -> None:
+    dashboard = _section(profile, "dashboard")
+    if dashboard.get("mode", "read-only") != "read-only":
+        return
+    ao = _section(profile, "ao")
+    paths = _section(profile, "paths")
+    document_root = Path(cast(str, dashboard["document_root"])).resolve(strict=False)
+    protected_paths = {
+        "ao.data_dir": Path(cast(str, ao["data_dir"])),
+        "ao.codex_home": Path(cast(str, ao["codex_home"])),
+        "dashboard.active_config": Path(cast(str, dashboard["active_config"])),
+        "dashboard.pid_file": Path(cast(str, dashboard["pid_file"])),
+        "paths.private_authority": Path(cast(str, paths["private_authority"])),
+        "paths.desired_nginx_artifact": Path(
+            cast(str, paths["desired_nginx_artifact"])
+        ),
+        "paths.desired_service_artifact": Path(
+            cast(str, paths["desired_service_artifact"])
+        ),
+        "paths.state_root": Path(cast(str, paths["state_root"])),
+    }
+    for label, protected_path in (
+        *protected_paths.items(),
+        *additional_protected_paths,
+    ):
+        try:
+            protected_path.resolve(strict=False).relative_to(document_root)
+        except ValueError:
+            continue
+        raise CalibrationError(f"dashboard.document_root must not contain {label}")
 
 
 def _load_profile(path: Path) -> dict[str, object]:
@@ -1418,6 +1496,10 @@ def _load_profile(path: Path) -> dict[str, object]:
                 "dashboard desired_service and rollback_service must differ"
             )
         _validate_dashboard_path_roles(_section(canonical, "dashboard"))
+        _validate_dashboard_public_root(
+            canonical,
+            (("source profile", safe),),
+        )
         _validate_listener_network_families(
             listen_host,
             cast(list[str], cidr_values),
@@ -1861,6 +1943,10 @@ def init_profile(
     canonical = _canonical_v2(profile)
     _validate_profile_host_path_ancestors(canonical)
     _validate_dashboard_path_roles(_section(canonical, "dashboard"))
+    _validate_dashboard_public_root(
+        canonical,
+        (("source profile", target),),
+    )
     _validate_terminal(_section(_section(canonical, "dashboard"), "terminal"))
     if dashboard_enabled:
         _validate_listener_network_families(
@@ -2060,6 +2146,7 @@ def _candidate_files(profile: Mapping[str, object]) -> dict[str, bytes]:
             "      if ($request_method != GET) { return 405; }\n"
             f"{readonly_allow_lines}"
             "      deny all;\n"
+            "      disable_symlinks on;\n"
             "      try_files $uri $uri/ =404;\n"
             "    }\n"
             f"{mux_location}"
@@ -2151,19 +2238,8 @@ def _validate_tree_modes(root: Path) -> None:
 
 
 def _validate_publish_parent(parent: Path) -> None:
-    if not parent.is_dir():
+    if _private_chain_missing_components(parent):
         raise CalibrationError("render output parent must exist")
-    metadata = parent.stat()
-    mode = stat.S_IMODE(metadata.st_mode)
-    trusted_owner_uids = {0, os.geteuid(), Path("/").lstat().st_uid}
-    trusted_sticky = bool(mode & stat.S_ISVTX) and (
-        metadata.st_uid in trusted_owner_uids
-    )
-    if mode & 0o022 and not trusted_sticky:
-        raise CalibrationError(
-            "render output parent must not be group/other-writable unless it has "
-            "a sticky bit and a trusted owner"
-        )
 
 
 def render_profile(path: Path, output: Path) -> dict[str, object]:
@@ -2171,6 +2247,10 @@ def render_profile(path: Path, output: Path) -> dict[str, object]:
     profile = _load_profile(path)
     files = _candidate_files(profile)
     target = _safe_path(output, may_create=True)
+    _validate_dashboard_public_root(
+        _canonical_v2(profile),
+        (("render candidate", target),),
+    )
     _validate_publish_parent(target.parent)
     if target.exists():
         if not target.is_dir() or _tree_bytes(target) != files:
@@ -2204,6 +2284,10 @@ def verify_profile(path: Path, *, candidate: Path | None = None) -> dict[str, ob
     version = cast(int, profile.get("schema_version", 1))
     if candidate is not None:
         root = _safe_path(candidate, may_create=False, directory=True)
+        _validate_dashboard_public_root(
+            _canonical_v2(profile),
+            (("verify candidate", root),),
+        )
         files = _candidate_files(profile)
         if _tree_bytes(root) != files:
             raise CalibrationError("candidate does not match canonical rendering")

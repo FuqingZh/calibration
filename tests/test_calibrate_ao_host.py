@@ -160,8 +160,8 @@ def inspect_responses(
                 }
             ),
         ),
-        completed((), out="HTTP/1.1 200 OK"),
-        completed((), out="text/html; charset=utf-8"),
+        completed((), out="200\napplication/json"),
+        completed((), out="200\ntext/html; charset=utf-8"),
         completed((), 22, out="403"),
     ]
 
@@ -476,6 +476,14 @@ def test_profile_free_dashboard_delivery_is_explicitly_unknown() -> None:
         (
             "host",
             {
+                "ao-version": "host",
+                "glibc": "host",
+                "tmux": "host",
+                "cgroup": "host",
+                "systemd-active": "host",
+                "main-pid": "host",
+                "status": "host",
+                "doctor": "host",
                 "healthz": "daemon",
                 "readyz": "daemon",
                 "dashboard": "host",
@@ -486,6 +494,32 @@ def test_profile_free_dashboard_delivery_is_explicitly_unknown() -> None:
         (
             "sandbox",
             {
+                "ao-version": "sandbox",
+                "glibc": "sandbox",
+                "tmux": "sandbox",
+                "cgroup": "sandbox",
+                "systemd-active": "sandbox",
+                "main-pid": "sandbox",
+                "status": "sandbox",
+                "doctor": "sandbox",
+                "healthz": "sandbox",
+                "readyz": "sandbox",
+                "dashboard": "sandbox",
+                "dashboard-ui": "sandbox",
+                "mux": "sandbox",
+            },
+        ),
+        (
+            "auto",
+            {
+                "ao-version": "sandbox",
+                "glibc": "sandbox",
+                "tmux": "sandbox",
+                "cgroup": "sandbox",
+                "systemd-active": "sandbox",
+                "main-pid": "sandbox",
+                "status": "sandbox",
+                "doctor": "sandbox",
                 "healthz": "sandbox",
                 "readyz": "sandbox",
                 "dashboard": "sandbox",
@@ -519,6 +553,9 @@ def test_ao_and_dashboard_probe_owners_are_separate(
         for probe in cast(list[dict[str, object]], report["probes"])
     }
     assert {probe: owners[probe] for probe in expected} == expected
+    assert cast(dict[str, object], report["states"])["daemon"] == (
+        "ready" if context == "host" else "indeterminate"
+    )
 
 
 def test_unauthorized_local_probe_source_is_unknown_not_degraded(
@@ -679,7 +716,7 @@ def test_dashboard_ui_media_type_is_required_for_delivery_ready(
     )
     profile.chmod(0o600)
     responses = inspect_responses()
-    responses[-2] = completed((), out="text/plain")
+    responses[-2] = completed((), out="200\ntext/plain")
     responses[-1] = completed((), out=websocket_response())
 
     report = host.inspect_host(FakeRunner(responses), profile=profile, context="host")
@@ -799,6 +836,7 @@ def test_init_render_verify_round_trip_and_manifest(
         "Upgrade",
         "    websocket 1;",
         "127.0.0.1:3001",
+        "disable_symlinks on;",
     ):
         assert phrase in nginx
     manifest = json.loads((output / "MANIFEST.json").read_text())
@@ -840,6 +878,62 @@ def test_init_render_verify_round_trip_and_manifest(
         "unreadable doctor result",
     ):
         assert phrase in runbook
+
+
+def test_public_dashboard_root_excludes_profile_and_candidate_trees(
+    tmp_path: Path, codex_home: Path
+) -> None:
+    public_root = tmp_path / "public"
+    public_root.mkdir(mode=0o700)
+    private_root = tmp_path / "private"
+
+    def initialize(target: Path, *, enabled: bool = True) -> Path:
+        host.init_profile(
+            target,
+            trust_model="untrusted",
+            codex_home=codex_home,
+            data_dir=private_root / "ao-data",
+            private_authority=private_root / "authority/AGENTS.md",
+            state_root=private_root / "state",
+            dashboard_enabled=enabled,
+            dashboard_listen_host="127.0.0.1",
+            dashboard_listen_port=18443,
+            readonly_cidrs=("203.0.113.0/24",),
+            document_root=public_root,
+            nginx_executable=Path("/usr/sbin/nginx"),
+            nginx_pid_file=private_root / "state/nginx.pid",
+            active_config=private_root / "state/active.conf",
+            desired_service="ao-dashboard.service",
+            rollback_service="ao-dashboard-rollback.service",
+            desired_nginx_artifact=private_root / "state/nginx.conf",
+            desired_service_artifact=private_root / "state/nginx.service",
+        )
+        return target
+
+    with pytest.raises(host.CalibrationError, match="contain source profile"):
+        initialize(public_root / "host.toml")
+    assert not (public_root / "host.toml").exists()
+
+    profile = initialize(private_root / "host.toml")
+    with pytest.raises(host.CalibrationError, match="contain render candidate"):
+        host.render_profile(profile, public_root / "candidate")
+    assert not (public_root / "candidate").exists()
+
+    outside_candidate = private_root / "candidate"
+    host.render_profile(profile, outside_candidate)
+    inside_candidate = public_root / "candidate"
+    outside_candidate.rename(inside_candidate)
+    with pytest.raises(host.CalibrationError, match="contain verify candidate"):
+        host.verify_profile(profile, candidate=inside_candidate)
+
+    copied_profile = public_root / "copied-host.toml"
+    copied_profile.write_bytes(profile.read_bytes())
+    copied_profile.chmod(0o600)
+    with pytest.raises(host.CalibrationError, match="contain source profile"):
+        host.plan_profile(copied_profile)
+
+    disabled = initialize(public_root / "disabled.toml", enabled=False)
+    assert host.plan_profile(disabled)["schema_render"] == 2
 
 
 def test_non_bmp_toml_round_trips_through_render_plan_and_verify(
@@ -1110,14 +1204,24 @@ def test_safe_path_and_render_drift_rejections(
         host.render_profile(profile, unsafe_parent / "sticky-candidate")["unchanged"]
         is False
     )
+    shared_parent = tmp_path / "shared-render-root"
+    shared_parent.mkdir(mode=0o770)
+    shared_parent.chmod(0o770)
+    private_parent = shared_parent / "private"
+    private_parent.mkdir(mode=0o700)
+    target = private_parent / "candidate"
+    with pytest.raises(host.CalibrationError, match="existing ancestor"):
+        host.render_profile(profile, target)
+    assert not target.exists()
+    assert not (private_parent / ".candidate.staging").exists()
     other_owned_parent = tmp_path / "other-owned-parent"
     other_owned_parent.mkdir(mode=0o1777)
     other_owned_parent.chmod(0o1777)
-    original_stat = Path.stat
+    parent_lstat = Path.lstat
     untrusted_uid = max(0, os.geteuid(), Path("/").lstat().st_uid) + 1
 
-    def other_owned_stat(self: Path, *, follow_symlinks: bool = True) -> os.stat_result:
-        metadata = original_stat(self, follow_symlinks=follow_symlinks)
+    def other_owned_lstat(self: Path) -> os.stat_result:
+        metadata = parent_lstat(self)
         if self != other_owned_parent:
             return metadata
         fields = list(metadata)
@@ -1125,7 +1229,7 @@ def test_safe_path_and_render_drift_rejections(
         return os.stat_result(fields)
 
     with monkeypatch.context() as patch:
-        patch.setattr(Path, "stat", other_owned_stat)
+        patch.setattr(Path, "lstat", other_owned_lstat)
         with pytest.raises(
             host.CalibrationError, match="sticky bit and a trusted owner"
         ):
@@ -1934,6 +2038,9 @@ def test_enabled_dashboard_validates_path_roles_and_distinct_services(
     nginx_not_executable = tmp_path / "nginx-not-executable"
     nginx_not_executable.write_text("binary", encoding="utf-8")
     nginx_not_executable.chmod(0o600)
+    nginx_writable = tmp_path / "nginx-writable"
+    nginx_writable.write_text("binary", encoding="utf-8")
+    nginx_writable.chmod(0o775)
     active_state = tmp_path / "active-state"
     active_state.mkdir(mode=0o700)
     active_directory = active_state / "active.conf"
@@ -1949,11 +2056,20 @@ def test_enabled_dashboard_validates_path_roles_and_distinct_services(
         initialize("nginx-directory", nginx_executable=nginx_directory)
     with pytest.raises(host.CalibrationError, match=r"nginx_executable.*executable"):
         initialize("nginx-mode", nginx_executable=nginx_not_executable)
+    with pytest.raises(host.CalibrationError, match=r"nginx_executable.*writable"):
+        initialize("nginx-writable", nginx_executable=nginx_writable)
     with pytest.raises(host.CalibrationError, match=r"active_config.*regular file"):
         initialize("active", state_root=active_state, active_config=active_directory)
     with pytest.raises(host.CalibrationError, match=r"pid_file.*regular file"):
         initialize("pid", state_root=pid_state, nginx_pid_file=pid_directory)
-    for name in ("document", "nginx-directory", "nginx-mode", "active", "pid"):
+    for name in (
+        "document",
+        "nginx-directory",
+        "nginx-mode",
+        "nginx-writable",
+        "active",
+        "pid",
+    ):
         assert not (tmp_path / f"{name}.toml").exists()
 
     with pytest.raises(host.CalibrationError, match="must differ"):
@@ -1973,11 +2089,25 @@ def test_enabled_dashboard_validates_path_roles_and_distinct_services(
         )
     assert not (tmp_path / "role-collision.toml").exists()
 
+    with pytest.raises(host.CalibrationError, match=r"contain ao\.codex_home"):
+        initialize("codex-document-root", document_root=codex_home)
+    assert not (tmp_path / "codex-document-root.toml").exists()
+
+    public_root_profile = initialize("public-root-load")
+    public_root_payload = host._canonical_v2(host._load_profile(public_root_profile))
+    cast(dict[str, object], public_root_payload["dashboard"])["document_root"] = str(
+        tmp_path
+    )
+    public_root_profile.write_text(host._toml(public_root_payload), encoding="utf-8")
+    public_root_profile.chmod(0o600)
+    with pytest.raises(host.CalibrationError, match=r"contain ao\.data_dir"):
+        host.plan_profile(public_root_profile)
+
     nested_state = tmp_path / "nested-state"
     nested = initialize(
         "nested-roles",
         state_root=nested_state,
-        document_root=nested_state,
+        document_root=nested_state / "dashboard",
         active_config=nested_state / "active.conf",
         nginx_pid_file=nested_state / "nginx.pid",
     )
@@ -2008,6 +2138,7 @@ def test_enabled_dashboard_validates_path_roles_and_distinct_services(
         data_dir=tmp_path / "disabled-data",
         private_authority=tmp_path / "disabled-authority/AGENTS.md",
         state_root=tmp_path / "disabled-state",
+        nginx_executable=nginx_writable,
         desired_service="ao-dashboard.service",
         rollback_service="ao-dashboard.service",
     )
@@ -3565,6 +3696,26 @@ def test_mux_probe_requires_bounded_http_101_handshake() -> None:
     assert missing_dashboard.status == "fail"
 
 
+@pytest.mark.parametrize(
+    ("name", "output", "expected_media_type"),
+    [
+        ("dashboard", "301\ntext/html", None),
+        ("dashboard-ui", "302\ntext/html; charset=utf-8", "text/html"),
+    ],
+)
+def test_dashboard_probes_reject_redirect_statuses(
+    name: str, output: str, expected_media_type: str | None
+) -> None:
+    evidence = host._probe_dashboard(
+        FakeRunner([completed((), out=output)]),
+        "host",
+        ("curl",),
+        name=name,
+        expected_media_type=expected_media_type,
+    )
+    assert evidence.status == "fail"
+
+
 def test_real_curl_mux_probe_sends_rfc6455_headers() -> None:
     requests: list[str] = []
 
@@ -3643,6 +3794,32 @@ def test_inspect_error_envelope_preserves_requested_context(
     assert json.loads(capsys.readouterr().out)["context"] == "host"
 
 
+def test_cli_expanduser_failure_uses_fixed_json_error_envelope(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    original_expanduser = Path.expanduser
+
+    def fail_unknown_user(self: Path) -> Path:
+        if str(self).startswith("~missing-user"):
+            raise RuntimeError("Could not determine home directory")
+        return original_expanduser(self)
+
+    monkeypatch.setattr(Path, "expanduser", fail_unknown_user)
+    assert (
+        host.main(["plan", "--profile", "~missing-user/host.toml"]) == host.EXIT_INVALID
+    )
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+    assert captured.err == ""
+    assert payload["capabilities"]["error"] == {
+        "kind": "invalid",
+        "message": (
+            "~missing-user/host.toml cannot expand its user home: "
+            "Could not determine home directory"
+        ),
+    }
+
+
 def test_inspect_uses_profile_ao_cli(tmp_path: Path) -> None:
     profile = tmp_path / "host.toml"
     profile.write_text(
@@ -3684,6 +3861,10 @@ def test_inspect_uses_profile_ao_cli(tmp_path: Path) -> None:
         "*",
         "--interface",
         "127.0.0.1",
+        "-o",
+        "/dev/null",
+        "--write-out",
+        "%{http_code}\n%{content_type}",
         "-fsS",
         "http://127.0.0.1:8443/dashboard-health",
     )
@@ -3697,7 +3878,7 @@ def test_inspect_uses_profile_ao_cli(tmp_path: Path) -> None:
         "-o",
         "/dev/null",
         "--write-out",
-        "%{content_type}",
+        "%{http_code}\n%{content_type}",
         "-fsS",
         "http://127.0.0.1:8443/",
     )
@@ -3804,6 +3985,19 @@ def test_schema_version_requires_exact_integer(tmp_path: Path, value: str) -> No
         "https://example.test/path",
         "https://example{test}",
         "https://example.test?",
+        "HTTPS://EXAMPLE.TEST",
+        "https://example.test:443",
+        "https://example.test:0443",
+        "http://example.test:80",
+        "https://[2001:0db8:0000:0000:0000:0000:0000:0001]",
+        "https://127.000.000.001",
+        "https://127.1",
+        "https://2130706433",
+        "https://0x7f000001",
+        "https://0177.0.0.1",
+        "https://example.01",
+        "https://0x",
+        "https://1.0x",
     ],
 )
 def test_origin_rejects_nginx_metacharacters_and_non_origin_forms(
@@ -3811,6 +4005,20 @@ def test_origin_rejects_nginx_metacharacters_and_non_origin_forms(
 ) -> None:
     with pytest.raises(host.CalibrationError, match="exact Origin"):
         host._validate_origin(origin, "terminal Origin")
+
+
+@pytest.mark.parametrize(
+    "origin",
+    [
+        "https://example.test",
+        "http://example.test:8080",
+        "https://[2001:db8::1]:8443",
+        "http://[::1]",
+        "https://127.0.0.1",
+    ],
+)
+def test_origin_accepts_canonical_browser_serialization(origin: str) -> None:
+    assert host._validate_origin(origin, "terminal Origin") == origin
 
 
 def test_url_validators_reject_types_and_invalid_ports() -> None:
