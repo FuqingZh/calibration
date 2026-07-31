@@ -325,6 +325,27 @@ def test_inspect_profile_context_cgroup_and_invalid_json(
         host.inspect_host(FakeRunner([]), context=cast(str, invalid_context))
 
 
+def test_inspect_loads_explicit_profile_once(
+    monkeypatch: pytest.MonkeyPatch, profile: Path
+) -> None:
+    original_load = host._load_profile
+    loaded: list[Path] = []
+
+    def load_once(path: Path) -> dict[str, object]:
+        loaded.append(path)
+        return original_load(path)
+
+    monkeypatch.setattr(host, "_load_profile", load_once)
+    report = host.inspect_host(
+        FakeRunner(inspect_responses()), profile=profile, context="sandbox"
+    )
+
+    assert loaded == [profile]
+    assert cast(dict[str, object], report["capabilities"])["loopback_base_url"] == (
+        "http://127.0.0.1:3001"
+    )
+
+
 def test_full_probe_json_is_parsed_before_display_truncation() -> None:
     extension = "x" * 3000
     status = json.dumps(
@@ -907,7 +928,6 @@ def test_invalid_profile_and_init_rejections(
     invalid.chmod(0o600)
     with pytest.raises(host.CalibrationError, match="valid TOML"):
         host.plan_profile(invalid)
-    assert host._profile_base_url(invalid) == host.DEFAULT_BASE_URL
     with pytest.raises(host.CalibrationError, match=r"define \[dashboard\]"):
         host._section({"ao": {}}, "dashboard")
     nonstring = tmp_path / "nonstring.toml"
@@ -1173,6 +1193,74 @@ def test_existing_files_are_rejected_for_directory_fields(
         host.plan_profile(profile)
     with pytest.raises(host.CalibrationError, match="directory"):
         host.render_profile(profile, tmp_path / f"{field}-candidate")
+
+
+def test_init_rejects_pid_file_outside_state_root(
+    tmp_path: Path, codex_home: Path
+) -> None:
+    target = tmp_path / "host.toml"
+    with pytest.raises(host.CalibrationError, match=r"beneath paths\.state_root"):
+        host.init_profile(
+            target,
+            trust_model="untrusted",
+            codex_home=codex_home,
+            data_dir=tmp_path / "data",
+            private_authority=tmp_path / "authority/AGENTS.md",
+            state_root=tmp_path / "state",
+            nginx_pid_file=tmp_path / "outside/nginx.pid",
+        )
+    assert not target.exists()
+
+
+def test_init_rejects_state_root_as_pid_file(tmp_path: Path, codex_home: Path) -> None:
+    state_root = tmp_path / "state"
+    with pytest.raises(host.CalibrationError, match="must be a file beneath"):
+        host.init_profile(
+            tmp_path / "host.toml",
+            trust_model="untrusted",
+            codex_home=codex_home,
+            data_dir=tmp_path / "data",
+            private_authority=tmp_path / "authority/AGENTS.md",
+            state_root=state_root,
+            nginx_pid_file=state_root,
+        )
+
+
+def test_v2_profile_rejects_pid_file_outside_state_root(
+    tmp_path: Path, profile: Path
+) -> None:
+    original = f'pid_file = "{tmp_path / "state/nginx.pid"}"'
+    external = f'pid_file = "{tmp_path / "outside/nginx.pid"}"'
+    profile.write_text(
+        profile.read_text(encoding="utf-8").replace(original, external),
+        encoding="utf-8",
+    )
+    for operation in (
+        lambda: host.plan_profile(profile),
+        lambda: host.verify_profile(profile),
+        lambda: host.render_profile(profile, tmp_path / "candidate"),
+    ):
+        with pytest.raises(host.CalibrationError, match=r"beneath paths\.state_root"):
+            operation()
+
+
+def test_disabled_terminal_rejects_explicit_unknown_origin_mode(
+    tmp_path: Path, profile: Path
+) -> None:
+    profile.write_text(
+        profile.read_text(encoding="utf-8").replace(
+            'origin_mode = "preserve"',
+            'origin_mode = "future-mode"',
+        ),
+        encoding="utf-8",
+    )
+    for operation in (
+        lambda: host.plan_profile(profile),
+        lambda: host.verify_profile(profile),
+        lambda: host.render_profile(profile, tmp_path / "candidate"),
+    ):
+        with pytest.raises(host.CalibrationError, match="explicit Origin mode"):
+            operation()
 
 
 def test_init_creates_every_missing_profile_ancestor_private(
@@ -2173,6 +2261,9 @@ def test_run_and_json_helpers(monkeypatch: pytest.MonkeyPatch) -> None:
     )
     assert result.stdout.strip() == "yes"
     assert host._json_object("[]") == {}
+    assert host._json_object('{"value": 1.5}') == {"value": 1.5}
+    for non_finite in ("NaN", "Infinity", "-Infinity", "1e400"):
+        assert host._json_object(f'{{"value": {non_finite}}}') == {}
     assert host._required_subset({"name": "x", "extra": 1}, {"name": str})
     assert not host._required_subset({}, {"name": str})
 

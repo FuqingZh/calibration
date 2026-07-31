@@ -7,6 +7,7 @@ import argparse
 import hashlib
 import ipaddress
 import json
+import math
 import os
 import re
 import shutil
@@ -225,10 +226,25 @@ def _probe_dashboard(runner: Runner, owner: str, command: Sequence[str]) -> Evid
     )
 
 
+def _reject_json_constant(value: str) -> NoReturn:
+    raise ValueError(f"non-finite JSON constant: {value}")
+
+
+def _parse_finite_json_float(value: str) -> float:
+    parsed = float(value)
+    if not math.isfinite(parsed):
+        raise ValueError(f"non-finite JSON number: {value}")
+    return parsed
+
+
 def _json_object(text: str) -> dict[str, object]:
     try:
-        value = json.loads(text)
-    except json.JSONDecodeError:
+        value = json.loads(
+            text,
+            parse_constant=_reject_json_constant,
+            parse_float=_parse_finite_json_float,
+        )
+    except (json.JSONDecodeError, ValueError):
         return {}
     return cast(dict[str, object], value) if isinstance(value, dict) else {}
 
@@ -240,17 +256,6 @@ def _required_subset(
         key in value and isinstance(value[key], expected)
         for key, expected in required.items()
     )
-
-
-def _profile_base_url(profile: Path | None) -> str:
-    if profile is None or not profile.exists():
-        return DEFAULT_BASE_URL
-    try:
-        parsed = _load_profile(profile)
-    except CalibrationError:
-        return DEFAULT_BASE_URL
-    ao = cast(dict[str, object], parsed["ao"])
-    return cast(str, ao["loopback_base_url"])
 
 
 def _valid_inspect_context(value: object) -> bool:
@@ -628,24 +633,26 @@ def inspect_host(
         raise CalibrationError("context must be auto, host, or sandbox")
     if profile is not None and not profile.exists():
         raise CalibrationError(f"{profile} does not exist")
-    base = _profile_base_url(profile)
+    parsed_profile = _load_profile(profile) if profile is not None else None
+    base = DEFAULT_BASE_URL
     health = "/healthz"
     ready = "/readyz"
     service = "agent-orchestrator.service"
     ao_cli = "ao"
+    ao_profile: dict[str, object] | None = None
     dashboard_base: str | None = None
     dashboard_source: str | None = None
     mux_source: str | None = None
     terminal_profile: dict[str, object] | None = None
-    if profile is not None and profile.exists():
-        parsed = _load_profile(profile)
-        ao = cast(dict[str, object], parsed["ao"])
-        dashboard = _section(parsed, "dashboard")
+    if parsed_profile is not None:
+        ao_profile = _section(parsed_profile, "ao")
+        dashboard = _section(parsed_profile, "dashboard")
         terminal_profile = _section(dashboard, "terminal")
-        health = cast(str, ao["health_path"])
-        ready = cast(str, ao["ready_path"])
-        service = cast(str, ao["daemon_service"])
-        ao_cli = cast(str, ao["cli"])
+        base = cast(str, ao_profile["loopback_base_url"])
+        health = cast(str, ao_profile["health_path"])
+        ready = cast(str, ao_profile["ready_path"])
+        service = cast(str, ao_profile["daemon_service"])
+        ao_cli = cast(str, ao_profile["cli"])
         if dashboard.get("mode", "read-only") == "read-only":
             listen_host = cast(str, dashboard["listen_host"])
             dashboard_base = _dashboard_url(
@@ -782,17 +789,13 @@ def inspect_host(
         if cgroup_text in {"tmpfs", "cgroup"}
         else "unknown"
     )
-    terminal: dict[str, object] | None = None
+    terminal = terminal_profile
     desired_process_containment: object = None
     codex_home_compatible: bool | None = None
-    if profile is not None and profile.exists():
-        parsed = _load_profile(profile)
-        terminal = _section(_section(parsed, "dashboard"), "terminal")
-        desired_process_containment = _section(parsed, "ao").get(
-            "process_containment", "legacy"
-        )
+    if ao_profile is not None:
+        desired_process_containment = ao_profile.get("process_containment", "legacy")
         try:
-            _validate_codex_home(Path(cast(str, _section(parsed, "ao")["codex_home"])))
+            _validate_codex_home(Path(cast(str, ao_profile["codex_home"])))
             codex_home_compatible = True
         except CalibrationError:
             codex_home_compatible = False
@@ -991,6 +994,21 @@ def _validate_listener_network_families(
         )
 
 
+def _validate_pid_file_within_state_root(pid_file: Path, state_root: Path) -> None:
+    resolved_state_root = state_root.resolve(strict=False)
+    resolved_pid_file = pid_file.resolve(strict=False)
+    try:
+        relative_pid_file = resolved_pid_file.relative_to(resolved_state_root)
+    except ValueError as exc:
+        raise CalibrationError(
+            "dashboard.pid_file must be beneath paths.state_root"
+        ) from exc
+    if relative_pid_file == Path("."):
+        raise CalibrationError(
+            "dashboard.pid_file must be a file beneath paths.state_root"
+        )
+
+
 def _load_profile(path: Path) -> dict[str, object]:
     safe = _safe_path(path, may_create=False, directory=False)
     try:
@@ -1111,6 +1129,11 @@ def _load_profile(path: Path) -> dict[str, object]:
         candidate = Path(cast(str, value))
         if candidate.exists() and not candidate.is_dir():
             raise CalibrationError(f"{label} must be a directory")
+    if version == 2:
+        _validate_pid_file_within_state_root(
+            Path(cast(str, dashboard["pid_file"])),
+            Path(cast(str, paths["state_root"])),
+        )
     _validate_service_unit(
         dashboard.get("desired_service"), "dashboard.desired_service"
     )
@@ -1198,10 +1221,15 @@ def _validate_terminal_v1(terminal: Mapping[str, object]) -> None:
 def _validate_terminal(terminal: Mapping[str, object]) -> None:
     _validate_terminal_shapes(terminal)
     enabled = terminal.get("desired_enabled")
+    origin_mode = terminal.get("origin_mode")
+    if origin_mode is not None and origin_mode not in {
+        "preserve",
+        "edge-validated-rewrite",
+    }:
+        raise CalibrationError("terminal requires an explicit Origin mode")
     if enabled:
         clients = terminal.get("allowed_client_ips")
         client_values = cast(list[object], clients) if isinstance(clients, list) else []
-        origin_mode = terminal.get("origin_mode")
         if (
             not client_values
             or not all(isinstance(value, str) for value in client_values)
@@ -1222,7 +1250,7 @@ def _validate_terminal(terminal: Mapping[str, object]) -> None:
         )
         if terminal.get("trust_model") != "trusted-single-user":
             raise CalibrationError("terminal requires trusted-single-user")
-        if origin_mode not in {"preserve", "edge-validated-rewrite"}:
+        if origin_mode is None:
             raise CalibrationError("terminal requires an explicit Origin mode")
         if origin_mode == "edge-validated-rewrite":
             _validate_loopback_url(
@@ -1507,6 +1535,7 @@ def init_profile(
         if not reconstruction_path.is_absolute():
             raise CalibrationError("reconstruction paths must be absolute")
         _validate_interpolated_scalar(str(reconstruction_path), "reconstruction path")
+    _validate_pid_file_within_state_root(pid_file, state_root)
     boundary_values = list(storage_boundaries) or [
         {
             "path": str(state_root),
@@ -1684,6 +1713,7 @@ def _candidate_files(profile: Mapping[str, object]) -> dict[str, bytes]:
                 else f'"{upstream_origin}"'
             )
             allow_lines = "".join(f"      allow {client};\n" for client in clients)
+            # Nginx map literal source strings are matched case-insensitively.
             terminal_maps = (
                 "  map $http_origin $ao_origin_allowed {\n"
                 "    default 0;\n"
