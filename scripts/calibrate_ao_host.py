@@ -1713,7 +1713,8 @@ def _candidate_files(profile: Mapping[str, object]) -> dict[str, bytes]:
                 else f'"{upstream_origin}"'
             )
             allow_lines = "".join(f"      allow {client};\n" for client in clients)
-            # Nginx map literal source strings are matched case-insensitively.
+            # Nginx map literal source strings are matched case-insensitively:
+            # https://nginx.org/en/docs/http/ngx_http_map_module.html#map
             terminal_maps = (
                 "  map $http_origin $ao_origin_allowed {\n"
                 "    default 0;\n"

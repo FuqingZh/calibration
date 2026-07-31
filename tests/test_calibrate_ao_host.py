@@ -606,6 +606,7 @@ def test_init_render_verify_round_trip_and_manifest(
         "return 405",
         "https://console.example.test",
         "Upgrade",
+        "    websocket 1;",
         "127.0.0.1:3001",
     ):
         assert phrase in nginx
