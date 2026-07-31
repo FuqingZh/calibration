@@ -14,7 +14,10 @@ AO ready/running status evidence plus matching MainPID/status/health/ready
 process identity and validated health and readiness payloads. Sandbox-visible
 stale status or a read-only data-dir-write failure remains indeterminate and
 cannot be promoted to host evidence. External doctor failures degrade delivery;
-host-owned core doctor failures affect daemon readiness.
+host-owned core doctor failures affect daemon readiness, and malformed doctor
+output cannot establish that core checks are clean. `--context host` is the
+explicit host attestation; `auto` remains sandbox-owned and indeterminate until
+a separate positive host-context attestation exists.
 
 The CLI recognizes the existing schema v1 `[ao]`, `[dashboard]`,
 `[dashboard.terminal]`, and `[paths]` sections when `schema_version` is absent
@@ -25,6 +28,8 @@ uses schema v2, retains those names, and adds `ao.runtime_owner`,
 candidate needs are explicit in `plan` and `verify` readback. Unknown keys fail
 closed. Storage boundaries are structured path/kind/recursive-search values,
 and desired process containment never certifies observed containment.
+Fresh init identifies its in-memory profile as schema v2 before
+canonicalization, so an explicitly selected v2 Origin mode is preserved.
 
 Legacy v1 terminal validation remains distinct from v2 policy. V1 accepts its
 deployed `single-user-trusted-lan` trust name, multiple exact client IPs, and a

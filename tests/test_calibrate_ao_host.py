@@ -4,6 +4,7 @@ import json
 import runpy
 import shutil
 import subprocess
+import sys
 import tomllib
 from collections.abc import Sequence
 from pathlib import Path
@@ -868,6 +869,39 @@ def test_cli_init_path(
     assert json.loads(capsys.readouterr().out)["command"] == "init"
 
 
+def test_subprocess_init_preserves_requested_v2_origin_mode(
+    tmp_path: Path, codex_home: Path
+) -> None:
+    profile = tmp_path / "subprocess.toml"
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(REPOSITORY_ROOT / "scripts/calibrate_ao_host.py"),
+            "init",
+            "--profile",
+            str(profile),
+            "--trust-model",
+            "untrusted",
+            "--codex-home",
+            str(codex_home),
+            "--data-dir",
+            str(tmp_path / "data"),
+            "--private-authority",
+            str(tmp_path / "authority/AGENTS.md"),
+            "--state-root",
+            str(tmp_path / "state"),
+            "--origin-mode",
+            "preserve",
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == host.EXIT_OK, result.stdout
+    terminal = tomllib.loads(profile.read_text())["dashboard"]["terminal"]
+    assert terminal["origin_mode"] == "preserve"
+
+
 def test_cli_init_accepts_explicit_single_user_dashboard_contract(
     capsys: pytest.CaptureFixture[str], tmp_path: Path, codex_home: Path
 ) -> None:
@@ -1421,13 +1455,24 @@ def test_doctor_three_way_classification_matrix() -> None:
     }
 
 
-def test_auto_requires_matching_host_identity() -> None:
-    ready = host.inspect_host(FakeRunner(inspect_responses()), context="auto")
-    assert cast(dict[str, object], ready["states"])["daemon"] == "ready"
+def test_auto_remains_indeterminate_without_explicit_host_attestation() -> None:
+    report = host.inspect_host(FakeRunner(inspect_responses()), context="auto")
+    assert cast(dict[str, object], report["states"])["daemon"] == "indeterminate"
+    assert "AO-HOST-CONTEXT-MISMATCH" in cast(list[str], report["known_issues"])
+    probes = cast(list[dict[str, object]], report["probes"])
+    assert {
+        cast(str, probe["owner"])
+        for probe in probes
+        if probe["id"] in {"systemd-active", "status", "doctor", "healthz", "readyz"}
+    } == {"sandbox"}
 
-    mismatched = inspect_responses()
-    mismatched[5] = completed((), out="99")
-    report = host.inspect_host(FakeRunner(mismatched), context="auto")
+
+@pytest.mark.parametrize("doctor", ["not-json", "[]"])
+def test_unreadable_doctor_cannot_prove_host_ready(doctor: str) -> None:
+    report = host.inspect_host(
+        FakeRunner(inspect_responses(doctor=doctor)),
+        context="host",
+    )
     assert cast(dict[str, object], report["states"])["daemon"] == "indeterminate"
 
 

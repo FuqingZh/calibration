@@ -242,7 +242,7 @@ def evaluate_daemon_state(
     core_doctor_failure: bool = False,
 ) -> str:
     """Classify daemon state from authoritative probe values only."""
-    if context == "sandbox":
+    if context != "host":
         return "indeterminate"
     service = probes["systemd-active"]
     health_probe = probes["healthz"]
@@ -272,8 +272,7 @@ def evaluate_daemon_state(
         and ready.get("service") == "agent-orchestrator-daemon"
     )
     if (
-        context in {"host", "auto"}
-        and service.status == "pass"
+        service.status == "pass"
         and service.detail == "active"
         and probes["status"].status == "pass"
         and status.get("state") in {"ready", "running"}
@@ -356,10 +355,14 @@ def evaluate_known_issues(
 ) -> list[str]:
     """Return stable issue IDs from already collected, mutation-free evidence."""
     issues: list[str] = []
-    if status.get("state") not in {"ready", "running"} or (
-        context == "sandbox"
-        and doctor.get("ok") is not True
-        and not external_doctor_failure
+    if (
+        context == "auto"
+        or status.get("state") not in {"ready", "running"}
+        or (
+            context == "sandbox"
+            and doctor.get("ok") is not True
+            and not external_doctor_failure
+        )
     ):
         issues.append("AO-HOST-CONTEXT-MISMATCH")
     if _version_before(capabilities.get("glibc_version"), (2, 38)):
@@ -414,8 +417,8 @@ def inspect_host(
         ready = cast(str, ao["ready_path"])
         service = cast(str, ao["daemon_service"])
         ao_cli = cast(str, ao["cli"])
-    authoritative_owner = "sandbox" if context == "sandbox" else "host"
-    endpoint_owner = "sandbox" if context == "sandbox" else "daemon"
+    authoritative_owner = "host" if context == "host" else "sandbox"
+    endpoint_owner = "daemon" if context == "host" else "sandbox"
     evidence = [
         _probe(runner, "sandbox", "ao-version", (ao_cli, "version")),
         _probe(runner, "sandbox", "glibc", ("ldd", "--version")),
@@ -449,6 +452,10 @@ def inspect_host(
     status = _json_object(by_name["status"].detail)
     doctor = _json_object(by_name["doctor"].detail)
     external_doctor_failure, core_doctor_failure = _doctor_failure_classes(doctor)
+    doctor_valid = by_name["doctor"].status == "pass" and _required_subset(
+        doctor, {"ok": bool, "checks": list}
+    )
+    core_doctor_failure = core_doctor_failure or not doctor_valid
     health_payload = _json_object(by_name["healthz"].detail)
     ready_payload = _json_object(by_name["readyz"].detail)
     daemon_state = evaluate_daemon_state(
@@ -993,6 +1000,7 @@ def init_profile(
     nginx_artifact = desired_nginx_artifact or state_root / "nginx.conf"
     service_artifact = desired_service_artifact or state_root / "nginx.service"
     profile: dict[str, object] = {
+        "schema_version": PROFILE_VERSION,
         "ao": {
             "cli": "ao",
             "data_dir": str(data_dir),
@@ -1034,6 +1042,20 @@ def init_profile(
             "desired_nginx_artifact": str(nginx_artifact),
             "desired_service_artifact": str(service_artifact),
             "state_root": str(state_root),
+        },
+        "storage": {
+            "boundaries": [
+                {
+                    "path": str(state_root),
+                    "kind": "host-state",
+                    "recursive_search": False,
+                },
+                {
+                    "path": str(data_dir),
+                    "kind": "ao-data",
+                    "recursive_search": False,
+                },
+            ]
         },
     }
     canonical = _canonical_v2(profile)
