@@ -128,11 +128,12 @@ in `thirdparty/PATCHES.md` and `thirdparty/sources.tsv`.
 not prove an optimization or regression result until the prompts have been run
 under a stated model, reasoning effort, and comparison method.
 
-`writing-plans` and `darwin-skill` remain vendored for source and provenance
-review but are no longer installed as runtime skills. Codex Plan Mode plus the
-implementation-plan reference owns planning behavior; Darwin's optimization
-system remains available for study without becoming a default calibration
-entrypoint.
+`writing-plans` remains vendored for source and provenance review but is no
+longer installed as a runtime skill. Codex Plan Mode plus the
+implementation-plan reference owns planning behavior. `darwin-skill` is
+retired and no longer vendored; `thirdparty/sources.tsv` retains its immutable
+upstream refs, and the installer still removes links it owns under the retired
+name while preserving foreign links.
 
 The stale `grill-me` skill name is retired in favor of `grilling`. Existing
 unmanaged `grill-me` directories are removed only when running the installer

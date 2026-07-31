@@ -34,6 +34,7 @@ back to `$HOME/.config/calibration/AGENTS.md`.
 | Agent and workflow comparison | `../references/engineering/discipline/evaluation.md` |
 | Durable implementation-plan contract | `../references/engineering/docs/document-types/implementation-plan.md` |
 | Portable AO integration | `runbooks/agent-orchestrator-review-continuation.md` |
+| Native AO delivery and auto-merge boundary | `decisions/2026-07-29-ao-native-delivery-convergence.md` |
 | Current AI-native direction | `decisions/2026-07-27-ai-native-calibration-review.md` |
 | Writable comparative evidence | `decisions/2026-07-27-ai-native-writable-implementation-evaluation-closeout.md` |
 | Five-phase convergence result | `decisions/2026-07-27-ai-native-calibration-convergence-closeout.md` |

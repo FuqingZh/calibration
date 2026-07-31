@@ -13,6 +13,10 @@ patches stay explicit.
 - `sources.tsv`: upstream source and local policy for each vendored skill
 - `PATCHES.md`: local modifications from the upstream or imported copy
 
+Retired sources may remain in `sources.tsv` after their vendored trees are
+removed. Their entries retain immutable provenance and use an explicit
+`retired-not-vendored` policy.
+
 ## Policy
 
 - Keep optional mode skills user-invoked unless there is a clear reason for
