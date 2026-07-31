@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import hashlib
 import ipaddress
 import json
@@ -32,6 +33,7 @@ EXIT_USAGE = 2
 EXIT_PROBE = 3
 PROBE_TIMEOUT_SECONDS = 10
 UNAVAILABLE_CONFIRMATION_DELAY_SECONDS = 1.0
+CURL_PROBE_PREFIX = ("curl", "-q", "--noproxy", "*")
 V1_KEYS = {
     "ao": {
         "cli",
@@ -215,17 +217,26 @@ def _probe_mux(runner: Runner, owner: str, command: Sequence[str]) -> Evidence:
     return Evidence("mux", owner, "pass" if handshake else "fail", detail)
 
 
-def _probe_dashboard(runner: Runner, owner: str, command: Sequence[str]) -> Evidence:
+def _probe_dashboard(
+    runner: Runner,
+    owner: str,
+    command: Sequence[str],
+    *,
+    name: str = "dashboard",
+    expected_media_type: str | None = None,
+) -> Evidence:
     try:
         result = runner(command)
     except (OSError, subprocess.TimeoutExpired) as exc:
-        return Evidence("dashboard", owner, "fail", f"{type(exc).__name__}: {exc}")
+        return Evidence(name, owner, "fail", f"{type(exc).__name__}: {exc}")
     detail = result.stdout.strip() or result.stderr.strip() or "no output"
     if result.returncode == 45:
-        return Evidence("dashboard", owner, "unknown", detail)
-    return Evidence(
-        "dashboard", owner, "pass" if result.returncode == 0 else "fail", detail
+        return Evidence(name, owner, "unknown", detail)
+    media_type = detail.partition(";")[0].strip().casefold()
+    passed = result.returncode == 0 and (
+        expected_media_type is None or media_type == expected_media_type.casefold()
     )
+    return Evidence(name, owner, "pass" if passed else "fail", detail)
 
 
 def _reject_json_constant(value: str) -> NoReturn:
@@ -336,9 +347,7 @@ def _mux_probe_command(
     base_url: str, origin: object, *, interface: str | None = None
 ) -> tuple[str, ...]:
     command = (
-        "curl",
-        "--noproxy",
-        "*",
+        *CURL_PROBE_PREFIX,
         "--http1.1",
         "--max-time",
         "2",
@@ -516,6 +525,11 @@ def evaluate_delivery_state(
     if probes["dashboard"].status == "unknown":
         return "indeterminate"
     if probes["dashboard"].status == "fail":
+        return "degraded"
+    dashboard_ui = probes.get("dashboard-ui")
+    if dashboard_ui is None or dashboard_ui.status == "unknown":
+        return "indeterminate"
+    if dashboard_ui.status == "fail":
         return "degraded"
     if terminal_enabled is True and probes["mux"].status == "unknown":
         return "indeterminate"
@@ -714,13 +728,13 @@ def inspect_host(
             runner,
             daemon_endpoint_owner,
             "healthz",
-            ("curl", "--noproxy", "*", "-fsS", base + health),
+            (*CURL_PROBE_PREFIX, "-fsS", base + health),
         ),
         _probe(
             runner,
             daemon_endpoint_owner,
             "readyz",
-            ("curl", "--noproxy", "*", "-fsS", base + ready),
+            (*CURL_PROBE_PREFIX, "-fsS", base + ready),
         ),
     ]
     unavailable_confirmed = False
@@ -742,13 +756,13 @@ def inspect_host(
                 runner,
                 daemon_endpoint_owner,
                 "healthz-confirmation",
-                ("curl", "--noproxy", "*", "-fsS", base + health),
+                (*CURL_PROBE_PREFIX, "-fsS", base + health),
             ),
             _probe(
                 runner,
                 daemon_endpoint_owner,
                 "readyz-confirmation",
-                ("curl", "--noproxy", "*", "-fsS", base + ready),
+                (*CURL_PROBE_PREFIX, "-fsS", base + ready),
             ),
         ]
         evidence.extend(confirmation)
@@ -764,9 +778,7 @@ def inspect_host(
             runner,
             dashboard_owner,
             (
-                "curl",
-                "--noproxy",
-                "*",
+                *CURL_PROBE_PREFIX,
                 "--interface",
                 dashboard_source,
                 "-fsS",
@@ -776,6 +788,36 @@ def inspect_host(
         if dashboard_base is not None and dashboard_source is not None
         else Evidence(
             "dashboard",
+            dashboard_owner,
+            "unknown",
+            (
+                "Dashboard source identity not authorized"
+                if dashboard_base is not None
+                else "Dashboard not configured"
+            ),
+        )
+    )
+    evidence.append(
+        _probe_dashboard(
+            runner,
+            dashboard_owner,
+            (
+                *CURL_PROBE_PREFIX,
+                "--interface",
+                dashboard_source,
+                "-o",
+                "/dev/null",
+                "--write-out",
+                "%{content_type}",
+                "-fsS",
+                dashboard_base + "/",
+            ),
+            name="dashboard-ui",
+            expected_media_type="text/html",
+        )
+        if dashboard_base is not None and dashboard_source is not None
+        else Evidence(
+            "dashboard-ui",
             dashboard_owner,
             "unknown",
             (
@@ -927,12 +969,46 @@ def _safe_path(path: Path, *, may_create: bool, directory: bool | None = None) -
     return expanded.resolve()
 
 
-def _mkdir_private_chain(path: Path) -> None:
+def _private_chain_missing_components(path: Path) -> list[Path]:
     missing: list[Path] = []
     current = path
-    while not current.exists():
-        missing.append(current)
-        current = current.parent
+    while True:
+        try:
+            metadata = current.lstat()
+        except FileNotFoundError:
+            missing.append(current)
+            current = current.parent
+            continue
+        except OSError as exc:
+            raise CalibrationError(f"{current} cannot be inspected: {exc}") from exc
+        if stat.S_ISLNK(metadata.st_mode) or not stat.S_ISDIR(metadata.st_mode):
+            raise CalibrationError(f"{current} must be a real directory")
+        break
+    inspected: list[tuple[Path, os.stat_result]] = []
+    for ancestor in (current, *current.parents):
+        try:
+            metadata = ancestor.lstat()
+        except OSError as exc:
+            raise CalibrationError(f"{ancestor} cannot be inspected: {exc}") from exc
+        if stat.S_ISLNK(metadata.st_mode) or not stat.S_ISDIR(metadata.st_mode):
+            raise CalibrationError(f"{ancestor} must be a real directory")
+        inspected.append((ancestor, metadata))
+    trusted_owner_uids = {0, os.geteuid(), inspected[-1][1].st_uid}
+    for ancestor, metadata in inspected:
+        mode = stat.S_IMODE(metadata.st_mode)
+        trusted_sticky = bool(mode & stat.S_ISVTX) and (
+            metadata.st_uid in trusted_owner_uids
+        )
+        if mode & 0o022 and not trusted_sticky:
+            raise CalibrationError(
+                f"{ancestor} existing ancestor must not be group/other-writable "
+                "unless it has a sticky bit and a trusted owner"
+            )
+    return missing
+
+
+def _mkdir_private_chain(path: Path) -> None:
+    missing = _private_chain_missing_components(path)
     for directory in reversed(missing):
         directory.mkdir(mode=0o700)
         directory.chmod(0o700)
@@ -1061,6 +1137,57 @@ def _validate_pid_file_within_state_root(pid_file: Path, state_root: Path) -> No
         )
 
 
+def _validate_existing_path_role(
+    path: Path,
+    label: str,
+    *,
+    directory: bool,
+    executable: bool = False,
+) -> None:
+    try:
+        metadata = path.stat()
+    except FileNotFoundError:
+        if path.is_symlink():
+            raise CalibrationError(f"{label} must not be a dangling symlink") from None
+        return
+    except OSError as exc:
+        raise CalibrationError(f"{label} cannot be inspected: {exc}") from exc
+    if directory and not stat.S_ISDIR(metadata.st_mode):
+        raise CalibrationError(f"{label} must be a directory when it exists")
+    if not directory and not stat.S_ISREG(metadata.st_mode):
+        raise CalibrationError(f"{label} must be a regular file when it exists")
+    if executable and not os.access(path, os.X_OK):
+        raise CalibrationError(f"{label} must be executable when it exists")
+
+
+def _validate_dashboard_path_roles(dashboard: Mapping[str, object]) -> None:
+    if dashboard.get("mode", "read-only") != "read-only":
+        return
+    _validate_existing_path_role(
+        Path(cast(str, dashboard["document_root"])),
+        "dashboard.document_root",
+        directory=True,
+    )
+    _validate_existing_path_role(
+        Path(cast(str, dashboard["active_config"])),
+        "dashboard.active_config",
+        directory=False,
+    )
+    if "nginx_executable" in dashboard:
+        _validate_existing_path_role(
+            Path(cast(str, dashboard["nginx_executable"])),
+            "dashboard.nginx_executable",
+            directory=False,
+            executable=True,
+        )
+    if "pid_file" in dashboard:
+        _validate_existing_path_role(
+            Path(cast(str, dashboard["pid_file"])),
+            "dashboard.pid_file",
+            directory=False,
+        )
+
+
 def _load_profile(path: Path) -> dict[str, object]:
     safe = _safe_path(path, may_create=False, directory=False)
     try:
@@ -1186,10 +1313,10 @@ def _load_profile(path: Path) -> dict[str, object]:
             Path(cast(str, dashboard["pid_file"])),
             Path(cast(str, paths["state_root"])),
         )
-    _validate_service_unit(
+    desired_service = _validate_service_unit(
         dashboard.get("desired_service"), "dashboard.desired_service"
     )
-    _validate_service_unit(
+    rollback_service = _validate_service_unit(
         dashboard.get("rollback_service"), "dashboard.rollback_service"
     )
     if version == 1:
@@ -1218,6 +1345,11 @@ def _load_profile(path: Path) -> dict[str, object]:
         _validate_terminal(terminal)
     _validate_no_listener_collision(profile)
     if dashboard.get("mode", "read-only") == "read-only":
+        if desired_service == rollback_service:
+            raise CalibrationError(
+                "dashboard desired_service and rollback_service must differ"
+            )
+        _validate_dashboard_path_roles(_section(_canonical_v2(profile), "dashboard"))
         _validate_listener_network_families(
             listen_host,
             cast(list[str], cidr_values),
@@ -1502,7 +1634,7 @@ def init_profile(
         raise CalibrationError(
             f"{target.parent} must not be accessible by group or other"
         )
-    _mkdir_private_chain(target.parent)
+    _private_chain_missing_components(target.parent)
     home = _validate_codex_home(codex_home)
     for private in (data_dir, private_authority.parent, state_root):
         _safe_path(private, may_create=True, directory=True)
@@ -1569,6 +1701,10 @@ def init_profile(
     rollback = rollback_service or "ao-dashboard-rollback.service"
     _validate_service_unit(service, "dashboard desired service")
     _validate_service_unit(rollback, "dashboard rollback service")
+    if dashboard_enabled and service == rollback:
+        raise CalibrationError(
+            "dashboard desired_service and rollback_service must differ"
+        )
     nginx_artifact = desired_nginx_artifact or state_root / "nginx.conf"
     service_artifact = desired_service_artifact or state_root / "nginx.service"
     reconstruction_paths = (
@@ -1648,6 +1784,7 @@ def init_profile(
         "storage": {"boundaries": boundary_values},
     }
     canonical = _canonical_v2(profile)
+    _validate_dashboard_path_roles(_section(canonical, "dashboard"))
     _validate_terminal(_section(_section(canonical, "dashboard"), "terminal"))
     if dashboard_enabled:
         _validate_listener_network_families(
@@ -1656,6 +1793,7 @@ def init_profile(
             _section(_section(canonical, "dashboard"), "terminal"),
         )
     _validate_no_listener_collision(canonical)
+    _mkdir_private_chain(target.parent)
     target.write_text(_toml(canonical), encoding="utf-8")
     target.chmod(0o600)
     return canonical
@@ -1939,10 +2077,16 @@ def _validate_tree_modes(root: Path) -> None:
 def _validate_publish_parent(parent: Path) -> None:
     if not parent.is_dir():
         raise CalibrationError("render output parent must exist")
-    mode = stat.S_IMODE(parent.stat().st_mode)
-    if mode & 0o022 and not mode & stat.S_ISVTX:
+    metadata = parent.stat()
+    mode = stat.S_IMODE(metadata.st_mode)
+    trusted_owner_uids = {0, os.geteuid(), Path("/").lstat().st_uid}
+    trusted_sticky = bool(mode & stat.S_ISVTX) and (
+        metadata.st_uid in trusted_owner_uids
+    )
+    if mode & 0o022 and not trusted_sticky:
         raise CalibrationError(
-            "render output parent must not be group/other-writable without sticky bit"
+            "render output parent must not be group/other-writable unless it has "
+            "a sticky bit and a trusted owner"
         )
 
 
@@ -2081,6 +2225,8 @@ elif name == "curl":
         print(json.dumps({"status":"ready",**identity}))
     elif url.endswith("/mux"):
         print("HTTP/1.1 101 Switching Protocols")
+    elif url.endswith("/"):
+        print("text/html")
     else:
         print("ok")
 """
@@ -2246,28 +2392,35 @@ def reconstruction_canary(root: Path, runner: Runner = _run) -> dict[str, object
     dashboard = _section(_canonical_v2(_load_profile(profile)), "dashboard")
     nginx = cast(str, dashboard["nginx_executable"])
     nginx_checked = False
-    if runner((nginx, "-v")).returncode == 0:
+    nginx_version: subprocess.CompletedProcess[str] | None = None
+    if discovered_nginx is not None:
+        with contextlib.suppress(FileNotFoundError):
+            nginx_version = runner((nginx, "-v"))
+    if nginx_version is not None and nginx_version.returncode == 0:
         state_root.mkdir(mode=0o700, parents=True, exist_ok=True)
         dashboard_root.mkdir(mode=0o700, parents=True, exist_ok=True)
         prefix = root / "nginx-prefix"
         prefix.mkdir(mode=0o700)
         (prefix / "logs").mkdir(mode=0o700)
-        nginx_result = runner(
-            (
-                nginx,
-                "-t",
-                "-p",
-                str(prefix) + "/",
-                "-c",
-                str(candidate / "nginx/ao-terminal.conf"),
+        try:
+            nginx_result = runner(
+                (
+                    nginx,
+                    "-t",
+                    "-p",
+                    str(prefix) + "/",
+                    "-c",
+                    str(candidate / "nginx/ao-terminal.conf"),
+                )
             )
-        )
-        if nginx_result.returncode != 0:
+        except FileNotFoundError:
+            nginx_result = None
+        if nginx_result is not None and nginx_result.returncode != 0:
             raise CalibrationError(
                 "nginx candidate validation failed: "
                 + (nginx_result.stderr.strip() or nginx_result.stdout.strip())
             )
-        nginx_checked = True
+        nginx_checked = nginx_result is not None
     return {
         "init_exit": init_code,
         "inspect_exit": inspect_code,

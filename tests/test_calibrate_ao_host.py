@@ -161,6 +161,7 @@ def inspect_responses(
             ),
         ),
         completed((), out="HTTP/1.1 200 OK"),
+        completed((), out="text/html; charset=utf-8"),
         completed((), 22, out="403"),
     ]
 
@@ -379,6 +380,10 @@ def test_unavailable_requires_repeated_host_observation(
     } <= repeated_probes.keys()
     assert repeated_runner.responses == []
     assert sleeps == [host.UNAVAILABLE_CONFIRMATION_DELAY_SECONDS]
+    assert repeated_runner.commands[8][:4] == host.CURL_PROBE_PREFIX
+    assert repeated_runner.commands[9][:4] == host.CURL_PROBE_PREFIX
+    assert repeated_runner.commands[11][:4] == host.CURL_PROBE_PREFIX
+    assert repeated_runner.commands[12][:4] == host.CURL_PROBE_PREFIX
 
     recovered_runner = FakeRunner(
         unavailable_inspect_responses(confirmation_recovers=True)
@@ -460,6 +465,7 @@ def test_profile_free_dashboard_delivery_is_explicitly_unknown() -> None:
         for probe in cast(list[dict[str, object]], report["probes"])
     }
     assert probes["dashboard"]["status"] == "unknown"
+    assert probes["dashboard-ui"]["status"] == "unknown"
     assert probes["mux"]["status"] == "unknown"
     assert len(runner.commands) == 10
 
@@ -473,6 +479,7 @@ def test_profile_free_dashboard_delivery_is_explicitly_unknown() -> None:
                 "healthz": "daemon",
                 "readyz": "daemon",
                 "dashboard": "host",
+                "dashboard-ui": "host",
                 "mux": "host",
             },
         ),
@@ -482,6 +489,7 @@ def test_profile_free_dashboard_delivery_is_explicitly_unknown() -> None:
                 "healthz": "sandbox",
                 "readyz": "sandbox",
                 "dashboard": "sandbox",
+                "dashboard-ui": "sandbox",
                 "mux": "sandbox",
             },
         ),
@@ -504,13 +512,7 @@ def test_ao_and_dashboard_probe_owners_are_separate(
         encoding="utf-8",
     )
     profile.chmod(0o600)
-    runner = FakeRunner(
-        [
-            *inspect_responses(),
-            completed((), out="ok"),
-            completed((), out=websocket_response()),
-        ]
-    )
+    runner = FakeRunner(inspect_responses())
     report = host.inspect_host(runner, profile=profile, context=context)
     owners = {
         cast(str, probe["id"]): cast(str, probe["owner"])
@@ -532,6 +534,7 @@ def test_unauthorized_local_probe_source_is_unknown_not_degraded(
         for probe in cast(list[dict[str, object]], report["probes"])
     }
     assert probes["dashboard"]["status"] == "unknown"
+    assert probes["dashboard-ui"]["status"] == "unknown"
     assert probes["mux"]["status"] == "unknown"
     assert cast(dict[str, object], report["states"]) == {
         "daemon": "ready",
@@ -569,6 +572,7 @@ def test_unspecified_or_multicast_listener_is_not_a_proven_source(
         for probe in cast(list[dict[str, object]], report["probes"])
     }
     assert probes["dashboard"]["status"] == "unknown"
+    assert probes["dashboard-ui"]["status"] == "unknown"
     assert probes["mux"]["status"] == "unknown"
     assert len(runner.commands) == 10
 
@@ -595,9 +599,42 @@ def test_ipv6_canonical_client_identity_authorizes_source_probe(
     responses[-1] = completed((), out=websocket_response())
     runner = FakeRunner(responses)
     report = host.inspect_host(runner, profile=profile, context="host")
-    assert runner.commands[10][3:5] == ("--interface", "::1")
-    assert runner.commands[11][-3:-1] == ("--interface", "::1")
+    assert runner.commands[10][4:6] == ("--interface", "::1")
+    assert runner.commands[11][4:6] == ("--interface", "::1")
+    assert runner.commands[12][-3:-1] == ("--interface", "::1")
     assert cast(dict[str, object], report["states"])["delivery"] == "ready"
+
+
+def test_dashboard_ui_media_type_is_required_for_delivery_ready(
+    tmp_path: Path,
+) -> None:
+    profile = tmp_path / "host.toml"
+    profile.write_text(
+        LEGACY_V1_FIXTURE.read_text(encoding="utf-8")
+        .replace(
+            'trusted_readonly_cidrs = ["203.0.113.0/24"]',
+            'trusted_readonly_cidrs = ["127.0.0.1/32"]',
+        )
+        .replace(
+            'allowed_client_ips = ["203.0.113.7", "203.0.113.8"]',
+            'allowed_client_ips = ["127.0.0.1"]',
+        ),
+        encoding="utf-8",
+    )
+    profile.chmod(0o600)
+    responses = inspect_responses()
+    responses[-2] = completed((), out="text/plain")
+    responses[-1] = completed((), out=websocket_response())
+
+    report = host.inspect_host(FakeRunner(responses), profile=profile, context="host")
+    probes = {
+        cast(str, probe["id"]): probe
+        for probe in cast(list[dict[str, object]], report["probes"])
+    }
+
+    assert probes["dashboard"]["status"] == "pass"
+    assert probes["dashboard-ui"]["status"] == "fail"
+    assert cast(dict[str, object], report["states"])["delivery"] == "degraded"
 
 
 def test_bound_source_curl_45_is_unknown_but_external_failure_still_degrades(
@@ -625,6 +662,7 @@ def test_bound_source_curl_45_is_unknown_but_external_failure_still_degrades(
         }
     )
     responses = inspect_responses(doctor=external)
+    responses[-3] = completed((), code=45, err="localized bind detail")
     responses[-2] = completed((), code=45, err="localized bind detail")
     responses[-1] = completed((), code=45, err="localized bind detail")
     report = host.inspect_host(FakeRunner(responses), profile=profile, context="host")
@@ -633,6 +671,7 @@ def test_bound_source_curl_45_is_unknown_but_external_failure_still_degrades(
         for probe in cast(list[dict[str, object]], report["probes"])
     }
     assert probes["dashboard"]["status"] == "unknown"
+    assert probes["dashboard-ui"]["status"] == "unknown"
     assert probes["mux"]["status"] == "unknown"
     assert cast(dict[str, object], report["states"]) == {
         "daemon": "ready",
@@ -970,7 +1009,9 @@ def test_codex_auth_file_type_json_and_permissions(codex_home: Path) -> None:
         host._validate_codex_home(codex_home)
 
 
-def test_safe_path_and_render_drift_rejections(tmp_path: Path, profile: Path) -> None:
+def test_safe_path_and_render_drift_rejections(
+    tmp_path: Path, profile: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     with pytest.raises(host.CalibrationError, match="absolute"):
         host._safe_path(Path("relative"), may_create=True)
     symlink = tmp_path / "link"
@@ -1006,15 +1047,103 @@ def test_safe_path_and_render_drift_rejections(tmp_path: Path, profile: Path) ->
     unsafe_parent = tmp_path / "writable-parent"
     unsafe_parent.mkdir(mode=0o777)
     unsafe_parent.chmod(0o777)
-    with pytest.raises(host.CalibrationError, match="without sticky bit"):
+    with pytest.raises(host.CalibrationError, match="sticky bit and a trusted owner"):
         host.render_profile(profile, unsafe_parent / "candidate")
     unsafe_parent.chmod(0o1777)
     assert (
         host.render_profile(profile, unsafe_parent / "sticky-candidate")["unchanged"]
         is False
     )
+    other_owned_parent = tmp_path / "other-owned-parent"
+    other_owned_parent.mkdir(mode=0o1777)
+    other_owned_parent.chmod(0o1777)
+    original_stat = Path.stat
+    untrusted_uid = max(0, os.geteuid(), Path("/").lstat().st_uid) + 1
+
+    def other_owned_stat(self: Path, *, follow_symlinks: bool = True) -> os.stat_result:
+        metadata = original_stat(self, follow_symlinks=follow_symlinks)
+        if self != other_owned_parent:
+            return metadata
+        fields = list(metadata)
+        fields[4] = untrusted_uid
+        return os.stat_result(fields)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(Path, "stat", other_owned_stat)
+        with pytest.raises(
+            host.CalibrationError, match="sticky bit and a trusted owner"
+        ):
+            host.render_profile(profile, other_owned_parent / "candidate")
     with pytest.raises(host.CalibrationError, match="parent must exist"):
         host.render_profile(profile, tmp_path / "missing" / "candidate")
+
+
+def test_private_ancestor_and_external_role_inspection_fail_closed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    parent_file = tmp_path / "parent-file"
+    parent_file.write_text("not a directory", encoding="utf-8")
+    with pytest.raises(host.CalibrationError, match="real directory"):
+        host._private_chain_missing_components(parent_file)
+
+    real_parent = tmp_path / "real-parent"
+    real_child = real_parent / "child"
+    real_child.mkdir(parents=True)
+    real_child.chmod(0o700)
+    linked_parent = tmp_path / "linked-parent"
+    linked_parent.symlink_to(real_parent, target_is_directory=True)
+    with pytest.raises(host.CalibrationError, match="real directory"):
+        host._private_chain_missing_components(linked_parent / "child")
+
+    original_lstat = Path.lstat
+    denied_current = tmp_path / "denied-current"
+
+    def deny_current(self: Path) -> os.stat_result:
+        if self == denied_current:
+            raise PermissionError("denied current")
+        return original_lstat(self)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(Path, "lstat", deny_current)
+        with pytest.raises(host.CalibrationError, match="cannot be inspected"):
+            host._private_chain_missing_components(denied_current)
+
+    denied_ancestor = tmp_path / "denied-ancestor"
+    inspected_child = denied_ancestor / "child"
+    inspected_child.mkdir(parents=True)
+    inspected_child.chmod(0o700)
+
+    def deny_ancestor(self: Path) -> os.stat_result:
+        if self == denied_ancestor:
+            raise PermissionError("denied ancestor")
+        return original_lstat(self)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(Path, "lstat", deny_ancestor)
+        with pytest.raises(host.CalibrationError, match="cannot be inspected"):
+            host._private_chain_missing_components(inspected_child)
+
+    dangling = tmp_path / "dangling"
+    dangling.symlink_to(tmp_path / "missing-target")
+    with pytest.raises(host.CalibrationError, match="dangling symlink"):
+        host._validate_existing_path_role(
+            dangling, "dashboard.active_config", directory=False
+        )
+
+    original_stat = Path.stat
+    denied_role = tmp_path / "denied-role"
+
+    def deny_role(self: Path, *, follow_symlinks: bool = True) -> os.stat_result:
+        if self == denied_role:
+            raise PermissionError("denied role")
+        return original_stat(self, follow_symlinks=follow_symlinks)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(Path, "stat", deny_role)
+        with pytest.raises(host.CalibrationError, match="cannot be inspected"):
+            host._validate_existing_path_role(
+                denied_role, "dashboard.active_config", directory=False
+            )
 
 
 def test_invalid_profile_and_init_rejections(
@@ -1058,6 +1187,67 @@ def test_invalid_profile_and_init_rejections(
             private_authority=tmp_path / "private2" / "AGENTS.md",
             state_root=tmp_path / "state2",
         )
+
+
+def test_init_rejects_writable_ancestor_above_private_parent(
+    tmp_path: Path, codex_home: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    shared = tmp_path / "shared"
+    shared.mkdir(mode=0o770)
+    shared.chmod(0o770)
+    nearest = shared / "private"
+    nearest.mkdir(mode=0o700)
+    target = nearest / "new" / "host.toml"
+
+    with pytest.raises(host.CalibrationError, match="existing ancestor"):
+        host.init_profile(
+            target,
+            trust_model="untrusted",
+            codex_home=codex_home,
+            data_dir=tmp_path / "data",
+            private_authority=tmp_path / "authority" / "AGENTS.md",
+            state_root=tmp_path / "state",
+        )
+
+    assert not target.parent.exists()
+    shared.chmod(0o1777)
+    original_lstat = Path.lstat
+    untrusted_uid = max(0, os.geteuid(), Path("/").lstat().st_uid) + 1
+
+    def other_owned_lstat(self: Path) -> os.stat_result:
+        metadata = original_lstat(self)
+        if self != shared:
+            return metadata
+        fields = list(metadata)
+        fields[4] = untrusted_uid
+        return os.stat_result(fields)
+
+    other_owned_target = nearest / "other-owned" / "host.toml"
+    with monkeypatch.context() as patch:
+        patch.setattr(Path, "lstat", other_owned_lstat)
+        with pytest.raises(
+            host.CalibrationError, match="sticky bit and a trusted owner"
+        ):
+            host.init_profile(
+                other_owned_target,
+                trust_model="untrusted",
+                codex_home=codex_home,
+                data_dir=tmp_path / "other-data",
+                private_authority=tmp_path / "other-authority" / "AGENTS.md",
+                state_root=tmp_path / "other-state",
+            )
+    assert not other_owned_target.parent.exists()
+    created = host.init_profile(
+        target,
+        trust_model="untrusted",
+        codex_home=codex_home,
+        data_dir=tmp_path / "data",
+        private_authority=tmp_path / "authority" / "AGENTS.md",
+        state_root=tmp_path / "state",
+    )
+    assert created["schema_version"] == 2
+    assert target.parent.stat().st_mode & 0o777 == 0o700
+    assert target.stat().st_mode & 0o777 == 0o600
 
 
 @pytest.mark.parametrize(
@@ -1545,6 +1735,117 @@ def test_init_rejects_incomplete_or_invalid_dashboard_trust(
         initialize("relative.toml", document_root=Path("relative"))
 
 
+def test_enabled_dashboard_validates_path_roles_and_distinct_services(
+    tmp_path: Path, codex_home: Path
+) -> None:
+    def initialize(
+        name: str,
+        *,
+        state_root: Path | None = None,
+        document_root: Path | None = None,
+        nginx_executable: Path | None = None,
+        nginx_pid_file: Path | None = None,
+        active_config: Path | None = None,
+        desired_service: str = "ao-dashboard.service",
+        rollback_service: str = "ao-dashboard-rollback.service",
+    ) -> Path:
+        target = tmp_path / f"{name}.toml"
+        state = state_root or tmp_path / f"{name}-state"
+        host.init_profile(
+            target,
+            trust_model="trusted-single-user",
+            codex_home=codex_home,
+            data_dir=tmp_path / "data",
+            private_authority=tmp_path / "authority/AGENTS.md",
+            state_root=state,
+            dashboard_enabled=True,
+            dashboard_listen_host="127.0.0.1",
+            dashboard_listen_port=8443,
+            readonly_cidrs=("203.0.113.0/24",),
+            document_root=document_root or tmp_path / f"{name}-dashboard",
+            nginx_executable=nginx_executable or Path("/usr/sbin/nginx"),
+            nginx_pid_file=nginx_pid_file or state / "nginx.pid",
+            active_config=active_config or state / "active.conf",
+            desired_service=desired_service,
+            rollback_service=rollback_service,
+            desired_nginx_artifact=state / "nginx.conf",
+            desired_service_artifact=state / "nginx.service",
+        )
+        return target
+
+    document_file = tmp_path / "document-file"
+    document_file.write_text("not a directory", encoding="utf-8")
+    nginx_directory = tmp_path / "nginx-directory"
+    nginx_directory.mkdir(mode=0o700)
+    nginx_not_executable = tmp_path / "nginx-not-executable"
+    nginx_not_executable.write_text("binary", encoding="utf-8")
+    nginx_not_executable.chmod(0o600)
+    active_state = tmp_path / "active-state"
+    active_state.mkdir(mode=0o700)
+    active_directory = active_state / "active.conf"
+    active_directory.mkdir(mode=0o700)
+    pid_state = tmp_path / "pid-state"
+    pid_state.mkdir(mode=0o700)
+    pid_directory = pid_state / "nginx.pid"
+    pid_directory.mkdir(mode=0o700)
+
+    with pytest.raises(host.CalibrationError, match=r"document_root.*directory"):
+        initialize("document", document_root=document_file)
+    with pytest.raises(host.CalibrationError, match=r"nginx_executable.*regular file"):
+        initialize("nginx-directory", nginx_executable=nginx_directory)
+    with pytest.raises(host.CalibrationError, match=r"nginx_executable.*executable"):
+        initialize("nginx-mode", nginx_executable=nginx_not_executable)
+    with pytest.raises(host.CalibrationError, match=r"active_config.*regular file"):
+        initialize("active", state_root=active_state, active_config=active_directory)
+    with pytest.raises(host.CalibrationError, match=r"pid_file.*regular file"):
+        initialize("pid", state_root=pid_state, nginx_pid_file=pid_directory)
+    for name in ("document", "nginx-directory", "nginx-mode", "active", "pid"):
+        assert not (tmp_path / f"{name}.toml").exists()
+
+    with pytest.raises(host.CalibrationError, match="must differ"):
+        initialize(
+            "same-service",
+            desired_service="ao-dashboard.service",
+            rollback_service="ao-dashboard.service",
+        )
+    assert not (tmp_path / "same-service.toml").exists()
+
+    valid = initialize("valid")
+    canonical = host._canonical_v2(host._load_profile(valid))
+    cast(dict[str, object], canonical["dashboard"])["document_root"] = str(
+        document_file
+    )
+    valid.write_text(host._toml(canonical), encoding="utf-8")
+    valid.chmod(0o600)
+    with pytest.raises(host.CalibrationError, match=r"document_root.*directory"):
+        host.plan_profile(valid)
+
+    disabled = tmp_path / "disabled-same-service.toml"
+    host.init_profile(
+        disabled,
+        trust_model="untrusted",
+        codex_home=codex_home,
+        data_dir=tmp_path / "disabled-data",
+        private_authority=tmp_path / "disabled-authority/AGENTS.md",
+        state_root=tmp_path / "disabled-state",
+        desired_service="ao-dashboard.service",
+        rollback_service="ao-dashboard.service",
+    )
+    assert host.plan_profile(disabled)["schema_render"] == 2
+
+    legacy = tmp_path / "legacy-same-service.toml"
+    legacy.write_text(
+        V1_PROFILE.replace(
+            'rollback_service = "ao-dashboard-rollback.service"',
+            'rollback_service = "ao-dashboard.service"',
+        ),
+        encoding="utf-8",
+    )
+    legacy.chmod(0o600)
+    with pytest.raises(host.CalibrationError, match="must differ"):
+        host.plan_profile(legacy)
+
+
 def test_terminal_requires_explicit_origin_mode(
     tmp_path: Path, codex_home: Path
 ) -> None:
@@ -1717,12 +2018,7 @@ def test_reconstruction_canary_executes_full_pipeline(
         return None
 
     monkeypatch.setattr(host.shutil, "which", missing_executable)
-    runner = FakeRunner(
-        [
-            completed((), out="nginx version"),
-            completed((), out="syntax is ok"),
-        ]
-    )
+    runner = FakeRunner([])
     result = host.reconstruction_canary(tmp_path / "isolated", runner)
     assert result == {
         "init_exit": 0,
@@ -1733,13 +2029,44 @@ def test_reconstruction_canary_executes_full_pipeline(
         "verify_exit": 0,
         "first_unchanged": False,
         "second_unchanged": True,
-        "nginx_checked": True,
+        "nginx_checked": False,
     }
+    assert runner.responses == []
+
+
+@pytest.mark.parametrize("missing_call", [1, 2])
+def test_reconstruction_canary_tolerates_nginx_disappearing_after_discovery(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, missing_call: int
+) -> None:
+    def found_nginx(_name: str) -> str:
+        return "/usr/sbin/nginx"
+
+    monkeypatch.setattr(host.shutil, "which", found_nginx)
+    calls = 0
+
+    def disappearing_nginx(
+        command: Sequence[str],
+    ) -> subprocess.CompletedProcess[str]:
+        nonlocal calls
+        calls += 1
+        if calls == missing_call:
+            raise FileNotFoundError(command[0])
+        return completed(command, out="ok")
+
+    result = host.reconstruction_canary(
+        tmp_path / f"isolated-{missing_call}", disappearing_nginx
+    )
+    assert result["nginx_checked"] is False
+    assert calls == missing_call
 
 
 def test_reconstruction_canary_is_private_under_group_writable_umask(
-    tmp_path: Path,
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    def found_nginx(_name: str) -> str:
+        return "/usr/sbin/nginx"
+
+    monkeypatch.setattr(host.shutil, "which", found_nginx)
     runner = FakeRunner(
         [
             completed((), out="nginx version"),
@@ -1796,7 +2123,13 @@ def test_reconstruction_canary_passes_real_nginx_when_available(
     assert result["second_unchanged"] is True
 
 
-def test_reconstruction_canary_rejects_nginx_failure(tmp_path: Path) -> None:
+def test_reconstruction_canary_rejects_nginx_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def found_nginx(_name: str) -> str:
+        return "/usr/sbin/nginx"
+
+    monkeypatch.setattr(host.shutil, "which", found_nginx)
     runner = FakeRunner(
         [
             completed((), out="nginx version"),
@@ -2397,6 +2730,7 @@ def test_pure_state_and_issue_evaluators() -> None:
         "healthz": host.Evidence("healthz", "daemon", "pass", "ok"),
         "readyz": host.Evidence("readyz", "daemon", "pass", "ok"),
         "dashboard": host.Evidence("dashboard", "daemon", "pass", "ok"),
+        "dashboard-ui": host.Evidence("dashboard-ui", "daemon", "pass", "text/html"),
         "mux": host.Evidence("mux", "daemon", "fail", "404"),
     }
     assert (
@@ -2618,6 +2952,30 @@ def test_pure_state_and_issue_evaluators() -> None:
             terminal_enabled=True,
         )
         == "ready"
+    )
+    without_ui = dict(passing_mux)
+    without_ui.pop("dashboard-ui")
+    assert (
+        host.evaluate_delivery_state(
+            without_ui,
+            daemon_state="ready",
+            dashboard_enabled=True,
+            terminal_enabled=True,
+        )
+        == "indeterminate"
+    )
+    unknown_ui = dict(passing_mux)
+    unknown_ui["dashboard-ui"] = host.Evidence(
+        "dashboard-ui", "host", "unknown", "source unknown"
+    )
+    assert (
+        host.evaluate_delivery_state(
+            unknown_ui,
+            daemon_state="ready",
+            dashboard_enabled=True,
+            terminal_enabled=True,
+        )
+        == "indeterminate"
     )
     unknown_mux = dict(passing_mux)
     unknown_mux["mux"] = host.Evidence("mux", "host", "unknown", "source unknown")
@@ -2939,9 +3297,10 @@ def test_real_curl_mux_probe_sends_rfc6455_headers() -> None:
     request = requests[0]
     assert "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" in request
     assert "Sec-WebSocket-Version: 13" in request
-    assert host._mux_probe_command("http://127.0.0.1:3001", "https://example.test")[
-        :3
-    ] == ("curl", "--noproxy", "*")
+    assert (
+        host._mux_probe_command("http://127.0.0.1:3001", "https://example.test")[:4]
+        == host.CURL_PROBE_PREFIX
+    )
 
 
 def test_sandbox_probe_ownership_cannot_claim_host_ready() -> None:
@@ -2956,6 +3315,7 @@ def test_sandbox_probe_ownership_cannot_claim_host_ready() -> None:
         "healthz",
         "readyz",
         "dashboard",
+        "dashboard-ui",
         "mux",
     ):
         assert owned[probe_id] == "sandbox"
@@ -3020,6 +3380,7 @@ def test_inspect_uses_profile_ao_cli(tmp_path: Path) -> None:
     )
     assert runner.commands[10] == (
         "curl",
+        "-q",
         "--noproxy",
         "*",
         "--interface",
@@ -3027,7 +3388,21 @@ def test_inspect_uses_profile_ao_cli(tmp_path: Path) -> None:
         "-fsS",
         "http://127.0.0.1:8443/dashboard-health",
     )
-    assert runner.commands[11][-13:] == (
+    assert runner.commands[11] == (
+        "curl",
+        "-q",
+        "--noproxy",
+        "*",
+        "--interface",
+        "127.0.0.1",
+        "-o",
+        "/dev/null",
+        "--write-out",
+        "%{content_type}",
+        "-fsS",
+        "http://127.0.0.1:8443/",
+    )
+    assert runner.commands[12][-13:] == (
         "-H",
         "Origin: https://console.example.test",
         "-H",
@@ -3042,8 +3417,11 @@ def test_inspect_uses_profile_ao_cli(tmp_path: Path) -> None:
         "127.0.0.1",
         "http://127.0.0.1:8443/mux",
     )
-    assert runner.commands[8][:3] == ("curl", "--noproxy", "*")
-    assert runner.commands[9][:3] == ("curl", "--noproxy", "*")
+    assert all(
+        command[:4] == host.CURL_PROBE_PREFIX
+        for command in runner.commands
+        if command[0] == "curl"
+    )
     assert cast(dict[str, object], report["states"])["delivery"] == "ready"
     assert cast(list[dict[str, object]], report["probes"])[0]["owner"] == "host"
 
