@@ -204,12 +204,16 @@ def test_workspace_mismatch_routes_mutation_to_single_owner() -> None:
         assert "assigned writable workspace" in authority
         assert "one writer" in authority
         assert "sibling worktree" in authority
-        assert "Send an `active` or `idle` owner directly" in authority
+        terminated = authority.index("Inspect `session.isTerminated` first")
+        restoration = authority.index("If true, only restore")
+        activity = authority.index("Only when false, send `activity.state=active`")
+        assert terminated < restoration < activity
+        assert "runtime release and an empty OS-owned containment boundary" in authority
+        assert "otherwise preserve state" in authority
+        assert "`activity.state=active` or `idle` directly" in authority
         assert "hold `waiting_input` for provenance" in authority
-        assert "permission or user-decision prompts" in authority
-        assert "Restore a terminated owner only after" in authority
-        assert "authoritative readback proves runtime release" in authority
-        assert "containment boundary is empty" in authority
+        assert "route `exited` through REST resume-agent" in authority
+        assert "return `blocked` to human authority" in authority
         assert "owner cannot write" in authority
         assert "ownership is released" in authority
         assert "runtime/containment release is complete and empty" in authority

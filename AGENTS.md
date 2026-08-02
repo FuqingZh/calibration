@@ -43,11 +43,12 @@ defer to the ownership-preservation rule below.
 For pull-request-bound work in an already installed and adopted AO environment,
 before mutation compare the assigned writable workspace and Git root with the
 target's owning AO worker. Keep one writer: the controller must not patch,
-stage, commit, or push an owner's sibling worktree. Send an `active` or `idle`
-owner directly; hold `waiting_input` for provenance and escalate permission or
-user-decision prompts. Restore a terminated owner only after authoritative
-readback proves runtime release and its OS-owned containment boundary is empty;
-otherwise preserve state and monitor.
+stage, commit, or push an owner's sibling worktree. Inspect
+`session.isTerminated` first. If true, only restore after authoritative readback
+proves runtime release and an empty OS-owned containment boundary; otherwise
+preserve state. Only when false, send `activity.state=active` or `idle` directly,
+hold `waiting_input` for provenance, route `exited` through REST resume-agent,
+and return `blocked` to human authority.
 Before transfer, authoritative readback must prove the former owner cannot
 write, ownership is released, and runtime/containment release is complete and
 empty; idle/live or cleanup-pending is not quiesced. Otherwise do not transfer.
