@@ -228,14 +228,20 @@ def test_workspace_mismatch_routes_mutation_to_single_owner() -> None:
         assert "narrowed fallback or existing-owner preservation rule" in authority
         assert "do not perform AO lifecycle routing" in authority
         new_work = authority.index("start a task-specific owning worker for new work")
+        unowned = authority.index("that is truly unowned")
         branch = authority.index(
             "before creating its implementation branch or pull request"
         )
-        existing = authority.index("Only an existing pull request enters owner lookup")
-        lookup = authority.index(
-            "before mutation compare the assigned writable workspace"
+        owned = authority.index("Any already AO-owned repository, worktree, or branch")
+        lookup = authority.index("enters owner lookup and handoff before mutation")
+        no_pr = authority.index("even when no pull request exists")
+        claim = authority.index(
+            "Only existing-PR claim semantics require an existing pull request"
         )
-        assert new_work < branch < existing < lookup
+        compare = authority.index("Compare the assigned writable workspace")
+        assert new_work < unowned < branch
+        assert owned < lookup < no_pr < claim < compare
+        assert "Only an existing pull request enters owner lookup" not in authority
         assert (
             "Blind retries are limited to idempotent transient operations or polling"
             in authority
