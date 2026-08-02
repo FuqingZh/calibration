@@ -215,6 +215,8 @@ def test_workspace_mismatch_routes_mutation_to_single_owner() -> None:
         assert "otherwise preserve state" in authority
         assert "`activity.state=active` or `idle` directly" in authority
         assert "hold `waiting_input` for provenance" in authority
+        assert "already-authorized ordinary idle prompt" in authority
+        assert "escalate permission or user-decision prompts" in authority
         assert "route `exited` through REST resume-agent" in authority
         assert "return `blocked` to human authority" in authority
         assert "owner cannot write" in authority
@@ -233,8 +235,14 @@ def test_workspace_mismatch_routes_mutation_to_single_owner() -> None:
         health = authority.index("verify AO health before lifecycle routing")
         new_work = authority.index("start a task-specific owning worker for new work")
         unowned = authority.index("that is truly unowned")
+        new_owner_readback = authority.index(
+            "Immediately perform fresh authoritative session readback"
+        )
+        new_owner_handoff = authority.index(
+            "hand the task to that owner through normal activity-state routing"
+        )
         branch = authority.index(
-            "before creating its implementation branch or pull request"
+            "only that owner creates the implementation branch or pull request"
         )
         unclaimed_pr = authority.index(
             "An existing ready pull request with no AO owner"
@@ -253,7 +261,8 @@ def test_workspace_mismatch_routes_mutation_to_single_owner() -> None:
             "Only existing-PR claim semantics require an existing pull request"
         )
         compare = authority.index("Compare the assigned writable workspace")
-        assert health < new_work < unowned < branch
+        assert health < new_work < unowned < new_owner_readback
+        assert new_owner_readback < new_owner_handoff < branch
         assert branch < draft < unclaimed_pr < claim_before_lookup < owned
         assert owned < lookup < no_pr < claim < compare
         assert "Only an existing pull request enters owner lookup" not in authority
