@@ -195,6 +195,10 @@ def test_workspace_mismatch_routes_mutation_to_single_owner() -> None:
         assert "Do not repeat rejected filesystem escalation" in authority
         assert "same-scope mechanical feedback" in authority
 
+    template = compact("codex/AGENTS.md.template")
+    assert "pull-request-bound work" in template
+    assert "already installed and adopted AO environment" in template
+
 
 def test_ao_review_continuation_is_owner_directed_and_retryable() -> None:
     runbook = compact("docs/runbooks/agent-orchestrator-review-continuation.md")
@@ -203,6 +207,7 @@ def test_ao_review_continuation_is_owner_directed_and_retryable() -> None:
         "controller -> owning worker -> commit and push -> exact-head CI",
         "current-head review -> same-scope fix by owning worker",
         "`active`, `idle`, or `waiting_input` state with `ao send`",
+        "authoritative readback confirms its OS-owned containment boundary is empty",
         "`ao session restore` and then `ao send`",
         "`ao session claim-pr <session> <pr> -p <project> --no-takeover`",
         "`ao spawn --claim-pr ... --no-takeover`",
@@ -213,6 +218,8 @@ def test_ao_review_continuation_is_owner_directed_and_retryable() -> None:
         "autonomously retries transient network operations and polling",
         "preserve the branch, worktree, pull-request, and feedback state",
         "not AO unavailable or daemon unavailability",
+        "merge or deploy decisions not already authorized",
+        "low-risk native auto-merge contract",
     ):
         assert phrase in runbook
 

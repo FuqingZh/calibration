@@ -189,9 +189,10 @@ Explicit ownership transfer requires the former owner to be quiesced and must
 preserve exactly one writer. Within the same authorized scope, the owner
 autonomously retries mechanical CI and review repairs, transient network
 operations, and polling without returning routine approvals to the human.
-Security, compatibility, irreversible, merge or deploy, secret, and genuine
-permission decisions remain human authority. A workspace capability mismatch
-is not evidence that AO is unavailable.
+Security, compatibility, irreversible, secret, genuine permission, and merge
+or deploy decisions not already authorized by the low-risk native auto-merge
+contract remain human authority. A workspace capability mismatch is not
+evidence that AO is unavailable.
 
 ## Orchestrator Process Release
 

@@ -33,7 +33,8 @@ The owner autonomously continues commit, push, CI, review, same-scope
 mechanical repair, transient network retry, and polling. Explicit ownership
 transfer requires the former owner to be quiesced and preserves one writer.
 Human authority remains required for security, compatibility, irreversible,
-merge or deploy, secret, and genuine permission decisions.
+secret, genuine permission, and merge or deploy decisions not already
+authorized by the low-risk native auto-merge contract.
 
 ## Process-Release Invariant
 

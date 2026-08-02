@@ -125,8 +125,9 @@ a workspace capability mismatch, not AO unavailable or daemon unavailability.
 The controller does not patch, stage, commit, or push in the sibling worktree
 and does not repeat a rejected filesystem escalation. Route an owner in
 `active`, `idle`, or `waiting_input` state with `ao send`; route a `terminated`
-owner with `ao session restore` and then `ao send`; route an unclaimed ready
-pull request to an existing owner with
+owner only after authoritative readback confirms its OS-owned containment
+boundary is empty, using `ao session restore` and then `ao send`; route an
+unclaimed ready pull request to an existing owner with
 `ao session claim-pr <session> <pr> -p <project> --no-takeover`, or to a new
 owner with `ao spawn --claim-pr ... --no-takeover`, and then use `ao send`. If
 a session is active but its agent process exited, use the existing REST resume
@@ -139,8 +140,9 @@ polling. Explicit ownership transfer first requires the former owner to be
 quiesced and maintains one writer. If AO or the owner cannot be restored or
 claimed, preserve the branch, worktree, pull-request, and feedback state for
 later continuation; do not cross-write from the controller. Security,
-compatibility, irreversible, merge or deploy, secret, and genuine permission
-decisions still require human authority.
+compatibility, irreversible, secret, genuine permission, and merge or deploy
+decisions not already authorized by the low-risk native auto-merge contract
+still require human authority.
 
 Read every gate against the exact current head. A draft pull request must become
 ready before AO claims it; ready-for-review is only a claim prerequisite.
