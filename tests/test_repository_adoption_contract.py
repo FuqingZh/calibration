@@ -472,11 +472,20 @@ def test_workspace_mismatch_routes_mutation_to_single_owner() -> None:
     universal_read_only = runbook.index(
         "the controller remains read-only", universal_guard
     )
-    universal_lookup = runbook.index(
-        "perform owner lookup and handoff", universal_guard
+    missing_authority = runbook.index("Without authority, preserve", universal_guard)
+    authority = runbook.index("With authority and implementation authorization")
+    universal_lookup = runbook.index("perform owner lookup and handoff", authority)
+    continuation = runbook.index("only when continuation is proven", universal_lookup)
+    bounded_canary = runbook.index(
+        "or the current task is the explicitly bounded canary", continuation
+    )
+    otherwise_preserve = runbook.index(
+        "otherwise preserve the owned state", bounded_canary
     )
     intake = runbook.index("Conversation authorization is sufficient issue intake")
-    assert universal_guard < universal_read_only < universal_lookup < intake
+    assert universal_guard < universal_read_only < missing_authority < authority
+    assert authority < universal_lookup < continuation < bounded_canary
+    assert bounded_canary < otherwise_preserve < intake
     assert (
         "regardless of whether a pull request exists or the task is PR-bound" in runbook
     )

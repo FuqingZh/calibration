@@ -108,10 +108,12 @@ has passed and must preserve its existing CLI contract.
 
 Before any mutation, determine whether the repository, worktree, or branch is
 already AO-owned. If so, the controller remains read-only regardless of whether
-a pull request exists or the task is PR-bound. When the continuation-proof,
-authority, and authorization gates hold, perform owner lookup and handoff
-through the state rules below; otherwise preserve the owned state. Read-only
-review, analysis, and discussion requests remain read-only.
+a pull request exists or the task is PR-bound. Without authority, preserve the
+owned state. With authority and implementation authorization, perform owner
+lookup and handoff through the state rules below only when continuation is
+proven or the current task is the explicitly bounded canary; otherwise preserve
+the owned state. Read-only review, analysis, and discussion requests remain
+read-only.
 
 Conversation authorization is sufficient issue intake. Issue-tracker intake,
 automatic work discovery, and a separate orchestrator session are not
