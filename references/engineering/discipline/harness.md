@@ -182,10 +182,12 @@ worker owns the target repository, worktree, branch, or pull request. Before
 mutation, compare the assigned writable workspace and resolved Git root with
 the target and its owning AO worker. On mismatch, the controller remains
 read-only: it must not apply patches, stage, commit, or push in a sibling
-worktree, and it must not loop on rejected filesystem escalation. Restore and
-send the owner only after authoritative readback proves runtime release and an
-empty containment boundary; otherwise preserve state and monitor. Use the
-controller only for orchestration and readback.
+worktree, and it must not loop on rejected filesystem escalation. Send an
+`active` or `idle` owner directly. Hold `waiting_input` for provenance and
+escalate permission or user-decision prompts. Restore a terminated owner only
+after authoritative readback proves runtime release and an empty containment
+boundary; otherwise preserve state and monitor. Use the controller only for
+orchestration and readback.
 
 Explicit ownership transfer requires the former owner to be quiesced and must
 preserve exactly one writer. Quiesced means authoritative readback proves the

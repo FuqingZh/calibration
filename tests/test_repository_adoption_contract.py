@@ -193,6 +193,13 @@ def test_workspace_mismatch_routes_mutation_to_single_owner() -> None:
         assert "secret" in authority
         assert "permission" in authority
 
+    assert "Send an `active` or `idle` owner directly" in harness
+    assert "Hold `waiting_input` for provenance" in harness
+    assert "permission or user-decision prompts" in harness
+    assert "Restore a terminated owner only after" in harness
+    assert "runtime release and an empty containment boundary" in harness
+    assert "otherwise preserve state and monitor" in harness
+
     for authority in (compact("AGENTS.md"), compact("codex/AGENTS.md.template")):
         assert "assigned writable workspace" in authority
         assert "one writer" in authority
