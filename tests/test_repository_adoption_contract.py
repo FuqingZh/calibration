@@ -234,9 +234,10 @@ def test_ao_review_continuation_is_owner_directed_and_retryable() -> None:
         "`ao session claim-pr <session> <pr> -p <project> --no-takeover`",
         "`ao spawn --claim-pr ... --no-takeover`",
         "and then use `ao send`",
-        "agent process exited while the session is not terminated",
-        "existing REST resume boundary",
-        "agent exit is not an activity state",
+        "`session.isTerminated=false`",
+        "`session.activity.state=exited`",
+        "existing REST resume-agent boundary",
+        "`session.activity.state=blocked` to human authority",
         "no CLI resume command",
         "controller performs readback only",
         "retries only idempotent transient network operations and polling",
@@ -312,10 +313,28 @@ def test_owner_retry_budget_and_state_routing_cross_authority_surfaces() -> None
         "Ambiguous `waiting_input` is held",
         "permission or user-decision prompts escalate",
         "already authorized ordinary idle prompt",
-        "Agent process exit is not an activity state",
-        "existing REST resume boundary",
+        "`session.isTerminated=false`",
+        "`session.activity.state=exited`",
+        "existing REST resume-agent boundary",
+        "`session.activity.state=blocked` to human authority",
     ):
         assert phrase in decision
+
+    prompts = text("skills/calibration/test-prompts.json")
+    for phrase in (
+        "session.isTerminated=false",
+        "activity.state=exited",
+        "REST resume-agent boundary",
+        "activity.state=blocked 交给 human authority",
+        "owner-only restore/claim failure 且 daemon ready 时 preserve/readback",
+        "AO unavailable 时可用 normal isolated-worktree fallback",
+        "single-writer/quiescence proof",
+        "proof unavailable 时 preserve state",
+    ):
+        assert phrase in prompts
+    assert "agent exit is not an activity state" not in decision
+    assert "agent-exited 不是 activity state" not in prompts
+    assert "若 AO unavailable 则保留现有 PR/worktree/feedback state" not in prompts
 
 
 def test_v11_decision_records_contract_and_bounded_routing_canary() -> None:

@@ -35,8 +35,9 @@ not use derived `session.status` as activity truth. Only `active` and `idle`
 route automatically with `ao send`. Ambiguous `waiting_input` is held for
 provenance inspection: permission or user-decision prompts escalate, and send
 is allowed only when authoritative evidence proves an already authorized
-ordinary idle prompt. Agent process exit is not an activity state and uses the
-existing REST resume boundary when the session is not terminated.
+ordinary idle prompt. When `session.isTerminated=false` and
+`session.activity.state=exited`, use the existing REST resume-agent boundary.
+Route `session.activity.state=blocked` to human authority.
 
 The owner autonomously continues commit, push, CI, review, and same-scope
 mechanical repair. Transient retries are limited to idempotent operations and

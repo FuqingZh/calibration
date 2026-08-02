@@ -135,10 +135,10 @@ confirms runtime release and its OS-owned containment boundary is empty, using
 Route an unclaimed ready pull request to an existing owner with
 `ao session claim-pr <session> <pr> -p <project> --no-takeover`, or to a new
 owner with `ao spawn --claim-pr ... --no-takeover`, and then use `ao send`. If
-the agent process exited while the session is not terminated, use the existing
-REST resume boundary; agent exit is not an activity state, and there is no CLI
-resume command defined by this contract. Thereafter the controller performs
-readback only.
+`session.isTerminated=false` and `session.activity.state=exited`, use the
+existing REST resume-agent boundary; there is no CLI resume command defined by
+this contract. Route `session.activity.state=blocked` to human authority.
+Thereafter the controller performs readback only.
 
 The owning worker commits, pushes, observes CI and review, fixes same-scope
 mechanical feedback, and autonomously retries only idempotent transient network
