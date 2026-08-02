@@ -31,6 +31,13 @@ tool supports them. Prefer repository indexes and targeted lookups. If the
 required boundary or safe query cannot be determined, stop the broad search
 and report the narrower host-side check needed.
 
+Before any mutation, an already AO-owned repository, worktree, or branch is
+subject to the single-writer guard even without a pull request or PR-bound
+intent: the controller remains read-only. With installed AO, adoption, supplied
+local host authority, and continuation proof or an explicitly bounded canary,
+perform owner lookup and handoff through the state rules below; otherwise
+preserve the owned state.
+
 For conversation-authorized implementation intended to cross a pull-request
 boundary, use AO lifecycle routing only with installed AO, an adopted
 repository, supplied local host authority, and an accepted continuation-proven
@@ -47,9 +54,7 @@ with no AO owner is not thereby unowned. Before claim or spawn, authoritative
 verification must prove every controller, human, or non-AO writer is quiesced
 and cannot write. Otherwise preserve state, do not claim or spawn, and
 escalate; AO-owner absence alone is not proof. After that gate, claim without
-takeover by an existing or new owner before owner-state lookup. Any
-already AO-owned repository, worktree, or branch enters owner lookup and
-handoff before mutation, even when no pull request exists. Only
+takeover by an existing or new owner before owner-state lookup. Only
 existing-PR claim semantics require an existing pull request. Compare the
 assigned writable workspace and Git root with the owning AO worker. Without
 supplied local host

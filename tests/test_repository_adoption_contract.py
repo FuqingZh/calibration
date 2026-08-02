@@ -242,6 +242,13 @@ def test_workspace_mismatch_routes_mutation_to_single_owner() -> None:
         assert "do not transfer" in authority
         assert "Do not repeat rejected filesystem escalation" in authority
         assert "same-scope mechanical feedback" in authority
+        owned_guard = authority.index(
+            "Before any mutation, an already AO-owned repository, worktree, or branch"
+        )
+        owned_read_only = authority.index(
+            "the controller remains read-only", owned_guard
+        )
+        owned_lookup = authority.index("perform owner lookup and handoff", owned_guard)
         authorization = authority.index(
             "conversation-authorized implementation intended to cross a pull-request"
         )
@@ -260,6 +267,7 @@ def test_workspace_mismatch_routes_mutation_to_single_owner() -> None:
         assert "narrowed fallback or existing-owner preservation rule" in authority
         assert "do not perform AO lifecycle routing" in authority
         health = authority.index("verify AO health before lifecycle routing")
+        assert owned_guard < owned_read_only < owned_lookup < authorization
         assert authorization < lifecycle < health
         assert authority.count("verify AO health before lifecycle routing") == 1
         assert "boundary in an adopted environment, verify AO health" not in authority
@@ -290,9 +298,6 @@ def test_workspace_mismatch_routes_mutation_to_single_owner() -> None:
             "claim without takeover by an existing or new owner before "
             "owner-state lookup"
         )
-        owned = authority.index("Any already AO-owned repository, worktree, or branch")
-        lookup = authority.index("enters owner lookup and handoff before mutation")
-        no_pr = authority.index("even when no pull request exists")
         claim = authority.index(
             "Only existing-PR claim semantics require an existing pull request"
         )
@@ -300,9 +305,9 @@ def test_workspace_mismatch_routes_mutation_to_single_owner() -> None:
         assert health < new_work < unowned < new_owner_readback
         assert new_owner_readback < new_owner_handoff < branch
         assert branch < draft < unclaimed_pr < writer_gate
-        assert writer_gate < preserve_unclaimed < claim_before_lookup < owned
+        assert writer_gate < preserve_unclaimed < claim_before_lookup
         assert "AO-owner absence alone is not proof" in authority
-        assert owned < lookup < no_pr < claim < compare
+        assert claim_before_lookup < claim < compare
         assert "Only an existing pull request enters owner lookup" not in authority
         assert "ready-for-review is only a claim prerequisite" not in authority.lower()
         assert (
@@ -413,6 +418,10 @@ def test_workspace_mismatch_routes_mutation_to_single_owner() -> None:
         assert "until authority is available" in authority
         assert "mechanically enforced transfer mechanism" in authority
         assert "authoritatively verified" in authority
+
+    assert "accepted `continuation-proven` orchestrator" in harness
+    assert "an explicitly bounded canary" in harness
+    assert "Without supplied authority or continuation proof" in harness
 
     template = compact("codex/AGENTS.md.template")
     assert "conversation-authorized implementation" in template
