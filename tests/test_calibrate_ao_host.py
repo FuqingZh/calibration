@@ -511,14 +511,14 @@ def test_unavailable_requires_repeated_host_observation(
 def test_inspect_loads_explicit_profile_once(
     monkeypatch: pytest.MonkeyPatch, profile: Path
 ) -> None:
-    original_load = host._load_profile
+    original_load = host._load_profile_structure
     loaded: list[Path] = []
 
     def load_once(path: Path) -> dict[str, object]:
         loaded.append(path)
         return original_load(path)
 
-    monkeypatch.setattr(host, "_load_profile", load_once)
+    monkeypatch.setattr(host, "_load_profile_structure", load_once)
     report = host.inspect_host(
         FakeRunner(inspect_responses()), profile=profile, context="sandbox"
     )
@@ -527,6 +527,52 @@ def test_inspect_loads_explicit_profile_once(
     assert cast(dict[str, object], report["capabilities"])["loopback_base_url"] == (
         "http://127.0.0.1:3001"
     )
+
+
+@pytest.mark.parametrize("context", ["sandbox", "auto"])
+def test_non_host_inspect_uses_structural_profile_validation(
+    monkeypatch: pytest.MonkeyPatch, profile: Path, context: str
+) -> None:
+    def reject_host_state(_profile: Mapping[str, object]) -> None:
+        raise host.CalibrationError("host filesystem must not be consulted")
+
+    monkeypatch.setattr(
+        host, "_validate_profile_host_path_ancestors", reject_host_state
+    )
+    report = host.inspect_host(
+        FakeRunner(inspect_responses()), profile=profile, context=context
+    )
+    assert cast(dict[str, object], report["states"])["daemon"] == "indeterminate"
+
+    with pytest.raises(host.CalibrationError, match="host filesystem"):
+        host.inspect_host(
+            FakeRunner(inspect_responses()), profile=profile, context="host"
+        )
+    with pytest.raises(host.CalibrationError, match="host filesystem"):
+        host.plan_profile(profile)
+    with pytest.raises(host.CalibrationError, match="host filesystem"):
+        host.render_profile(profile, profile.parent / "candidate")
+    with pytest.raises(host.CalibrationError, match="host filesystem"):
+        host.verify_profile(profile)
+
+
+def test_structural_profile_loader_rejects_unexpandable_and_relative_paths(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    with pytest.raises(host.CalibrationError, match="must be absolute"):
+        host._load_profile_structure(Path("relative.toml"))
+
+    source = tmp_path / "profile.toml"
+    original_expanduser = Path.expanduser
+
+    def failed_expanduser(self: Path) -> Path:
+        if self == source:
+            raise RuntimeError("synthetic expansion loop")
+        return original_expanduser(self)
+
+    monkeypatch.setattr(Path, "expanduser", failed_expanduser)
+    with pytest.raises(host.CalibrationError, match="cannot expand"):
+        host._load_profile_structure(source)
 
 
 def test_full_probe_json_is_parsed_before_display_truncation() -> None:
@@ -2369,7 +2415,7 @@ def test_mapped_ipv4_dashboard_listener_collision_fails_closed(
 ) -> None:
     target = tmp_path / "mapped-collision.toml"
     state = tmp_path / "state"
-    with pytest.raises(host.CalibrationError, match="must not collide"):
+    with pytest.raises(host.CalibrationError, match="IPv4-mapped IPv6"):
         host.init_profile(
             target,
             trust_model="trusted-single-user",
@@ -2391,6 +2437,161 @@ def test_mapped_ipv4_dashboard_listener_collision_fails_closed(
             desired_service_artifact=tmp_path / "artifacts/nginx.service",
         )
     assert not target.exists()
+
+
+def test_enabled_mapped_ipv4_dashboard_listener_is_rejected_without_collision(
+    tmp_path: Path, codex_home: Path
+) -> None:
+    target = tmp_path / "mapped-listener.toml"
+    state = tmp_path / "mapped-state"
+    with pytest.raises(host.CalibrationError, match="IPv4-mapped IPv6"):
+        host.init_profile(
+            target,
+            trust_model="trusted-single-user",
+            codex_home=codex_home,
+            data_dir=tmp_path / "mapped-data",
+            private_authority=tmp_path / "mapped-authority/AGENTS.md",
+            state_root=state,
+            dashboard_enabled=True,
+            dashboard_listen_host="::ffff:192.0.2.20",
+            dashboard_listen_port=8443,
+            readonly_cidrs=("::ffff:192.0.2.0/120",),
+            document_root=tmp_path / "mapped-dashboard",
+            nginx_executable=Path("/usr/sbin/nginx"),
+            nginx_pid_file=state / "nginx.pid",
+            active_config=tmp_path / "mapped-config/active.conf",
+            desired_service="ao-dashboard.service",
+            rollback_service="ao-dashboard-rollback.service",
+            desired_nginx_artifact=tmp_path / "mapped-artifacts/nginx.conf",
+            desired_service_artifact=tmp_path / "mapped-artifacts/nginx.service",
+        )
+    assert not target.exists()
+
+
+def test_disabled_mapped_ipv4_dashboard_listener_remains_readable(
+    profile: Path,
+) -> None:
+    content = profile.read_text(encoding="utf-8").replace(
+        'listen_host = "127.0.0.1"', 'listen_host = "::ffff:192.0.2.20"'
+    )
+    profile.write_text(content, encoding="utf-8")
+    profile.chmod(0o600)
+    assert host.plan_profile(profile)["schema_read"] == 2
+    assert host.verify_profile(profile)["valid"] is True
+
+
+def test_enabled_mapped_ipv4_profile_is_rejected_by_strict_loader(
+    tmp_path: Path, codex_home: Path
+) -> None:
+    profile = _init_enabled_review_profile(tmp_path, codex_home, "mapped-readback")
+    content = (
+        profile.read_text(encoding="utf-8")
+        .replace('listen_host = "127.0.0.1"', 'listen_host = "::ffff:192.0.2.20"')
+        .replace(
+            'trusted_readonly_cidrs = ["127.0.0.1/32"]',
+            'trusted_readonly_cidrs = ["::ffff:192.0.2.0/120"]',
+        )
+    )
+    profile.write_text(content, encoding="utf-8")
+    profile.chmod(0o600)
+    with pytest.raises(host.CalibrationError, match="IPv4-mapped IPv6"):
+        host.plan_profile(profile)
+
+
+def test_init_publication_is_exclusive_and_preserves_competing_file(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, codex_home: Path
+) -> None:
+    target = tmp_path / "exclusive" / "host.toml"
+    original_open = os.open
+    raced = False
+
+    def racing_open(path: os.PathLike[str] | str, flags: int, mode: int = 0o777) -> int:
+        nonlocal raced
+        if Path(path) == target and not raced:
+            raced = True
+            descriptor = original_open(
+                path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600
+            )
+            os.write(descriptor, b"competitor\n")
+            os.close(descriptor)
+        return original_open(path, flags, mode)
+
+    monkeypatch.setattr(host.os, "open", racing_open)
+    with pytest.raises(host.CalibrationError, match="already exists"):
+        host.init_profile(
+            target,
+            trust_model="untrusted",
+            codex_home=codex_home,
+            data_dir=tmp_path / "exclusive-data",
+            private_authority=tmp_path / "exclusive-authority/AGENTS.md",
+            state_root=tmp_path / "exclusive-state",
+        )
+    assert target.read_bytes() == b"competitor\n"
+
+
+@pytest.mark.parametrize("replace_target", [False, True])
+def test_init_write_failure_only_cleans_its_opened_inode(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    codex_home: Path,
+    replace_target: bool,
+) -> None:
+    target = tmp_path / f"fsync-{replace_target}" / "host.toml"
+    displaced = tmp_path / f"displaced-{replace_target}.toml"
+
+    def failing_fsync(_descriptor: int) -> None:
+        if replace_target:
+            os.replace(target, displaced)
+            target.write_bytes(b"replacement\n")
+            target.chmod(0o600)
+        raise OSError("synthetic fsync failure")
+
+    monkeypatch.setattr(host.os, "fsync", failing_fsync)
+    with pytest.raises(host.CalibrationError, match="cannot be written"):
+        host.init_profile(
+            target,
+            trust_model="untrusted",
+            codex_home=codex_home,
+            data_dir=tmp_path / f"fsync-data-{replace_target}",
+            private_authority=tmp_path / f"fsync-authority-{replace_target}/AGENTS.md",
+            state_root=tmp_path / f"fsync-state-{replace_target}",
+        )
+    if replace_target:
+        assert target.read_bytes() == b"replacement\n"
+        assert displaced.exists()
+    else:
+        assert not target.exists()
+
+
+def test_exclusive_publication_wraps_open_and_cleanup_errors(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    target = tmp_path / "publication.toml"
+
+    def denied_open(*_args: object, **_kwargs: object) -> int:
+        raise PermissionError("denied")
+
+    monkeypatch.setattr(host.os, "open", denied_open)
+    with pytest.raises(host.CalibrationError, match="cannot be created"):
+        host._write_exclusive_private(target, "content")
+
+    monkeypatch.undo()
+
+    def failed_chmod(_descriptor: int, _mode: int) -> None:
+        raise OSError("chmod failed")
+
+    original_lstat = Path.lstat
+
+    def failed_cleanup_lstat(self: Path) -> os.stat_result:
+        if self == target:
+            raise OSError("cleanup inspection failed")
+        return original_lstat(self)
+
+    monkeypatch.setattr(host.os, "fchmod", failed_chmod)
+    monkeypatch.setattr(Path, "lstat", failed_cleanup_lstat)
+    with pytest.raises(host.CalibrationError, match="cannot be written"):
+        host._write_exclusive_private(target, "content")
+    assert target.exists()
 
 
 @pytest.mark.parametrize(
@@ -3366,6 +3567,61 @@ def test_render_publishes_private_tree_independent_of_umask(
     assert host.verify_profile(profile, candidate=target)["valid"] is True
     assert host.render_profile(profile, target)["unchanged"] is True
     assert not (tmp_path / f".private-{mask:o}.staging").exists()
+
+
+def test_existing_candidate_rejects_hardlinked_file(
+    tmp_path: Path, profile: Path
+) -> None:
+    target = tmp_path / "hardlinked-candidate"
+    host.render_profile(profile, target)
+    alias = tmp_path / "agents-alias"
+    os.link(target / "AGENTS.md", alias)
+
+    with pytest.raises(host.CalibrationError, match="singly linked"):
+        host.render_profile(profile, target)
+    with pytest.raises(host.CalibrationError, match="singly linked"):
+        host.verify_profile(profile, candidate=target)
+
+
+@pytest.mark.parametrize("owned_path", ["root", "file"])
+def test_existing_candidate_requires_current_user_ownership(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    profile: Path,
+    owned_path: str,
+) -> None:
+    target = tmp_path / f"foreign-{owned_path}"
+    host.render_profile(profile, target)
+    selected = target if owned_path == "root" else target / "AGENTS.md"
+    original_lstat = Path.lstat
+
+    def foreign_lstat(self: Path) -> os.stat_result:
+        metadata = original_lstat(self)
+        if self != selected:
+            return metadata
+        fields = list(metadata)
+        fields[4] = os.geteuid() + 1
+        return os.stat_result(fields)
+
+    monkeypatch.setattr(Path, "lstat", foreign_lstat)
+    with pytest.raises(host.CalibrationError, match="owned by the current user"):
+        host.render_profile(profile, target)
+    with pytest.raises(host.CalibrationError, match="owned by the current user"):
+        host.verify_profile(profile, candidate=target)
+
+
+def test_candidate_identity_inspection_error_is_bounded(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    target = tmp_path / "candidate"
+    target.mkdir(mode=0o700)
+
+    def denied_lstat(_self: Path) -> os.stat_result:
+        raise PermissionError("denied")
+
+    monkeypatch.setattr(Path, "lstat", denied_lstat)
+    with pytest.raises(host.CalibrationError, match="cannot be inspected"):
+        host._validate_tree_identity(target)
 
 
 def test_render_rejects_noncanonical_staging_content(
@@ -5661,6 +5917,63 @@ def _init_enabled_review_profile(
         ),
     )
     return target
+
+
+def test_existing_dashboard_pid_requires_private_single_link_metadata(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, codex_home: Path
+) -> None:
+    profile = _init_enabled_review_profile(tmp_path, codex_home, "pid-metadata")
+    state = tmp_path / "pid-metadata-state"
+    state.mkdir(mode=0o700)
+    pid_file = state / "nginx.pid"
+    pid_file.write_text("42\n", encoding="utf-8")
+    pid_file.chmod(0o600)
+    assert host.plan_profile(profile)["schema_read"] == 2
+
+    pid_file.chmod(0o620)
+    with pytest.raises(host.CalibrationError, match="group/other-writable"):
+        host.plan_profile(profile)
+    pid_file.chmod(0o600)
+
+    alias = tmp_path / "pid-alias"
+    os.link(pid_file, alias)
+    with pytest.raises(host.CalibrationError, match="singly linked"):
+        host.plan_profile(profile)
+    alias.unlink()
+
+    original_lstat = Path.lstat
+
+    def foreign_lstat(self: Path) -> os.stat_result:
+        metadata = original_lstat(self)
+        if self != pid_file:
+            return metadata
+        fields = list(metadata)
+        fields[4] = os.geteuid() + 1
+        return os.stat_result(fields)
+
+    monkeypatch.setattr(Path, "lstat", foreign_lstat)
+    with pytest.raises(host.CalibrationError, match="owned by the current user"):
+        host.plan_profile(profile)
+
+
+def test_existing_dashboard_pid_rejects_nonregular_and_inspection_error(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    pid_file = tmp_path / "nginx.pid"
+    pid_file.mkdir(mode=0o700)
+    with pytest.raises(host.CalibrationError, match="regular file"):
+        host._validate_existing_pid_file(pid_file)
+
+    original_lstat = Path.lstat
+
+    def failed_lstat(self: Path) -> os.stat_result:
+        if self == pid_file:
+            raise PermissionError("denied")
+        return original_lstat(self)
+
+    monkeypatch.setattr(Path, "lstat", failed_lstat)
+    with pytest.raises(host.CalibrationError, match="cannot be inspected"):
+        host._validate_existing_pid_file(pid_file)
 
 
 def test_enabled_dashboard_rejects_hardlinked_codex_config(

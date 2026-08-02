@@ -829,7 +829,15 @@ def inspect_host(
         raise CalibrationError("context must be auto, host, or sandbox")
     if profile is not None and not profile.exists():
         raise CalibrationError(f"{profile} does not exist")
-    parsed_profile = _load_profile(profile) if profile is not None else None
+    parsed_profile = (
+        (
+            _load_profile(profile)
+            if context == "host"
+            else _load_profile_structure(profile)
+        )
+        if profile is not None
+        else None
+    )
     if runner is None:
         runner = _environment_runner(_inspection_environment(parsed_profile))
     base = DEFAULT_BASE_URL
@@ -1388,9 +1396,18 @@ def _validate_listener_network_families(
         )
 
 
-def _validate_pid_file_within_state_root(pid_file: Path, state_root: Path) -> None:
-    resolved_state_root = state_root.resolve(strict=False)
-    resolved_pid_file = pid_file.resolve(strict=False)
+def _validate_pid_file_within_state_root(
+    pid_file: Path,
+    state_root: Path,
+    *,
+    resolve_paths: bool = True,
+) -> None:
+    if resolve_paths:
+        resolved_state_root = state_root.resolve(strict=False)
+        resolved_pid_file = pid_file.resolve(strict=False)
+    else:
+        resolved_state_root = Path(os.path.normpath(state_root))
+        resolved_pid_file = Path(os.path.normpath(pid_file))
     try:
         relative_pid_file = resolved_pid_file.relative_to(resolved_state_root)
     except ValueError as exc:
@@ -1400,6 +1417,34 @@ def _validate_pid_file_within_state_root(pid_file: Path, state_root: Path) -> No
     if relative_pid_file == Path("."):
         raise CalibrationError(
             "dashboard.pid_file must be a file beneath paths.state_root"
+        )
+
+
+def _validate_existing_pid_file(path: Path) -> None:
+    """Require an existing nginx PID file to remain a private control file."""
+    try:
+        metadata = path.lstat()
+    except FileNotFoundError:
+        return
+    except OSError as exc:
+        raise CalibrationError(
+            f"dashboard.pid_file cannot be inspected: {exc}"
+        ) from exc
+    if not stat.S_ISREG(metadata.st_mode):
+        raise CalibrationError(
+            "dashboard.pid_file must be a regular file when it exists"
+        )
+    if metadata.st_uid != os.geteuid():
+        raise CalibrationError(
+            "dashboard.pid_file must be owned by the current user when it exists"
+        )
+    if metadata.st_nlink != 1:
+        raise CalibrationError(
+            "dashboard.pid_file must be singly linked when it exists"
+        )
+    if stat.S_IMODE(metadata.st_mode) & 0o022:
+        raise CalibrationError(
+            "dashboard.pid_file must not be group/other-writable when it exists"
         )
 
 
@@ -1537,11 +1582,7 @@ def _validate_dashboard_path_roles(
             executable=True,
         )
     if "pid_file" in dashboard:
-        _validate_existing_path_role(
-            Path(cast(str, dashboard["pid_file"])),
-            "dashboard.pid_file",
-            directory=False,
-        )
+        _validate_existing_pid_file(Path(cast(str, dashboard["pid_file"])))
 
 
 def _validate_dashboard_document_tree(
@@ -1850,9 +1891,19 @@ def _validate_render_destination_roles(
                 )
 
 
-def _load_profile(path: Path) -> dict[str, object]:
-    safe = _safe_path(path, may_create=False, directory=False)
-    _private_chain_missing_components(safe.parent)
+def _load_profile_data(path: Path, *, structural_only: bool) -> dict[str, object]:
+    if structural_only:
+        try:
+            safe = path.expanduser()
+        except RuntimeError as exc:
+            raise CalibrationError(
+                f"{path} cannot expand its user home: {exc}"
+            ) from exc
+        if not safe.is_absolute():
+            raise CalibrationError(f"{path} must be absolute")
+    else:
+        safe = _safe_path(path, may_create=False, directory=False)
+        _private_chain_missing_components(safe.parent)
     try:
         profile = tomllib.loads(safe.read_text(encoding="utf-8"))
     except (OSError, tomllib.TOMLDecodeError) as exc:
@@ -1968,17 +2019,19 @@ def _load_profile(path: Path) -> dict[str, object]:
         if not isinstance(value, str) or not Path(value).is_absolute():
             raise CalibrationError(f"{label} must be an absolute path")
         _validate_interpolated_scalar(value, label)
-    for label, value in (
-        ("ao.data_dir", ao["data_dir"]),
-        ("paths.state_root", paths["state_root"]),
-    ):
-        candidate = Path(cast(str, value))
-        if candidate.exists() and not candidate.is_dir():
-            raise CalibrationError(f"{label} must be a directory")
+    if not structural_only:
+        for label, value in (
+            ("ao.data_dir", ao["data_dir"]),
+            ("paths.state_root", paths["state_root"]),
+        ):
+            candidate = Path(cast(str, value))
+            if candidate.exists() and not candidate.is_dir():
+                raise CalibrationError(f"{label} must be a directory")
     if version == 2:
         _validate_pid_file_within_state_root(
             Path(cast(str, dashboard["pid_file"])),
             Path(cast(str, paths["state_root"])),
+            resolve_paths=not structural_only,
         )
     _validate_service_unit(
         dashboard.get("desired_service"), "dashboard.desired_service"
@@ -2011,6 +2064,16 @@ def _load_profile(path: Path) -> dict[str, object]:
             )
         _validate_terminal(terminal)
     _validate_no_listener_collision(profile)
+    if (
+        dashboard.get("mode", "read-only") == "read-only"
+        and isinstance(listen_ip, ipaddress.IPv6Address)
+        and listen_ip.ipv4_mapped is not None
+    ):
+        raise CalibrationError(
+            "enabled dashboard listen_host must not be IPv4-mapped IPv6"
+        )
+    if structural_only:
+        return cast(dict[str, object], profile)
     canonical = _canonical_v2(profile)
     _validate_profile_host_path_ancestors(canonical)
     _validate_dashboard_state_write_scope(canonical, safe)
@@ -2035,6 +2098,16 @@ def _load_profile(path: Path) -> dict[str, object]:
             terminal,
         )
     return cast(dict[str, object], profile)
+
+
+def _load_profile_structure(path: Path) -> dict[str, object]:
+    """Validate profile syntax and data contracts without asserting host state."""
+    return _load_profile_data(path, structural_only=True)
+
+
+def _load_profile(path: Path) -> dict[str, object]:
+    """Validate profile contracts and host-owned filesystem invariants."""
+    return _load_profile_data(path, structural_only=False)
 
 
 def _validate_no_listener_collision(profile: Mapping[str, object]) -> None:
@@ -2264,6 +2337,46 @@ def _toml(profile: Mapping[str, object]) -> str:
     return "\n".join(lines) + "\n"
 
 
+def _write_exclusive_private(path: Path, content: str) -> None:
+    """Publish one private file without an existence-check/create race."""
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    if hasattr(os, "O_CLOEXEC"):
+        flags |= os.O_CLOEXEC
+    try:
+        descriptor = os.open(path, flags, 0o600)
+    except FileExistsError as exc:
+        raise CalibrationError(f"{path} already exists") from exc
+    except OSError as exc:
+        raise CalibrationError(f"{path} cannot be created: {exc}") from exc
+    identity = os.fstat(descriptor)
+    completed = False
+    try:
+        os.fchmod(descriptor, 0o600)
+        with os.fdopen(descriptor, "w", encoding="utf-8", newline="") as stream:
+            descriptor = -1
+            stream.write(content)
+            stream.flush()
+            os.fsync(stream.fileno())
+        completed = True
+    except OSError as exc:
+        raise CalibrationError(f"{path} cannot be written: {exc}") from exc
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+        if not completed:
+            try:
+                current = path.lstat()
+                if (current.st_dev, current.st_ino) == (
+                    identity.st_dev,
+                    identity.st_ino,
+                ):
+                    path.unlink()
+            except (FileNotFoundError, OSError):
+                pass
+
+
 def init_profile(
     path: Path,
     *,
@@ -2356,6 +2469,14 @@ def init_profile(
         if dashboard_enabled and dashboard_address.is_multicast:
             raise CalibrationError(
                 "enabled dashboard listen host must not be multicast"
+            )
+        if (
+            dashboard_enabled
+            and isinstance(dashboard_address, ipaddress.IPv6Address)
+            and dashboard_address.ipv4_mapped is not None
+        ):
+            raise CalibrationError(
+                "enabled dashboard listen host must not be IPv4-mapped IPv6"
             )
     if dashboard_listen_port is not None and (
         type(dashboard_listen_port) is not int
@@ -2501,8 +2622,7 @@ def init_profile(
         )
     _validate_no_listener_collision(canonical)
     _mkdir_private_chain(target.parent)
-    target.write_text(_toml(canonical), encoding="utf-8")
-    target.chmod(0o600)
+    _write_exclusive_private(target, _toml(canonical))
     return canonical
 
 
@@ -2782,6 +2902,19 @@ def _validate_tree_modes(root: Path) -> None:
             raise CalibrationError(f"{item} mode must be {expected:04o}")
 
 
+def _validate_tree_identity(root: Path) -> None:
+    """Require candidate nodes to be owned locally and files to be unaliased."""
+    for item in (root, *root.rglob("*")):
+        try:
+            metadata = item.lstat()
+        except OSError as exc:
+            raise CalibrationError(f"{item} cannot be inspected: {exc}") from exc
+        if metadata.st_uid != os.geteuid():
+            raise CalibrationError(f"{item} must be owned by the current user")
+        if stat.S_ISREG(metadata.st_mode) and metadata.st_nlink != 1:
+            raise CalibrationError(f"{item} must be singly linked")
+
+
 def _validate_publish_parent(parent: Path) -> None:
     if _private_chain_missing_components(parent):
         raise CalibrationError("render output parent must exist")
@@ -2807,6 +2940,7 @@ def render_profile(path: Path, output: Path) -> dict[str, object]:
     )
     _validate_publish_parent(target.parent)
     if target.exists():
+        _validate_tree_identity(target)
         if not target.is_dir() or _tree_bytes(target) != files:
             raise CalibrationError("existing output has nonempty drift")
         _validate_tree_shape(target, files)
@@ -2830,6 +2964,7 @@ def render_profile(path: Path, output: Path) -> dict[str, object]:
             raise CalibrationError("staging tree content is not canonical")
         _validate_tree_shape(staging, files)
         _validate_tree_modes(staging)
+        _validate_tree_identity(staging)
         os.replace(staging, target)
     except BaseException:
         if staging.exists():
@@ -2860,6 +2995,7 @@ def verify_profile(path: Path, *, candidate: Path | None = None) -> dict[str, ob
             target_label="verify candidate",
         )
         files = _candidate_files(profile)
+        _validate_tree_identity(root)
         if _tree_bytes(root) != files:
             raise CalibrationError("candidate does not match canonical rendering")
         _validate_tree_shape(root, files)
