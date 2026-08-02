@@ -230,6 +230,7 @@ def test_workspace_mismatch_routes_mutation_to_single_owner() -> None:
         assert "Without supplied local host authority" in authority
         assert "narrowed fallback or existing-owner preservation rule" in authority
         assert "do not perform AO lifecycle routing" in authority
+        health = authority.index("verify AO health before lifecycle routing")
         new_work = authority.index("start a task-specific owning worker for new work")
         unowned = authority.index("that is truly unowned")
         branch = authority.index(
@@ -237,6 +238,9 @@ def test_workspace_mismatch_routes_mutation_to_single_owner() -> None:
         )
         unclaimed_pr = authority.index(
             "An existing ready pull request with no AO owner"
+        )
+        draft = authority.index(
+            "If an existing pull request is a draft, mark it ready before owner lookup"
         )
         claim_before_lookup = authority.index(
             "claimed without takeover by an existing or new owner before "
@@ -249,8 +253,8 @@ def test_workspace_mismatch_routes_mutation_to_single_owner() -> None:
             "Only existing-PR claim semantics require an existing pull request"
         )
         compare = authority.index("Compare the assigned writable workspace")
-        assert new_work < unowned < branch
-        assert branch < unclaimed_pr < claim_before_lookup < owned
+        assert health < new_work < unowned < branch
+        assert branch < draft < unclaimed_pr < claim_before_lookup < owned
         assert owned < lookup < no_pr < claim < compare
         assert "Only an existing pull request enters owner lookup" not in authority
         assert (
@@ -435,6 +439,12 @@ def test_owner_retry_budget_and_state_routing_cross_authority_surfaces() -> None
         "activity.state=exited",
         "REST resume-agent boundary",
         "activity.state=blocked 交给 human authority",
+        "ao session restore、fresh authoritative readback",
+        "claim/spawn 后 fresh authoritative readback",
+        "仅在 permitted 时 ao send",
+        "报告 actual stop reason",
+        "delivery degraded 只用于 core daemon ready 时相应的 external "
+        "integration/authentication failure",
         "owner-only restore/claim failure 且 daemon ready 时 preserve/readback",
         "isolated-worktree fallback 只用于 new or unowned PR-bound work",
         "existing AO-owned PR",
