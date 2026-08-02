@@ -106,6 +106,13 @@ it is not a universal Desktop adapter. Other platforms install and operate AO
 through upstream Desktop directly. The helper never claims the real event loop
 has passed and must preserve its existing CLI contract.
 
+Before any mutation, determine whether the repository, worktree, or branch is
+already AO-owned. If so, the controller remains read-only regardless of whether
+a pull request exists or the task is PR-bound. When the continuation-proof,
+authority, and authorization gates hold, perform owner lookup and handoff
+through the state rules below; otherwise preserve the owned state. Read-only
+review, analysis, and discussion requests remain read-only.
+
 Conversation authorization is sufficient issue intake. Issue-tracker intake,
 automatic work discovery, and a separate orchestrator session are not
 prerequisites. Normal automatic AO lifecycle routing requires the four-stage

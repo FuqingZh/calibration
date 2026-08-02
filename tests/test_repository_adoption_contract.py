@@ -418,10 +418,28 @@ def test_workspace_mismatch_routes_mutation_to_single_owner() -> None:
         assert "until authority is available" in authority
         assert "mechanically enforced transfer mechanism" in authority
         assert "authoritatively verified" in authority
+        assert "accepted `continuation-proven` orchestrator" in authority
+        assert "an explicitly bounded canary" in authority
+        assert "Without supplied authority or continuation proof" in authority
 
-    assert "accepted `continuation-proven` orchestrator" in harness
-    assert "an explicitly bounded canary" in harness
-    assert "Without supplied authority or continuation proof" in harness
+    universal_guard = runbook.index(
+        "Before any mutation, determine whether the repository, worktree, or branch"
+    )
+    universal_read_only = runbook.index(
+        "the controller remains read-only", universal_guard
+    )
+    universal_lookup = runbook.index(
+        "perform owner lookup and handoff", universal_guard
+    )
+    intake = runbook.index("Conversation authorization is sufficient issue intake")
+    assert universal_guard < universal_read_only < universal_lookup < intake
+    assert (
+        "regardless of whether a pull request exists or the task is PR-bound" in runbook
+    )
+    assert (
+        "Read-only review, analysis, and discussion requests remain read-only"
+        in runbook
+    )
 
     template = compact("codex/AGENTS.md.template")
     assert "conversation-authorized implementation" in template
@@ -578,6 +596,14 @@ def test_owner_retry_budget_and_state_routing_cross_authority_surfaces() -> None
     prompts = text("skills/calibration/test-prompts.json")
     for phrase in (
         "session.isTerminated=false",
+        "仅有 adopted AO environment 不足以触发生命周期路由",
+        "normal automatic routing 还要求 continuation-proven",
+        "explicitly bounded canary",
+        "continuation unproven",
+        "existing AO-owned work preserve branch/worktree/feedback",
+        "不 send/restore/claim/spawn",
+        "truly unowned new work 使用 isolated-worktree fallback",
+        "通过 proof gate 后",
         "activity.state=exited",
         "REST resume-agent boundary",
         "activity.state=blocked 交给 human authority",
