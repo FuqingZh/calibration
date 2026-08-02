@@ -70,7 +70,10 @@ operations or polling and require bounded attempts or deadline, backoff, and
 `Retry-After`. Stop on head or scope change, cancellation, non-transient
 authentication or permission failure, or exhaustion. For an external write
 with unknown outcome, perform authoritative readback and deduplication first;
-retry only when the intended state is absent.
+retry only when the intended state is absent. On stop, preserve observable
+state and report the actual stop reason. Use `delivery degraded` only for a
+corresponding external integration or authentication failure while the core
+daemon remains ready.
 
 If AO is unavailable, isolated-worktree fallback applies only to new or unowned
 PR-bound work. Preserve an existing AO-owned PR's branch, worktree, and feedback

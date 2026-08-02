@@ -209,8 +209,10 @@ attempt or deadline budget, backoff, and `Retry-After`; they stop on head or
 scope change, cancellation, non-transient authentication or permission
 failure, or budget exhaustion. For an external write with unknown outcome,
 authoritative readback and deduplication must prove the intended state absent
-before retry. On stop, preserve observable state and report delivery degraded
-instead of looping or requesting repeated approval.
+before retry. On stop, preserve observable state and report the actual stop
+reason instead of looping or requesting repeated approval. Use
+`delivery degraded` only for a corresponding external integration or
+authentication failure while the core daemon remains ready.
 
 Security, compatibility, irreversible, secret, and genuine permission
 decisions remain human authority. The existing low-risk GitHub native

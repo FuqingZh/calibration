@@ -308,8 +308,10 @@ def test_ao_review_continuation_is_owner_directed_and_retryable() -> None:
         "permission or user-decision prompt",
         "ordinary idle prompt within already granted authority",
         "runtime release and its OS-owned containment boundary is empty",
-        "otherwise preserve state and monitor",
-        "`ao session restore` and then `ao send`",
+        "Otherwise preserve state and monitor",
+        "`ao session restore`; then perform fresh authoritative readback",
+        "normal resulting activity-state routing",
+        "use `ao send` only when permitted",
         "`ao session claim-pr <session> <pr> -p <project> --no-takeover`",
         "`ao spawn --claim-pr ... --no-takeover`",
         "After claim or spawn, perform fresh authoritative readback",
@@ -393,6 +395,18 @@ def test_owner_retry_budget_and_state_routing_cross_authority_surfaces() -> None
             in authority
         )
         assert "preserve state" in authority
+
+    for authority in (
+        harness,
+        runbook,
+        decision,
+        compact("AGENTS.md"),
+        compact("codex/AGENTS.md.template"),
+    ):
+        assert "report the actual stop reason" in authority
+        assert "delivery degraded" in authority
+        assert "external integration or authentication failure" in authority
+        assert "core daemon remains ready" in authority
 
     for authority in (compact("AGENTS.md"), compact("codex/AGENTS.md.template")):
         assert "new or unowned PR-bound work" in authority

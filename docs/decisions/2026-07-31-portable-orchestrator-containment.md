@@ -54,8 +54,10 @@ use an explicit attempt or deadline budget, backoff, and `Retry-After`, stopping
 on head or scope change, cancellation, non-transient authentication or
 permission failure, or budget exhaustion. An external write with unknown
 outcome requires authoritative readback and deduplication before retry, which
-is allowed only when the intended state is absent. Stopped work preserves
-observable state and reports delivery degraded.
+is allowed only when the intended state is absent. On stop, preserve observable
+state and report the actual stop reason. `delivery degraded` is
+reserved for a corresponding external integration or authentication failure
+while the core daemon remains ready.
 
 Explicit ownership transfer requires the former owner to be quiesced and
 preserves one writer. Quiesced requires authoritative readback that the former

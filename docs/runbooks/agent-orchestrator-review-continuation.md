@@ -133,7 +133,9 @@ provenance: escalate a permission or user-decision prompt, and send only when
 authoritative evidence proves it is an ordinary idle prompt within already
 granted authority. Route a terminated owner only after authoritative readback
 confirms runtime release and its OS-owned containment boundary is empty, using
-`ao session restore` and then `ao send`; otherwise preserve state and monitor.
+`ao session restore`; then perform fresh authoritative readback, apply the
+normal resulting activity-state routing, and use `ao send` only when permitted.
+Otherwise preserve state and monitor.
 Route an unclaimed ready pull request to an existing owner with
 `ao session claim-pr <session> <pr> -p <project> --no-takeover`, or to a new
 owner with `ao spawn --claim-pr ... --no-takeover`. After claim or spawn,
