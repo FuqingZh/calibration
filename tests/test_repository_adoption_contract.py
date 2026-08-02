@@ -373,12 +373,20 @@ def test_owner_retry_budget_and_state_routing_cross_authority_surfaces() -> None
     assert "pull request #46" not in runbook
     assert "PR #46" not in prompts
     agents = compact("AGENTS.md")
+    assert (
+        "Otherwise use an isolated worktree for pull-request-bound delivery"
+        not in agents
+    )
     assert "If AO is unavailable, use an isolated worktree" not in agents
     assert "use an isolated worktree and report that bounded fallback" not in runbook
     assert "continue through the normal isolated-Worktree delivery path" not in harness
     for authority in (agents, runbook, harness):
         assert "new or unowned pull-request-bound work" in authority
         assert "Existing AO-owned pull requests defer" in authority
+    assert (
+        "an existing AO-owned pull request follows the ownership-preservation rule"
+        in agents
+    )
     for unprovable in (
         "no former writer process",
         "no process can mutate the owned worktree or branch",

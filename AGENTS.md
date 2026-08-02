@@ -13,9 +13,10 @@
 AO is an optional environment adapter, not a property of every public clone.
 Use it only when the current environment has already installed AO, explicitly
 adopted this repository, and supplied local host authority. Otherwise use an
-isolated worktree for pull-request-bound delivery. Ordinary local engineering
-tasks continue directly under repository rules without requiring AO or a new
-worktree.
+isolated worktree only for new or unowned pull-request-bound work; an existing
+AO-owned pull request follows the ownership-preservation rule below. Ordinary
+local engineering tasks continue directly under repository rules without
+requiring AO or a new worktree.
 
 For conversation-authorized implementation intended to cross a pull-request
 boundary in an adopted environment, verify AO health and start a task-specific
