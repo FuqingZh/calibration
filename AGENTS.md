@@ -42,11 +42,12 @@ for new or unowned pull-request-bound work. Existing AO-owned pull requests
 defer to the ownership-preservation rule below.
 
 For pull-request-bound work with installed AO, an adopted repository, and
-supplied local host authority, before mutation compare the assigned writable
-workspace and Git root with the target's owning AO worker. Without supplied
-local host authority, follow the narrowed fallback or existing-owner
-preservation rule and do not perform AO lifecycle routing. Keep one writer: the
-controller must not patch,
+supplied local host authority, start a task-specific owning worker for new work
+before creating its implementation branch or pull request. Only an existing
+pull request enters owner lookup: before mutation compare the assigned writable
+workspace and Git root with its owning AO worker. Without supplied local host
+authority, follow the narrowed fallback or existing-owner preservation rule and
+do not perform AO lifecycle routing. Keep one writer: the controller must not patch,
 stage, commit, or push an owner's sibling worktree. Inspect
 `session.isTerminated` first. If true, only restore after authoritative readback
 proves runtime release and an empty OS-owned containment boundary; otherwise
@@ -57,7 +58,12 @@ Before transfer, authoritative readback must prove the former owner cannot
 write, ownership is released, and runtime/containment release is complete and
 empty; idle/live or cleanup-pending is not quiesced. Otherwise do not transfer.
 Do not repeat rejected filesystem escalation. The owner retries same-scope
-mechanical feedback within a bounded retry budget.
+mechanical feedback. Blind retries are limited to idempotent transient
+operations or polling and require bounded attempts or deadline, backoff, and
+`Retry-After`. Stop on head or scope change, cancellation, non-transient
+authentication or permission failure, or exhaustion. For an external write
+with unknown outcome, perform authoritative readback and deduplication first;
+retry only when the intended state is absent.
 
 If AO is unavailable, isolated-worktree fallback applies only to new or unowned
 PR-bound work. Preserve an existing AO-owned PR's branch, worktree, and feedback

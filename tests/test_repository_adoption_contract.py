@@ -227,6 +227,28 @@ def test_workspace_mismatch_routes_mutation_to_single_owner() -> None:
         assert "Without supplied local host authority" in authority
         assert "narrowed fallback or existing-owner preservation rule" in authority
         assert "do not perform AO lifecycle routing" in authority
+        new_work = authority.index("start a task-specific owning worker for new work")
+        branch = authority.index(
+            "before creating its implementation branch or pull request"
+        )
+        existing = authority.index("Only an existing pull request enters owner lookup")
+        lookup = authority.index(
+            "before mutation compare the assigned writable workspace"
+        )
+        assert new_work < branch < existing < lookup
+        assert (
+            "Blind retries are limited to idempotent transient operations or polling"
+            in authority
+        )
+        assert "bounded attempts or deadline" in authority
+        assert "backoff" in authority and "`Retry-After`" in authority
+        assert "Stop on head or scope change" in authority
+        assert "cancellation" in authority
+        assert "non-transient authentication or permission failure" in authority
+        assert "or exhaustion" in authority
+        assert "external write with unknown outcome" in authority
+        assert "authoritative readback and deduplication first" in authority
+        assert "retry only when the intended state is absent" in authority
 
     harness = compact("references/engineering/discipline/harness.md")
     decision = compact("docs/decisions/2026-07-31-portable-orchestrator-containment.md")
