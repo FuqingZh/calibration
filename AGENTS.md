@@ -45,8 +45,9 @@ For conversation-authorized implementation intended to cross a pull-request
 boundary, use AO lifecycle routing only with installed AO, an adopted
 repository, supplied local host authority, and an accepted continuation-proven
 orchestrator or explicitly bounded canary. Review, analysis, or discussion-only
-requests remain read-only. If continuation is unproven, use the narrowed
-new/unowned fallback or existing-owner preservation rule. When all gates hold,
+requests remain read-only; when continuation is unproven and the current task
+is not that explicitly bounded canary, use the narrowed new/unowned fallback or
+existing-owner preservation rule. When all gates hold,
 verify AO health before lifecycle routing. Then
 start a task-specific owning worker for new work that is truly unowned.
 Immediately perform fresh authoritative session readback and hand the task to

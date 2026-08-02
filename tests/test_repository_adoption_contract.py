@@ -261,7 +261,10 @@ def test_workspace_mismatch_routes_mutation_to_single_owner() -> None:
             "Review, analysis, or discussion-only requests remain read-only"
             in authority
         )
-        assert "If continuation is unproven" in authority
+        assert (
+            "when continuation is unproven and the current task is not that "
+            "explicitly bounded canary" in authority
+        )
         assert "new/unowned fallback or existing-owner preservation rule" in authority
         assert "Without supplied local host authority" in authority
         assert "narrowed fallback or existing-owner preservation rule" in authority
@@ -330,6 +333,19 @@ def test_workspace_mismatch_routes_mutation_to_single_owner() -> None:
         assert "external write with unknown outcome" in authority
         assert "authoritative readback and deduplication first" in authority
         assert "retry only when the intended state is absent" in authority
+
+        proof = authority.index("accepted continuation-proven orchestrator")
+        canary = authority.index("or explicitly bounded canary", proof)
+        canary_condition = authority.index(
+            "when continuation is unproven and the current task is not that "
+            "explicitly bounded canary",
+            canary,
+        )
+        conditional_fallback = authority.index(
+            "new/unowned fallback or existing-owner preservation rule",
+            canary_condition,
+        )
+        assert proof < canary < canary_condition < conditional_fallback < health
 
     for authority in (
         compact("AGENTS.md"),
