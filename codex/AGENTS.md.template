@@ -35,8 +35,8 @@ Before any mutation, an already AO-owned repository, worktree, or branch is
 subject to the single-writer guard even without a pull request or PR-bound
 intent: the controller remains read-only. With installed AO, adoption, supplied
 local host authority, and continuation proof or an explicitly bounded canary,
-perform owner lookup and handoff through the state rules below; otherwise
-preserve the owned state.
+verify authoritative AO core health is daemon ready before owner lookup and
+handoff through the state rules below; otherwise preserve the owned state.
 
 For conversation-authorized implementation intended to cross a pull-request
 boundary, use AO lifecycle routing only with installed AO, an adopted

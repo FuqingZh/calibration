@@ -248,7 +248,10 @@ def test_workspace_mismatch_routes_mutation_to_single_owner() -> None:
         owned_read_only = authority.index(
             "the controller remains read-only", owned_guard
         )
-        owned_lookup = authority.index("perform owner lookup and handoff", owned_guard)
+        owned_health = authority.index(
+            "verify authoritative AO core health is daemon ready", owned_guard
+        )
+        owned_lookup = authority.index("before owner lookup and handoff", owned_health)
         authorization = authority.index(
             "conversation-authorized implementation intended to cross a pull-request"
         )
@@ -270,7 +273,8 @@ def test_workspace_mismatch_routes_mutation_to_single_owner() -> None:
         assert "narrowed fallback or existing-owner preservation rule" in authority
         assert "do not perform AO lifecycle routing" in authority
         health = authority.index("verify AO health before lifecycle routing")
-        assert owned_guard < owned_read_only < owned_lookup < authorization
+        assert owned_guard < owned_read_only < owned_health < owned_lookup
+        assert owned_lookup < authorization
         assert authorization < lifecycle < health
         assert authority.count("verify AO health before lifecycle routing") == 1
         assert "boundary in an adopted environment, verify AO health" not in authority
@@ -474,18 +478,21 @@ def test_workspace_mismatch_routes_mutation_to_single_owner() -> None:
     )
     missing_authority = runbook.index("Without authority, preserve", universal_guard)
     authority = runbook.index("With authority and implementation authorization")
-    universal_lookup = runbook.index("perform owner lookup and handoff", authority)
-    continuation = runbook.index("only when continuation is proven", universal_lookup)
+    continuation = runbook.index("when continuation is proven", authority)
     bounded_canary = runbook.index(
         "or the current task is the explicitly bounded canary", continuation
     )
+    universal_health = runbook.index(
+        "verify authoritative AO core health is `daemon ready`", bounded_canary
+    )
+    universal_lookup = runbook.index("Before owner lookup and handoff", bounded_canary)
     otherwise_preserve = runbook.index(
-        "otherwise preserve the owned state", bounded_canary
+        "otherwise preserve the owned state", universal_health
     )
     intake = runbook.index("Conversation authorization is sufficient issue intake")
     assert universal_guard < universal_read_only < missing_authority < authority
-    assert authority < universal_lookup < continuation < bounded_canary
-    assert bounded_canary < otherwise_preserve < intake
+    assert authority < continuation < bounded_canary < universal_lookup
+    assert universal_lookup < universal_health < otherwise_preserve < intake
     assert (
         "regardless of whether a pull request exists or the task is PR-bound" in runbook
     )
