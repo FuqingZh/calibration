@@ -213,7 +213,11 @@ former owner cannot write, normally because it is terminated and ownership is
 released, and proves complete runtime release with an empty containment
 boundary. An idle or live owner, or a terminated owner with cleanup pending,
 is not quiesced; preserve state and do not transfer. Within the same authorized
-scope, the owner
+scope, a pull request with no orchestrator owner is not thereby unowned. Before
+claim or spawn, authoritative verification must prove every controller, human,
+or non-orchestrator writer is quiesced and cannot write. Otherwise preserve
+state, do not claim or spawn, and escalate; owner absence alone is not proof.
+Within the same authorized scope, the owner
 autonomously retries mechanical CI and review repairs and only idempotent
 transient network operations or polling. Retry loops require an explicit
 attempt or deadline budget, backoff, and `Retry-After`; they stop on head or

@@ -261,13 +261,19 @@ def test_workspace_mismatch_routes_mutation_to_single_owner() -> None:
             "only that owner creates the implementation branch or pull request"
         )
         unclaimed_pr = authority.index(
-            "An existing ready pull request with no AO owner"
+            "A ready pull request with no AO owner is not thereby unowned"
+        )
+        writer_gate = authority.index(
+            "every controller, human, or non-AO writer is quiesced and cannot write"
+        )
+        preserve_unclaimed = authority.index(
+            "Otherwise preserve state, do not claim or spawn, and escalate"
         )
         draft = authority.index(
             "An existing draft pull request must become ready before owner lookup"
         )
         claim_before_lookup = authority.index(
-            "claimed without takeover by an existing or new owner before "
+            "claim without takeover by an existing or new owner before "
             "owner-state lookup"
         )
         owned = authority.index("Any already AO-owned repository, worktree, or branch")
@@ -279,7 +285,9 @@ def test_workspace_mismatch_routes_mutation_to_single_owner() -> None:
         compare = authority.index("Compare the assigned writable workspace")
         assert health < new_work < unowned < new_owner_readback
         assert new_owner_readback < new_owner_handoff < branch
-        assert branch < draft < unclaimed_pr < claim_before_lookup < owned
+        assert branch < draft < unclaimed_pr < writer_gate
+        assert writer_gate < preserve_unclaimed < claim_before_lookup < owned
+        assert "AO-owner absence alone is not proof" in authority
         assert owned < lookup < no_pr < claim < compare
         assert "Only an existing pull request enters owner lookup" not in authority
         assert "ready-for-review is only a claim prerequisite" not in authority.lower()
@@ -323,11 +331,35 @@ def test_workspace_mismatch_routes_mutation_to_single_owner() -> None:
     draft = runbook.index("An existing draft pull request becomes ready first")
     owned = runbook.index("If it is already AO-owned, perform owner lookup and handoff")
     unclaimed = runbook.index(
-        "If it is unclaimed, claim or spawn without takeover first"
+        "If it is unclaimed, claim or spawn without takeover only after"
+    )
+    writer_gate = runbook.index(
+        "every controller, human, or non-AO writer is quiesced and cannot write"
+    )
+    preserve_unclaimed = runbook.index(
+        "Otherwise preserve state, do not claim or spawn, and escalate"
     )
     readback = runbook.index("perform fresh authoritative readback", unclaimed)
     routing = runbook.index("normal activity-state routing", readback)
-    assert draft < owned < unclaimed < readback < routing
+    assert draft < owned < unclaimed < writer_gate < preserve_unclaimed
+    assert preserve_unclaimed < readback < routing
+
+    for authority in (
+        compact("AGENTS.md"),
+        compact("codex/AGENTS.md.template"),
+        harness,
+        runbook,
+        decision,
+    ):
+        assert "not thereby unowned" in authority or (
+            "does not prove the pull request is unowned" in authority
+        )
+        assert "controller, human" in authority
+        assert "quiesced and cannot write" in authority
+        assert "do not claim or spawn" in authority
+        assert "absence alone is not proof" in authority or (
+            "No AO owner does not prove" in authority
+        )
 
     harness = compact("references/engineering/discipline/harness.md")
     decision = compact("docs/decisions/2026-07-31-portable-orchestrator-containment.md")
@@ -512,6 +544,10 @@ def test_owner_retry_budget_and_state_routing_cross_authority_surfaces() -> None
         "ao session restore、fresh authoritative readback",
         "claim/spawn 后 fresh authoritative readback",
         "仅在 permitted 时 ao send",
+        "没有 AO owner 不代表 truly unowned",
+        "controller/human/non-AO writer 已 quiesced 且 cannot write",
+        "do not claim/spawn 并 escalate",
+        "AO-owner absence alone is not proof",
         "报告 actual stop reason",
         "delivery degraded 只用于 core daemon ready 时相应的 external "
         "integration/authentication failure",

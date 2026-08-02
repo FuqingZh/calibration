@@ -67,7 +67,11 @@ owner cannot write, normally because it is terminated and ownership is
 released, and that runtime release is complete with an empty containment
 boundary. An idle or live owner, or a terminated owner with cleanup pending,
 is not quiesced; preserve state and do not transfer. Human authority remains
-required for security,
+required for security. A pull request with no AO owner is not thereby unowned.
+Before claim or spawn, authoritative verification must prove every controller,
+human, or non-AO writer is quiesced and cannot write. Otherwise preserve state,
+do not claim or spawn, and escalate; AO-owner absence alone is not proof.
+Human authority also remains required for
 compatibility, irreversible, secret, and genuine permission decisions. The
 low-risk GitHub native auto-merge contract may preauthorize merge; deploy needs
 separate explicit authority unless a distinct deployment contract exists.

@@ -37,9 +37,12 @@ start a task-specific owning worker for new work that is truly unowned.
 Immediately perform fresh authoritative session readback and hand the task to
 that owner through normal activity-state routing; only that owner creates the
 implementation branch or pull request. An existing draft pull
-request must become ready before owner lookup or claim. An existing
-ready pull request with no AO owner must be claimed
-without takeover by an existing or new owner before owner-state lookup. Any
+request must become ready before owner lookup or claim. A ready pull request
+with no AO owner is not thereby unowned. Before claim or spawn, authoritative
+verification must prove every controller, human, or non-AO writer is quiesced
+and cannot write. Otherwise preserve state, do not claim or spawn, and
+escalate; AO-owner absence alone is not proof. After that gate, claim without
+takeover by an existing or new owner before owner-state lookup. Any
 already AO-owned repository, worktree, or branch enters owner lookup and
 handoff before mutation, even when no pull request exists. Only
 existing-PR claim semantics require an existing pull request. Compare the

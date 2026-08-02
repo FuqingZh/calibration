@@ -113,8 +113,11 @@ owning worker, immediately perform authoritative session readback, and hand the
 task through normal activity-state routing; only that owner creates the branch
 or pull request. An existing draft pull request becomes ready first. If it is
 already AO-owned, perform owner lookup and handoff. If it is unclaimed, claim
-or spawn without takeover first, then perform fresh authoritative readback and
-normal activity-state routing.
+or spawn without takeover only after authoritative verification proves every
+controller, human, or non-AO writer is quiesced and cannot write. No AO owner
+does not prove the pull request is unowned. Otherwise preserve state, do not
+claim or spawn, and escalate. After that gate, claim or spawn, then perform
+fresh authoritative readback and normal activity-state routing.
 
 ## Pull-Request Delivery
 
