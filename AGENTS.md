@@ -51,8 +51,10 @@ verify AO health before lifecycle routing. Then
 start a task-specific owning worker for new work that is truly unowned.
 Immediately perform fresh authoritative session readback and hand the task to
 that owner through normal activity-state routing; only that owner creates the
-implementation branch or pull request. An existing draft pull
-request must become ready before owner lookup or claim. A ready pull request
+implementation branch or pull request. If an existing draft is already
+AO-owned, perform owner lookup and handoff first, then its owning worker marks
+it ready. If a draft is unclaimed, its authorized current writer marks it ready
+before the quiescence-gated claim. A ready pull request
 with no AO owner is not thereby unowned. Before claim or spawn, authoritative
 verification must prove every controller, human, or non-AO writer is quiesced
 and cannot write. Otherwise preserve state, do not claim or spawn, and

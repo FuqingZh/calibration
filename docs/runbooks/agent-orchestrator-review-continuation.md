@@ -124,9 +124,10 @@ lookup, restore, claim, or spawn. Only after the proof gate, for truly unowned
 new implementation, start a task-specific
 owning worker, immediately perform authoritative session readback, and hand the
 task through normal activity-state routing; only that owner creates the branch
-or pull request. An existing draft pull request becomes ready first. If it is
-already AO-owned, perform owner lookup and handoff. If it is unclaimed, claim
-or spawn without takeover only after authoritative verification proves every
+or pull request. If an existing draft is already AO-owned, perform owner lookup
+and handoff first, then its owning worker marks it ready. If a draft is
+unclaimed, its authorized current writer marks it ready, then claim or spawn
+without takeover only after authoritative verification proves every
 controller, human, or non-AO writer is quiesced and cannot write. No AO owner
 does not prove the pull request is unowned. Otherwise preserve state, do not
 claim or spawn, and escalate. After that gate, claim or spawn, then perform
@@ -202,8 +203,9 @@ authority. Low-risk GitHub native auto-merge may use authority already granted
 by its exact-head contract; deploy always requires separate explicit authority
 unless a distinct deployment contract grants it.
 
-Read every gate against the exact current head. An existing draft pull request
-must become ready before owner lookup or claim; readiness gates both operations.
+Read every gate against the exact current head. An already AO-owned draft routes
+to its owner before that owner marks it ready. An unclaimed draft's authorized
+current writer marks it ready before the quiescence-gated claim.
 
 Conversation authorization for a low-risk implementation may include GitHub
 native per-pull-request auto-merge without a second merge authorization, but

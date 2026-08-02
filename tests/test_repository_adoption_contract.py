@@ -291,8 +291,13 @@ def test_workspace_mismatch_routes_mutation_to_single_owner() -> None:
         preserve_unclaimed = authority.index(
             "Otherwise preserve state, do not claim or spawn, and escalate"
         )
-        draft = authority.index(
-            "An existing draft pull request must become ready before owner lookup"
+        owned_draft = authority.index(
+            "If an existing draft is already AO-owned, perform owner lookup"
+        )
+        owner_marks_ready = authority.index("its owning worker marks it ready")
+        unclaimed_draft = authority.index("If a draft is unclaimed")
+        unclaimed_ready = authority.index(
+            "authorized current writer marks it ready before the quiescence-gated claim"
         )
         claim_before_lookup = authority.index(
             "claim without takeover by an existing or new owner before "
@@ -304,7 +309,9 @@ def test_workspace_mismatch_routes_mutation_to_single_owner() -> None:
         compare = authority.index("Compare the assigned writable workspace")
         assert health < new_work < unowned < new_owner_readback
         assert new_owner_readback < new_owner_handoff < branch
-        assert branch < draft < unclaimed_pr < writer_gate
+        assert owned_lookup < owned_draft < owner_marks_ready
+        assert branch < owned_draft < owner_marks_ready < unclaimed_draft
+        assert unclaimed_draft < unclaimed_ready < unclaimed_pr < writer_gate
         assert writer_gate < preserve_unclaimed < claim_before_lookup
         assert "AO-owner absence alone is not proof" in authority
         assert claim_before_lookup < claim < compare
@@ -347,7 +354,13 @@ def test_workspace_mismatch_routes_mutation_to_single_owner() -> None:
         assert "authoritative evidence" in authority
         assert "ordinary idle prompt" in authority
 
-    draft = runbook.index("An existing draft pull request becomes ready first")
+    owned_draft = runbook.index("If an existing draft is already AO-owned")
+    owner_lookup = runbook.index("perform owner lookup and handoff first", owned_draft)
+    owner_ready = runbook.index("owning worker marks it ready", owner_lookup)
+    unclaimed_draft = runbook.index("If a draft is unclaimed", owner_ready)
+    unclaimed_ready = runbook.index(
+        "authorized current writer marks it ready", unclaimed_draft
+    )
     continuation_gate = runbook.index(
         "Normal automatic AO lifecycle routing requires the four-stage assessment"
     )
@@ -362,9 +375,8 @@ def test_workspace_mismatch_routes_mutation_to_single_owner() -> None:
     start = runbook.index("start a task-specific owning worker", proof_gate)
     assert continuation_gate < bounded_canary < unproven < fallback
     assert fallback < preservation < no_lifecycle < proof_gate < start
-    owned = runbook.index("If it is already AO-owned, perform owner lookup and handoff")
     unclaimed = runbook.index(
-        "If it is unclaimed, claim or spawn without takeover only after"
+        "then claim or spawn without takeover only after", unclaimed_ready
     )
     writer_gate = runbook.index(
         "every controller, human, or non-AO writer is quiesced and cannot write"
@@ -374,7 +386,9 @@ def test_workspace_mismatch_routes_mutation_to_single_owner() -> None:
     )
     readback = runbook.index("perform fresh authoritative readback", unclaimed)
     routing = runbook.index("normal activity-state routing", readback)
-    assert draft < owned < unclaimed < writer_gate < preserve_unclaimed
+    assert owned_draft < owner_lookup < owner_ready < unclaimed_draft
+    assert unclaimed_draft < unclaimed_ready < unclaimed
+    assert unclaimed < writer_gate < preserve_unclaimed
     assert preserve_unclaimed < readback < routing
     assert "Normal automatic AO lifecycle routing" in runbook
     assert runbook.count("start a task-specific owning worker") == 1
@@ -450,10 +464,9 @@ def test_workspace_mismatch_routes_mutation_to_single_owner() -> None:
 def test_ao_review_continuation_is_owner_directed_and_retryable() -> None:
     runbook = compact("docs/runbooks/agent-orchestrator-review-continuation.md")
 
-    assert (
-        "An existing draft pull request must become ready before owner lookup or claim"
-        in runbook
-    )
+    assert "An already AO-owned draft routes to its owner before" in runbook
+    assert "unclaimed draft's authorized current writer marks it ready" in runbook
+    assert "must become ready before owner lookup or claim" not in runbook
     assert "ready-for-review is only a claim prerequisite" not in runbook.lower()
 
     for phrase in (
