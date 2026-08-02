@@ -58,6 +58,11 @@ compatibility, irreversible, secret, and genuine permission decisions. The
 low-risk GitHub native auto-merge contract may preauthorize merge; deploy needs
 separate explicit authority unless a distinct deployment contract exists.
 
+Authoritatively established AO unavailability may use the normal
+isolated-worktree fallback. For an existing pull request, the fallback remains
+an ownership transfer and requires proof that the former owner is quiesced and
+the single-writer invariant holds; otherwise state is preserved.
+
 ## Process-Release Invariant
 
 An orchestrator may treat worker termination as complete or mark its runtime

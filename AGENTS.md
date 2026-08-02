@@ -41,9 +41,11 @@ that fallback for pull-request-bound delivery.
 
 Before mutation, compare the assigned writable workspace and Git root with the
 target's owning AO worker. Keep one writer: the controller must not patch,
-stage, commit, or push an owner's sibling worktree. Never restore and send a
-terminated owner until authoritative readback proves runtime release and its
-OS-owned containment boundary is empty; otherwise preserve state and monitor.
+stage, commit, or push an owner's sibling worktree. Send an `active` or `idle`
+owner directly; hold `waiting_input` for provenance and escalate permission or
+user-decision prompts. Restore a terminated owner only after authoritative
+readback proves runtime release and its OS-owned containment boundary is empty;
+otherwise preserve state and monitor.
 Before transfer, authoritative readback must prove the former owner cannot
 write, ownership is released, and runtime/containment release is complete and
 empty; idle/live or cleanup-pending is not quiesced. Otherwise do not transfer.

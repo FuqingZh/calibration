@@ -197,7 +197,10 @@ def test_workspace_mismatch_routes_mutation_to_single_owner() -> None:
         assert "assigned writable workspace" in authority
         assert "one writer" in authority
         assert "sibling worktree" in authority
-        assert "Never restore and send a terminated owner" in authority
+        assert "Send an `active` or `idle` owner directly" in authority
+        assert "hold `waiting_input` for provenance" in authority
+        assert "permission or user-decision prompts" in authority
+        assert "Restore a terminated owner only after" in authority
         assert "authoritative readback proves runtime release" in authority
         assert "containment boundary is empty" in authority
         assert "owner cannot write" in authority
@@ -261,6 +264,17 @@ def test_ao_review_continuation_is_owner_directed_and_retryable() -> None:
     ):
         assert phrase in runbook
 
+    for phrase in (
+        "If only the owner cannot be restored or claimed",
+        "authoritative host evidence establishes AO is unavailable",
+        "normal isolated-worktree fallback",
+        "existing pull request that fallback is an ownership transfer",
+        "former owner is quiesced",
+        "single-writer invariant holds",
+        "when proof is unavailable, preserve state",
+    ):
+        assert phrase in runbook
+
 
 def test_owner_retry_budget_and_state_routing_cross_authority_surfaces() -> None:
     harness = compact("references/engineering/discipline/harness.md")
@@ -283,6 +297,13 @@ def test_owner_retry_budget_and_state_routing_cross_authority_surfaces() -> None
         assert "delivery degraded" in authority
         assert "deploy" in authority and "separate explicit authority" in authority
         assert "distinct deployment contract" in authority
+        assert "AO" in authority and "unavailable" in authority
+        assert "isolated-worktree fallback" in authority
+        assert "existing pull request" in authority
+        assert "ownership transfer" in authority
+        assert "former owner is quiesced" in authority
+        assert "single-writer" in authority or "one writer" in authority
+        assert "preserve state" in authority
 
     for phrase in (
         "`session.isTerminated` before `session.activity.state`",

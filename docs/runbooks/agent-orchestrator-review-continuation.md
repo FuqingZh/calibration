@@ -157,9 +157,14 @@ owner cannot write, normally because it is terminated and ownership is
 released, and that runtime release is complete with an empty containment
 boundary. A merely idle or live owner, or a terminated owner with cleanup
 pending, is not quiesced. Until all conditions hold, preserve state and do not
-transfer, claim, or spawn. If AO or the owner cannot be restored or claimed,
+transfer, claim, or spawn. If only the owner cannot be restored or claimed,
 preserve the branch, worktree, pull-request, and feedback state for later
-continuation; do not cross-write from the controller. Security, compatibility,
+continuation; do not cross-write from the controller. If authoritative host
+evidence establishes AO is unavailable, use the normal isolated-worktree
+fallback. For an existing pull request that fallback is an ownership transfer
+and remains gated on authoritative proof that the former owner is quiesced and
+the single-writer invariant holds; when proof is unavailable, preserve state.
+Security, compatibility,
 irreversible, secret, and genuine permission decisions still require human
 authority. Low-risk GitHub native auto-merge may use authority already granted
 by its exact-head contract; deploy always requires separate explicit authority
