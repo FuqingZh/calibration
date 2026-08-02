@@ -140,12 +140,12 @@ requiring the user to name the tool again:
 Normal automatic AO lifecycle routing requires installed AO, an adopted
 repository, supplied local host authority, and an accepted
 `continuation-proven` orchestrator; an explicitly bounded canary may route only
-its current task. Without supplied authority or continuation proof, new or
-unowned pull-request-bound work may use the isolated-worktree fallback. An
-existing AO-owned pull request preserves its branch, worktree, and feedback and
-performs no AO lifecycle routing until authority is available and continuation
-proof is established, or a mechanically enforced transfer mechanism is
-authoritatively verified.
+its current task. Without supplied authority, new or unowned pull-request-bound
+work uses the isolated-worktree fallback and existing AO-owned work preserves
+its branch, worktree, and feedback. With authority, when continuation is
+unproven and the current task is not that explicitly bounded canary, the same
+fallback and preservation apply. A mechanically enforced transfer mechanism
+may route only when authoritatively verified.
 
 ### Low-risk GitHub native auto-merge
 

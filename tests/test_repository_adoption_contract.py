@@ -429,12 +429,26 @@ def test_workspace_mismatch_routes_mutation_to_single_owner() -> None:
         assert "AO lifecycle routing" in authority
 
     for authority in (harness, decision):
-        assert "until authority is available" in authority
         assert "mechanically enforced transfer mechanism" in authority
         assert "authoritatively verified" in authority
         assert "accepted `continuation-proven` orchestrator" in authority
         assert "an explicitly bounded canary" in authority
-        assert "Without supplied authority or continuation proof" in authority
+        missing_authority = authority.index("Without supplied authority")
+        missing_fallback = authority.index(
+            "isolated-worktree fallback", missing_authority
+        )
+        missing_preservation = authority.index(
+            "existing AO-owned work preserves", missing_fallback
+        )
+        canary_exception = authority.index(
+            "when continuation is unproven and the current task is not that "
+            "explicitly bounded canary"
+        )
+        conditional_result = authority.index(
+            "the same fallback and preservation apply", canary_exception
+        )
+        assert missing_authority < missing_fallback < missing_preservation
+        assert missing_preservation < canary_exception < conditional_result
 
     universal_guard = runbook.index(
         "Before any mutation, determine whether the repository, worktree, or branch"
