@@ -199,7 +199,10 @@ proves runtime release and an empty containment boundary; otherwise preserve
 state and monitor. Only when false, route `active` or `idle`. Hold
 `waiting_input` for provenance, send only when authoritative evidence proves an
 already-authorized ordinary idle prompt, and escalate permission or
-user-decision prompts. Use the controller only for orchestration and readback.
+user-decision prompts. When `session.isTerminated=false` and
+`session.activity.state=exited`, use the existing REST resume-agent boundary.
+Route `session.activity.state=blocked` to human authority. Use the controller
+only for orchestration and readback.
 
 Explicit ownership transfer requires the former owner to be quiesced and must
 preserve exactly one writer. Quiesced means authoritative readback proves the

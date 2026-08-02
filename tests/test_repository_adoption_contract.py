@@ -200,6 +200,10 @@ def test_workspace_mismatch_routes_mutation_to_single_owner() -> None:
     assert "Hold `waiting_input` for provenance" in harness
     assert "already-authorized ordinary idle prompt" in harness
     assert "permission or user-decision prompts" in harness
+    assert "`session.isTerminated=false`" in harness
+    assert "`session.activity.state=exited`" in harness
+    assert "existing REST resume-agent boundary" in harness
+    assert "`session.activity.state=blocked` to human authority" in harness
     assert "runtime release and an empty containment boundary" in harness
     assert "otherwise preserve state and monitor" in harness
 
@@ -483,6 +487,12 @@ def test_owner_retry_budget_and_state_routing_cross_authority_surfaces() -> None
         "`session.activity.state=blocked` to human authority",
     ):
         assert phrase in decision
+
+    restoration = decision.index("restores a terminated owner only after")
+    readback = decision.index("After restoration, it performs fresh authoritative")
+    routing = decision.index("normal resulting activity-state routing", readback)
+    permitted_send = decision.index("using `ao send` only when permitted", routing)
+    assert restoration < readback < routing < permitted_send
 
     prompts = text("skills/calibration/test-prompts.json")
     for phrase in (

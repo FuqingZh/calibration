@@ -36,8 +36,10 @@ controller remains read-only for that worktree: it does not patch, stage,
 commit, push, or repeat rejected filesystem escalation. It sends an `active`
 or `idle` owner directly and holds `waiting_input` for provenance inspection.
 It restores a terminated owner only after authoritative readback proves runtime
-release and an empty containment boundary, then limits itself to external-state
-readback.
+release and an empty containment boundary. After restoration, it performs
+fresh authoritative session readback and normal resulting activity-state
+routing, using `ao send` only when permitted; thereafter it limits itself to
+external-state readback.
 
 Routing reads `session.isTerminated` before `session.activity.state` and does
 not use derived `session.status` as activity truth. Only `active` and `idle`
