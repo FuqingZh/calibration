@@ -164,6 +164,73 @@ def test_process_release_requires_empty_observable_retryable_containment() -> No
         assert "Current AO does not yet enforce" in authority
 
 
+def test_workspace_mismatch_routes_mutation_to_single_owner() -> None:
+    harness = compact("references/engineering/discipline/harness.md")
+    runbook = compact("docs/runbooks/agent-orchestrator-review-continuation.md")
+    decision = compact("docs/decisions/2026-07-31-portable-orchestrator-containment.md")
+
+    for authority in (harness, runbook, decision):
+        assert "workspace capability mismatch" in authority
+        assert "assigned writable workspace" in authority
+        assert "Git root" in authority
+        assert "owning AO worker" in authority
+        assert "patch" in authority and "stage" in authority
+        assert "commit" in authority and "push" in authority
+        assert "one writer" in authority
+        assert "former owner to be quiesced" in authority
+        assert "rejected filesystem escalation" in authority
+        assert "not AO unavailable" in authority or "AO is unavailable" in authority
+        assert "security" in authority.lower()
+        assert "compatibility" in authority
+        assert "irreversible" in authority
+        assert "secret" in authority
+        assert "permission" in authority
+
+    for authority in (compact("AGENTS.md"), compact("codex/AGENTS.md.template")):
+        assert "assigned writable workspace" in authority
+        assert "one writer" in authority
+        assert "sibling worktree" in authority
+        assert "restore and send the owner" in authority
+        assert "quiesce the former owner before transfer" in authority
+        assert "Do not repeat rejected filesystem escalation" in authority
+        assert "same-scope mechanical feedback" in authority
+
+
+def test_ao_review_continuation_is_owner_directed_and_retryable() -> None:
+    runbook = compact("docs/runbooks/agent-orchestrator-review-continuation.md")
+
+    for phrase in (
+        "controller -> owning worker -> commit and push -> exact-head CI",
+        "current-head review -> same-scope fix by owning worker",
+        "`active`, `idle`, or `waiting_input` state with `ao send`",
+        "`ao session restore` and then `ao send`",
+        "`ao session claim-pr <session> <pr> -p <project> --no-takeover`",
+        "`ao spawn --claim-pr ... --no-takeover`",
+        "and then use `ao send`",
+        "existing REST resume boundary",
+        "no CLI resume command",
+        "controller performs readback only",
+        "autonomously retries transient network operations and polling",
+        "preserve the branch, worktree, pull-request, and feedback state",
+        "not AO unavailable or daemon unavailability",
+    ):
+        assert phrase in runbook
+
+
+def test_v11_decision_records_contract_and_bounded_routing_canary() -> None:
+    decision = compact("docs/decisions/2026-07-31-portable-orchestrator-containment.md")
+
+    assert "Version: v1.1" in decision
+    assert "Static contract evidence" in decision
+    assert "pull request #46" in decision.lower()
+    assert "one bounded representative routing canary" in decision
+    assert "controller stopped cross-worktree writes" in decision
+    assert "original owner completed" in decision
+    assert "local gates, push, CI, and exact-head review" in decision
+    assert "no actionable feedback" in decision
+    assert "does not establish a universal model or workflow improvement" in decision
+
+
 def test_shared_aggregation_root_has_behavioral_prompt_coverage() -> None:
     prompts = text("skills/calibration/test-prompts.json")
 

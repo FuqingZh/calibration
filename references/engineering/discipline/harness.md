@@ -176,6 +176,23 @@ descendant processes, is a stronger defense in depth when the upstream
 orchestrator supports it; documentation must not describe a proposed
 containment mechanism as current AO behavior.
 
+A **workspace capability mismatch** exists when the controller's assigned
+writable workspace or Git root does not contain the target change, while an AO
+worker owns the target repository, worktree, branch, or pull request. Before
+mutation, compare the assigned writable workspace and resolved Git root with
+the target and its owning AO worker. On mismatch, the controller remains
+read-only: it must not apply patches, stage, commit, or push in a sibling
+worktree, and it must not loop on rejected filesystem escalation. Restore and
+send the owner; use the controller only for orchestration and readback.
+
+Explicit ownership transfer requires the former owner to be quiesced and must
+preserve exactly one writer. Within the same authorized scope, the owner
+autonomously retries mechanical CI and review repairs, transient network
+operations, and polling without returning routine approvals to the human.
+Security, compatibility, irreversible, merge or deploy, secret, and genuine
+permission decisions remain human authority. A workspace capability mismatch
+is not evidence that AO is unavailable.
+
 ## Orchestrator Process Release
 
 Treat process release as a separate portable lifecycle invariant. An

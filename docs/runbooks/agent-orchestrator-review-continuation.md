@@ -114,10 +114,33 @@ the ready-for-review pull request with the owning worker without takeover.
 The portable flow is:
 
 ```text
-conversation -> task-specific worker -> pull request
-             -> exact-head CI -> current-head review
-             -> no actionable review threads -> merge authority
+controller -> owning worker -> commit and push -> exact-head CI
+           -> current-head review -> same-scope fix by owning worker
+           -> no actionable review threads -> merge authority
 ```
+
+Before mutation, the controller compares its assigned writable workspace and
+Git root with the pull request's worktree and owning AO worker. A difference is
+a workspace capability mismatch, not AO unavailable or daemon unavailability.
+The controller does not patch, stage, commit, or push in the sibling worktree
+and does not repeat a rejected filesystem escalation. Route an owner in
+`active`, `idle`, or `waiting_input` state with `ao send`; route a `terminated`
+owner with `ao session restore` and then `ao send`; route an unclaimed ready
+pull request to an existing owner with
+`ao session claim-pr <session> <pr> -p <project> --no-takeover`, or to a new
+owner with `ao spawn --claim-pr ... --no-takeover`, and then use `ao send`. If
+a session is active but its agent process exited, use the existing REST resume
+boundary; there is no CLI resume command defined by this contract. Thereafter
+the controller performs readback only.
+
+The owning worker commits, pushes, observes CI and review, fixes same-scope
+mechanical feedback, and autonomously retries transient network operations and
+polling. Explicit ownership transfer first requires the former owner to be
+quiesced and maintains one writer. If AO or the owner cannot be restored or
+claimed, preserve the branch, worktree, pull-request, and feedback state for
+later continuation; do not cross-write from the controller. Security,
+compatibility, irreversible, merge or deploy, secret, and genuine permission
+decisions still require human authority.
 
 Read every gate against the exact current head. A draft pull request must become
 ready before AO claims it; ready-for-review is only a claim prerequisite.

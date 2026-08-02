@@ -39,6 +39,12 @@ as `autoMerge`, whose cancellation and state-change behavior is unproven and
 must remain disabled. If AO is unavailable, use an isolated worktree and report
 that fallback for pull-request-bound delivery.
 
+Before mutation, compare the assigned writable workspace and Git root with the
+target's owning AO worker. Keep one writer: the controller must not patch,
+stage, commit, or push an owner's sibling worktree; restore and send the owner,
+or explicitly quiesce the former owner before transfer. Do not repeat rejected
+filesystem escalation. The owner retries same-scope mechanical feedback.
+
 Classify AO observations by state owner before diagnosing them:
 
 - sandbox state: paths and processes visible only inside the current agent

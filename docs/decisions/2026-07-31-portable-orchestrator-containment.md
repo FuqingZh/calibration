@@ -1,6 +1,6 @@
 # Portable Orchestrator Containment
 
-Version: v1.0
+Version: v1.1
 Date: 2026-07-31
 Status: accepted
 
@@ -18,6 +18,22 @@ result count, and concurrency also bounded where supported. Explicit
 host-operation tasks may consult the conditionally rendered private host
 authority to resolve private mount topology, exclusions, or safe paths.
 Ordinary repository work does not load that authority.
+
+## Workspace Ownership Amendment
+
+Before mutation, a controller compares its assigned writable workspace and Git
+root with the target and its owning AO worker. A workspace capability mismatch
+means the target belongs to a sibling worker worktree outside the controller's
+writable roots; it is not AO unavailable or daemon unavailability. The
+controller remains read-only for that worktree: it does not patch, stage,
+commit, push, or repeat rejected filesystem escalation. It restores and sends
+the owner, then limits itself to external-state readback.
+
+The owner autonomously continues commit, push, CI, review, same-scope
+mechanical repair, transient network retry, and polling. Explicit ownership
+transfer requires the former owner to be quiesced and preserves one writer.
+Human authority remains required for security, compatibility, irreversible,
+merge or deploy, secret, and genuine permission decisions.
 
 ## Process-Release Invariant
 
@@ -51,7 +67,8 @@ template variables, installer options, AO configuration, or
 
 ## Verification
 
-Static tests require the discovery, mutation, and process-release invariants in
+Static contract evidence requires the discovery, mutation, process-release,
+and workspace-ownership invariants in
 the harness, generated-agent template, public AO guide, documentation map, and
 this decision. Focused assertions cover an empty OS-owned containment boundary,
 termination-completion semantics, non-proof from terminal or session
@@ -64,3 +81,9 @@ the synthetic sibling outside that repository, structured tool-event root
 auditing, and a separate sibling mutation manifest. Public portability tests
 continue to reject personal paths, private network values, and deployable AO
 artifacts.
+
+Pull request #46 is one bounded representative routing canary for the v1.1
+amendment: the controller stopped cross-worktree writes, and the original owner
+completed the repair, local gates, push, CI, and exact-head review with no
+actionable feedback. This evidence is limited to that routing handoff and does
+not establish a universal model or workflow improvement.

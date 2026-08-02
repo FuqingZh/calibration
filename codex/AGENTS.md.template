@@ -31,6 +31,12 @@ tool supports them. Prefer repository indexes and targeted lookups. If the
 required boundary or safe query cannot be determined, stop the broad search
 and report the narrower host-side check needed.
 
+Before mutation, compare the assigned writable workspace and Git root with the
+target's owning AO worker. Keep one writer: do not patch, stage, commit, or push
+an owner's sibling worktree; restore and send the owner, or explicitly quiesce
+the former owner before transfer. Do not repeat rejected filesystem
+escalation. The owner retries same-scope mechanical feedback.
+
 For worker teardown, treat termination as complete or runtime as released only
 after the worker's OS-owned containment boundary is empty. A terminated
 session may retain pending cleanup; terminal, tmux, shell, or session
