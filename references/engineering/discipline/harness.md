@@ -193,12 +193,13 @@ mutation, compare the assigned writable workspace and resolved Git root with
 the target and its owning AO worker. On mismatch, the controller remains
 read-only: it must not apply patches, stage, commit, or push in a sibling
 worktree, and it must not loop on rejected filesystem escalation. Send an
-`active` or `idle` owner directly. Hold `waiting_input` for provenance, send
-only when authoritative evidence proves an already-authorized ordinary idle
-prompt, and escalate permission or user-decision prompts. Restore a terminated owner only
-after authoritative readback proves runtime release and an empty containment
-boundary; otherwise preserve state and monitor. Use the controller only for
-orchestration and readback.
+`active` or `idle` owner directly only after inspecting `session.isTerminated`
+first. If true, restore the terminated owner only after authoritative readback
+proves runtime release and an empty containment boundary; otherwise preserve
+state and monitor. Only when false, route `active` or `idle`. Hold
+`waiting_input` for provenance, send only when authoritative evidence proves an
+already-authorized ordinary idle prompt, and escalate permission or
+user-decision prompts. Use the controller only for orchestration and readback.
 
 Explicit ownership transfer requires the former owner to be quiesced and must
 preserve exactly one writer. Quiesced means authoritative readback proves the
