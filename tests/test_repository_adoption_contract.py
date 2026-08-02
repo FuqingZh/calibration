@@ -240,7 +240,7 @@ def test_workspace_mismatch_routes_mutation_to_single_owner() -> None:
             "An existing ready pull request with no AO owner"
         )
         draft = authority.index(
-            "If an existing pull request is a draft, mark it ready before owner lookup"
+            "An existing draft pull request must become ready before owner lookup"
         )
         claim_before_lookup = authority.index(
             "claimed without takeover by an existing or new owner before "
@@ -257,6 +257,7 @@ def test_workspace_mismatch_routes_mutation_to_single_owner() -> None:
         assert branch < draft < unclaimed_pr < claim_before_lookup < owned
         assert owned < lookup < no_pr < claim < compare
         assert "Only an existing pull request enters owner lookup" not in authority
+        assert "ready-for-review is only a claim prerequisite" not in authority.lower()
         assert (
             "Blind retries are limited to idempotent transient operations or polling"
             in authority
@@ -301,6 +302,12 @@ def test_workspace_mismatch_routes_mutation_to_single_owner() -> None:
 
 def test_ao_review_continuation_is_owner_directed_and_retryable() -> None:
     runbook = compact("docs/runbooks/agent-orchestrator-review-continuation.md")
+
+    assert (
+        "An existing draft pull request must become ready before owner lookup or claim"
+        in runbook
+    )
+    assert "ready-for-review is only a claim prerequisite" not in runbook.lower()
 
     for phrase in (
         "controller -> owning worker -> commit and push -> exact-head CI",

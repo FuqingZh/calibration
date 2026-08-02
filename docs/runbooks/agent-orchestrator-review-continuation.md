@@ -109,7 +109,8 @@ has passed and must preserve its existing CLI contract.
 Conversation authorization is sufficient issue intake. Issue-tracker intake,
 automatic work discovery, and a separate orchestrator session are not
 prerequisites. Start a task-specific worker for new implementation, or claim
-the ready-for-review pull request with the owning worker without takeover.
+an existing pull request with the owning worker without takeover after any
+draft becomes ready and owner lookup is performed.
 
 ## Pull-Request Delivery
 
@@ -181,8 +182,8 @@ authority. Low-risk GitHub native auto-merge may use authority already granted
 by its exact-head contract; deploy always requires separate explicit authority
 unless a distinct deployment contract grants it.
 
-Read every gate against the exact current head. A draft pull request must become
-ready before AO claims it; ready-for-review is only a claim prerequisite.
+Read every gate against the exact current head. An existing draft pull request
+must become ready before owner lookup or claim; readiness gates both operations.
 
 Conversation authorization for a low-risk implementation may include GitHub
 native per-pull-request auto-merge without a second merge authorization, but

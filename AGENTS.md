@@ -21,9 +21,9 @@ requiring AO or a new worktree.
 For conversation-authorized implementation intended to cross a pull-request
 boundary in an adopted environment, verify AO health and start a task-specific
 worker before creating the implementation branch or pull request. If a pull
-request already exists, mark it ready for review if it is a draft, then restore
-its owning worker or claim it without takeover. Ready-for-review is only an AO
-claim prerequisite.
+request already exists, an existing draft pull request must become ready before
+owner lookup or claim; then restore its owning worker or claim it without
+takeover.
 
 Conversation authorization for a low-risk implementation also authorizes the
 worker to request GitHub native auto-merge without a second merge
@@ -44,8 +44,8 @@ defer to the ownership-preservation rule below.
 For pull-request-bound work with installed AO, an adopted repository, and
 supplied local host authority, verify AO health before lifecycle routing. Then
 start a task-specific owning worker for new work that is truly unowned before
-creating its implementation branch or pull request. If an existing pull
-request is a draft, mark it ready before owner lookup or claim. An existing
+creating its implementation branch or pull request. An existing draft pull
+request must become ready before owner lookup or claim. An existing
 ready pull request with no AO owner must be claimed
 without takeover by an existing or new owner before owner-state lookup. Any
 already AO-owned repository, worktree, or branch enters owner lookup and
