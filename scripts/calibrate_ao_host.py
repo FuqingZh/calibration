@@ -5,6 +5,8 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import ctypes
+import errno
 import hashlib
 import ipaddress
 import json
@@ -2835,6 +2837,14 @@ def _candidate_files(profile: Mapping[str, object]) -> dict[str, bytes]:
             "NoNewPrivileges=true\n"
             "PrivateTmp=true\n"
             "ProtectSystem=strict\n"
+            "ProtectHome=true\n"
+            f"BindReadOnlyPaths={dashboard['document_root']}\n"
+            f"BindReadOnlyPaths={dashboard['active_config']}\n"
+            f"BindReadOnlyPaths={dashboard['nginx_executable']}\n"
+            f"BindPaths={paths['state_root']}\n"
+            f"InaccessiblePaths=-{ao['codex_home']}\n"
+            f"InaccessiblePaths=-{ao['data_dir']}\n"
+            f"InaccessiblePaths=-{paths['private_authority']}\n"
             f"ReadWritePaths={paths['state_root']}\n"
             "Restart=on-failure\n\n"
             "[Install]\n"
@@ -2915,6 +2925,47 @@ def _validate_tree_identity(root: Path) -> None:
             raise CalibrationError(f"{item} must be singly linked")
 
 
+def _validate_existing_candidate(root: Path, files: Mapping[str, bytes]) -> None:
+    _validate_tree_identity(root)
+    if not root.is_dir() or _tree_bytes(root) != files:
+        raise CalibrationError("existing output has nonempty drift")
+    _validate_tree_shape(root, files)
+    _validate_tree_modes(root)
+
+
+def _rename_noreplace(source: Path, destination: Path) -> None:
+    """Atomically publish a directory without replacing a concurrent winner."""
+    try:
+        renameat2 = ctypes.CDLL(None, use_errno=True).renameat2
+    except AttributeError as exc:
+        raise CalibrationError(
+            "atomic no-replace candidate publication is unavailable"
+        ) from exc
+    renameat2.argtypes = (
+        ctypes.c_int,
+        ctypes.c_char_p,
+        ctypes.c_int,
+        ctypes.c_char_p,
+        ctypes.c_uint,
+    )
+    renameat2.restype = ctypes.c_int
+    result = renameat2(
+        -100,
+        os.fsencode(source),
+        -100,
+        os.fsencode(destination),
+        1,
+    )
+    if result == 0:
+        return
+    error = ctypes.get_errno()
+    if error == errno.EEXIST:
+        raise FileExistsError(error, os.strerror(error), destination)
+    raise CalibrationError(
+        f"candidate cannot be published without replacement: {os.strerror(error)}"
+    )
+
+
 def _validate_publish_parent(parent: Path) -> None:
     if _private_chain_missing_components(parent):
         raise CalibrationError("render output parent must exist")
@@ -2940,11 +2991,7 @@ def render_profile(path: Path, output: Path) -> dict[str, object]:
     )
     _validate_publish_parent(target.parent)
     if target.exists():
-        _validate_tree_identity(target)
-        if not target.is_dir() or _tree_bytes(target) != files:
-            raise CalibrationError("existing output has nonempty drift")
-        _validate_tree_shape(target, files)
-        _validate_tree_modes(target)
+        _validate_existing_candidate(target, files)
         return {"mode": "render", "output": str(target), "unchanged": True}
     if staging.exists() or staging.is_symlink():
         raise CalibrationError("sibling staging path must be absent")
@@ -2965,7 +3012,14 @@ def render_profile(path: Path, output: Path) -> dict[str, object]:
         _validate_tree_shape(staging, files)
         _validate_tree_modes(staging)
         _validate_tree_identity(staging)
-        os.replace(staging, target)
+        try:
+            _rename_noreplace(staging, target)
+        except FileExistsError:
+            _validate_existing_candidate(target, files)
+            for item in sorted(staging.rglob("*"), reverse=True):
+                item.unlink() if item.is_file() else item.rmdir()
+            staging.rmdir()
+            return {"mode": "render", "output": str(target), "unchanged": True}
     except BaseException:
         if staging.exists():
             for item in sorted(staging.rglob("*"), reverse=True):

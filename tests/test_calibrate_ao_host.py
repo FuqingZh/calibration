@@ -1133,6 +1133,14 @@ def test_init_render_verify_round_trip_and_manifest(
         "PIDFile=",
         "Restart=on-failure",
         "UMask=0077",
+        "ProtectHome=true",
+        f"BindReadOnlyPaths={tmp_path / 'dashboard'}",
+        f"BindReadOnlyPaths={tmp_path / 'config/active.conf'}",
+        "BindReadOnlyPaths=/usr/sbin/nginx",
+        f"BindPaths={tmp_path / 'state'}",
+        f"InaccessiblePaths=-{codex_home}",
+        f"InaccessiblePaths=-{tmp_path / 'data'}",
+        f"InaccessiblePaths=-{tmp_path / 'authority/AGENTS.md'}",
         "ReadWritePaths=",
         "[Install]",
         "WantedBy=default.target",
@@ -3498,7 +3506,7 @@ def test_render_cleans_failed_staging(
     def fail_replace(_source: Path, _target: Path) -> None:
         raise OSError("publish failed")
 
-    monkeypatch.setattr(host.os, "replace", fail_replace)
+    monkeypatch.setattr(host, "_rename_noreplace", fail_replace)
     with pytest.raises(OSError, match="publish failed"):
         host.render_profile(profile, target)
     assert not (tmp_path / ".failed.staging").exists()
@@ -3532,6 +3540,69 @@ def test_render_does_not_clean_staging_created_by_a_competing_call(
     assert not target.exists()
 
 
+@pytest.mark.parametrize("canonical_winner", [False, True])
+def test_render_preserves_and_validates_concurrent_target_winner(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    profile: Path,
+    canonical_winner: bool,
+) -> None:
+    target = tmp_path / f"winner-{canonical_winner}"
+    staging = tmp_path / f".winner-{canonical_winner}.staging"
+
+    def competing_publish(source: Path, destination: Path) -> None:
+        if canonical_winner:
+            shutil.copytree(source, destination)
+        else:
+            destination.mkdir(mode=0o700)
+        raise FileExistsError(destination)
+
+    monkeypatch.setattr(host, "_rename_noreplace", competing_publish)
+    if canonical_winner:
+        assert host.render_profile(profile, target)["unchanged"] is True
+    else:
+        with pytest.raises(host.CalibrationError, match="nonempty drift"):
+            host.render_profile(profile, target)
+    assert target.exists()
+    assert not staging.exists()
+
+
+def test_atomic_noreplace_publication_errors_are_bounded(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    source = tmp_path / "source"
+    destination = tmp_path / "destination"
+    source.mkdir()
+    destination.mkdir()
+    with pytest.raises(FileExistsError):
+        host._rename_noreplace(source, destination)
+
+    def missing_library(*_args: object, **_kwargs: object) -> object:
+        return object()
+
+    monkeypatch.setattr(host.ctypes, "CDLL", missing_library)
+    with pytest.raises(host.CalibrationError, match="unavailable"):
+        host._rename_noreplace(source, tmp_path / "missing")
+
+    class FailedRename:
+        argtypes: object = None
+        restype: object = None
+
+        def __call__(self, *_args: object) -> int:
+            host.ctypes.set_errno(host.errno.EPERM)
+            return -1
+
+    class FailedLibrary:
+        renameat2 = FailedRename()
+
+    def failed_library(*_args: object, **_kwargs: object) -> FailedLibrary:
+        return FailedLibrary()
+
+    monkeypatch.setattr(host.ctypes, "CDLL", failed_library)
+    with pytest.raises(host.CalibrationError, match="Operation not permitted"):
+        host._rename_noreplace(source, tmp_path / "missing")
+
+
 @pytest.mark.parametrize("mask", [0o400, 0o777])
 def test_render_publishes_private_tree_independent_of_umask(
     monkeypatch: pytest.MonkeyPatch,
@@ -3541,7 +3612,7 @@ def test_render_publishes_private_tree_independent_of_umask(
 ) -> None:
     target = tmp_path / f"private-{mask:o}"
     expected = host._candidate_files(host._load_profile(profile))
-    original_replace = os.replace
+    original_replace = host._rename_noreplace
     observed = False
 
     def validating_replace(source: Path, destination: Path) -> None:
@@ -3552,7 +3623,7 @@ def test_render_publishes_private_tree_independent_of_umask(
         observed = True
         original_replace(source, destination)
 
-    monkeypatch.setattr(host.os, "replace", validating_replace)
+    monkeypatch.setattr(host, "_rename_noreplace", validating_replace)
     previous_umask = os.umask(mask)
     try:
         assert host.render_profile(profile, target)["unchanged"] is False
