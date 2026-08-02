@@ -108,9 +108,13 @@ has passed and must preserve its existing CLI contract.
 
 Conversation authorization is sufficient issue intake. Issue-tracker intake,
 automatic work discovery, and a separate orchestrator session are not
-prerequisites. Start a task-specific worker for new implementation, or claim
-an existing pull request with the owning worker without takeover after any
-draft becomes ready and owner lookup is performed.
+prerequisites. For truly unowned new implementation, start a task-specific
+owning worker, immediately perform authoritative session readback, and hand the
+task through normal activity-state routing; only that owner creates the branch
+or pull request. An existing draft pull request becomes ready first. If it is
+already AO-owned, perform owner lookup and handoff. If it is unclaimed, claim
+or spawn without takeover first, then perform fresh authoritative readback and
+normal activity-state routing.
 
 ## Pull-Request Delivery
 

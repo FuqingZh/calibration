@@ -195,6 +195,7 @@ def test_workspace_mismatch_routes_mutation_to_single_owner() -> None:
 
     assert "Send an `active` or `idle` owner directly" in harness
     assert "Hold `waiting_input` for provenance" in harness
+    assert "already-authorized ordinary idle prompt" in harness
     assert "permission or user-decision prompts" in harness
     assert "Restore a terminated owner only after" in harness
     assert "runtime release and an empty containment boundary" in harness
@@ -280,6 +281,38 @@ def test_workspace_mismatch_routes_mutation_to_single_owner() -> None:
         assert "external write with unknown outcome" in authority
         assert "authoritative readback and deduplication first" in authority
         assert "retry only when the intended state is absent" in authority
+
+    for authority in (
+        compact("AGENTS.md"),
+        compact("codex/AGENTS.md.template"),
+        harness,
+        runbook,
+    ):
+        start = authority.index("start a task-specific owning worker")
+        readback = authority.index("authoritative session readback", start)
+        routing = authority.index("normal activity-state routing", readback)
+        owner_branch = authority.index("only that owner creates", routing)
+        assert start < readback < routing < owner_branch
+
+    for authority in (
+        compact("AGENTS.md"),
+        compact("codex/AGENTS.md.template"),
+        harness,
+        runbook,
+        decision,
+    ):
+        assert "waiting_input" in authority
+        assert "authoritative evidence" in authority
+        assert "ordinary idle prompt" in authority
+
+    draft = runbook.index("An existing draft pull request becomes ready first")
+    owned = runbook.index("If it is already AO-owned, perform owner lookup and handoff")
+    unclaimed = runbook.index(
+        "If it is unclaimed, claim or spawn without takeover first"
+    )
+    readback = runbook.index("perform fresh authoritative readback", unclaimed)
+    routing = runbook.index("normal activity-state routing", readback)
+    assert draft < owned < unclaimed < readback < routing
 
     harness = compact("references/engineering/discipline/harness.md")
     decision = compact("docs/decisions/2026-07-31-portable-orchestrator-containment.md")
