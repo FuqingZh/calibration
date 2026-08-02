@@ -155,9 +155,9 @@ Use only an already accepted repository, host, identity, and permission
 configuration. Do not silently register every repository, enable
 permissionless execution on another host, or introduce an orchestrator merely
 because implementation was authorized. If the accepted orchestrator is
-unavailable or the repository has not adopted it, continue through the normal
-isolated-Worktree delivery path and report that bounded fallback instead of
-asking the user to diagnose infrastructure.
+unavailable or the repository has not adopted it, use the normal isolated-
+worktree delivery path only for new or unowned pull-request-bound work.
+Existing AO-owned pull requests defer to the ownership-preservation rule below.
 
 ## Orchestrator Containment
 

@@ -36,8 +36,9 @@ requires escalation.
 This authority applies to GitHub's native per-pull-request auto-merge after the
 exact-head gate. It does not authorize always-on AO project configuration such
 as `autoMerge`, whose cancellation and state-change behavior is unproven and
-must remain disabled. If AO is unavailable, use an isolated worktree and report
-that fallback for pull-request-bound delivery.
+must remain disabled. If AO is unavailable, use isolated-worktree fallback only
+for new or unowned pull-request-bound work. Existing AO-owned pull requests
+defer to the ownership-preservation rule below.
 
 For pull-request-bound work in an already installed and adopted AO environment,
 before mutation compare the assigned writable workspace and Git root with the

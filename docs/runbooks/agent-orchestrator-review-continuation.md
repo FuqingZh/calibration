@@ -82,7 +82,9 @@ Use these outcomes:
   when the core daemon remains ready.
 
 If AO is unavailable or local authority cannot be verified, use an isolated
-worktree and report that bounded fallback.
+worktree only for new or unowned pull-request-bound work. Existing AO-owned
+pull requests defer to the ownership-preservation rule in Pull-Request
+Delivery.
 
 ## Repository Adoption
 
