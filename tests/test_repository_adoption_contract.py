@@ -242,13 +242,25 @@ def test_workspace_mismatch_routes_mutation_to_single_owner() -> None:
         assert "do not transfer" in authority
         assert "Do not repeat rejected filesystem escalation" in authority
         assert "same-scope mechanical feedback" in authority
-        assert "pull-request-bound work with installed AO" in authority
+        authorization = authority.index(
+            "conversation-authorized implementation intended to cross a pull-request"
+        )
+        lifecycle = authority.index("use AO lifecycle routing only with installed AO")
         assert "an adopted repository" in authority
         assert "supplied local host authority" in authority
+        assert "accepted continuation-proven orchestrator" in authority
+        assert "or explicitly bounded canary" in authority
+        assert (
+            "Review, analysis, or discussion-only requests remain read-only"
+            in authority
+        )
+        assert "If continuation is unproven" in authority
+        assert "new/unowned fallback or existing-owner preservation rule" in authority
         assert "Without supplied local host authority" in authority
         assert "narrowed fallback or existing-owner preservation rule" in authority
         assert "do not perform AO lifecycle routing" in authority
         health = authority.index("verify AO health before lifecycle routing")
+        assert authorization < lifecycle < health
         new_work = authority.index("start a task-specific owning worker for new work")
         unowned = authority.index("that is truly unowned")
         new_owner_readback = authority.index(
@@ -385,7 +397,8 @@ def test_workspace_mismatch_routes_mutation_to_single_owner() -> None:
         assert "authoritatively verified" in authority
 
     template = compact("codex/AGENTS.md.template")
-    assert "pull-request-bound work with installed AO" in template
+    assert "conversation-authorized implementation" in template
+    assert "use AO lifecycle routing only with installed AO" in template
     assert "supplied local host authority" in template
 
 

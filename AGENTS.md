@@ -41,8 +41,13 @@ must remain disabled. If AO is unavailable, use isolated-worktree fallback only
 for new or unowned pull-request-bound work. Existing AO-owned pull requests
 defer to the ownership-preservation rule below.
 
-For pull-request-bound work with installed AO, an adopted repository, and
-supplied local host authority, verify AO health before lifecycle routing. Then
+For conversation-authorized implementation intended to cross a pull-request
+boundary, use AO lifecycle routing only with installed AO, an adopted
+repository, supplied local host authority, and an accepted continuation-proven
+orchestrator or explicitly bounded canary. Review, analysis, or discussion-only
+requests remain read-only. If continuation is unproven, use the narrowed
+new/unowned fallback or existing-owner preservation rule. When all gates hold,
+verify AO health before lifecycle routing. Then
 start a task-specific owning worker for new work that is truly unowned.
 Immediately perform fresh authoritative session readback and hand the task to
 that owner through normal activity-state routing; only that owner creates the
