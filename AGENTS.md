@@ -40,9 +40,12 @@ must remain disabled. If AO is unavailable, use isolated-worktree fallback only
 for new or unowned pull-request-bound work. Existing AO-owned pull requests
 defer to the ownership-preservation rule below.
 
-For pull-request-bound work in an already installed and adopted AO environment,
-before mutation compare the assigned writable workspace and Git root with the
-target's owning AO worker. Keep one writer: the controller must not patch,
+For pull-request-bound work with installed AO, an adopted repository, and
+supplied local host authority, before mutation compare the assigned writable
+workspace and Git root with the target's owning AO worker. Without supplied
+local host authority, follow the narrowed fallback or existing-owner
+preservation rule and do not perform AO lifecycle routing. Keep one writer: the
+controller must not patch,
 stage, commit, or push an owner's sibling worktree. Inspect
 `session.isTerminated` first. If true, only restore after authoritative readback
 proves runtime release and an empty OS-owned containment boundary; otherwise

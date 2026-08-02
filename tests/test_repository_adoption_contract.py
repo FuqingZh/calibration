@@ -221,12 +221,16 @@ def test_workspace_mismatch_routes_mutation_to_single_owner() -> None:
         assert "do not transfer" in authority
         assert "Do not repeat rejected filesystem escalation" in authority
         assert "same-scope mechanical feedback" in authority
-        assert "pull-request-bound work" in authority
-        assert "already installed and adopted AO environment" in authority
+        assert "pull-request-bound work with installed AO" in authority
+        assert "an adopted repository" in authority
+        assert "supplied local host authority" in authority
+        assert "Without supplied local host authority" in authority
+        assert "narrowed fallback or existing-owner preservation rule" in authority
+        assert "do not perform AO lifecycle routing" in authority
 
     template = compact("codex/AGENTS.md.template")
-    assert "pull-request-bound work" in template
-    assert "already installed and adopted AO environment" in template
+    assert "pull-request-bound work with installed AO" in template
+    assert "supplied local host authority" in template
 
 
 def test_ao_review_continuation_is_owner_directed_and_retryable() -> None:
