@@ -214,7 +214,11 @@ capability mismatch is not evidence that AO is unavailable.
 True AO unavailability may use the normal isolated-worktree fallback. For an
 existing pull request, that fallback is still an ownership transfer: require
 authoritative proof that the former owner is quiesced and preserve one writer.
-If that proof is unavailable, preserve state rather than cross-write.
+If AO has no assigned OS-owned containment boundary, authoritative host context
+may instead prove the former session is terminated, ownership is released, no
+former writer process remains, and no process can mutate the owned worktree or
+branch before transfer to a separate isolated worktree. If neither proof is
+available, preserve state rather than cross-write.
 
 ## Orchestrator Process Release
 

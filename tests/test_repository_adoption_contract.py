@@ -280,7 +280,7 @@ def test_ao_review_continuation_is_owner_directed_and_retryable() -> None:
         "existing pull request that fallback is an ownership transfer",
         "former owner is quiesced",
         "single-writer invariant holds",
-        "when proof is unavailable, preserve state",
+        "neither boundary emptiness nor this equivalent host proof is available",
     ):
         assert phrase in runbook
 
@@ -313,6 +313,23 @@ def test_owner_retry_budget_and_state_routing_cross_authority_surfaces() -> None
         assert "former owner is quiesced" in authority
         assert "single-writer" in authority or "one writer" in authority
         assert "preserve state" in authority
+        assert "no assigned OS-owned containment boundary" in authority
+        assert "authoritative host" in authority
+        assert "former session" in authority and "terminated" in authority
+        assert "ownership" in authority and "released" in authority
+        assert "no former writer process" in authority
+        assert "owned worktree or branch" in authority
+        assert "separate isolated worktree" in authority
+
+    for authority in (compact("AGENTS.md"), compact("codex/AGENTS.md.template")):
+        assert "AO is authoritatively unavailable" in authority
+        assert "no assigned OS-owned containment boundary" in authority
+        assert "host readback proves" in authority
+        assert "former session terminated" in authority
+        assert "ownership released" in authority
+        assert "no former writer process" in authority
+        assert "owned worktree or branch" in authority
+        assert "Otherwise preserve state" in authority
 
     for phrase in (
         "`session.isTerminated` before `session.activity.state`",
@@ -336,8 +353,9 @@ def test_owner_retry_budget_and_state_routing_cross_authority_surfaces() -> None
         "activity.state=blocked 交给 human authority",
         "owner-only restore/claim failure 且 daemon ready 时 preserve/readback",
         "AO unavailable 时可用 normal isolated-worktree fallback",
-        "single-writer/quiescence proof",
-        "proof unavailable 时 preserve state",
+        "no former writer process remains",
+        "no process can mutate owned worktree/branch",
+        "两种 proof 都 unavailable 时 preserve state",
     ):
         assert phrase in prompts
     assert "agent exit is not an activity state" not in decision

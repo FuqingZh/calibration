@@ -162,7 +162,12 @@ continuation; do not cross-write from the controller. If authoritative host
 evidence establishes AO is unavailable, use the normal isolated-worktree
 fallback. For an existing pull request that fallback is an ownership transfer
 and remains gated on authoritative proof that the former owner is quiesced and
-the single-writer invariant holds; when proof is unavailable, preserve state.
+the single-writer invariant holds. When AO has no assigned OS-owned containment
+boundary, authoritative host context may instead prove the former session is
+terminated, ownership is released, no former writer process remains, and no
+process can mutate the owned worktree or branch before transfer to a separate
+isolated worktree. If neither boundary emptiness nor this equivalent host proof
+is available, preserve state.
 Security, compatibility,
 irreversible, secret, and genuine permission decisions still require human
 authority. Low-risk GitHub native auto-merge may use authority already granted

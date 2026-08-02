@@ -53,6 +53,12 @@ empty; idle/live or cleanup-pending is not quiesced. Otherwise do not transfer.
 Do not repeat rejected filesystem escalation. The owner retries same-scope
 mechanical feedback within a bounded retry budget.
 
+If AO is authoritatively unavailable and has no assigned OS-owned containment
+boundary, an existing-PR fallback may transfer only after host readback proves
+the former session terminated, ownership released, no former writer process
+remains, and no process can mutate the owned worktree or branch. Otherwise
+preserve state.
+
 Classify AO observations by state owner before diagnosing them:
 
 - sandbox state: paths and processes visible only inside the current agent

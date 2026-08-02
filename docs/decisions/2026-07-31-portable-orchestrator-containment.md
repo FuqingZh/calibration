@@ -64,7 +64,11 @@ separate explicit authority unless a distinct deployment contract exists.
 Authoritatively established AO unavailability may use the normal
 isolated-worktree fallback. For an existing pull request, the fallback remains
 an ownership transfer and requires proof that the former owner is quiesced and
-the single-writer invariant holds; otherwise state is preserved.
+the single-writer invariant holds. When AO has no assigned OS-owned containment
+boundary, equivalent authoritative host proof requires the former session
+terminated, ownership released, no former writer process remaining, and no
+process able to mutate the owned worktree or branch before transfer to a
+separate isolated worktree. Without either proof, state is preserved.
 
 ## Process-Release Invariant
 
