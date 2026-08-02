@@ -108,7 +108,13 @@ has passed and must preserve its existing CLI contract.
 
 Conversation authorization is sufficient issue intake. Issue-tracker intake,
 automatic work discovery, and a separate orchestrator session are not
-prerequisites. For truly unowned new implementation, start a task-specific
+prerequisites. Normal automatic AO lifecycle routing requires the four-stage
+assessment to be `continuation-proven`; an explicitly bounded canary may route
+only its current task. When continuation is unproven and this is not that
+canary, truly unowned new work uses isolated-worktree fallback, while existing
+AO-owned work preserves its branch, worktree, and feedback without owner
+lookup, restore, claim, or spawn. Only after the proof gate, for truly unowned
+new implementation, start a task-specific
 owning worker, immediately perform authoritative session readback, and hand the
 task through normal activity-state routing; only that owner creates the branch
 or pull request. An existing draft pull request becomes ready first. If it is

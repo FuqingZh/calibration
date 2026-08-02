@@ -261,6 +261,8 @@ def test_workspace_mismatch_routes_mutation_to_single_owner() -> None:
         assert "do not perform AO lifecycle routing" in authority
         health = authority.index("verify AO health before lifecycle routing")
         assert authorization < lifecycle < health
+        assert authority.count("verify AO health before lifecycle routing") == 1
+        assert "boundary in an adopted environment, verify AO health" not in authority
         new_work = authority.index("start a task-specific owning worker for new work")
         unowned = authority.index("that is truly unowned")
         new_owner_readback = authority.index(
@@ -341,6 +343,20 @@ def test_workspace_mismatch_routes_mutation_to_single_owner() -> None:
         assert "ordinary idle prompt" in authority
 
     draft = runbook.index("An existing draft pull request becomes ready first")
+    continuation_gate = runbook.index(
+        "Normal automatic AO lifecycle routing requires the four-stage assessment"
+    )
+    bounded_canary = runbook.index("an explicitly bounded canary", continuation_gate)
+    unproven = runbook.index("When continuation is unproven", bounded_canary)
+    fallback = runbook.index("truly unowned new work uses isolated-worktree fallback")
+    preservation = runbook.index(
+        "existing AO-owned work preserves its branch, worktree, and feedback"
+    )
+    no_lifecycle = runbook.index("without owner lookup, restore, claim, or spawn")
+    proof_gate = runbook.index("Only after the proof gate")
+    start = runbook.index("start a task-specific owning worker", proof_gate)
+    assert continuation_gate < bounded_canary < unproven < fallback
+    assert fallback < preservation < no_lifecycle < proof_gate < start
     owned = runbook.index("If it is already AO-owned, perform owner lookup and handoff")
     unclaimed = runbook.index(
         "If it is unclaimed, claim or spawn without takeover only after"
@@ -355,6 +371,8 @@ def test_workspace_mismatch_routes_mutation_to_single_owner() -> None:
     routing = runbook.index("normal activity-state routing", readback)
     assert draft < owned < unclaimed < writer_gate < preserve_unclaimed
     assert preserve_unclaimed < readback < routing
+    assert "Normal automatic AO lifecycle routing" in runbook
+    assert runbook.count("start a task-specific owning worker") == 1
 
     for authority in (
         compact("AGENTS.md"),

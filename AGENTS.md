@@ -18,13 +18,6 @@ AO-owned pull request follows the ownership-preservation rule below. Ordinary
 local engineering tasks continue directly under repository rules without
 requiring AO or a new worktree.
 
-For conversation-authorized implementation intended to cross a pull-request
-boundary in an adopted environment, verify AO health and start a task-specific
-worker before creating the implementation branch or pull request. If a pull
-request already exists, an existing draft pull request must become ready before
-owner lookup or claim; then restore its owning worker or claim it without
-takeover.
-
 Conversation authorization for a low-risk implementation also authorizes the
 worker to request GitHub native auto-merge without a second merge
 authorization, but only after required CI passes on the exact current head,
