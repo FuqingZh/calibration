@@ -45,6 +45,11 @@ Idle/live or cleanup-pending is not quiesced; otherwise do not transfer.
 Do not repeat rejected filesystem escalation. The owner retries same-scope
 mechanical feedback within a bounded retry budget.
 
+If AO is unavailable, isolated-worktree fallback applies only to new or unowned
+PR-bound work. Preserve an existing AO-owned PR's branch, worktree, and feedback
+until AO or owner restoration unless a real enforceable containment or
+write-authority revocation mechanism is authoritatively verified.
+
 For worker teardown, treat termination as complete or runtime as released only
 after the worker's OS-owned containment boundary is empty. A terminated
 session may retain pending cleanup; terminal, tmux, shell, or session

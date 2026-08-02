@@ -160,9 +160,13 @@ transfer, claim, or spawn. If only the owner cannot be restored or claimed,
 preserve the branch, worktree, pull-request, and feedback state for later
 continuation; do not cross-write from the controller. If authoritative host
 evidence establishes AO is unavailable, use the normal isolated-worktree
-fallback. For an existing pull request that fallback is an ownership transfer
-and remains gated on authoritative proof that the former owner is quiesced and
-the single-writer invariant holds; when proof is unavailable, preserve state.
+fallback only for new or unowned pull-request-bound work. For an existing
+AO-owned pull request, especially one with dirty state, preserve the branch,
+worktree, pull-request, and feedback state and wait for AO or owner restoration.
+Transfer is allowed only when a real enforceable containment or write-authority
+revocation mechanism is available and authoritatively verified; otherwise do
+not transfer, because process, tmux, session, or writer absence is not
+equivalent proof.
 Security, compatibility,
 irreversible, secret, and genuine permission decisions still require human
 authority. Low-risk GitHub native auto-merge may use authority already granted

@@ -53,6 +53,11 @@ empty; idle/live or cleanup-pending is not quiesced. Otherwise do not transfer.
 Do not repeat rejected filesystem escalation. The owner retries same-scope
 mechanical feedback within a bounded retry budget.
 
+If AO is unavailable, isolated-worktree fallback applies only to new or unowned
+PR-bound work. Preserve an existing AO-owned PR's branch, worktree, and feedback
+until AO or owner restoration unless a real enforceable containment or
+write-authority revocation mechanism is authoritatively verified.
+
 Classify AO observations by state owner before diagnosing them:
 
 - sandbox state: paths and processes visible only inside the current agent

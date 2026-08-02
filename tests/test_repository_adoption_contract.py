@@ -277,10 +277,12 @@ def test_ao_review_continuation_is_owner_directed_and_retryable() -> None:
         "If only the owner cannot be restored or claimed",
         "authoritative host evidence establishes AO is unavailable",
         "normal isolated-worktree fallback",
-        "existing pull request that fallback is an ownership transfer",
-        "former owner is quiesced",
-        "single-writer invariant holds",
-        "when proof is unavailable, preserve state",
+        "only for new or unowned pull-request-bound work",
+        "existing AO-owned pull request",
+        "preserve the branch, worktree, pull-request, and feedback state",
+        "wait for AO or owner restoration",
+        "real enforceable containment or write-authority revocation mechanism",
+        "process, tmux, session, or writer absence is not equivalent proof",
     ):
         assert phrase in runbook
 
@@ -308,11 +310,24 @@ def test_owner_retry_budget_and_state_routing_cross_authority_surfaces() -> None
         assert "distinct deployment contract" in authority
         assert "AO" in authority and "unavailable" in authority
         assert "isolated-worktree fallback" in authority
-        assert "existing pull request" in authority
-        assert "ownership transfer" in authority
-        assert "former owner is quiesced" in authority
-        assert "single-writer" in authority or "one writer" in authority
+        assert "new or unowned pull-request-bound work" in authority
+        assert "existing AO-owned pull request" in authority
+        assert (
+            "real enforceable containment or write-authority revocation mechanism"
+            in authority
+        )
+        assert (
+            "process, tmux, session, or writer absence is not equivalent proof"
+            in authority
+        )
         assert "preserve state" in authority
+
+    for authority in (compact("AGENTS.md"), compact("codex/AGENTS.md.template")):
+        assert "new or unowned PR-bound work" in authority
+        assert "existing AO-owned PR" in authority
+        assert "branch, worktree, and feedback" in authority
+        assert "AO or owner restoration" in authority
+        assert "real enforceable containment or write-authority revocation" in authority
 
     for phrase in (
         "`session.isTerminated` before `session.activity.state`",
@@ -335,9 +350,13 @@ def test_owner_retry_budget_and_state_routing_cross_authority_surfaces() -> None
         "REST resume-agent boundary",
         "activity.state=blocked 交给 human authority",
         "owner-only restore/claim failure 且 daemon ready 时 preserve/readback",
-        "AO unavailable 时可用 normal isolated-worktree fallback",
-        "single-writer/quiescence proof",
-        "proof unavailable 时 preserve state",
+        "isolated-worktree fallback 只用于 new or unowned PR-bound work",
+        "existing AO-owned PR",
+        "preserve branch/worktree/feedback",
+        "等待 AO/owner restoration",
+        "real enforceable containment",
+        "write-authority revocation mechanism",
+        "不得用 process/tmux/session/writer absence 充当 proof",
     ):
         assert phrase in prompts
     assert "agent exit is not an activity state" not in decision
@@ -345,6 +364,14 @@ def test_owner_retry_budget_and_state_routing_cross_authority_surfaces() -> None
     assert "若 AO unavailable 则保留现有 PR/worktree/feedback state" not in prompts
     assert "pull request #46" not in runbook
     assert "PR #46" not in prompts
+    for unprovable in (
+        "no former writer process",
+        "no process can mutate the owned worktree or branch",
+        "host readback proves",
+    ):
+        assert unprovable not in harness
+        assert unprovable not in runbook
+        assert unprovable not in decision
 
 
 def test_v11_decision_records_contract_and_bounded_routing_canary() -> None:

@@ -211,10 +211,12 @@ auto-merge contract may preauthorize merge; deploy requires separate explicit
 authority unless a distinct deployment contract exists. A workspace
 capability mismatch is not evidence that AO is unavailable.
 
-True AO unavailability may use the normal isolated-worktree fallback. For an
-existing pull request, that fallback is still an ownership transfer: require
-authoritative proof that the former owner is quiesced and preserve one writer.
-If that proof is unavailable, preserve state rather than cross-write.
+True AO unavailability may use the normal isolated-worktree fallback for new or
+unowned pull-request-bound work. For an existing AO-owned pull request,
+especially with dirty state, preserve its branch, worktree, and feedback and
+wait for AO or owner restoration. Transfer requires a real enforceable
+containment or write-authority revocation mechanism that is authoritatively
+verified; process, tmux, session, or writer absence is not equivalent proof.
 
 ## Orchestrator Process Release
 
