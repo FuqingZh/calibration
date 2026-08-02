@@ -44,8 +44,10 @@ defer to the ownership-preservation rule below.
 For pull-request-bound work with installed AO, an adopted repository, and
 supplied local host authority, start a task-specific owning worker for new work
 that is truly unowned before creating its implementation branch or pull
-request. Any already AO-owned repository, worktree, or branch enters owner
-lookup and handoff before mutation, even when no pull request exists. Only
+request. An existing ready pull request with no AO owner must be claimed
+without takeover by an existing or new owner before owner-state lookup. Any
+already AO-owned repository, worktree, or branch enters owner lookup and
+handoff before mutation, even when no pull request exists. Only
 existing-PR claim semantics require an existing pull request. Compare the
 assigned writable workspace and Git root with the owning AO worker. Without
 supplied local host

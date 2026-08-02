@@ -232,6 +232,13 @@ def test_workspace_mismatch_routes_mutation_to_single_owner() -> None:
         branch = authority.index(
             "before creating its implementation branch or pull request"
         )
+        unclaimed_pr = authority.index(
+            "An existing ready pull request with no AO owner"
+        )
+        claim_before_lookup = authority.index(
+            "claimed without takeover by an existing or new owner before "
+            "owner-state lookup"
+        )
         owned = authority.index("Any already AO-owned repository, worktree, or branch")
         lookup = authority.index("enters owner lookup and handoff before mutation")
         no_pr = authority.index("even when no pull request exists")
@@ -240,6 +247,7 @@ def test_workspace_mismatch_routes_mutation_to_single_owner() -> None:
         )
         compare = authority.index("Compare the assigned writable workspace")
         assert new_work < unowned < branch
+        assert branch < unclaimed_pr < claim_before_lookup < owned
         assert owned < lookup < no_pr < claim < compare
         assert "Only an existing pull request enters owner lookup" not in authority
         assert (
