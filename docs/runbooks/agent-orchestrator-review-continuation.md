@@ -123,26 +123,47 @@ Before mutation, the controller compares its assigned writable workspace and
 Git root with the pull request's worktree and owning AO worker. A difference is
 a workspace capability mismatch, not AO unavailable or daemon unavailability.
 The controller does not patch, stage, commit, or push in the sibling worktree
-and does not repeat a rejected filesystem escalation. Route an owner in
-`active`, `idle`, or `waiting_input` state with `ao send`; route a `terminated`
-owner only after authoritative readback confirms its OS-owned containment
-boundary is empty, using `ao session restore` and then `ao send`; route an
-unclaimed ready pull request to an existing owner with
+and does not repeat a rejected filesystem escalation. Inspect
+`session.isTerminated` first, then `session.activity.state`; `session.status` is
+derived board or SCM state, not the activity source of truth. Route an owner in
+`active` or `idle` activity with `ao send`. Hold `waiting_input` and inspect its
+provenance: escalate a permission or user-decision prompt, and send only when
+authoritative evidence proves it is an ordinary idle prompt within already
+granted authority. Route a terminated owner only after authoritative readback
+confirms runtime release and its OS-owned containment boundary is empty, using
+`ao session restore` and then `ao send`; otherwise preserve state and monitor.
+Route an unclaimed ready pull request to an existing owner with
 `ao session claim-pr <session> <pr> -p <project> --no-takeover`, or to a new
 owner with `ao spawn --claim-pr ... --no-takeover`, and then use `ao send`. If
-a session is active but its agent process exited, use the existing REST resume
-boundary; there is no CLI resume command defined by this contract. Thereafter
-the controller performs readback only.
+the agent process exited while the session is not terminated, use the existing
+REST resume boundary; agent exit is not an activity state, and there is no CLI
+resume command defined by this contract. Thereafter the controller performs
+readback only.
 
 The owning worker commits, pushes, observes CI and review, fixes same-scope
-mechanical feedback, and autonomously retries transient network operations and
-polling. Explicit ownership transfer first requires the former owner to be
-quiesced and maintains one writer. If AO or the owner cannot be restored or
-claimed, preserve the branch, worktree, pull-request, and feedback state for
-later continuation; do not cross-write from the controller. Security,
-compatibility, irreversible, secret, genuine permission, and merge or deploy
-decisions not already authorized by the low-risk native auto-merge contract
-still require human authority.
+mechanical feedback, and autonomously retries only idempotent transient network
+operations and polling. Every retry loop has an explicit attempt or deadline
+budget, exponential backoff, and honors `Retry-After`. Stop on head or scope
+change, cancellation, a non-transient authentication or permission failure, or
+budget exhaustion. If an external write times out with unknown outcome, first
+perform authoritative readback and deduplication, then retry only when the
+intended state is absent; the pull request #46 push canary checked the remote
+ref before retry. On stop, preserve observable state and report delivery
+degraded instead of looping or requesting repeated approval.
+
+Explicit ownership transfer first requires the former owner to be quiesced and
+maintains one writer. Quiesced means authoritative readback shows the former
+owner cannot write, normally because it is terminated and ownership is
+released, and that runtime release is complete with an empty containment
+boundary. A merely idle or live owner, or a terminated owner with cleanup
+pending, is not quiesced. Until all conditions hold, preserve state and do not
+transfer, claim, or spawn. If AO or the owner cannot be restored or claimed,
+preserve the branch, worktree, pull-request, and feedback state for later
+continuation; do not cross-write from the controller. Security, compatibility,
+irreversible, secret, and genuine permission decisions still require human
+authority. Low-risk GitHub native auto-merge may use authority already granted
+by its exact-head contract; deploy always requires separate explicit authority
+unless a distinct deployment contract grants it.
 
 Read every gate against the exact current head. A draft pull request must become
 ready before AO claims it; ready-for-review is only a claim prerequisite.

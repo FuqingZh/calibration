@@ -27,14 +27,36 @@ means the target belongs to a sibling worker worktree outside the controller's
 writable roots; it is not AO unavailable or daemon unavailability. The
 controller remains read-only for that worktree: it does not patch, stage,
 commit, push, or repeat rejected filesystem escalation. It restores and sends
-the owner, then limits itself to external-state readback.
+the owner only after authoritative readback proves runtime release and an empty
+containment boundary, then limits itself to external-state readback.
 
-The owner autonomously continues commit, push, CI, review, same-scope
-mechanical repair, transient network retry, and polling. Explicit ownership
-transfer requires the former owner to be quiesced and preserves one writer.
-Human authority remains required for security, compatibility, irreversible,
-secret, genuine permission, and merge or deploy decisions not already
-authorized by the low-risk native auto-merge contract.
+Routing reads `session.isTerminated` before `session.activity.state` and does
+not use derived `session.status` as activity truth. Only `active` and `idle`
+route automatically with `ao send`. Ambiguous `waiting_input` is held for
+provenance inspection: permission or user-decision prompts escalate, and send
+is allowed only when authoritative evidence proves an already authorized
+ordinary idle prompt. Agent process exit is not an activity state and uses the
+existing REST resume boundary when the session is not terminated.
+
+The owner autonomously continues commit, push, CI, review, and same-scope
+mechanical repair. Transient retries are limited to idempotent operations and
+use an explicit attempt or deadline budget, backoff, and `Retry-After`, stopping
+on head or scope change, cancellation, non-transient authentication or
+permission failure, or budget exhaustion. An external write with unknown
+outcome requires authoritative readback and deduplication before retry, which
+is allowed only when the intended state is absent. Stopped work preserves
+observable state and reports delivery degraded.
+
+Explicit ownership transfer requires the former owner to be quiesced and
+preserves one writer. Quiesced requires authoritative readback that the former
+owner cannot write, normally because it is terminated and ownership is
+released, and that runtime release is complete with an empty containment
+boundary. An idle or live owner, or a terminated owner with cleanup pending,
+is not quiesced; preserve state and do not transfer. Human authority remains
+required for security,
+compatibility, irreversible, secret, and genuine permission decisions. The
+low-risk GitHub native auto-merge contract may preauthorize merge; deploy needs
+separate explicit authority unless a distinct deployment contract exists.
 
 ## Process-Release Invariant
 

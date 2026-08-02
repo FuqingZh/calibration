@@ -178,6 +178,13 @@ def test_workspace_mismatch_routes_mutation_to_single_owner() -> None:
         assert "commit" in authority and "push" in authority
         assert "one writer" in authority
         assert "former owner to be quiesced" in authority
+        assert "owner cannot write" in authority
+        assert "ownership is released" in authority
+        assert "runtime release" in authority
+        assert "empty containment boundary" in authority
+        assert "idle or live owner" in authority
+        assert "terminated owner with cleanup pending" in authority
+        assert "preserve state and do not transfer" in authority
         assert "rejected filesystem escalation" in authority
         assert "not AO unavailable" in authority or "AO is unavailable" in authority
         assert "security" in authority.lower()
@@ -190,8 +197,14 @@ def test_workspace_mismatch_routes_mutation_to_single_owner() -> None:
         assert "assigned writable workspace" in authority
         assert "one writer" in authority
         assert "sibling worktree" in authority
-        assert "restore and send the owner" in authority
-        assert "quiesce the former owner before transfer" in authority
+        assert "Never restore and send a terminated owner" in authority
+        assert "authoritative readback proves runtime release" in authority
+        assert "containment boundary is empty" in authority
+        assert "owner cannot write" in authority
+        assert "ownership is released" in authority
+        assert "runtime/containment release is complete and empty" in authority
+        assert "cleanup-pending is not quiesced" in authority
+        assert "do not transfer" in authority
         assert "Do not repeat rejected filesystem escalation" in authority
         assert "same-scope mechanical feedback" in authority
 
@@ -206,22 +219,82 @@ def test_ao_review_continuation_is_owner_directed_and_retryable() -> None:
     for phrase in (
         "controller -> owning worker -> commit and push -> exact-head CI",
         "current-head review -> same-scope fix by owning worker",
-        "`active`, `idle`, or `waiting_input` state with `ao send`",
-        "authoritative readback confirms its OS-owned containment boundary is empty",
+        "`session.isTerminated` first, then `session.activity.state`",
+        "`session.status` is derived board or SCM state",
+        "`active` or `idle` activity with `ao send`",
+        "Hold `waiting_input` and inspect its provenance",
+        "permission or user-decision prompt",
+        "ordinary idle prompt within already granted authority",
+        "runtime release and its OS-owned containment boundary is empty",
+        "otherwise preserve state and monitor",
         "`ao session restore` and then `ao send`",
         "`ao session claim-pr <session> <pr> -p <project> --no-takeover`",
         "`ao spawn --claim-pr ... --no-takeover`",
         "and then use `ao send`",
+        "agent process exited while the session is not terminated",
         "existing REST resume boundary",
+        "agent exit is not an activity state",
         "no CLI resume command",
         "controller performs readback only",
-        "autonomously retries transient network operations and polling",
+        "retries only idempotent transient network operations and polling",
+        "explicit attempt or deadline budget",
+        "exponential backoff",
+        "honors `Retry-After`",
+        "Stop on head or scope change",
+        "non-transient authentication or permission failure",
+        "external write times out with unknown outcome",
+        "authoritative readback and deduplication",
+        "retry only when the intended state is absent",
+        "push canary checked the remote ref before retry",
+        "preserve observable state and report delivery degraded",
+        "former owner cannot write",
+        "terminated and ownership is released",
+        "runtime release is complete with an empty containment boundary",
+        "merely idle or live owner",
+        "terminated owner with cleanup pending",
+        "do not transfer, claim, or spawn",
         "preserve the branch, worktree, pull-request, and feedback state",
         "not AO unavailable or daemon unavailability",
-        "merge or deploy decisions not already authorized",
-        "low-risk native auto-merge contract",
+        "Low-risk GitHub native auto-merge may use authority already granted",
+        "deploy always requires separate explicit authority",
+        "distinct deployment contract",
     ):
         assert phrase in runbook
+
+
+def test_owner_retry_budget_and_state_routing_cross_authority_surfaces() -> None:
+    harness = compact("references/engineering/discipline/harness.md")
+    runbook = compact("docs/runbooks/agent-orchestrator-review-continuation.md")
+    decision = compact("docs/decisions/2026-07-31-portable-orchestrator-containment.md")
+
+    for authority in (harness, runbook, decision):
+        assert "idempotent" in authority
+        assert "attempt or deadline budget" in authority
+        assert "backoff" in authority
+        assert "`Retry-After`" in authority
+        assert "head or scope change" in authority
+        assert "cancellation" in authority
+        assert "non-transient authentication or permission failure" in authority
+        assert "budget exhaustion" in authority
+        assert "external write" in authority and "unknown outcome" in authority
+        assert "authoritative readback and deduplication" in authority
+        assert "intended state" in authority and "absent" in authority
+        assert "observable state" in authority
+        assert "delivery degraded" in authority
+        assert "deploy" in authority and "separate explicit authority" in authority
+        assert "distinct deployment contract" in authority
+
+    for phrase in (
+        "`session.isTerminated` before `session.activity.state`",
+        "derived `session.status`",
+        "Only `active` and `idle`",
+        "Ambiguous `waiting_input` is held",
+        "permission or user-decision prompts escalate",
+        "already authorized ordinary idle prompt",
+        "Agent process exit is not an activity state",
+        "existing REST resume boundary",
+    ):
+        assert phrase in decision
 
 
 def test_v11_decision_records_contract_and_bounded_routing_canary() -> None:

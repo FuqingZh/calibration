@@ -183,16 +183,31 @@ mutation, compare the assigned writable workspace and resolved Git root with
 the target and its owning AO worker. On mismatch, the controller remains
 read-only: it must not apply patches, stage, commit, or push in a sibling
 worktree, and it must not loop on rejected filesystem escalation. Restore and
-send the owner; use the controller only for orchestration and readback.
+send the owner only after authoritative readback proves runtime release and an
+empty containment boundary; otherwise preserve state and monitor. Use the
+controller only for orchestration and readback.
 
 Explicit ownership transfer requires the former owner to be quiesced and must
-preserve exactly one writer. Within the same authorized scope, the owner
-autonomously retries mechanical CI and review repairs, transient network
-operations, and polling without returning routine approvals to the human.
-Security, compatibility, irreversible, secret, genuine permission, and merge
-or deploy decisions not already authorized by the low-risk native auto-merge
-contract remain human authority. A workspace capability mismatch is not
-evidence that AO is unavailable.
+preserve exactly one writer. Quiesced means authoritative readback proves the
+former owner cannot write, normally because it is terminated and ownership is
+released, and proves complete runtime release with an empty containment
+boundary. An idle or live owner, or a terminated owner with cleanup pending,
+is not quiesced; preserve state and do not transfer. Within the same authorized
+scope, the owner
+autonomously retries mechanical CI and review repairs and only idempotent
+transient network operations or polling. Retry loops require an explicit
+attempt or deadline budget, backoff, and `Retry-After`; they stop on head or
+scope change, cancellation, non-transient authentication or permission
+failure, or budget exhaustion. For an external write with unknown outcome,
+authoritative readback and deduplication must prove the intended state absent
+before retry. On stop, preserve observable state and report delivery degraded
+instead of looping or requesting repeated approval.
+
+Security, compatibility, irreversible, secret, and genuine permission
+decisions remain human authority. The existing low-risk GitHub native
+auto-merge contract may preauthorize merge; deploy requires separate explicit
+authority unless a distinct deployment contract exists. A workspace
+capability mismatch is not evidence that AO is unavailable.
 
 ## Orchestrator Process Release
 
