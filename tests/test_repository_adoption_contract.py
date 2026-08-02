@@ -206,8 +206,11 @@ def test_workspace_mismatch_routes_mutation_to_single_owner() -> None:
         assert "sibling worktree" in authority
         terminated = authority.index("Inspect `session.isTerminated` first")
         restoration = authority.index("If true, only restore")
+        restoration_readback = authority.index(
+            "After restoration, perform fresh authoritative session readback"
+        )
         activity = authority.index("Only when false, send `activity.state=active`")
-        assert terminated < restoration < activity
+        assert terminated < restoration < restoration_readback < activity
         assert "runtime release and an empty OS-owned containment boundary" in authority
         assert "otherwise preserve state" in authority
         assert "`activity.state=active` or `idle` directly" in authority
@@ -309,7 +312,8 @@ def test_ao_review_continuation_is_owner_directed_and_retryable() -> None:
         "`ao session restore` and then `ao send`",
         "`ao session claim-pr <session> <pr> -p <project> --no-takeover`",
         "`ao spawn --claim-pr ... --no-takeover`",
-        "and then use `ao send`",
+        "After claim or spawn, perform fresh authoritative readback",
+        "use `ao send` only when that routing permits it",
         "`session.isTerminated=false`",
         "`session.activity.state=exited`",
         "existing REST resume-agent boundary",
@@ -325,7 +329,8 @@ def test_ao_review_continuation_is_owner_directed_and_retryable() -> None:
         "external write times out with unknown outcome",
         "authoritative readback and deduplication",
         "retry only when the intended state is absent",
-        "preserve observable state and report delivery degraded",
+        "preserve observable state and report the actual stop reason",
+        "`delivery degraded` only for the corresponding external integration",
         "former owner cannot write",
         "terminated and ownership is released",
         "runtime release is complete with an empty containment boundary",

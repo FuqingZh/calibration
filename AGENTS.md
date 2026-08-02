@@ -56,7 +56,9 @@ do not perform AO lifecycle routing. Keep one writer: the controller must not pa
 stage, commit, or push an owner's sibling worktree. Inspect
 `session.isTerminated` first. If true, only restore after authoritative readback
 proves runtime release and an empty OS-owned containment boundary; otherwise
-preserve state. Only when false, send `activity.state=active` or `idle` directly,
+preserve state. After restoration, perform fresh authoritative session readback
+and route or send according to the resulting non-terminated activity state.
+Only when false, send `activity.state=active` or `idle` directly,
 hold `waiting_input` for provenance, route `exited` through REST resume-agent,
 and return `blocked` to human authority.
 Before transfer, authoritative readback must prove the former owner cannot

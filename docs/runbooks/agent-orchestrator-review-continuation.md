@@ -136,7 +136,9 @@ confirms runtime release and its OS-owned containment boundary is empty, using
 `ao session restore` and then `ao send`; otherwise preserve state and monitor.
 Route an unclaimed ready pull request to an existing owner with
 `ao session claim-pr <session> <pr> -p <project> --no-takeover`, or to a new
-owner with `ao spawn --claim-pr ... --no-takeover`, and then use `ao send`. If
+owner with `ao spawn --claim-pr ... --no-takeover`. After claim or spawn,
+perform fresh authoritative readback and apply the normal owner-state routing;
+use `ao send` only when that routing permits it. If
 `session.isTerminated=false` and `session.activity.state=exited`, use the
 existing REST resume-agent boundary; there is no CLI resume command defined by
 this contract. Route `session.activity.state=blocked` to human authority.
@@ -150,7 +152,9 @@ change, cancellation, a non-transient authentication or permission failure, or
 budget exhaustion. If an external write times out with unknown outcome, first
 perform authoritative readback and deduplication, then retry only when the
 intended state is absent. On stop, preserve observable state and report
-delivery degraded instead of looping or requesting repeated approval.
+the actual stop reason instead of looping or requesting repeated approval. Use
+`delivery degraded` only for the corresponding external integration or
+authentication failure while the core daemon remains ready.
 
 Explicit ownership transfer first requires the former owner to be quiesced and
 maintains one writer. Quiesced means authoritative readback shows the former
