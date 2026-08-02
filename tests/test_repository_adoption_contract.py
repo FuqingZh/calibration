@@ -228,6 +228,29 @@ def test_workspace_mismatch_routes_mutation_to_single_owner() -> None:
         assert "narrowed fallback or existing-owner preservation rule" in authority
         assert "do not perform AO lifecycle routing" in authority
 
+    harness = compact("references/engineering/discipline/harness.md")
+    decision = compact("docs/decisions/2026-07-31-portable-orchestrator-containment.md")
+    for authority in (
+        compact("AGENTS.md"),
+        compact("codex/AGENTS.md.template"),
+        harness,
+        decision,
+    ):
+        assert "installed AO" in authority
+        assert "adopted repository" in authority
+        assert "supplied local host authority" in authority
+        assert "Without supplied" in authority
+        assert "new or unowned" in authority
+        assert "isolated-worktree fallback" in authority
+        assert "existing AO-owned" in authority
+        assert "branch, worktree, and feedback" in authority
+        assert "AO lifecycle routing" in authority
+
+    for authority in (harness, decision):
+        assert "until authority is available" in authority
+        assert "mechanically enforced transfer mechanism" in authority
+        assert "authoritatively verified" in authority
+
     template = compact("codex/AGENTS.md.template")
     assert "pull-request-bound work with installed AO" in template
     assert "supplied local host authority" in template

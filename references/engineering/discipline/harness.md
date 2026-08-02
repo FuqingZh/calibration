@@ -134,6 +134,13 @@ requiring the user to name the tool again:
   secret, release, compatibility, and other materially underdetermined
   decisions.
 
+AO lifecycle routing requires all three conditions: installed AO, an adopted
+repository, and supplied local host authority. Without supplied authority, new
+or unowned pull-request-bound work may use the isolated-worktree fallback. An
+existing AO-owned pull request preserves its branch, worktree, and feedback and
+performs no AO lifecycle routing until authority is available or a mechanically
+enforced transfer mechanism is authoritatively verified.
+
 ### Low-risk GitHub native auto-merge
 
 Conversation authorization for a low-risk implementation includes permission

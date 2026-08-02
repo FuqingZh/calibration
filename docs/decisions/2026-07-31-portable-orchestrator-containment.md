@@ -21,6 +21,13 @@ Ordinary repository work does not load that authority.
 
 ## Workspace Ownership Amendment
 
+AO lifecycle routing requires installed AO, an adopted repository, and supplied
+local host authority. Without supplied authority, new or unowned
+pull-request-bound work may use the isolated-worktree fallback. An existing
+AO-owned pull request preserves its branch, worktree, and feedback and performs
+no AO lifecycle routing until authority is available or a mechanically enforced
+transfer mechanism is authoritatively verified.
+
 Before mutation, a controller compares its assigned writable workspace and Git
 root with the target and its owning AO worker. A workspace capability mismatch
 means the target belongs to a sibling worker worktree outside the controller's
