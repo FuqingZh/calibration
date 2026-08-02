@@ -147,9 +147,8 @@ budget, exponential backoff, and honors `Retry-After`. Stop on head or scope
 change, cancellation, a non-transient authentication or permission failure, or
 budget exhaustion. If an external write times out with unknown outcome, first
 perform authoritative readback and deduplication, then retry only when the
-intended state is absent; the pull request #46 push canary checked the remote
-ref before retry. On stop, preserve observable state and report delivery
-degraded instead of looping or requesting repeated approval.
+intended state is absent. On stop, preserve observable state and report
+delivery degraded instead of looping or requesting repeated approval.
 
 Explicit ownership transfer first requires the former owner to be quiesced and
 maintains one writer. Quiesced means authoritative readback shows the former

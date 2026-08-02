@@ -39,7 +39,8 @@ as `autoMerge`, whose cancellation and state-change behavior is unproven and
 must remain disabled. If AO is unavailable, use an isolated worktree and report
 that fallback for pull-request-bound delivery.
 
-Before mutation, compare the assigned writable workspace and Git root with the
+For pull-request-bound work in an already installed and adopted AO environment,
+before mutation compare the assigned writable workspace and Git root with the
 target's owning AO worker. Keep one writer: the controller must not patch,
 stage, commit, or push an owner's sibling worktree. Send an `active` or `idle`
 owner directly; hold `waiting_input` for provenance and escalate permission or

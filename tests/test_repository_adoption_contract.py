@@ -217,6 +217,8 @@ def test_workspace_mismatch_routes_mutation_to_single_owner() -> None:
         assert "do not transfer" in authority
         assert "Do not repeat rejected filesystem escalation" in authority
         assert "same-scope mechanical feedback" in authority
+        assert "pull-request-bound work" in authority
+        assert "already installed and adopted AO environment" in authority
 
     template = compact("codex/AGENTS.md.template")
     assert "pull-request-bound work" in template
@@ -256,7 +258,6 @@ def test_ao_review_continuation_is_owner_directed_and_retryable() -> None:
         "external write times out with unknown outcome",
         "authoritative readback and deduplication",
         "retry only when the intended state is absent",
-        "push canary checked the remote ref before retry",
         "preserve observable state and report delivery degraded",
         "former owner cannot write",
         "terminated and ownership is released",
@@ -342,6 +343,8 @@ def test_owner_retry_budget_and_state_routing_cross_authority_surfaces() -> None
     assert "agent exit is not an activity state" not in decision
     assert "agent-exited 不是 activity state" not in prompts
     assert "若 AO unavailable 则保留现有 PR/worktree/feedback state" not in prompts
+    assert "pull request #46" not in runbook
+    assert "PR #46" not in prompts
 
 
 def test_v11_decision_records_contract_and_bounded_routing_canary() -> None:
