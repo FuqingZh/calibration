@@ -196,7 +196,10 @@ worktree, and it must not loop on rejected filesystem escalation. Send an
 `active` or `idle` owner directly only after inspecting `session.isTerminated`
 first. If true, restore the terminated owner only after authoritative readback
 proves runtime release and an empty containment boundary; otherwise preserve
-state and monitor. Only when false, route `active` or `idle`. Hold
+state and monitor. After successful restoration, perform fresh authoritative
+session readback and route the resulting non-terminated activity state through
+the same rules below. When `session.isTerminated` is false, initially or on
+that fresh post-restore readback, route `active` or `idle`. Hold
 `waiting_input` for provenance, send only when authoritative evidence proves an
 already-authorized ordinary idle prompt, and escalate permission or
 user-decision prompts. When `session.isTerminated=false` and

@@ -195,8 +195,17 @@ def test_workspace_mismatch_routes_mutation_to_single_owner() -> None:
 
     terminated = harness.index("inspecting `session.isTerminated` first")
     restoration = harness.index("If true, restore the terminated owner only after")
-    activity = harness.index("Only when false, route `active` or `idle`")
-    assert terminated < restoration < activity
+    restoration_readback = harness.index(
+        "After successful restoration, perform fresh authoritative"
+    )
+    restoration_routing = harness.index(
+        "route the resulting non-terminated activity state", restoration_readback
+    )
+    activity = harness.index(
+        "When `session.isTerminated` is false, initially or on that fresh"
+    )
+    assert terminated < restoration < restoration_readback
+    assert restoration_readback < restoration_routing < activity
     assert "Hold `waiting_input` for provenance" in harness
     assert "already-authorized ordinary idle prompt" in harness
     assert "permission or user-decision prompts" in harness
