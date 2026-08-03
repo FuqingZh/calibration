@@ -82,7 +82,9 @@ Use these outcomes:
   when the core daemon remains ready.
 
 If AO is unavailable or local authority cannot be verified, use an isolated
-worktree and report that bounded fallback.
+worktree only for new or unowned pull-request-bound work. Existing AO-owned
+pull requests defer to the ownership-preservation rule in Pull-Request
+Delivery.
 
 ## Repository Adoption
 
@@ -104,23 +106,108 @@ it is not a universal Desktop adapter. Other platforms install and operate AO
 through upstream Desktop directly. The helper never claims the real event loop
 has passed and must preserve its existing CLI contract.
 
+Before any mutation, determine whether the repository, worktree, or branch is
+already AO-owned. If so, the controller remains read-only regardless of whether
+a pull request exists or the task is PR-bound. Without authority, preserve the
+owned state. With authority and implementation authorization, continue only
+when continuation is proven or the current task is the explicitly bounded
+canary. Before owner lookup and handoff through the state rules below, verify
+authoritative AO core health is `daemon ready`; otherwise preserve the owned
+state. Read-only review, analysis, and discussion requests remain read-only.
+
 Conversation authorization is sufficient issue intake. Issue-tracker intake,
 automatic work discovery, and a separate orchestrator session are not
-prerequisites. Start a task-specific worker for new implementation, or claim
-the ready-for-review pull request with the owning worker without takeover.
+prerequisites. Normal automatic AO lifecycle routing requires the four-stage
+assessment to be `continuation-proven`; an explicitly bounded canary may route
+only its current task. When continuation is unproven and this is not that
+canary, truly unowned new work uses isolated-worktree fallback, while existing
+AO-owned work preserves its branch, worktree, and feedback without owner
+lookup, restore, claim, or spawn. Only after the proof gate, for truly unowned
+new implementation, start a task-specific
+owning worker, immediately perform authoritative session readback, and hand the
+task through normal activity-state routing; only that owner creates the branch
+or pull request. If an existing draft is already AO-owned, perform owner lookup
+and handoff first, then its owning worker marks it ready. If a draft is
+unclaimed, its authorized current writer marks it ready, then claim or spawn
+without takeover only after authoritative verification proves every
+controller, human, or non-AO writer is quiesced and cannot write. No AO owner
+does not prove the pull request is unowned. Otherwise preserve state, do not
+claim or spawn, and escalate. After that gate, claim or spawn, then perform
+fresh authoritative readback and normal activity-state routing.
 
 ## Pull-Request Delivery
 
 The portable flow is:
 
 ```text
-conversation -> task-specific worker -> pull request
-             -> exact-head CI -> current-head review
-             -> no actionable review threads -> merge authority
+controller -> owning worker -> commit and push -> exact-head CI
+           -> current-head review -> same-scope fix by owning worker
+           -> no actionable review threads -> merge authority
 ```
 
-Read every gate against the exact current head. A draft pull request must become
-ready before AO claims it; ready-for-review is only a claim prerequisite.
+Before mutation, the controller compares its assigned writable workspace and
+Git root with the pull request's worktree and owning AO worker. A difference is
+a workspace capability mismatch, not AO unavailable or daemon unavailability.
+The controller does not patch, stage, commit, or push in the sibling worktree
+and does not repeat a rejected filesystem escalation. Inspect
+`session.isTerminated` first, then `session.activity.state`; `session.status` is
+derived board or SCM state, not the activity source of truth. Route an owner in
+`active` or `idle` activity with `ao send`. Hold `waiting_input` and inspect its
+provenance: escalate a permission or user-decision prompt, and send only when
+authoritative evidence proves it is an ordinary idle prompt within already
+granted authority. Route a terminated owner only after authoritative readback
+confirms runtime release and its OS-owned containment boundary is empty, using
+`ao session restore`; then perform fresh authoritative readback, apply the
+normal resulting activity-state routing, and use `ao send` only when permitted.
+Otherwise preserve state and monitor.
+Route an unclaimed ready pull request to an existing owner with
+`ao session claim-pr <session> <pr> -p <project> --no-takeover`, or to a new
+owner with `ao spawn --claim-pr ... --no-takeover`. After claim or spawn,
+perform fresh authoritative readback and apply the normal owner-state routing;
+use `ao send` only when that routing permits it. If
+`session.isTerminated=false` and `session.activity.state=exited`, use the
+existing REST resume-agent boundary; there is no CLI resume command defined by
+this contract. Route `session.activity.state=blocked` to human authority.
+Thereafter the controller performs readback only.
+
+The owning worker commits, pushes, observes CI and review, fixes same-scope
+mechanical feedback, and autonomously retries only idempotent transient network
+operations and polling. Every retry loop has an explicit attempt or deadline
+budget, exponential backoff, and honors `Retry-After`. Stop on head or scope
+change, cancellation, a non-transient authentication or permission failure, or
+budget exhaustion. If an external write times out with unknown outcome, first
+perform authoritative readback and deduplication, then retry only when the
+intended state is absent. On stop, preserve observable state and report
+the actual stop reason instead of looping or requesting repeated approval. Use
+`delivery degraded` only for the corresponding external integration or
+authentication failure while the core daemon remains ready.
+
+Explicit ownership transfer first requires the former owner to be quiesced and
+maintains one writer. Quiesced means authoritative readback shows the former
+owner cannot write, normally because it is terminated and ownership is
+released, and that runtime release is complete with an empty containment
+boundary. A merely idle or live owner, or a terminated owner with cleanup
+pending, is not quiesced. Until all conditions hold, preserve state and do not
+transfer, claim, or spawn. If only the owner cannot be restored or claimed,
+preserve the branch, worktree, pull-request, and feedback state for later
+continuation; do not cross-write from the controller. If authoritative host
+evidence establishes AO is unavailable, use the normal isolated-worktree
+fallback only for new or unowned pull-request-bound work. For an existing
+AO-owned pull request, especially one with dirty state, preserve the branch,
+worktree, pull-request, and feedback state and wait for AO or owner restoration.
+Transfer is allowed only when a real enforceable containment or write-authority
+revocation mechanism is available and authoritatively verified; otherwise do
+not transfer, because process, tmux, session, or writer absence is not
+equivalent proof.
+Security, compatibility,
+irreversible, secret, and genuine permission decisions still require human
+authority. Low-risk GitHub native auto-merge may use authority already granted
+by its exact-head contract; deploy always requires separate explicit authority
+unless a distinct deployment contract grants it.
+
+Read every gate against the exact current head. An already AO-owned draft routes
+to its owner before that owner marks it ready. An unclaimed draft's authorized
+current writer marks it ready before the quiescence-gated claim.
 
 Conversation authorization for a low-risk implementation may include GitHub
 native per-pull-request auto-merge without a second merge authorization, but
