@@ -13,6 +13,7 @@ import json
 import math
 import os
 import re
+import selectors
 import shutil
 import stat
 import subprocess
@@ -23,7 +24,7 @@ import urllib.parse
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import NoReturn, cast
+from typing import BinaryIO, NoReturn, cast
 
 Runner = Callable[[Sequence[str]], subprocess.CompletedProcess[str]]
 JSON_SCHEMA_VERSION = 1
@@ -34,11 +35,19 @@ EXIT_INVALID = 1
 EXIT_USAGE = 2
 EXIT_PROBE = 3
 PROBE_TIMEOUT_SECONDS = 10
+PROBE_OUTPUT_LIMIT_BYTES = 1024 * 1024
 UNAVAILABLE_CONFIRMATION_DELAY_SECONDS = 1.0
 DASHBOARD_TREE_ENTRY_LIMIT = 10_000
 DASHBOARD_HEALTH_BODY_LIMIT = 64 * 1024
 PROFILE_INPUT_LIMIT_BYTES = 1024 * 1024
 SYSTEMD_UNIT_NAME_LIMIT_BYTES = 255
+NGINX_TEMP_DIRECTORY_NAMES = (
+    "nginx-client-body",
+    "nginx-proxy",
+    "nginx-fastcgi",
+    "nginx-uwsgi",
+    "nginx-scgi",
+)
 DASHBOARD_HEALTH_MARKER = "\nCALIBRATION_DASHBOARD_HEALTH_META\t"
 CURL_PROBE_PREFIX = ("curl", "-q", "--noproxy", "*")
 AO_PROBE_ENVIRONMENT_OVERRIDES = (
@@ -148,16 +157,59 @@ def _run(
     *,
     environment: Mapping[str, str] | None = None,
 ) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
+    process = subprocess.Popen(
         list(command),
-        check=False,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
         env=dict(environment) if environment is not None else os.environ.copy(),
-        timeout=PROBE_TIMEOUT_SECONDS,
     )
+    if process.stdout is None or process.stderr is None:
+        process.kill()
+        process.wait()
+        raise OSError("probe pipes could not be created")
+    streams = {process.stdout: bytearray(), process.stderr: bytearray()}
+    selector = selectors.DefaultSelector()
+    for stream in streams:
+        selector.register(stream, selectors.EVENT_READ)
+    deadline = time.monotonic() + PROBE_TIMEOUT_SECONDS
+    overflow = False
+    try:
+        while selector.get_map():
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                process.kill()
+                process.wait()
+                raise subprocess.TimeoutExpired(command, PROBE_TIMEOUT_SECONDS)
+            for key, _events in selector.select(remaining):
+                stream = cast(BinaryIO, key.fileobj)
+                chunk = os.read(stream.fileno(), 64 * 1024)
+                if not chunk:
+                    selector.unregister(stream)
+                    continue
+                retained = sum(len(buffer) for buffer in streams.values())
+                available = PROBE_OUTPUT_LIMIT_BYTES - retained
+                streams[stream].extend(chunk[: max(available, 0)])
+                if len(chunk) > available:
+                    overflow = True
+                    process.kill()
+                    break
+            if overflow:
+                break
+        returncode = process.wait()
+    finally:
+        selector.close()
+        process.stdout.close()
+        process.stderr.close()
+    marker = (
+        f"\n[probe output truncated at {PROBE_OUTPUT_LIMIT_BYTES} bytes]".encode()
+        if overflow
+        else b""
+    )
+    stdout = bytes(streams[process.stdout]).decode("utf-8", errors="replace")
+    stderr = bytes(streams[process.stderr]).decode("utf-8", errors="replace")
+    if overflow:
+        stderr += marker.decode()
+    return subprocess.CompletedProcess(command, returncode, stdout, stderr)
 
 
 def _inspection_environment(
@@ -622,13 +674,10 @@ def evaluate_daemon_state(
         "startupWorkingDirectory",
     )
     status_identity_matches = all(
-        field not in status
-        or (
-            isinstance(status[field], str)
-            and bool(cast(str, status[field]).strip())
-            and status[field] == health.get(field)
-            and status[field] == ready.get(field)
-        )
+        isinstance(status.get(field), str)
+        and bool(cast(str, status[field]).strip())
+        and status[field] == health.get(field)
+        and status[field] == ready.get(field)
         for field in identity_fields
     )
     identity_matches = (
@@ -842,7 +891,7 @@ def inspect_host(
         raise CalibrationError(f"{profile} does not exist")
     parsed_profile = (
         (
-            _load_profile(profile)
+            _load_profile_for_inspect(profile)
             if context == "host"
             else _load_profile_structure(profile)
         )
@@ -1393,12 +1442,18 @@ def _validate_listener_network_families(
     terminal: Mapping[str, object],
 ) -> None:
     listener_version = _parse_unscoped_ip_address(listen_host).version
-    if not all(
-        _parse_unscoped_ip_network(cidr).version == listener_version
-        for cidr in readonly_cidrs
-    ):
+    networks = [_parse_unscoped_ip_network(cidr) for cidr in readonly_cidrs]
+    if not all(network.version == listener_version for network in networks):
         raise CalibrationError(
             "read-only dashboard requires a trusted CIDR for its listener family"
+        )
+    mapped_network = cast(ipaddress.IPv6Network, ipaddress.ip_network("::ffff:0:0/96"))
+    if listener_version == 6 and any(
+        isinstance(network, ipaddress.IPv6Network) and network.subnet_of(mapped_network)
+        for network in networks
+    ):
+        raise CalibrationError(
+            "IPv6 dashboard listeners reject IPv4-mapped read-only CIDRs"
         )
     if terminal.get("desired_enabled") is True:
         clients = [
@@ -1439,6 +1494,10 @@ def _validate_pid_file_within_state_root(
     if relative_pid_file == Path("."):
         raise CalibrationError(
             "dashboard.pid_file must be a file beneath paths.state_root"
+        )
+    if relative_pid_file in map(Path, NGINX_TEMP_DIRECTORY_NAMES):
+        raise CalibrationError(
+            "dashboard.pid_file must differ from nginx temp directories"
         )
 
 
@@ -1552,13 +1611,18 @@ def _validate_dashboard_role_collisions(dashboard: Mapping[str, object]) -> None
         "nginx_executable": Path(cast(str, dashboard["nginx_executable"])),
         "pid_file": Path(cast(str, dashboard["pid_file"])),
     }
+    document_root = role_paths.pop("document_root").resolve(strict=False)
     resolved_roles: dict[Path, str] = {}
     for role, path in role_paths.items():
         resolved = path.resolve(strict=False)
+        if _paths_overlap(document_root, resolved):
+            raise CalibrationError(
+                f"dashboard document_root and file role {role} have incompatible roles"
+            )
         previous = resolved_roles.get(resolved)
         if previous is not None:
             raise CalibrationError(
-                "dashboard paths assigned incompatible roles must differ: "
+                "dashboard file paths assigned incompatible roles must differ: "
                 f"{previous} and {role}"
             )
         resolved_roles[resolved] = role
@@ -1792,22 +1856,30 @@ def _configured_host_file_role_paths(
         ("source profile", source_profile),
         ("ao.codex_home/config.toml", codex_home / "config.toml"),
         ("ao.codex_home/auth.json", codex_home / "auth.json"),
-        ("dashboard.active_config", Path(cast(str, dashboard["active_config"]))),
-        (
-            "dashboard.nginx_executable",
-            Path(cast(str, dashboard["nginx_executable"])),
-        ),
-        ("dashboard.pid_file", Path(cast(str, dashboard["pid_file"]))),
         ("paths.private_authority", Path(cast(str, paths["private_authority"]))),
-        (
-            "paths.desired_nginx_artifact",
-            Path(cast(str, paths["desired_nginx_artifact"])),
-        ),
-        (
-            "paths.desired_service_artifact",
-            Path(cast(str, paths["desired_service_artifact"])),
-        ),
     ]
+    if dashboard.get("mode", "read-only") == "read-only":
+        roles.extend(
+            (
+                (
+                    "dashboard.active_config",
+                    Path(cast(str, dashboard["active_config"])),
+                ),
+                (
+                    "dashboard.nginx_executable",
+                    Path(cast(str, dashboard["nginx_executable"])),
+                ),
+                ("dashboard.pid_file", Path(cast(str, dashboard["pid_file"]))),
+                (
+                    "paths.desired_nginx_artifact",
+                    Path(cast(str, paths["desired_nginx_artifact"])),
+                ),
+                (
+                    "paths.desired_service_artifact",
+                    Path(cast(str, paths["desired_service_artifact"])),
+                ),
+            )
+        )
     cli = Path(cast(str, ao["cli"]))
     if cli.is_absolute():
         roles.append(("ao.cli", cli))
@@ -1817,9 +1889,6 @@ def _configured_host_file_role_paths(
 def _validate_host_file_role_collisions(
     profile: Mapping[str, object], source_profile: Path
 ) -> tuple[tuple[int, int], ...]:
-    dashboard = _section(profile, "dashboard")
-    if dashboard.get("mode", "read-only") != "read-only":
-        return ()
     resolved_roles: dict[Path, str] = {}
     inode_roles: dict[tuple[int, int], str] = {}
     for label, path in _configured_host_file_role_paths(profile, source_profile):
@@ -1963,7 +2032,9 @@ def _read_profile_text(path: Path) -> str:
         raise CalibrationError(f"{path} must contain UTF-8 TOML") from exc
 
 
-def _load_profile_data(path: Path, *, structural_only: bool) -> dict[str, object]:
+def _load_profile_data(
+    path: Path, *, structural_only: bool, validate_codex_home: bool = True
+) -> dict[str, object]:
     if structural_only:
         try:
             safe = path.expanduser()
@@ -2136,6 +2207,7 @@ def _load_profile_data(path: Path, *, structural_only: bool) -> dict[str, object
             )
         _validate_terminal(terminal)
     _validate_no_listener_collision(profile)
+    _validate_terminal_upstream_collision(profile)
     if (
         dashboard.get("mode", "read-only") == "read-only"
         and isinstance(listen_ip, ipaddress.IPv6Address)
@@ -2150,8 +2222,10 @@ def _load_profile_data(path: Path, *, structural_only: bool) -> dict[str, object
     _validate_profile_host_path_ancestors(canonical)
     _validate_dashboard_state_write_scope(canonical, safe)
     codex_home = Path(cast(str, _section(canonical, "ao")["codex_home"]))
-    if codex_home.exists():
-        _validate_codex_auth_file(codex_home)
+    if validate_codex_home and (
+        profile.get("schema_version", 1) == 2 or codex_home.exists()
+    ):
+        _validate_codex_home(codex_home)
     _validate_dashboard_service_roles(canonical)
     protected_file_identities = _validate_host_file_role_collisions(canonical, safe)
     _validate_dashboard_role_collisions(_section(canonical, "dashboard"))
@@ -2175,6 +2249,11 @@ def _load_profile_data(path: Path, *, structural_only: bool) -> dict[str, object
 def _load_profile_structure(path: Path) -> dict[str, object]:
     """Validate profile syntax and data contracts without asserting host state."""
     return _load_profile_data(path, structural_only=True)
+
+
+def _load_profile_for_inspect(path: Path) -> dict[str, object]:
+    """Validate host path safety while leaving Codex compatibility diagnostic."""
+    return _load_profile_data(path, structural_only=False, validate_codex_home=False)
 
 
 def _load_profile(path: Path) -> dict[str, object]:
@@ -2201,6 +2280,32 @@ def _validate_no_listener_collision(profile: Mapping[str, object]) -> None:
         )
     if host_collides and dashboard["listen_port"] == parsed.port:
         raise CalibrationError("Dashboard listener must not collide with AO loopback")
+
+
+def _validate_terminal_upstream_collision(profile: Mapping[str, object]) -> None:
+    dashboard = _section(profile, "dashboard")
+    terminal = _section(dashboard, "terminal")
+    if (
+        dashboard.get("mode", "read-only") != "read-only"
+        or terminal.get("desired_enabled") is not True
+    ):
+        return
+    upstream = urllib.parse.urlsplit(cast(str, terminal["upstream"]))
+    dashboard_ip = _ip_transport_identity(
+        _parse_unscoped_ip_address(cast(str, dashboard["listen_host"]))
+    )
+    upstream_host = cast(str, upstream.hostname)
+    if upstream_host == "localhost":
+        host_collides = dashboard_ip.is_loopback or dashboard_ip.is_unspecified
+    else:
+        upstream_ip = _ip_transport_identity(_parse_unscoped_ip_address(upstream_host))
+        host_collides = dashboard_ip == upstream_ip or (
+            dashboard_ip.is_unspecified and dashboard_ip.version == upstream_ip.version
+        )
+    if host_collides and dashboard["listen_port"] == upstream.port:
+        raise CalibrationError(
+            "terminal upstream must not collide with Dashboard listener"
+        )
 
 
 def _validate_terminal_v1(terminal: Mapping[str, object]) -> None:
@@ -2693,6 +2798,7 @@ def init_profile(
             _section(_section(canonical, "dashboard"), "terminal"),
         )
     _validate_no_listener_collision(canonical)
+    _validate_terminal_upstream_collision(canonical)
     _mkdir_private_chain(target.parent)
     _write_exclusive_private(target, _toml(canonical))
     return canonical
@@ -2720,6 +2826,7 @@ def plan_profile(path: Path) -> dict[str, object]:
 def _candidate_files(profile: Mapping[str, object]) -> dict[str, bytes]:
     canonical = _canonical_v2(profile)
     _validate_no_listener_collision(canonical)
+    _validate_terminal_upstream_collision(canonical)
     ao = _section(canonical, "ao")
     dashboard = _section(canonical, "dashboard")
     terminal = _section(_section(canonical, "dashboard"), "terminal")

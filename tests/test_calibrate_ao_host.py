@@ -161,7 +161,10 @@ def profile(tmp_path: Path, codex_home: Path) -> Path:
 def inspect_responses(
     *,
     status: str = (
-        '{"state":"ready","pid":42,"port":3001,"health":"ok","ready":"ready"}'
+        '{"state":"ready","pid":42,"port":3001,"health":"ok",'
+        '"ready":"ready","executablePath":"/opt/example/ao",'
+        '"workingDirectory":"/opt/example/work",'
+        '"startupWorkingDirectory":"/opt/example/start"}'
     ),
     doctor: str = '{"ok":true,"checks":[]}',
     cgroup: str = "cgroup2fs",
@@ -268,9 +271,17 @@ def test_real_legacy_v1_shape_is_accepted_without_live_profile(
     assert migrated["dashboard"]["rollback_service"] == "ao-dashboard-rollback.service"
 
 
-def test_legacy_v1_canonicalizes_to_self_readable_v2(tmp_path: Path) -> None:
+def test_legacy_v1_canonicalizes_to_self_readable_v2(
+    tmp_path: Path, codex_home: Path
+) -> None:
     legacy = tmp_path / "legacy.toml"
-    legacy.write_bytes(LEGACY_V1_FIXTURE.read_bytes())
+    legacy.write_text(
+        LEGACY_V1_FIXTURE.read_text(encoding="utf-8").replace(
+            'codex_home = "/var/opt/example/codex"',
+            f'codex_home = "{codex_home}"',
+        ),
+        encoding="utf-8",
+    )
     legacy.chmod(0o600)
     canonical = host._canonical_v2(host._load_profile(legacy))
     migrated = tmp_path / "migrated.toml"
@@ -300,13 +311,19 @@ def test_legacy_v1_canonicalizes_to_self_readable_v2(tmp_path: Path) -> None:
     ],
 )
 def test_disabled_v1_trust_models_render_self_readable_v2(
-    tmp_path: Path, trust_model: str, canonical_trust_model: str
+    tmp_path: Path,
+    codex_home: Path,
+    trust_model: str,
+    canonical_trust_model: str,
 ) -> None:
     profile = tmp_path / f"{trust_model}.toml"
     profile.write_text(
         V1_PROFILE.replace(
             'trust_model = "trusted-single-user"',
             f'trust_model = "{trust_model}"',
+        ).replace(
+            'codex_home = "/var/opt/example/codex"',
+            f'codex_home = "{codex_home}"',
         ),
         encoding="utf-8",
     )
@@ -1491,6 +1508,7 @@ def test_codex_auth_file_type_json_and_permissions(codex_home: Path) -> None:
     auth.chmod(0o644)
     with pytest.raises(host.CalibrationError, match="group or other"):
         host._validate_codex_home(codex_home)
+
     auth.chmod(0o600)
     auth.write_text("[]\n", encoding="utf-8")
     with pytest.raises(host.CalibrationError, match="JSON object"):
@@ -1501,6 +1519,29 @@ def test_codex_auth_file_type_json_and_permissions(codex_home: Path) -> None:
     auth.unlink()
     with pytest.raises(host.CalibrationError, match="authentication file"):
         host._validate_codex_home(codex_home)
+
+
+@pytest.mark.parametrize("mutation", ["unsafe-config", "missing-home"])
+def test_strict_commands_revalidate_complete_codex_home(
+    tmp_path: Path, profile: Path, codex_home: Path, mutation: str
+) -> None:
+    if mutation == "unsafe-config":
+        config = codex_home / "config.toml"
+        config.write_text(
+            "[features]\napps = true\nplugins = false\n", encoding="utf-8"
+        )
+        config.chmod(0o600)
+        message = "apps=false"
+    else:
+        codex_home.rename(tmp_path / "removed-codex-home")
+        message = "does not exist"
+
+    with pytest.raises(host.CalibrationError, match=message):
+        host.plan_profile(profile)
+    with pytest.raises(host.CalibrationError, match=message):
+        host.render_profile(profile, tmp_path / f"candidate-{mutation}")
+    with pytest.raises(host.CalibrationError, match=message):
+        host.verify_profile(profile)
 
 
 def test_codex_auth_rejects_symlink_hardlink_and_foreign_owner(
@@ -1671,6 +1712,11 @@ def test_render_rejects_target_equal_to_configured_host_role(
 
     section_name, key = role.split(".", maxsplit=1)
     section = {"ao": ao, "dashboard": dashboard, "paths": paths}[section_name]
+    if role == "ao.codex_home":
+        original_home = Path(cast(str, ao["codex_home"]))
+        target.mkdir(mode=0o700)
+        for name in ("config.toml", "auth.json"):
+            shutil.copy2(original_home / name, target / name)
     section[key] = str(target)
     if role == "dashboard.pid_file":
         paths["state_root"] = str(tmp_path)
@@ -1681,7 +1727,7 @@ def test_render_rejects_target_equal_to_configured_host_role(
 
     with pytest.raises(host.CalibrationError, match="overlap"):
         host.render_profile(profile, target)
-    assert not target.exists()
+    assert target.exists() is (role == "ao.codex_home")
     assert not (tmp_path / ".candidate.staging").exists()
 
 
@@ -2745,6 +2791,23 @@ def test_init_rejects_state_root_as_pid_file(tmp_path: Path, codex_home: Path) -
         )
 
 
+@pytest.mark.parametrize("temp_name", host.NGINX_TEMP_DIRECTORY_NAMES)
+def test_init_rejects_pid_file_equal_to_nginx_temp_directory(
+    tmp_path: Path, codex_home: Path, temp_name: str
+) -> None:
+    state_root = tmp_path / f"state-{temp_name}"
+    with pytest.raises(host.CalibrationError, match="nginx temp directories"):
+        host.init_profile(
+            tmp_path / f"{temp_name}.toml",
+            trust_model="untrusted",
+            codex_home=codex_home,
+            data_dir=tmp_path / "data",
+            private_authority=tmp_path / "authority/AGENTS.md",
+            state_root=state_root,
+            nginx_pid_file=state_root / temp_name,
+        )
+
+
 def test_v2_profile_rejects_pid_file_outside_state_root(
     tmp_path: Path, profile: Path
 ) -> None:
@@ -2925,6 +2988,12 @@ def test_init_rejects_incomplete_or_invalid_dashboard_trust(
             "mixed-cidr-family.toml",
             cidrs=("203.0.113.0/24", "2001:db8::/32"),
         )
+    with pytest.raises(host.CalibrationError, match="IPv4-mapped read-only CIDRs"):
+        initialize(
+            "mapped-cidr.toml",
+            listen_host="::1",
+            cidrs=("::ffff:127.0.0.1/128",),
+        )
 
     def initialize_terminal(
         name: str,
@@ -2962,6 +3031,24 @@ def test_init_rejects_incomplete_or_invalid_dashboard_trust(
             client_ips=("::ffff:192.0.2.7",),
             origin="https://console.example.test",
             upstream="http://127.0.0.1:3001",
+            origin_mode="preserve",
+        )
+    with pytest.raises(host.CalibrationError, match="must not collide"):
+        initialize(
+            "recursive-upstream.toml",
+            terminal=True,
+            client_ips=("203.0.113.7",),
+            origin="https://console.example.test",
+            upstream="http://127.0.0.1:8443",
+            origin_mode="preserve",
+        )
+    with pytest.raises(host.CalibrationError, match="must not collide"):
+        initialize(
+            "recursive-localhost-upstream.toml",
+            terminal=True,
+            client_ips=("203.0.113.7",),
+            origin="https://console.example.test",
+            upstream="http://localhost:8443",
             origin_mode="preserve",
         )
     scoped = "fe80::1%eth0;\n      allow all;\n      #"
@@ -4544,6 +4631,51 @@ def test_run_and_json_helpers(monkeypatch: pytest.MonkeyPatch) -> None:
     assert not host._required_subset({}, {"name": str})
 
 
+@pytest.mark.parametrize("descriptor", [1, 2])
+def test_run_bounds_combined_probe_output(
+    monkeypatch: pytest.MonkeyPatch, descriptor: int
+) -> None:
+    monkeypatch.setattr(host, "PROBE_OUTPUT_LIMIT_BYTES", 1024)
+    result = host._run(
+        (
+            sys.executable,
+            "-c",
+            f"import os; os.write({descriptor}, b'x' * 4096)",
+        )
+    )
+    marker = "[probe output truncated at 1024 bytes]"
+    assert marker in result.stderr
+    assert len(result.stdout.encode()) + len(result.stderr.encode()) <= 1100
+    assert result.returncode != 0
+
+
+def test_run_timeout_remains_bounded(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(host, "PROBE_TIMEOUT_SECONDS", 0.01)
+    with pytest.raises(subprocess.TimeoutExpired):
+        host._run((sys.executable, "-c", "import time; time.sleep(1)"))
+
+
+def test_run_fails_closed_when_probe_pipes_are_unavailable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class NoPipes:
+        stdout: None = None
+        stderr: None = None
+
+        def kill(self) -> None:
+            pass
+
+        def wait(self) -> int:
+            return -1
+
+    def no_pipe_process(*_args: object, **_kwargs: object) -> NoPipes:
+        return NoPipes()
+
+    monkeypatch.setattr(host.subprocess, "Popen", no_pipe_process)
+    with pytest.raises(OSError, match="probe pipes"):
+        host._run(("probe",))
+
+
 def test_default_inspection_runner_neutralizes_ambient_ao_environment(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
@@ -4614,6 +4746,9 @@ def test_pure_state_and_issue_evaluators() -> None:
         "port": 3001,
         "health": "ok",
         "ready": "ready",
+        "executablePath": "/opt/example/ao",
+        "workingDirectory": "/opt/example/work",
+        "startupWorkingDirectory": "/opt/example/start",
     }
     health = {
         "status": "ok",
@@ -4680,6 +4815,18 @@ def test_pure_state_and_issue_evaluators() -> None:
                 )
                 == "indeterminate"
             )
+        missing_status_identity = dict(status)
+        missing_status_identity.pop(field)
+        assert (
+            host.evaluate_daemon_state(
+                probes,
+                context="host",
+                status=missing_status_identity,
+                health=health,
+                ready=ready,
+            )
+            == "indeterminate"
+        )
     incomplete_health = dict(health)
     incomplete_health.pop("executablePath")
     assert (
@@ -6098,6 +6245,7 @@ def _init_enabled_review_profile(
     private_authority: Path | None = None,
     desired_nginx_artifact: Path | None = None,
     desired_service_artifact: Path | None = None,
+    active_config: Path | None = None,
     desired_service: str = "ao-dashboard.service",
     rollback_service: str = "ao-dashboard-rollback.service",
 ) -> Path:
@@ -6119,7 +6267,7 @@ def _init_enabled_review_profile(
         document_root=document_root or tmp_path / f"{name}-dashboard",
         nginx_executable=Path("/usr/sbin/nginx"),
         nginx_pid_file=state / "nginx.pid",
-        active_config=tmp_path / f"{name}-config/active.conf",
+        active_config=active_config or tmp_path / f"{name}-config/active.conf",
         desired_service=desired_service,
         rollback_service=rollback_service,
         desired_nginx_artifact=(
@@ -6309,6 +6457,29 @@ def test_enabled_dashboard_rejects_symmetric_file_role_ancestor_collisions(
         )
 
 
+def test_dashboard_rejects_file_role_ancestor_of_document_root(
+    tmp_path: Path, codex_home: Path
+) -> None:
+    control = tmp_path / "document-ancestor-control"
+    with pytest.raises(host.CalibrationError, match=r"document_root.*file role"):
+        _init_enabled_review_profile(
+            tmp_path,
+            codex_home,
+            "document-ancestor",
+            active_config=control,
+            document_root=control / "ui",
+        )
+
+
+def test_dashboard_rejects_equal_file_roles() -> None:
+    dashboard = cast(
+        dict[str, object], host._canonical_v2(tomllib.loads(V1_PROFILE))["dashboard"]
+    )
+    dashboard["active_config"] = dashboard["pid_file"]
+    with pytest.raises(host.CalibrationError, match=r"file paths.*must differ"):
+        host._validate_dashboard_role_collisions(dashboard)
+
+
 def test_host_file_role_inspection_fails_closed(
     tmp_path: Path,
     codex_home: Path,
@@ -6339,6 +6510,22 @@ def test_existing_file_role_rejects_directory(tmp_path: Path) -> None:
             directory,
             "file role",
             directory=False,
+        )
+
+
+def test_disabled_dashboard_still_validates_private_authority_file_role(
+    tmp_path: Path, codex_home: Path
+) -> None:
+    authority = tmp_path / "authority-directory"
+    authority.mkdir(mode=0o700)
+    with pytest.raises(host.CalibrationError, match="real regular file"):
+        host.init_profile(
+            tmp_path / "disabled.toml",
+            trust_model="untrusted",
+            codex_home=codex_home,
+            data_dir=tmp_path / "data",
+            private_authority=authority,
+            state_root=tmp_path / "state",
         )
 
 
