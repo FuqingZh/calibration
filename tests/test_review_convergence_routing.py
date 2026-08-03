@@ -18,15 +18,20 @@ def test_harness_defines_bounded_review_convergence_routing() -> None:
     harness = compact("references/engineering/discipline/harness.md")
 
     for phrase in (
-        "same-scope mechanical feedback",
+        "current explicitly declared and authorized pull request contract",
         "existing bounded owner loop",
-        "exact-current-head review expands beyond the pull request's declared contract",
-        "configured retry budget is exhausted",
+        "exact-current-head review proposes work beyond that contract",
         "pause remote review",
         "preserve branch, head, worktree, owner, and feedback state",
+        "reject or escalate the feedback",
+        "accept an authorized contract expansion",
+        "distinct configured review-convergence budget is exhausted",
         "one pull request, independent pull requests, or a dependent stack",
-        "platform-native stacking only for genuinely dependent slices",
+        "Independent slices remain independent pull requests",
+        "For genuinely dependent slices, use platform-native stacking",
         "otherwise use ordinary dependent pull requests",
+        "transport, polling, or idempotent-operation retry budget",
+        "preserve-and-report path and is not a topology signal",
     ):
         assert phrase in harness
 
@@ -43,17 +48,21 @@ def test_calibration_prompts_cover_both_review_convergence_branches() -> None:
     cases = {case["id"]: case for case in prompts}
 
     same_scope = " ".join(cases[20]["expected"].split())
-    assert "继续处理 same-scope mechanical feedback" in same_scope
+    assert "当前明确声明且已授权契约内的 same-scope mechanical feedback" in same_scope
     assert "不应无谓拆分或重新 calibration" in same_scope
 
     reroute = " ".join(cases[21]["expected"].split())
     for phrase in (
         "停止 remote review",
         "preserve branch、head、worktree、owner 和 feedback state",
-        "invoke calibration",
+        "越界 review feedback 不授予 scope authority",
+        "calibration 必须先决定 reject/escalate",
+        "接受已授权的 contract expansion",
         "one PR",
         "independent PRs",
         "dependent stack",
+        "不是 topology signal",
+        "Independent slices 保持 independent PRs",
         "不得发明 scheduler、review tool",
     ):
         assert phrase in reroute
@@ -61,12 +70,13 @@ def test_calibration_prompts_cover_both_review_convergence_branches() -> None:
 
 def test_installer_propagates_global_review_tripwire(tmp_path: Path) -> None:
     expected = (
-        "Continue same-scope mechanical review feedback through the existing "
+        "Continue mechanical review feedback within the current explicitly "
+        "declared and authorized pull request contract through the existing "
         "bounded owner loop."
     )
     template = compact("codex/AGENTS.md.template")
     assert expected in template
-    assert "Invoke calibration when exact-current-head review expands" in template
+    assert "invoke calibration first to reject or escalate" in template
 
     for profile in ("standard", "ao-worker"):
         codex_home = tmp_path / profile
@@ -79,4 +89,5 @@ def test_installer_propagates_global_review_tripwire(tmp_path: Path) -> None:
             (codex_home / "AGENTS.md").read_text(encoding="utf-8").split()
         )
         assert expected in installed
-        assert "configured retry budget is exhausted" in installed
+        assert "distinct configured review-convergence budget is exhausted" in installed
+        assert "is not a topology signal" in installed

@@ -331,15 +331,20 @@ When a repository change is intended to land through a pull request:
    observe or modify an external control plane, report the exact authorization
    or configuration action without claiming completion.
 
-For review convergence, continue same-scope mechanical feedback through the
-existing bounded owner loop. When exact-current-head review expands beyond the
-pull request's declared contract or the configured retry budget is exhausted,
-pause remote review, preserve branch, head, worktree, owner, and feedback
-state, and invoke calibration to choose among one pull request, independent
-pull requests, or a dependent stack. Use platform-native stacking only for
-genuinely dependent slices and only when available; otherwise use ordinary
-dependent pull requests. Do not impose universal LOC, file-count, or
-review-round thresholds.
+For review convergence, continue mechanical feedback within the current
+explicitly declared and authorized pull request contract through the existing
+bounded owner loop. When exact-current-head review proposes work beyond that
+contract, pause remote review, preserve branch, head, worktree, owner, and
+feedback state, and invoke calibration first to reject or escalate the feedback
+or to accept an authorized contract expansion. Only after accepting an
+expansion, or when the distinct configured review-convergence budget is
+exhausted, use calibration to choose among one pull request, independent pull
+requests, or a dependent stack. Independent slices remain independent pull
+requests. For genuinely dependent slices, use platform-native stacking when
+available; otherwise use ordinary dependent pull requests. Exhaustion of a
+transport, polling, or idempotent-operation retry budget retains its existing
+preserve-and-report path and is not a topology signal. Do not impose universal
+LOC, file-count, or review-round thresholds.
 
 A cloud environment is an execution surface, not the repository's source of
 truth. Start with automatic setup and customize it only after a representative

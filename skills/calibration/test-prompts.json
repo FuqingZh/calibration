@@ -116,13 +116,13 @@
   {
     "id": 20,
     "scenario": "Review convergence：同范围机械反馈继续收敛",
-    "prompt": "当前 PR 的 exact-current-head 自动审查只要求修正一个拼写和更新已有断言，都在 PR 声明的契约内，重试预算也未耗尽。是否应该暂停审查、拆 PR 或重新调用 calibration？",
-    "expected": "不应无谓拆分或重新 calibration。拥有者应在现有 bounded owner loop 内继续处理 same-scope mechanical feedback，保持当前 PR 和所有权，并在修复后重新运行相关验证与 exact-current-head review。不得因为一次机械反馈发明 LOC、文件数或 review-round 阈值。"
+    "prompt": "当前 PR 的 exact-current-head 自动审查只要求修正一个拼写和更新已有断言，都在当前明确声明且已授权的 PR 契约内，review-convergence 预算也未耗尽。是否应该暂停审查、拆 PR 或重新调用 calibration？",
+    "expected": "不应无谓拆分或重新 calibration。拥有者应在现有 bounded owner loop 内继续处理当前明确声明且已授权契约内的 same-scope mechanical feedback，保持当前 PR 和所有权，并在修复后重新运行相关验证与 exact-current-head review。不得因为一次机械反馈发明 LOC、文件数或 review-round 阈值。"
   },
   {
     "id": 21,
     "scenario": "Review convergence：跨契约扩张或预算耗尽",
-    "prompt": "当前 PR 的 exact-current-head 审查要求新增一个超出原始契约的公共 API；另一种情况是配置的重试预算已经耗尽。接下来应继续扩大当前 PR，还是自动建一个定时任务反复审查？",
-    "expected": "任一 tripwire 触发时都应停止 remote review，preserve branch、head、worktree、owner 和 feedback state，并 invoke calibration 决定维持 one PR、拆成 independent PRs，或建立 dependent stack。只有 genuinely dependent slices 且平台可用时使用 platform-native stacking，否则使用 ordinary dependent PRs。不得擅自扩大原契约，也不得发明 scheduler、review tool、通用 LOC/file/review-round thresholds 或自动化产品功能。"
+    "prompt": "当前 PR 的 exact-current-head 审查要求新增一个超出当前明确声明且已授权契约的公共 API；另一种情况是独立配置的 review-convergence 预算已经耗尽。接下来应继续扩大当前 PR，还是自动建一个定时任务反复审查？",
+    "expected": "任一 tripwire 触发时都应停止 remote review 并 preserve branch、head、worktree、owner 和 feedback state。越界 review feedback 不授予 scope authority；calibration 必须先决定 reject/escalate，或接受已授权的 contract expansion，只有接受后才决定维持 one PR、拆成 independent PRs，或建立 dependent stack。review-convergence budget 必须与 transport、polling 或 idempotent-operation retry budget 区分，后者耗尽沿用 preserve-and-report path，不是 topology signal。Independent slices 保持 independent PRs；只有 genuinely dependent slices 才在平台可用时使用 platform-native stacking，否则使用 ordinary dependent PRs。不得发明 scheduler、review tool、通用 LOC/file/review-round thresholds 或自动化产品功能。"
   }
 ]
