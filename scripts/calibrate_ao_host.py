@@ -37,6 +37,8 @@ PROBE_TIMEOUT_SECONDS = 10
 UNAVAILABLE_CONFIRMATION_DELAY_SECONDS = 1.0
 DASHBOARD_TREE_ENTRY_LIMIT = 10_000
 DASHBOARD_HEALTH_BODY_LIMIT = 64 * 1024
+PROFILE_INPUT_LIMIT_BYTES = 1024 * 1024
+SYSTEMD_UNIT_NAME_LIMIT_BYTES = 255
 DASHBOARD_HEALTH_MARKER = "\nCALIBRATION_DASHBOARD_HEALTH_META\t"
 CURL_PROBE_PREFIX = ("curl", "-q", "--noproxy", "*")
 AO_PROBE_ENVIRONMENT_OVERRIDES = (
@@ -417,6 +419,8 @@ def _validate_interpolated_scalar(value: object, label: str) -> str:
 def _validate_service_unit(value: object, label: str) -> str:
     if (
         not isinstance(value, str)
+        or len(value.encode("utf-8")) > SYSTEMD_UNIT_NAME_LIMIT_BYTES
+        or value.endswith("@.service")
         or re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.@-]*\.service", value) is None
     ):
         raise CalibrationError(f"{label} must be a safe systemd service unit")
@@ -573,8 +577,12 @@ def _is_unavailable_observation(probes: Mapping[str, Evidence]) -> bool:
 
 def _is_ao_not_installed_observation(probes: Mapping[str, Evidence]) -> bool:
     ao_version = probes["ao-version"]
-    return ao_version.status == "fail" and ao_version.detail.startswith(
-        "FileNotFoundError:"
+    return (
+        ao_version.status == "fail"
+        and ao_version.detail.startswith("FileNotFoundError:")
+        and probes["systemd-active"].status == "fail"
+        and probes["healthz"].status == "fail"
+        and probes["readyz"].status == "fail"
     )
 
 
@@ -683,10 +691,10 @@ def evaluate_delivery_state(
     external_failure: bool = False,
 ) -> str:
     """Classify Dashboard delivery independently from daemon readiness."""
-    if daemon_state == "ready" and external_failure:
-        return "degraded"
     if dashboard_enabled is False:
         return "not_applicable"
+    if daemon_state == "ready" and external_failure:
+        return "degraded"
     if dashboard_enabled is None or daemon_state != "ready":
         return "indeterminate"
     if probes["dashboard"].status == "unknown":
@@ -1389,13 +1397,22 @@ def _validate_listener_network_families(
         raise CalibrationError(
             "read-only dashboard requires a trusted CIDR for its listener family"
         )
-    if terminal.get("desired_enabled") is True and not all(
-        _parse_unscoped_ip_address(client).version == listener_version
-        for client in cast(list[str], terminal["allowed_client_ips"])
-    ):
-        raise CalibrationError(
-            "terminal requires an allowed client IP for its listener family"
-        )
+    if terminal.get("desired_enabled") is True:
+        clients = [
+            _parse_unscoped_ip_address(client)
+            for client in cast(list[str], terminal["allowed_client_ips"])
+        ]
+        if listener_version == 6 and any(
+            isinstance(client, ipaddress.IPv6Address) and client.ipv4_mapped is not None
+            for client in clients
+        ):
+            raise CalibrationError(
+                "IPv6 dashboard listeners reject IPv4-mapped terminal clients"
+            )
+        if not all(client.version == listener_version for client in clients):
+            raise CalibrationError(
+                "terminal requires an allowed client IP for its listener family"
+            )
 
 
 def _validate_pid_file_within_state_root(
@@ -1804,11 +1821,17 @@ def _validate_host_file_role_collisions(
     inode_roles: dict[tuple[int, int], str] = {}
     for label, path in _configured_host_file_role_paths(profile, source_profile):
         resolved = path.resolve(strict=False)
-        previous = resolved_roles.get(resolved)
-        if previous is not None:
+        exact_previous = resolved_roles.get(resolved)
+        if exact_previous is not None:
             raise CalibrationError(
-                f"configured host file roles must differ: {previous} and {label}"
+                f"configured host file roles must differ: {exact_previous} and {label}"
             )
+        for previous_path, previous in resolved_roles.items():
+            if resolved != previous_path and _paths_overlap(resolved, previous_path):
+                raise CalibrationError(
+                    "configured host file roles must not overlap as ancestors: "
+                    f"{previous} and {label}"
+                )
         resolved_roles[resolved] = label
         try:
             metadata = path.lstat()
@@ -1893,6 +1916,50 @@ def _validate_render_destination_roles(
                 )
 
 
+def _read_profile_text(path: Path) -> str:
+    """Read one bounded regular profile without following a final symlink."""
+    flags = os.O_RDONLY
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    if hasattr(os, "O_CLOEXEC"):
+        flags |= os.O_CLOEXEC
+    if hasattr(os, "O_NONBLOCK"):
+        flags |= os.O_NONBLOCK
+    try:
+        descriptor = os.open(path, flags)
+        try:
+            metadata = os.fstat(descriptor)
+            if not stat.S_ISREG(metadata.st_mode):
+                raise CalibrationError("profile must be a regular file")
+            if metadata.st_size > PROFILE_INPUT_LIMIT_BYTES:
+                raise CalibrationError(
+                    f"profile must not exceed {PROFILE_INPUT_LIMIT_BYTES} bytes"
+                )
+            chunks: list[bytes] = []
+            remaining = PROFILE_INPUT_LIMIT_BYTES + 1
+            while remaining:
+                chunk = os.read(descriptor, remaining)
+                if not chunk:
+                    break
+                chunks.append(chunk)
+                remaining -= len(chunk)
+            content = b"".join(chunks)
+            if len(content) > PROFILE_INPUT_LIMIT_BYTES:
+                raise CalibrationError(
+                    f"profile must not exceed {PROFILE_INPUT_LIMIT_BYTES} bytes"
+                )
+        finally:
+            os.close(descriptor)
+    except CalibrationError:
+        raise
+    except OSError as exc:
+        raise CalibrationError(f"{path} cannot be read safely: {exc}") from exc
+    try:
+        return content.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise CalibrationError(f"{path} must contain UTF-8 TOML") from exc
+
+
 def _load_profile_data(path: Path, *, structural_only: bool) -> dict[str, object]:
     if structural_only:
         try:
@@ -1907,8 +1974,8 @@ def _load_profile_data(path: Path, *, structural_only: bool) -> dict[str, object
         safe = _safe_path(path, may_create=False, directory=False)
         _private_chain_missing_components(safe.parent)
     try:
-        profile = tomllib.loads(safe.read_text(encoding="utf-8"))
-    except (OSError, tomllib.TOMLDecodeError) as exc:
+        profile = tomllib.loads(_read_profile_text(safe))
+    except tomllib.TOMLDecodeError as exc:
         raise CalibrationError(f"{safe} must contain valid TOML: {exc}") from exc
     version = profile.get("schema_version", 1)
     if type(version) is not int or version not in {1, 2}:
@@ -3036,6 +3103,7 @@ def verify_profile(path: Path, *, candidate: Path | None = None) -> dict[str, ob
     version = cast(int, profile.get("schema_version", 1))
     if candidate is not None:
         root = _safe_path(candidate, may_create=False, directory=True)
+        _validate_publish_parent(root.parent)
         canonical = _canonical_v2(profile)
         _validate_dashboard_public_root(
             canonical,
@@ -3482,9 +3550,11 @@ def main(argv: Sequence[str] | None = None, *, runner: Runner | None = None) -> 
     try:
         if args.command == "inspect":
             result = inspect_host(runner, profile=args.profile, context=args.context)
+            states = cast(dict[str, object], result["states"])
             code = (
                 EXIT_OK
-                if cast(dict[str, object], result["states"])["daemon"] == "ready"
+                if states.get("daemon") == "ready"
+                and states.get("delivery") in {"ready", "not_applicable"}
                 else EXIT_PROBE
             )
         elif args.command == "init":

@@ -575,6 +575,56 @@ def test_structural_profile_loader_rejects_unexpandable_and_relative_paths(
         host._load_profile_structure(source)
 
 
+def test_structural_profile_loader_requires_bounded_regular_input(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    directory = tmp_path / "profile-directory"
+    directory.mkdir(mode=0o700)
+    with pytest.raises(host.CalibrationError, match="regular file"):
+        host._load_profile_structure(directory)
+
+    oversized = tmp_path / "oversized.toml"
+    oversized.write_bytes(b"x" * (host.PROFILE_INPUT_LIMIT_BYTES + 1))
+    oversized.chmod(0o600)
+    with pytest.raises(host.CalibrationError, match="must not exceed"):
+        host._load_profile_structure(oversized)
+
+    invalid_utf8 = tmp_path / "invalid-utf8.toml"
+    invalid_utf8.write_bytes(b"\xff")
+    invalid_utf8.chmod(0o600)
+    with pytest.raises(host.CalibrationError, match="UTF-8 TOML"):
+        host._load_profile_structure(invalid_utf8)
+
+    original_open = os.open
+
+    def denied_open(path: os.PathLike[str] | str, flags: int) -> int:
+        if Path(path) == invalid_utf8:
+            raise PermissionError("denied")
+        return original_open(path, flags)
+
+    monkeypatch.setattr(host.os, "open", denied_open)
+    with pytest.raises(host.CalibrationError, match="cannot be read safely"):
+        host._load_profile_structure(invalid_utf8)
+
+
+def test_profile_reader_detects_growth_beyond_bound(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    profile = tmp_path / "growing.toml"
+    profile.write_bytes(b"x" * (host.PROFILE_INPUT_LIMIT_BYTES + 1))
+    original_fstat = os.fstat
+
+    def hidden_size(descriptor: int) -> os.stat_result:
+        metadata = original_fstat(descriptor)
+        fields = list(metadata)
+        fields[6] = 0
+        return os.stat_result(fields)
+
+    monkeypatch.setattr(host.os, "fstat", hidden_size)
+    with pytest.raises(host.CalibrationError, match="must not exceed"):
+        host._read_profile_text(profile)
+
+
 def test_full_probe_json_is_parsed_before_display_truncation() -> None:
     extension = "x" * 3000
     status = json.dumps(
@@ -2895,6 +2945,17 @@ def test_init_rejects_incomplete_or_invalid_dashboard_trust(
             ("203.0.113.7", "2001:db8::7"),
             origin_mode="edge-validated-rewrite",
         )
+    with pytest.raises(host.CalibrationError, match="IPv4-mapped terminal clients"):
+        initialize(
+            "mapped-client.toml",
+            listen_host="2001:db8::1",
+            cidrs=("2001:db8::/64",),
+            terminal=True,
+            client_ips=("::ffff:192.0.2.7",),
+            origin="https://console.example.test",
+            upstream="http://127.0.0.1:3001",
+            origin_mode="preserve",
+        )
     scoped = "fe80::1%eth0;\n      allow all;\n      #"
     with pytest.raises(host.CalibrationError, match="exact listen IP"):
         initialize("scoped-listener.toml", listen_host=scoped)
@@ -3695,6 +3756,21 @@ def test_candidate_identity_inspection_error_is_bounded(
         host._validate_tree_identity(target)
 
 
+def test_verify_candidate_requires_trusted_parent_chain(
+    tmp_path: Path, profile: Path
+) -> None:
+    parent = tmp_path / "candidate-parent"
+    parent.mkdir(mode=0o700)
+    candidate = parent / "candidate"
+    host.render_profile(profile, candidate)
+    parent.chmod(0o770)
+    try:
+        with pytest.raises(host.CalibrationError, match="untrusted group or other"):
+            host.verify_profile(profile, candidate=candidate)
+    finally:
+        parent.chmod(0o700)
+
+
 def test_render_rejects_noncanonical_staging_content(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path, profile: Path
 ) -> None:
@@ -3908,7 +3984,7 @@ def test_cli_fixed_json_schema_and_exit_codes(
         context: str = "auto",
     ) -> dict[str, object]:
         del _runner, profile, context
-        return {"states": {"daemon": "indeterminate"}}
+        return {"states": {"daemon": "indeterminate", "delivery": "indeterminate"}}
 
     monkeypatch.setattr(host, "inspect_host", fake_inspect)
     assert host.main(["inspect"]) == host.EXIT_PROBE
@@ -3922,6 +3998,31 @@ def test_cli_fixed_json_schema_and_exit_codes(
         host.main(["render", "--profile", str(profile), "--output", str(output)]) == 0
     )
     capsys.readouterr()
+
+
+@pytest.mark.parametrize(
+    ("delivery", "expected"),
+    [("degraded", host.EXIT_PROBE), ("not_applicable", host.EXIT_OK)],
+)
+def test_inspect_exit_reflects_enabled_delivery_failure(
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+    delivery: str,
+    expected: int,
+) -> None:
+    def fake_inspect(
+        _runner: host.Runner = host._run,
+        *,
+        profile: Path | None = None,
+        context: str = "auto",
+    ) -> dict[str, object]:
+        del _runner, profile, context
+        return {"states": {"daemon": "ready", "delivery": delivery}}
+
+    monkeypatch.setattr(host, "inspect_host", fake_inspect)
+    assert host.main(["inspect", "--context", "host"]) == expected
+    payload = json.loads(capsys.readouterr().out)
+    assert cast(dict[str, object], payload["states"])["delivery"] == delivery
 
 
 def test_cli_init_path(
@@ -4595,12 +4696,27 @@ def test_pure_state_and_issue_evaluators() -> None:
             health=health,
             ready=ready,
         )
-        == "not_installed"
+        == "indeterminate"
     )
     missing_ao["healthz"] = host.Evidence("healthz", "daemon", "fail", "missing")
     assert (
         host.evaluate_daemon_state(
             missing_ao,
+            context="host",
+            status=status,
+            health=health,
+            ready=ready,
+        )
+        == "indeterminate"
+    )
+    absent_ao = dict(missing_ao)
+    absent_ao["systemd-active"] = host.Evidence(
+        "systemd-active", "host", "fail", "inactive"
+    )
+    absent_ao["readyz"] = host.Evidence("readyz", "daemon", "fail", "missing")
+    assert (
+        host.evaluate_daemon_state(
+            absent_ao,
             context="host",
             status=status,
             health=health,
@@ -4758,6 +4874,7 @@ def test_pure_state_and_issue_evaluators() -> None:
             daemon_state="ready",
             dashboard_enabled=False,
             terminal_enabled=False,
+            external_failure=True,
         )
         == "not_applicable"
     )
@@ -5433,7 +5550,10 @@ def test_absolute_ao_cli_requires_trusted_executable_path(tmp_path: Path) -> Non
         ("rollback_service", 'rollback_service = "ao-dashboard-rollback.service"'),
     ],
 )
-@pytest.mark.parametrize("unsafe", ["--system", "--system.service", "/tmp/x.service"])
+@pytest.mark.parametrize(
+    "unsafe",
+    ["--system", "--system.service", "/tmp/x.service", "worker@.service"],
+)
 def test_service_fields_require_safe_unit_identifiers(
     tmp_path: Path, field: str, original: str, unsafe: str
 ) -> None:
@@ -5445,6 +5565,18 @@ def test_service_fields_require_safe_unit_identifiers(
     profile.chmod(0o600)
     with pytest.raises(host.CalibrationError, match="systemd service unit"):
         host.plan_profile(profile)
+
+
+def test_service_unit_name_byte_limit_and_instance_contract() -> None:
+    maximum = "a" * (host.SYSTEMD_UNIT_NAME_LIMIT_BYTES - len(".service")) + ".service"
+    oversized = "a" + maximum
+    assert host._validate_service_unit(maximum, "service") == maximum
+    assert (
+        host._validate_service_unit("worker@42.service", "service")
+        == "worker@42.service"
+    )
+    with pytest.raises(host.CalibrationError, match="systemd service unit"):
+        host._validate_service_unit(oversized, "service")
 
 
 @pytest.mark.parametrize("value", ["true", "1.0"])
@@ -6144,6 +6276,27 @@ def test_enabled_dashboard_rejects_file_role_inode_aliases(
 
     with pytest.raises(host.CalibrationError, match="must not alias the same file"):
         host.plan_profile(profile)
+
+
+@pytest.mark.parametrize("authority_is_parent", [False, True])
+def test_enabled_dashboard_rejects_symmetric_file_role_ancestor_collisions(
+    tmp_path: Path, codex_home: Path, authority_is_parent: bool
+) -> None:
+    base = tmp_path / f"ancestor-role-{authority_is_parent}"
+    private_authority = base / "authority"
+    nginx_artifact = base / "artifact"
+    if authority_is_parent:
+        nginx_artifact = private_authority / "nginx.conf"
+    else:
+        private_authority = nginx_artifact / "AGENTS.md"
+    with pytest.raises(host.CalibrationError, match="overlap as ancestors"):
+        _init_enabled_review_profile(
+            tmp_path,
+            codex_home,
+            f"ancestor-role-{authority_is_parent}",
+            private_authority=private_authority,
+            desired_nginx_artifact=nginx_artifact,
+        )
 
 
 def test_host_file_role_inspection_fails_closed(
