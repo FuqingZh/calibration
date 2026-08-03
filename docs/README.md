@@ -4,10 +4,12 @@ This directory records calibration decisions, evaluations, historical plans,
 and portable integration guidance. Reusable cross-project engineering guidance
 lives under `../references/engineering/`.
 
-Calibration is in stable maintenance mode. The bounded CAL-1 containment
-public contract is delivered without a behavioral-improvement claim. A future
-evaluation is not an active phase; upstream systemd containment remains a
-proposal rather than current AO behavior.
+Calibration is in stable maintenance mode with no active implementation phase.
+The bounded review-convergence routing v2.3 increment clarifies a portable
+contract only and makes no behavioral-improvement claim. The bounded CAL-1
+containment public contract is delivered without a behavioral-improvement
+claim. A future evaluation is not an active phase. Upstream systemd containment
+remains a proposal rather than current AO behavior.
 
 ## Public Architecture
 
@@ -45,6 +47,7 @@ back to `$HOME/.config/calibration/AGENTS.md`.
 | Dashboard terminal boundary | `decisions/2026-07-30-dashboard-terminal-access-boundary.md` |
 | Portable orchestrator containment | `decisions/2026-07-31-portable-orchestrator-containment.md` |
 | CAL-1 implementation status | `implementation-plan/20260731-v2.1-portable-orchestrator-containment-implementation-plan.md` |
+| Review-convergence routing status | `implementation-plan/20260803-v2.3-review-convergence-routing-implementation-plan.md` |
 
 The current default is outcome autonomy within repository-local, reversible
 boundaries. AO is optional and conditional. Ordinary engineering tasks do not

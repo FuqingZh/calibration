@@ -331,6 +331,16 @@ When a repository change is intended to land through a pull request:
    observe or modify an external control plane, report the exact authorization
    or configuration action without claiming completion.
 
+For review convergence, continue same-scope mechanical feedback through the
+existing bounded owner loop. When exact-current-head review expands beyond the
+pull request's declared contract or the configured retry budget is exhausted,
+pause remote review, preserve branch, head, worktree, owner, and feedback
+state, and invoke calibration to choose among one pull request, independent
+pull requests, or a dependent stack. Use platform-native stacking only for
+genuinely dependent slices and only when available; otherwise use ordinary
+dependent pull requests. Do not impose universal LOC, file-count, or
+review-round thresholds.
+
 A cloud environment is an execution surface, not the repository's source of
 truth. Start with automatic setup and customize it only after a representative
 task exposes a concrete gap. Keep setup logic in the repository when local,
@@ -410,3 +420,8 @@ or access configuration into cross-project calibration rules.
 Complete a harness change only when the observed gap, selected owner, smallest
 capability, and verification path are explicit. Evaluate representative
 behavior separately when claiming the system became more effective.
+
+## Further reading
+
+- [DORA: Working in small batches](https://dora.dev/capabilities/working-in-small-batches/)
+- [Google Engineering Practices: Small CLs](https://google.github.io/eng-practices/review/developer/small-cls.html)

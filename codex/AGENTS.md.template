@@ -88,6 +88,13 @@ state and report the actual stop reason. Use `delivery degraded` only for a
 corresponding external integration or authentication failure while the core
 daemon remains ready.
 
+Continue same-scope mechanical review feedback through the existing bounded
+owner loop. Invoke calibration when exact-current-head review expands beyond
+the pull request's original contract or the configured retry budget is
+exhausted; pause remote review and preserve branch, head, worktree, owner, and
+feedback state while calibration selects one pull request, independent pull
+requests, or a genuinely dependent stack.
+
 If AO is unavailable, isolated-worktree fallback applies only to new or unowned
 PR-bound work. Preserve an existing AO-owned PR's branch, worktree, and feedback
 until AO or owner restoration unless a real enforceable containment or
