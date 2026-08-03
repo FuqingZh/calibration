@@ -42,6 +42,7 @@ DASHBOARD_HEALTH_BODY_LIMIT = 64 * 1024
 PROFILE_INPUT_LIMIT_BYTES = 1024 * 1024
 CODEX_COMPAT_INPUT_LIMIT_BYTES = 1024 * 1024
 SYSTEMD_UNIT_NAME_LIMIT_BYTES = 255
+DASHBOARD_MIN_UNPRIVILEGED_PORT = 1024
 NGINX_TEMP_DIRECTORY_NAMES = (
     "nginx-client-body",
     "nginx-proxy",
@@ -1510,8 +1511,11 @@ def _validate_listener_network_families(
     listen_host: str,
     readonly_cidrs: Sequence[str],
     terminal: Mapping[str, object],
+    *,
+    require_loopback_access: bool = True,
 ) -> None:
-    listener_version = _parse_unscoped_ip_address(listen_host).version
+    listener = _parse_unscoped_ip_address(listen_host)
+    listener_version = listener.version
     networks = [_parse_unscoped_ip_network(cidr) for cidr in readonly_cidrs]
     if not all(network.version == listener_version for network in networks):
         raise CalibrationError(
@@ -1524,6 +1528,14 @@ def _validate_listener_network_families(
     ):
         raise CalibrationError(
             "IPv6 dashboard listeners reject IPv4-mapped read-only CIDRs"
+        )
+    if (
+        require_loopback_access
+        and listener.is_loopback
+        and not any(listener in network for network in networks)
+    ):
+        raise CalibrationError(
+            "loopback dashboard listeners require a usable loopback trusted CIDR"
         )
     if terminal.get("desired_enabled") is True:
         clients = [
@@ -1640,6 +1652,7 @@ def _validate_control_path(
     label: str,
     *,
     executable: bool = False,
+    readable: bool = False,
 ) -> None:
     missing_parent_components = _private_chain_missing_components(path.parent)
     try:
@@ -1671,6 +1684,10 @@ def _validate_control_path(
             ) from exc
         if metadata.st_uid not in {0, os.geteuid(), trust_anchor.st_uid}:
             raise CalibrationError(f"{label} must have a trusted owner when it exists")
+        if readable and not os.access(path, os.R_OK, effective_ids=True):
+            raise CalibrationError(
+                f"{label} must be readable by the service identity when it exists"
+            )
     _validate_existing_path_role(
         path,
         label,
@@ -1738,6 +1755,7 @@ def _validate_dashboard_path_roles(
     _validate_control_path(
         Path(cast(str, dashboard["active_config"])),
         "dashboard.active_config",
+        readable=True,
     )
     if "nginx_executable" in dashboard:
         _validate_control_path(
@@ -2277,6 +2295,11 @@ def _load_profile_data(
         raise CalibrationError("dashboard.listen_port must be an integer port")
     if dashboard.get("mode", "read-only") == "read-only" and listen_port == 0:
         raise CalibrationError("enabled dashboard listen_port must be 1 through 65535")
+    if (
+        dashboard.get("mode", "read-only") == "read-only"
+        and listen_port < DASHBOARD_MIN_UNPRIVILEGED_PORT
+    ):
+        raise CalibrationError("enabled dashboard listen_port must be unprivileged")
     if dashboard.get("mode", "read-only") == "read-only" and listen_ip.is_multicast:
         raise CalibrationError("enabled dashboard listen_host must not be multicast")
     if dashboard.get("mode", "read-only") == "read-only" and listen_ip.is_link_local:
@@ -2397,6 +2420,7 @@ def _load_profile_data(
             listen_host,
             cast(list[str], cidr_values),
             terminal,
+            require_loopback_access=version == 2,
         )
     return cast(dict[str, object], profile)
 
@@ -2620,6 +2644,15 @@ def _canonical_v2(profile: Mapping[str, object]) -> dict[str, object]:
         if terminal.get("trust_model") == "single-user-trusted-lan":
             terminal["trust_model"] = "trusted-single-user"
         terminal["origin_mode"] = "edge-validated-rewrite"
+        listener = _parse_unscoped_ip_address(cast(str, dashboard["listen_host"]))
+        readonly_cidrs = cast(list[str], dashboard["trusted_readonly_cidrs"])
+        if listener.is_loopback and not any(
+            listener in _parse_unscoped_ip_network(cidr) for cidr in readonly_cidrs
+        ):
+            dashboard["trusted_readonly_cidrs"] = [
+                *readonly_cidrs,
+                f"{listener}/{listener.max_prefixlen}",
+            ]
     else:
         terminal.setdefault("origin_mode", "preserve")
     dashboard["terminal"] = terminal
@@ -2825,6 +2858,12 @@ def init_profile(
         raise CalibrationError(
             "enabled dashboard requires a listen port from 1 through 65535"
         )
+    if (
+        dashboard_enabled
+        and dashboard_listen_port is not None
+        and dashboard_listen_port < DASHBOARD_MIN_UNPRIVILEGED_PORT
+    ):
+        raise CalibrationError("enabled dashboard listen port must be unprivileged")
     if terminal and (
         not dashboard_enabled
         or not client_ips

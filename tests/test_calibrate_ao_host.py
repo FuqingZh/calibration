@@ -1176,7 +1176,7 @@ def test_init_render_verify_round_trip_and_manifest(
         dashboard_enabled=True,
         dashboard_listen_host="127.0.0.1",
         dashboard_listen_port=8443,
-        readonly_cidrs=("203.0.113.0/24",),
+        readonly_cidrs=("127.0.0.1/32", "203.0.113.0/24"),
         document_root=tmp_path / "dashboard",
         nginx_executable=Path("/usr/sbin/nginx"),
         nginx_pid_file=tmp_path / "state/nginx.pid",
@@ -1296,7 +1296,7 @@ def test_public_dashboard_root_excludes_profile_and_candidate_trees(
             dashboard_enabled=enabled,
             dashboard_listen_host="127.0.0.1",
             dashboard_listen_port=18443,
-            readonly_cidrs=("203.0.113.0/24",),
+            readonly_cidrs=("127.0.0.1/32", "203.0.113.0/24"),
             document_root=public_root,
             nginx_executable=Path("/usr/sbin/nginx"),
             nginx_pid_file=private_root / "state/nginx.pid",
@@ -2774,6 +2774,31 @@ def test_enabled_link_local_profile_is_rejected_by_strict_loader(
         host.plan_profile(profile)
 
 
+@pytest.mark.parametrize(
+    ("old", "new", "message"),
+    [
+        ("listen_port = 8443", "listen_port = 443", "unprivileged"),
+        (
+            'trusted_readonly_cidrs = ["127.0.0.1/32"]',
+            'trusted_readonly_cidrs = ["203.0.113.0/24"]',
+            "usable loopback",
+        ),
+    ],
+)
+def test_enabled_profile_rejects_unusable_listener_delivery(
+    tmp_path: Path, codex_home: Path, old: str, new: str, message: str
+) -> None:
+    profile = _init_enabled_review_profile(
+        tmp_path, codex_home, f"listener-delivery-{message.replace(' ', '-')}"
+    )
+    profile.write_text(
+        profile.read_text(encoding="utf-8").replace(old, new), encoding="utf-8"
+    )
+    profile.chmod(0o600)
+    with pytest.raises(host.CalibrationError, match=message):
+        host.plan_profile(profile)
+
+
 def test_init_publication_is_exclusive_and_preserves_competing_file(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path, codex_home: Path
 ) -> None:
@@ -3138,7 +3163,7 @@ def test_init_rejects_incomplete_or_invalid_dashboard_trust(
         *,
         listen_host: str = "127.0.0.1",
         listen_port: int = 8443,
-        cidrs: Sequence[str] = ("203.0.113.0/24",),
+        cidrs: Sequence[str] = ("127.0.0.1/32",),
         terminal: bool = False,
         document_root: Path | None = None,
         client_ips: Sequence[str] = (),
@@ -3176,6 +3201,10 @@ def test_init_rejects_incomplete_or_invalid_dashboard_trust(
 
     with pytest.raises(host.CalibrationError, match="listen port"):
         initialize("port.toml", listen_port=0)
+    with pytest.raises(host.CalibrationError, match="unprivileged"):
+        initialize("privileged-port.toml", listen_port=443)
+    with pytest.raises(host.CalibrationError, match="usable loopback"):
+        initialize("remote-only-cidr.toml", cidrs=("203.0.113.0/24",))
     with pytest.raises(host.CalibrationError, match="unsafe configuration syntax"):
         initialize("bind-colon.toml", document_root=tmp_path / "dashboard:injected")
     with pytest.raises(host.CalibrationError, match="listen port"):
@@ -3305,7 +3334,7 @@ def test_enabled_dashboard_validates_path_roles_and_distinct_services(
             dashboard_enabled=True,
             dashboard_listen_host="127.0.0.1",
             dashboard_listen_port=8443,
-            readonly_cidrs=("203.0.113.0/24",),
+            readonly_cidrs=("127.0.0.1/32", "203.0.113.0/24"),
             document_root=document_root or tmp_path / f"{name}-dashboard",
             nginx_executable=nginx_executable or Path("/usr/sbin/nginx"),
             nginx_pid_file=nginx_pid_file or state / "nginx.pid",
@@ -3759,6 +3788,37 @@ def test_dashboard_document_files_must_be_service_readable(tmp_path: Path) -> No
         asset.chmod(0o600)
 
 
+def test_active_dashboard_config_must_be_service_readable(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    active = tmp_path / "active.conf"
+    active.write_text("events {}", encoding="utf-8")
+    active.chmod(0o600)
+    original_access = os.access
+
+    def unreadable(
+        path: os.PathLike[str] | str,
+        mode: int,
+        *,
+        dir_fd: int | None = None,
+        effective_ids: bool = False,
+        follow_symlinks: bool = True,
+    ) -> bool:
+        if Path(path) == active and mode == os.R_OK:
+            return False
+        return original_access(
+            path,
+            mode,
+            dir_fd=dir_fd,
+            effective_ids=effective_ids,
+            follow_symlinks=follow_symlinks,
+        )
+
+    monkeypatch.setattr(os, "access", unreadable)
+    with pytest.raises(host.CalibrationError, match="service identity"):
+        host._validate_control_path(active, "dashboard.active_config", readable=True)
+
+
 def test_dashboard_directories_must_be_service_searchable(tmp_path: Path) -> None:
     root = tmp_path / "unsearchable-dashboard"
     root.mkdir(mode=0o600)
@@ -3784,7 +3844,7 @@ def test_terminal_requires_explicit_origin_mode(
             dashboard_enabled=True,
             dashboard_listen_host="127.0.0.1",
             dashboard_listen_port=8443,
-            readonly_cidrs=("203.0.113.0/24",),
+            readonly_cidrs=("127.0.0.1/32", "203.0.113.0/24"),
             document_root=tmp_path / "dashboard",
             nginx_executable=Path("/usr/sbin/nginx"),
             nginx_pid_file=state / "nginx.pid",
@@ -3815,7 +3875,7 @@ def test_v2_terminal_profile_requires_origin_mode(
         dashboard_enabled=True,
         dashboard_listen_host="127.0.0.1",
         dashboard_listen_port=8443,
-        readonly_cidrs=("203.0.113.0/24",),
+        readonly_cidrs=("127.0.0.1/32", "203.0.113.0/24"),
         document_root=tmp_path / "dashboard",
         nginx_executable=Path("/usr/sbin/nginx"),
         nginx_pid_file=state / "nginx.pid",
@@ -4529,6 +4589,8 @@ def test_cli_init_accepts_explicit_single_user_dashboard_contract(
         "--dashboard-listen-port",
         "8443",
         "--readonly-cidr",
+        "127.0.0.1/32",
+        "--readonly-cidr",
         "203.0.113.0/24",
         "--document-root",
         str(tmp_path / "dashboard"),
@@ -4591,7 +4653,7 @@ def test_generated_terminal_candidate_passes_nginx_test_when_available(
         dashboard_enabled=True,
         dashboard_listen_host="::1",
         dashboard_listen_port=18443,
-        readonly_cidrs=("2001:db8::/32",),
+        readonly_cidrs=("::1/128", "2001:db8::/32"),
         document_root=dashboard_root,
         nginx_executable=Path(nginx),
         nginx_pid_file=state / "nginx.pid",
@@ -4643,7 +4705,7 @@ def test_preserve_origin_mode_forwards_validated_client_origin(
         dashboard_enabled=True,
         dashboard_listen_host="127.0.0.1",
         dashboard_listen_port=18443,
-        readonly_cidrs=("203.0.113.0/24",),
+        readonly_cidrs=("127.0.0.1/32", "203.0.113.0/24"),
         document_root=tmp_path / "dashboard",
         nginx_executable=Path("/usr/sbin/nginx"),
         nginx_pid_file=state / "nginx.pid",
@@ -4680,7 +4742,7 @@ def test_dashboard_only_profile_renders_base_nginx_and_service(
         dashboard_enabled=True,
         dashboard_listen_host="127.0.0.1",
         dashboard_listen_port=18443,
-        readonly_cidrs=("203.0.113.0/24",),
+        readonly_cidrs=("127.0.0.1/32", "203.0.113.0/24"),
         document_root=tmp_path / "dashboard",
         nginx_executable=Path("/usr/sbin/nginx"),
         nginx_pid_file=state / "nginx.pid",
@@ -4718,7 +4780,7 @@ def test_disabled_terminal_malformed_shape_returns_json_invalid(
         dashboard_enabled=True,
         dashboard_listen_host="127.0.0.1",
         dashboard_listen_port=18443,
-        readonly_cidrs=("203.0.113.0/24",),
+        readonly_cidrs=("127.0.0.1/32", "203.0.113.0/24"),
         document_root=tmp_path / "dashboard",
         nginx_executable=Path("/usr/sbin/nginx"),
         nginx_pid_file=state / "nginx.pid",
@@ -4781,7 +4843,7 @@ def test_dashboard_cidr_shape_render_returns_json_invalid(
         dashboard_enabled=True,
         dashboard_listen_host="127.0.0.1",
         dashboard_listen_port=18443,
-        readonly_cidrs=("203.0.113.0/24",),
+        readonly_cidrs=("127.0.0.1/32", "203.0.113.0/24"),
         document_root=tmp_path / "dashboard",
         nginx_executable=Path("/usr/sbin/nginx"),
         nginx_pid_file=state / "nginx.pid",
@@ -4793,7 +4855,7 @@ def test_dashboard_cidr_shape_render_returns_json_invalid(
     )
     profile.write_text(
         profile.read_text(encoding="utf-8").replace(
-            'trusted_readonly_cidrs = ["203.0.113.0/24"]',
+            'trusted_readonly_cidrs = ["127.0.0.1/32", "203.0.113.0/24"]',
             replacement,
         ),
         encoding="utf-8",
@@ -6200,7 +6262,7 @@ def test_v2_terminal_requires_read_only_dashboard(
         dashboard_enabled=True,
         dashboard_listen_host="127.0.0.1",
         dashboard_listen_port=8443,
-        readonly_cidrs=("203.0.113.0/24",),
+        readonly_cidrs=("127.0.0.1/32", "203.0.113.0/24"),
         document_root=tmp_path / "dashboard",
         nginx_executable=Path("/usr/sbin/nginx"),
         nginx_pid_file=tmp_path / "state/nginx.pid",
@@ -6261,7 +6323,7 @@ def test_v2_runtime_contract_values_fail_closed(
         dashboard_enabled=True,
         dashboard_listen_host="127.0.0.1",
         dashboard_listen_port=8443,
-        readonly_cidrs=("203.0.113.0/24",),
+        readonly_cidrs=("127.0.0.1/32", "203.0.113.0/24"),
         document_root=tmp_path / "dashboard",
         nginx_executable=Path("/usr/sbin/nginx"),
         nginx_pid_file=tmp_path / "state/nginx.pid",
