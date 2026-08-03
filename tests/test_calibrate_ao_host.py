@@ -497,6 +497,9 @@ def test_unavailable_requires_repeated_host_observation(
     missing_responses[0] = completed(
         (), code=127, err="FileNotFoundError: ao is unavailable"
     )
+    missing_responses[6] = completed(
+        (), code=127, err="FileNotFoundError: ao is unavailable"
+    )
     missing_runner = FakeRunner(missing_responses)
     missing = host.inspect_host(missing_runner, profile=profile, context="host")
 
@@ -582,6 +585,11 @@ def test_structural_profile_loader_requires_bounded_regular_input(
     directory.mkdir(mode=0o700)
     with pytest.raises(host.CalibrationError, match="regular file"):
         host._load_profile_structure(directory)
+
+    fifo = tmp_path / "profile.fifo"
+    os.mkfifo(fifo, mode=0o600)
+    with pytest.raises(host.CalibrationError, match="regular file"):
+        host._load_profile_structure(fifo)
 
     oversized = tmp_path / "oversized.toml"
     oversized.write_bytes(b"x" * (host.PROFILE_INPUT_LIMIT_BYTES + 1))
@@ -4713,6 +4721,9 @@ def test_pure_state_and_issue_evaluators() -> None:
     absent_ao["systemd-active"] = host.Evidence(
         "systemd-active", "host", "fail", "inactive"
     )
+    absent_ao["status"] = host.Evidence(
+        "status", "host", "fail", "FileNotFoundError: missing"
+    )
     absent_ao["readyz"] = host.Evidence("readyz", "daemon", "fail", "missing")
     assert (
         host.evaluate_daemon_state(
@@ -4874,7 +4885,6 @@ def test_pure_state_and_issue_evaluators() -> None:
             daemon_state="ready",
             dashboard_enabled=False,
             terminal_enabled=False,
-            external_failure=True,
         )
         == "not_applicable"
     )

@@ -581,6 +581,7 @@ def _is_ao_not_installed_observation(probes: Mapping[str, Evidence]) -> bool:
         ao_version.status == "fail"
         and ao_version.detail.startswith("FileNotFoundError:")
         and probes["systemd-active"].status == "fail"
+        and probes["status"].status == "fail"
         and probes["healthz"].status == "fail"
         and probes["readyz"].status == "fail"
     )
@@ -691,10 +692,10 @@ def evaluate_delivery_state(
     external_failure: bool = False,
 ) -> str:
     """Classify Dashboard delivery independently from daemon readiness."""
-    if dashboard_enabled is False:
-        return "not_applicable"
     if daemon_state == "ready" and external_failure:
         return "degraded"
+    if dashboard_enabled is False:
+        return "not_applicable"
     if dashboard_enabled is None or daemon_state != "ready":
         return "indeterminate"
     if probes["dashboard"].status == "unknown":
@@ -856,6 +857,7 @@ def inspect_host(
     service = "agent-orchestrator.service"
     ao_cli = "ao"
     ao_profile: dict[str, object] | None = None
+    dashboard_enabled = False
     dashboard_base: str | None = None
     dashboard_source: str | None = None
     mux_source: str | None = None
@@ -863,6 +865,7 @@ def inspect_host(
     if parsed_profile is not None:
         ao_profile = _section(parsed_profile, "ao")
         dashboard = _section(parsed_profile, "dashboard")
+        dashboard_enabled = dashboard.get("mode", "read-only") == "read-only"
         terminal_profile = _section(dashboard, "terminal")
         base = cast(str, ao_profile["loopback_base_url"])
         health = cast(str, ao_profile["health_path"])
@@ -1110,7 +1113,7 @@ def inspect_host(
     delivery_state = evaluate_delivery_state(
         by_name,
         daemon_state=daemon_state,
-        dashboard_enabled=dashboard_base is not None,
+        dashboard_enabled=dashboard_enabled,
         terminal_enabled=(
             cast(bool, terminal["desired_enabled"]) if terminal is not None else None
         ),
