@@ -331,6 +331,23 @@ When a repository change is intended to land through a pull request:
    observe or modify an external control plane, report the exact authorization
    or configuration action without claiming completion.
 
+For review convergence, continue mechanical feedback within the current
+explicitly declared and authorized pull request contract through the existing
+bounded owner loop. When exact-current-head review proposes work beyond that
+contract or the distinct configured review-convergence budget is exhausted,
+pause remote review, preserve branch, head, worktree, owner, and feedback state,
+and invoke calibration. For out-of-contract feedback, calibration first decides
+to reject or escalate the feedback or to accept an authorized contract
+expansion; only after acceptance does it choose among one pull request,
+independent pull requests, or a dependent stack. For review-convergence budget
+exhaustion, calibration makes the same topology choice from the preserved
+state. Independent slices remain independent pull requests. For genuinely
+dependent slices, use platform-native stacking when available; otherwise use
+ordinary dependent pull requests. Exhaustion of a transport, polling, or
+idempotent-operation retry budget retains its existing preserve-and-report path
+and is not a topology signal. Do not impose universal LOC, file-count, or
+review-round thresholds.
+
 A cloud environment is an execution surface, not the repository's source of
 truth. Start with automatic setup and customize it only after a representative
 task exposes a concrete gap. Keep setup logic in the repository when local,
@@ -410,3 +427,8 @@ or access configuration into cross-project calibration rules.
 Complete a harness change only when the observed gap, selected owner, smallest
 capability, and verification path are explicit. Evaluate representative
 behavior separately when claiming the system became more effective.
+
+## Further reading
+
+- [DORA: Working in small batches](https://dora.dev/capabilities/working-in-small-batches/)
+- [Google Engineering Practices: Small CLs](https://google.github.io/eng-practices/review/developer/small-cls.html)
