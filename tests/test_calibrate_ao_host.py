@@ -2970,6 +2970,8 @@ def test_init_rejects_incomplete_or_invalid_dashboard_trust(
 
     with pytest.raises(host.CalibrationError, match="listen port"):
         initialize("port.toml", listen_port=0)
+    with pytest.raises(host.CalibrationError, match="unsafe configuration syntax"):
+        initialize("bind-colon.toml", document_root=tmp_path / "dashboard:injected")
     with pytest.raises(host.CalibrationError, match="listen port"):
         initialize("bool-port.toml", listen_port=True)
     assert not (tmp_path / "bool-port.toml").exists()
@@ -3532,6 +3534,19 @@ def test_dashboard_document_root_creation_and_symlink_boundaries(
     assert initialize("private-missing", private / "dashboard").exists()
 
 
+def test_dashboard_document_files_must_be_service_readable(tmp_path: Path) -> None:
+    root = tmp_path / "unreadable-dashboard"
+    root.mkdir(mode=0o755)
+    asset = root / "index.html"
+    asset.write_text("private", encoding="utf-8")
+    asset.chmod(0o000)
+    try:
+        with pytest.raises(host.CalibrationError, match="service identity"):
+            host._validate_dashboard_document_tree(root, protected_file_identities=())
+    finally:
+        asset.chmod(0o600)
+
+
 def test_terminal_requires_explicit_origin_mode(
     tmp_path: Path, codex_home: Path
 ) -> None:
@@ -3842,6 +3857,7 @@ def test_candidate_identity_inspection_error_is_bounded(
 ) -> None:
     target = tmp_path / "candidate"
     target.mkdir(mode=0o700)
+    original_lstat = Path.lstat
 
     def denied_lstat(_self: Path) -> os.stat_result:
         raise PermissionError("denied")
@@ -3849,6 +3865,76 @@ def test_candidate_identity_inspection_error_is_bounded(
     monkeypatch.setattr(Path, "lstat", denied_lstat)
     with pytest.raises(host.CalibrationError, match="cannot be inspected"):
         host._validate_tree_identity(target)
+
+    child = target / "child"
+    child.write_text("x", encoding="utf-8")
+
+    def denied_child_lstat(self: Path) -> os.stat_result:
+        if self == child:
+            raise PermissionError("child denied")
+        return original_lstat(self)
+
+    monkeypatch.setattr(Path, "lstat", denied_child_lstat)
+    with pytest.raises(host.CalibrationError, match="cannot be inspected"):
+        host._validate_tree_identity(target)
+
+
+def test_existing_candidate_root_must_not_be_a_symlink(
+    tmp_path: Path, profile: Path
+) -> None:
+    real = tmp_path / "real-candidate"
+    host.render_profile(profile, real)
+    alias = tmp_path / "candidate-alias"
+    alias.symlink_to(real, target_is_directory=True)
+    expected = host._candidate_files(host._load_profile(profile))
+    with pytest.raises(host.CalibrationError, match="real directory"):
+        host._validate_existing_candidate(alias, expected)
+
+
+def test_existing_candidate_rejects_oversize_before_content_read(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, profile: Path
+) -> None:
+    target = tmp_path / "oversize-candidate"
+    host.render_profile(profile, target)
+    expected = host._candidate_files(host._load_profile(profile))
+    (target / "AGENTS.md").write_bytes(b"x" * (len(expected["AGENTS.md"]) + 1))
+    (target / "AGENTS.md").chmod(0o600)
+
+    def unexpected_read(_descriptor: int, _size: int) -> bytes:
+        raise AssertionError("oversize candidate content must not be read")
+
+    monkeypatch.setattr(os, "read", unexpected_read)
+    with pytest.raises(host.CalibrationError, match="nonempty drift"):
+        host._validate_existing_candidate(target, expected)
+
+
+def test_candidate_content_read_errors_and_equal_size_drift_are_bounded(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    root = tmp_path / "content-errors"
+    root.mkdir(mode=0o700)
+    candidate = root / "file"
+    candidate.write_bytes(b"bad")
+    candidate.chmod(0o600)
+    with pytest.raises(host.CalibrationError, match="nonempty drift"):
+        host._validate_tree_content(root, {"file": b"new"})
+
+    def denied_open(_path: Path, _flags: int) -> int:
+        raise PermissionError("denied")
+
+    monkeypatch.setattr(os, "open", denied_open)
+    with pytest.raises(host.CalibrationError, match="cannot be read"):
+        host._validate_tree_content(root, {"file": b"bad"})
+
+
+@pytest.mark.skipif(not hasattr(os, "mkfifo"), reason="requires POSIX FIFO support")
+def test_candidate_tree_identity_rejects_special_file(tmp_path: Path) -> None:
+    root = tmp_path / "special-candidate"
+    root.mkdir(mode=0o700)
+    fifo = root / "fifo"
+    os.mkfifo(fifo, 0o600)
+    with pytest.raises(host.CalibrationError, match="regular file"):
+        host._validate_tree_identity(root)
 
 
 def test_verify_candidate_requires_trusted_parent_chain(
@@ -6461,6 +6547,13 @@ def test_dashboard_rejects_file_role_ancestor_of_document_root(
     tmp_path: Path, codex_home: Path
 ) -> None:
     control = tmp_path / "document-ancestor-control"
+    dashboard = cast(
+        dict[str, object], host._canonical_v2(tomllib.loads(V1_PROFILE))["dashboard"]
+    )
+    dashboard["active_config"] = str(control)
+    dashboard["document_root"] = str(control / "ui")
+    with pytest.raises(host.CalibrationError, match=r"document_root.*file role"):
+        host._validate_dashboard_role_collisions(dashboard)
     with pytest.raises(host.CalibrationError, match=r"document_root.*file role"):
         _init_enabled_review_profile(
             tmp_path,
@@ -6524,6 +6617,21 @@ def test_disabled_dashboard_still_validates_private_authority_file_role(
             trust_model="untrusted",
             codex_home=codex_home,
             data_dir=tmp_path / "data",
+            private_authority=authority,
+            state_root=tmp_path / "state",
+        )
+
+
+def test_file_role_must_not_contain_directory_role(
+    tmp_path: Path, codex_home: Path
+) -> None:
+    authority = tmp_path / "authority-file"
+    with pytest.raises(host.CalibrationError, match="must not equal or contain"):
+        host.init_profile(
+            tmp_path / "file-directory-overlap.toml",
+            trust_model="untrusted",
+            codex_home=codex_home,
+            data_dir=authority / "ao-data",
             private_authority=authority,
             state_root=tmp_path / "state",
         )

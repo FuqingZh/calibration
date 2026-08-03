@@ -460,10 +460,7 @@ def _validate_loopback_url(value: object, label: str, *, mux_path: bool = False)
 
 
 def _validate_interpolated_scalar(value: object, label: str) -> str:
-    if (
-        not isinstance(value, str)
-        or re.fullmatch(r"[A-Za-z0-9_./:@+-]+", value) is None
-    ):
+    if not isinstance(value, str) or re.fullmatch(r"[A-Za-z0-9_./@+-]+", value) is None:
         raise CalibrationError(f"{label} contains unsafe configuration syntax")
     return value
 
@@ -1742,6 +1739,11 @@ def _validate_dashboard_document_tree(
                 "group/other-writable"
             )
         if stat.S_ISREG(metadata.st_mode):
+            if not os.access(current, os.R_OK, effective_ids=True):
+                raise CalibrationError(
+                    f"dashboard document tree entry {current} must be readable "
+                    "by the Dashboard service identity"
+                )
             if metadata.st_nlink != 1:
                 raise CalibrationError(
                     f"dashboard document tree entry {current} must be singly linked"
@@ -1886,6 +1888,37 @@ def _configured_host_file_role_paths(
     return tuple(roles)
 
 
+def _configured_host_directory_role_paths(
+    profile: Mapping[str, object],
+) -> tuple[tuple[str, Path], ...]:
+    ao = _section(profile, "ao")
+    dashboard = _section(profile, "dashboard")
+    paths = _section(profile, "paths")
+    roles = [
+        ("ao.data_dir", Path(cast(str, ao["data_dir"]))),
+        ("ao.codex_home", Path(cast(str, ao["codex_home"]))),
+        ("paths.state_root", Path(cast(str, paths["state_root"]))),
+    ]
+    if dashboard.get("mode", "read-only") == "read-only":
+        roles.append(
+            (
+                "dashboard.document_root",
+                Path(cast(str, dashboard["document_root"])),
+            )
+        )
+    storage = _section(profile, "storage")
+    for index, boundary in enumerate(
+        cast(list[dict[str, object]], storage.get("boundaries", []))
+    ):
+        roles.append(
+            (
+                f"storage.boundaries[{index}]",
+                Path(cast(str, boundary["path"])),
+            )
+        )
+    return tuple(roles)
+
+
 def _validate_host_file_role_collisions(
     profile: Mapping[str, object], source_profile: Path
 ) -> tuple[tuple[int, int], ...]:
@@ -1924,6 +1957,19 @@ def _validate_host_file_role_collisions(
                 f"{previous} and {label}"
             )
         inode_roles[identity] = label
+    for file_path, file_label in resolved_roles.items():
+        for directory_label, directory_path in _configured_host_directory_role_paths(
+            profile
+        ):
+            resolved_directory = directory_path.resolve(strict=False)
+            if resolved_directory == file_path or resolved_directory.is_relative_to(
+                file_path
+            ):
+                raise CalibrationError(
+                    f"directory role {directory_label} and configured host file role "
+                    f"{file_label} have incompatible roles; the file role must not "
+                    "equal or contain the directory role"
+                )
     return tuple(sorted(inode_roles))
 
 
@@ -3072,9 +3118,16 @@ def _validate_tree_shape(root: Path, files: Mapping[str, bytes]) -> None:
         while parent != Path("."):
             expected_directories.add(str(parent))
             parent = parent.parent
-    actual = {str(item.relative_to(root)): item for item in root.rglob("*")}
-    if set(actual) != expected_files | expected_directories:
-        raise CalibrationError("candidate tree shape is not canonical")
+    expected_entries = expected_files | expected_directories
+    actual: dict[str, Path] = {}
+    for item in root.rglob("*"):
+        actual[str(item.relative_to(root))] = item
+        if len(actual) > len(expected_entries):
+            raise CalibrationError(
+                "candidate tree shape is not canonical (nonempty drift)"
+            )
+    if set(actual) != expected_entries:
+        raise CalibrationError("candidate tree shape is not canonical (nonempty drift)")
     for name, item in actual.items():
         if name in expected_files and not item.is_file():
             raise CalibrationError(f"{item} must be a regular file")
@@ -3091,23 +3144,64 @@ def _validate_tree_modes(root: Path) -> None:
 
 def _validate_tree_identity(root: Path) -> None:
     """Require candidate nodes to be owned locally and files to be unaliased."""
-    for item in (root, *root.rglob("*")):
+    try:
+        root_metadata = root.lstat()
+    except OSError as exc:
+        raise CalibrationError(f"{root} cannot be inspected: {exc}") from exc
+    if root_metadata.st_uid != os.geteuid():
+        raise CalibrationError(f"{root} must be owned by the current user")
+    if not stat.S_ISDIR(root_metadata.st_mode):
+        raise CalibrationError("candidate root must be a real directory")
+    for item in root.rglob("*"):
         try:
             metadata = item.lstat()
         except OSError as exc:
             raise CalibrationError(f"{item} cannot be inspected: {exc}") from exc
         if metadata.st_uid != os.geteuid():
             raise CalibrationError(f"{item} must be owned by the current user")
+        if not (stat.S_ISDIR(metadata.st_mode) or stat.S_ISREG(metadata.st_mode)):
+            raise CalibrationError(
+                f"candidate tree entry {item} must be a real directory or regular file"
+            )
         if stat.S_ISREG(metadata.st_mode) and metadata.st_nlink != 1:
             raise CalibrationError(f"{item} must be singly linked")
 
 
+def _validate_tree_content(root: Path, files: Mapping[str, bytes]) -> None:
+    flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
+    for name, expected in files.items():
+        path = root / name
+        try:
+            descriptor = os.open(path, flags)
+            try:
+                metadata = os.fstat(descriptor)
+                if not stat.S_ISREG(metadata.st_mode) or metadata.st_size != len(
+                    expected
+                ):
+                    raise CalibrationError("existing output has nonempty drift")
+                content = bytearray()
+                while len(content) <= len(expected):
+                    chunk = os.read(descriptor, len(expected) + 1 - len(content))
+                    if not chunk:
+                        break
+                    content.extend(chunk)
+            finally:
+                os.close(descriptor)
+        except CalibrationError:
+            raise
+        except OSError as exc:
+            raise CalibrationError(
+                f"candidate file {path} cannot be read: {exc}"
+            ) from exc
+        if bytes(content) != expected:
+            raise CalibrationError("existing output has nonempty drift")
+
+
 def _validate_existing_candidate(root: Path, files: Mapping[str, bytes]) -> None:
     _validate_tree_identity(root)
-    if not root.is_dir() or _tree_bytes(root) != files:
-        raise CalibrationError("existing output has nonempty drift")
     _validate_tree_shape(root, files)
     _validate_tree_modes(root)
+    _validate_tree_content(root, files)
 
 
 def _rename_noreplace(source: Path, destination: Path) -> None:
