@@ -2127,6 +2127,33 @@ def _validate_dashboard_state_write_scope(
     for label, protected_path in protected_roles:
         if _paths_overlap(state_root, protected_path):
             raise CalibrationError(f"paths.state_root must not overlap {label}")
+    try:
+        state_metadata = state_root.lstat()
+    except FileNotFoundError:
+        return
+    except OSError as exc:
+        raise CalibrationError(f"paths.state_root cannot be inspected: {exc}") from exc
+    if not stat.S_ISDIR(state_metadata.st_mode):
+        return
+    state_identity = (state_metadata.st_dev, state_metadata.st_ino)
+    for label, protected_path in _configured_host_directory_role_paths(profile):
+        if label == "paths.state_root" or _paths_overlap(state_root, protected_path):
+            continue
+        try:
+            protected_metadata = protected_path.lstat()
+        except FileNotFoundError:
+            continue
+        except OSError as exc:
+            raise CalibrationError(f"{label} cannot be inspected: {exc}") from exc
+        if (
+            stat.S_ISDIR(protected_metadata.st_mode)
+            and (
+                protected_metadata.st_dev,
+                protected_metadata.st_ino,
+            )
+            == state_identity
+        ):
+            raise CalibrationError(f"paths.state_root must not alias {label}")
 
 
 def _validate_render_destination_roles(
@@ -2218,7 +2245,7 @@ def _load_profile_data(
         profile = tomllib.loads(
             _read_profile_text(safe, require_private_identity=not structural_only)
         )
-    except tomllib.TOMLDecodeError as exc:
+    except (tomllib.TOMLDecodeError, RecursionError) as exc:
         raise CalibrationError(f"{safe} must contain valid TOML: {exc}") from exc
     version = profile.get("schema_version", 1)
     if type(version) is not int or version not in {1, 2}:
@@ -2644,15 +2671,6 @@ def _canonical_v2(profile: Mapping[str, object]) -> dict[str, object]:
         if terminal.get("trust_model") == "single-user-trusted-lan":
             terminal["trust_model"] = "trusted-single-user"
         terminal["origin_mode"] = "edge-validated-rewrite"
-        listener = _parse_unscoped_ip_address(cast(str, dashboard["listen_host"]))
-        readonly_cidrs = cast(list[str], dashboard["trusted_readonly_cidrs"])
-        if listener.is_loopback and not any(
-            listener in _parse_unscoped_ip_network(cidr) for cidr in readonly_cidrs
-        ):
-            dashboard["trusted_readonly_cidrs"] = [
-                *readonly_cidrs,
-                f"{listener}/{listener.max_prefixlen}",
-            ]
     else:
         terminal.setdefault("origin_mode", "preserve")
     dashboard["terminal"] = terminal
@@ -3028,6 +3046,12 @@ def _candidate_files(profile: Mapping[str, object]) -> dict[str, bytes]:
     ao = _section(canonical, "ao")
     dashboard = _section(canonical, "dashboard")
     terminal = _section(_section(canonical, "dashboard"), "terminal")
+    if dashboard["mode"] == "read-only":
+        _validate_listener_network_families(
+            cast(str, dashboard["listen_host"]),
+            cast(list[str], dashboard["trusted_readonly_cidrs"]),
+            terminal,
+        )
     paths = _section(canonical, "paths")
     storage = _section(canonical, "storage")
     boundary_lines = "\n".join(

@@ -256,22 +256,18 @@ def test_real_legacy_v1_shape_is_accepted_without_live_profile(
     inspected = host.inspect_host(
         FakeRunner(inspect_responses()), profile=profile, context="sandbox"
     )
-    candidate = tmp_path / "candidate"
-    rendered = host.render_profile(profile, candidate)
-    verified = host.verify_profile(profile, candidate=candidate)
+    verified = host.verify_profile(profile)
 
     assert plan["schema_read"] == 1
     assert plan["migration_required"] is True
     assert cast(dict[str, object], inspected["states"])["daemon"] == "indeterminate"
-    assert rendered["unchanged"] is False
     assert verified["schema_read"] == 1
     assert verified["migration_required"] is True
-    migrated = tomllib.loads((candidate / "host.toml").read_text())
-    assert migrated["dashboard"]["desired_service"] == "ao-dashboard.service"
-    assert migrated["dashboard"]["rollback_service"] == "ao-dashboard-rollback.service"
+    with pytest.raises(host.CalibrationError, match="loopback trusted CIDR"):
+        host.render_profile(profile, tmp_path / "candidate")
 
 
-def test_legacy_v1_canonicalizes_to_self_readable_v2(
+def test_legacy_v1_canonicalization_preserves_trust_without_expansion(
     tmp_path: Path, codex_home: Path
 ) -> None:
     legacy = tmp_path / "legacy.toml"
@@ -288,16 +284,18 @@ def test_legacy_v1_canonicalizes_to_self_readable_v2(
     migrated.write_text(host._toml(canonical), encoding="utf-8")
     migrated.chmod(0o600)
 
-    readback = host._load_profile(migrated)
-
     terminal = cast(
         dict[str, object],
-        cast(dict[str, object], readback["dashboard"])["terminal"],
+        cast(dict[str, object], canonical["dashboard"])["terminal"],
     )
     assert terminal["allowed_client_ips"] == ["203.0.113.7", "203.0.113.8"]
     assert terminal["origin_mode"] == "edge-validated-rewrite"
     assert terminal["upstream"] == "http://127.0.0.1:3001/mux"
-    storage = cast(dict[str, object], readback["storage"])
+    dashboard = cast(dict[str, object], canonical["dashboard"])
+    assert dashboard["trusted_readonly_cidrs"] == ["203.0.113.0/24"]
+    with pytest.raises(host.CalibrationError, match="loopback trusted CIDR"):
+        host._load_profile(migrated)
+    storage = cast(dict[str, object], canonical["storage"])
     for boundary in cast(list[dict[str, object]], storage["boundaries"]):
         assert set(boundary) == {"path", "kind", "recursive_search"}
 
@@ -321,9 +319,14 @@ def test_disabled_v1_trust_models_render_self_readable_v2(
         V1_PROFILE.replace(
             'trust_model = "trusted-single-user"',
             f'trust_model = "{trust_model}"',
-        ).replace(
+        )
+        .replace(
             'codex_home = "/var/opt/example/codex"',
             f'codex_home = "{codex_home}"',
+        )
+        .replace(
+            'trusted_readonly_cidrs = ["203.0.113.0/24"]',
+            'trusted_readonly_cidrs = ["127.0.0.1/32", "203.0.113.0/24"]',
         ),
         encoding="utf-8",
     )
@@ -640,6 +643,23 @@ def test_structural_profile_loader_requires_bounded_regular_input(
     monkeypatch.setattr(host.os, "open", denied_open)
     with pytest.raises(host.CalibrationError, match="cannot be read safely"):
         host._load_profile_structure(invalid_utf8)
+
+
+def test_deeply_nested_toml_returns_bounded_json_error(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    profile = tmp_path / "deep.toml"
+    profile.write_text("value = " + "[" * 800 + "0" + "]" * 800, encoding="utf-8")
+    profile.chmod(0o600)
+
+    assert host.main(["plan", "--profile", str(profile)]) == host.EXIT_INVALID
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+    assert payload["states"]["operation"] == "unavailable"
+    error = cast(dict[str, object], payload["capabilities"]["error"])
+    assert error["kind"] == "invalid"
+    assert "valid TOML" in cast(str, error["message"])
+    assert captured.err == ""
 
 
 def test_strict_profile_requires_current_owner_and_single_link(
@@ -7097,6 +7117,70 @@ def test_state_write_scope_protects_all_host_roles(
         cast(dict[str, object], mutated["paths"])["state_root"] = str(path)
         with pytest.raises(host.CalibrationError, match=rf"overlap {re.escape(label)}"):
             host._validate_dashboard_state_write_scope(mutated, profile)
+
+
+def test_state_write_scope_rejects_existing_directory_identity_alias(
+    tmp_path: Path, codex_home: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    profile = _init_enabled_review_profile(tmp_path, codex_home, "state-bind-alias")
+    canonical = host._canonical_v2(host._load_profile(profile))
+    ao = cast(dict[str, object], canonical["ao"])
+    paths = cast(dict[str, object], canonical["paths"])
+    data_dir = Path(cast(str, ao["data_dir"]))
+    state_root = Path(cast(str, paths["state_root"]))
+    data_dir.mkdir(mode=0o700)
+    state_root.mkdir(mode=0o700)
+    state_metadata = state_root.lstat()
+    original_lstat = Path.lstat
+
+    def aliased_lstat(self: Path) -> os.stat_result:
+        if self == data_dir:
+            return state_metadata
+        return original_lstat(self)
+
+    monkeypatch.setattr(Path, "lstat", aliased_lstat)
+    with pytest.raises(host.CalibrationError, match=r"state_root.*alias ao\.data_dir"):
+        host._validate_dashboard_state_write_scope(canonical, profile)
+
+
+def test_state_write_scope_bounds_identity_inspection_failures(
+    tmp_path: Path, codex_home: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    profile = _init_enabled_review_profile(tmp_path, codex_home, "state-inspection")
+    canonical = host._canonical_v2(host._load_profile(profile))
+    ao = cast(dict[str, object], canonical["ao"])
+    paths = cast(dict[str, object], canonical["paths"])
+    data_dir = Path(cast(str, ao["data_dir"]))
+    state_root = Path(cast(str, paths["state_root"]))
+    state_root.mkdir(mode=0o700)
+    original_lstat = Path.lstat
+
+    def denied_state(self: Path) -> os.stat_result:
+        if self == state_root:
+            raise PermissionError("denied")
+        return original_lstat(self)
+
+    monkeypatch.setattr(Path, "lstat", denied_state)
+    with pytest.raises(host.CalibrationError, match="state_root cannot be inspected"):
+        host._validate_dashboard_state_write_scope(canonical, profile)
+
+    monkeypatch.setattr(Path, "lstat", original_lstat)
+    state_root.rmdir()
+    state_root.write_text("not a directory", encoding="utf-8")
+    host._validate_dashboard_state_write_scope(canonical, profile)
+    state_root.unlink()
+    state_root.mkdir(mode=0o700)
+
+    def denied_protected(self: Path) -> os.stat_result:
+        if self == data_dir:
+            raise PermissionError("denied")
+        return original_lstat(self)
+
+    monkeypatch.setattr(Path, "lstat", denied_protected)
+    with pytest.raises(
+        host.CalibrationError, match=r"ao\.data_dir cannot be inspected"
+    ):
+        host._validate_dashboard_state_write_scope(canonical, profile)
 
 
 @pytest.mark.parametrize("command", ["plan", "render", "verify"])
