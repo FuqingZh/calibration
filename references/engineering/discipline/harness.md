@@ -334,17 +334,19 @@ When a repository change is intended to land through a pull request:
 For review convergence, continue mechanical feedback within the current
 explicitly declared and authorized pull request contract through the existing
 bounded owner loop. When exact-current-head review proposes work beyond that
-contract, pause remote review, preserve branch, head, worktree, owner, and
-feedback state, and invoke calibration first to reject or escalate the feedback
-or to accept an authorized contract expansion. Only after accepting an
-expansion, or when the distinct configured review-convergence budget is
-exhausted, use calibration to choose among one pull request, independent pull
-requests, or a dependent stack. Independent slices remain independent pull
-requests. For genuinely dependent slices, use platform-native stacking when
-available; otherwise use ordinary dependent pull requests. Exhaustion of a
-transport, polling, or idempotent-operation retry budget retains its existing
-preserve-and-report path and is not a topology signal. Do not impose universal
-LOC, file-count, or review-round thresholds.
+contract or the distinct configured review-convergence budget is exhausted,
+pause remote review, preserve branch, head, worktree, owner, and feedback state,
+and invoke calibration. For out-of-contract feedback, calibration first decides
+to reject or escalate the feedback or to accept an authorized contract
+expansion; only after acceptance does it choose among one pull request,
+independent pull requests, or a dependent stack. For review-convergence budget
+exhaustion, calibration makes the same topology choice from the preserved
+state. Independent slices remain independent pull requests. For genuinely
+dependent slices, use platform-native stacking when available; otherwise use
+ordinary dependent pull requests. Exhaustion of a transport, polling, or
+idempotent-operation retry budget retains its existing preserve-and-report path
+and is not a topology signal. Do not impose universal LOC, file-count, or
+review-round thresholds.
 
 A cloud environment is an execution surface, not the repository's source of
 truth. Start with automatic setup and customize it only after a representative

@@ -21,11 +21,13 @@ def test_harness_defines_bounded_review_convergence_routing() -> None:
         "current explicitly declared and authorized pull request contract",
         "existing bounded owner loop",
         "exact-current-head review proposes work beyond that contract",
+        "or the distinct configured review-convergence budget is exhausted",
         "pause remote review",
         "preserve branch, head, worktree, owner, and feedback state",
         "reject or escalate the feedback",
         "accept an authorized contract expansion",
-        "distinct configured review-convergence budget is exhausted",
+        "review-convergence budget exhaustion",
+        "same topology choice from the preserved state",
         "one pull request, independent pull requests, or a dependent stack",
         "Independent slices remain independent pull requests",
         "For genuinely dependent slices, use platform-native stacking",
@@ -76,7 +78,7 @@ def test_installer_propagates_global_review_tripwire(tmp_path: Path) -> None:
     )
     template = compact("codex/AGENTS.md.template")
     assert expected in template
-    assert "invoke calibration first to reject or escalate" in template
+    assert "and invoke calibration. For out-of-contract feedback" in template
 
     for profile in ("standard", "ao-worker"):
         codex_home = tmp_path / profile
