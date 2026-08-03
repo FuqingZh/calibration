@@ -40,6 +40,7 @@ UNAVAILABLE_CONFIRMATION_DELAY_SECONDS = 1.0
 DASHBOARD_TREE_ENTRY_LIMIT = 10_000
 DASHBOARD_HEALTH_BODY_LIMIT = 64 * 1024
 PROFILE_INPUT_LIMIT_BYTES = 1024 * 1024
+CODEX_COMPAT_INPUT_LIMIT_BYTES = 1024 * 1024
 SYSTEMD_UNIT_NAME_LIMIT_BYTES = 255
 NGINX_TEMP_DIRECTORY_NAMES = (
     "nginx-client-body",
@@ -616,11 +617,10 @@ def _is_unavailable_observation(probes: Mapping[str, Evidence]) -> bool:
     service = probes["systemd-active"]
     health_probe = probes["healthz"]
     ready_probe = probes["readyz"]
-    return (
-        service.status == "fail"
-        and service.detail in {"inactive", "failed"}
-        and health_probe.status == "fail"
-        and ready_probe.status == "fail"
+    endpoints_failed = health_probe.status == "fail" and ready_probe.status == "fail"
+    return endpoints_failed and (
+        (service.status == "fail" and service.detail in {"inactive", "failed"})
+        or (service.status == "pass" and service.detail == "active")
     )
 
 
@@ -1332,6 +1332,43 @@ def _validate_profile_host_path_ancestors(
         _validate_control_path(Path(cli), "ao.cli", executable=True)
 
 
+def _read_codex_compat_text(path: Path, metadata: os.stat_result, label: str) -> str:
+    flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        descriptor = os.open(path, flags)
+        try:
+            opened = os.fstat(descriptor)
+            if (opened.st_dev, opened.st_ino) != (metadata.st_dev, metadata.st_ino):
+                raise CalibrationError(f"{label} changed while being validated")
+            if opened.st_size > CODEX_COMPAT_INPUT_LIMIT_BYTES:
+                raise CalibrationError(
+                    f"{label} must not exceed {CODEX_COMPAT_INPUT_LIMIT_BYTES} bytes"
+                )
+            content = bytearray()
+            while len(content) <= CODEX_COMPAT_INPUT_LIMIT_BYTES:
+                chunk = os.read(
+                    descriptor,
+                    CODEX_COMPAT_INPUT_LIMIT_BYTES + 1 - len(content),
+                )
+                if not chunk:
+                    break
+                content.extend(chunk)
+            if len(content) > CODEX_COMPAT_INPUT_LIMIT_BYTES:
+                raise CalibrationError(
+                    f"{label} must not exceed {CODEX_COMPAT_INPUT_LIMIT_BYTES} bytes"
+                )
+        finally:
+            os.close(descriptor)
+    except CalibrationError:
+        raise
+    except OSError as exc:
+        raise CalibrationError(f"{label} cannot be read safely: {exc}") from exc
+    try:
+        return bytes(content).decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise CalibrationError(f"{label} must contain UTF-8 text") from exc
+
+
 def _validate_codex_auth_file(home: Path) -> os.stat_result:
     auth = home / "auth.json"
     try:
@@ -1349,8 +1386,10 @@ def _validate_codex_auth_file(home: Path) -> os.stat_result:
     if stat.S_IMODE(auth_metadata.st_mode) & 0o077:
         raise CalibrationError(f"{auth} must not be accessible by group or other")
     try:
-        auth_payload = json.loads(auth.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
+        auth_payload = json.loads(
+            _read_codex_compat_text(auth, auth_metadata, str(auth))
+        )
+    except json.JSONDecodeError as exc:
         raise CalibrationError(f"{auth} must contain valid JSON: {exc}") from exc
     if not isinstance(auth_payload, dict):
         raise CalibrationError(f"{auth} must contain a JSON object")
@@ -1360,13 +1399,27 @@ def _validate_codex_auth_file(home: Path) -> os.stat_result:
 def _validate_codex_home(path: Path) -> Path:
     home = _safe_path(path, may_create=False, directory=True)
     config = home / "config.toml"
-    if config.is_symlink() or not config.is_file():
-        raise CalibrationError(f"{config} must be a regular file")
-    if stat.S_IMODE(config.stat().st_mode) & 0o077:
+    try:
+        config_metadata = config.lstat()
+    except FileNotFoundError:
+        raise CalibrationError(
+            f"{config} must be a regular file used as configuration"
+        ) from None
+    except OSError as exc:
+        raise CalibrationError(f"{config} cannot be inspected: {exc}") from exc
+    if not stat.S_ISREG(config_metadata.st_mode) or config_metadata.st_nlink != 1:
+        raise CalibrationError(
+            f"{config} must be singly linked and a real configuration file"
+        )
+    if config_metadata.st_uid != os.geteuid():
+        raise CalibrationError(f"{config} must be owned by the current user")
+    if stat.S_IMODE(config_metadata.st_mode) & 0o077:
         raise CalibrationError(f"{config} must not be accessible by group or other")
     try:
-        parsed = tomllib.loads(config.read_text(encoding="utf-8"))
-    except (OSError, tomllib.TOMLDecodeError) as exc:
+        parsed = tomllib.loads(
+            _read_codex_compat_text(config, config_metadata, str(config))
+        )
+    except tomllib.TOMLDecodeError as exc:
         raise CalibrationError(f"{config} must contain valid TOML: {exc}") from exc
     features = parsed.get("features")
     if not isinstance(features, dict):
@@ -1753,6 +1806,11 @@ def _validate_dashboard_document_tree(
                     f"dashboard document tree entry {current} aliases a protected file"
                 )
             continue
+        if not os.access(current, os.R_OK | os.X_OK, effective_ids=True):
+            raise CalibrationError(
+                f"dashboard document tree directory {current} must be readable and "
+                "searchable by the Dashboard service identity"
+            )
         try:
             with os.scandir(current) as entries:
                 for entry in entries:
@@ -2174,6 +2232,10 @@ def _load_profile_data(
         raise CalibrationError("enabled dashboard listen_port must be 1 through 65535")
     if dashboard.get("mode", "read-only") == "read-only" and listen_ip.is_multicast:
         raise CalibrationError("enabled dashboard listen_host must not be multicast")
+    if dashboard.get("mode", "read-only") == "read-only" and listen_ip.is_link_local:
+        raise CalibrationError(
+            "enabled dashboard listen_host must not be unscoped link-local"
+        )
     cidr_values = (
         cast(list[object], readonly_cidrs) if isinstance(readonly_cidrs, list) else []
     )
@@ -2692,6 +2754,10 @@ def init_profile(
         if dashboard_enabled and dashboard_address.is_multicast:
             raise CalibrationError(
                 "enabled dashboard listen host must not be multicast"
+            )
+        if dashboard_enabled and dashboard_address.is_link_local:
+            raise CalibrationError(
+                "enabled dashboard listen host must not be unscoped link-local"
             )
         if (
             dashboard_enabled

@@ -498,6 +498,14 @@ def test_unavailable_requires_repeated_host_observation(
     assert repeated_runner.commands[11][:4] == host.CURL_PROBE_PREFIX
     assert repeated_runner.commands[12][:4] == host.CURL_PROBE_PREFIX
 
+    active_failure_responses = unavailable_inspect_responses()
+    active_failure_responses[4] = completed((), out="active")
+    active_failure_responses[10] = completed((), out="active")
+    active_failure = host.inspect_host(
+        FakeRunner(active_failure_responses), profile=profile, context="host"
+    )
+    assert cast(dict[str, object], active_failure["states"])["daemon"] == "unavailable"
+
     recovered_runner = FakeRunner(
         unavailable_inspect_responses(confirmation_recovers=True)
     )
@@ -506,6 +514,7 @@ def test_unavailable_requires_repeated_host_observation(
     assert cast(dict[str, object], recovered["states"])["daemon"] == "indeterminate"
     assert recovered_runner.responses == []
     assert sleeps == [
+        host.UNAVAILABLE_CONFIRMATION_DELAY_SECONDS,
         host.UNAVAILABLE_CONFIRMATION_DELAY_SECONDS,
         host.UNAVAILABLE_CONFIRMATION_DELAY_SECONDS,
     ]
@@ -523,6 +532,7 @@ def test_unavailable_requires_repeated_host_observation(
     assert cast(dict[str, object], missing["states"])["daemon"] == "not_installed"
     assert missing_runner.responses == []
     assert sleeps == [
+        host.UNAVAILABLE_CONFIRMATION_DELAY_SECONDS,
         host.UNAVAILABLE_CONFIRMATION_DELAY_SECONDS,
         host.UNAVAILABLE_CONFIRMATION_DELAY_SECONDS,
     ]
@@ -1518,6 +1528,105 @@ def test_codex_auth_file_type_json_and_permissions(codex_home: Path) -> None:
         host._validate_codex_home(codex_home)
     auth.unlink()
     with pytest.raises(host.CalibrationError, match="authentication file"):
+        host._validate_codex_home(codex_home)
+
+
+@pytest.mark.parametrize("name", ["config.toml", "auth.json"])
+def test_codex_compatibility_inputs_are_bounded(
+    monkeypatch: pytest.MonkeyPatch, codex_home: Path, name: str
+) -> None:
+    monkeypatch.setattr(host, "CODEX_COMPAT_INPUT_LIMIT_BYTES", 8)
+    path = codex_home / name
+    path.write_bytes(b"x" * 9)
+    path.chmod(0o600)
+    with pytest.raises(host.CalibrationError, match="must not exceed 8 bytes"):
+        host._validate_codex_home(codex_home)
+
+
+def test_codex_config_requires_current_owner_and_single_link(
+    monkeypatch: pytest.MonkeyPatch, codex_home: Path, tmp_path: Path
+) -> None:
+    config = codex_home / "config.toml"
+    alias = tmp_path / "config-alias.toml"
+    os.link(config, alias)
+    with pytest.raises(host.CalibrationError, match="singly linked"):
+        host._validate_codex_home(codex_home)
+    alias.unlink()
+
+    original_lstat = Path.lstat
+
+    def foreign_config_lstat(self: Path) -> os.stat_result:
+        metadata = original_lstat(self)
+        if self != config:
+            return metadata
+        fields = list(metadata)
+        fields[4] = os.geteuid() + 1
+        return os.stat_result(fields)
+
+    monkeypatch.setattr(Path, "lstat", foreign_config_lstat)
+    with pytest.raises(host.CalibrationError, match="owned by the current user"):
+        host._validate_codex_home(codex_home)
+
+
+def test_codex_compatibility_bounded_reader_fails_closed(
+    monkeypatch: pytest.MonkeyPatch, codex_home: Path
+) -> None:
+    config = codex_home / "config.toml"
+    metadata = config.lstat()
+    original_fstat = os.fstat
+
+    def changed_fstat(descriptor: int) -> os.stat_result:
+        opened = original_fstat(descriptor)
+        fields = list(opened)
+        fields[1] += 1
+        return os.stat_result(fields)
+
+    monkeypatch.setattr(os, "fstat", changed_fstat)
+    with pytest.raises(host.CalibrationError, match="changed while"):
+        host._read_codex_compat_text(config, metadata, "config")
+
+    monkeypatch.setattr(os, "fstat", original_fstat)
+    monkeypatch.setattr(host, "CODEX_COMPAT_INPUT_LIMIT_BYTES", 8)
+    config.write_bytes(b"x")
+    config.chmod(0o600)
+    metadata = config.lstat()
+
+    def growing_read(_descriptor: int, _size: int) -> bytes:
+        return b"x" * 9
+
+    monkeypatch.setattr(os, "read", growing_read)
+    with pytest.raises(host.CalibrationError, match="must not exceed"):
+        host._read_codex_compat_text(config, metadata, "config")
+
+    def denied_open(_path: Path, _flags: int) -> int:
+        raise PermissionError("denied")
+
+    monkeypatch.setattr(os, "open", denied_open)
+    with pytest.raises(host.CalibrationError, match="cannot be read safely"):
+        host._read_codex_compat_text(config, metadata, "config")
+
+
+def test_codex_compatibility_reader_rejects_non_utf8(codex_home: Path) -> None:
+    config = codex_home / "config.toml"
+    config.write_bytes(b"\xff")
+    config.chmod(0o600)
+    with pytest.raises(host.CalibrationError, match="UTF-8"):
+        host._validate_codex_home(codex_home)
+
+
+def test_codex_config_inspection_error_is_bounded(
+    monkeypatch: pytest.MonkeyPatch, codex_home: Path
+) -> None:
+    config = codex_home / "config.toml"
+    original_lstat = Path.lstat
+
+    def denied_config_lstat(self: Path) -> os.stat_result:
+        if self == config:
+            raise PermissionError("denied")
+        return original_lstat(self)
+
+    monkeypatch.setattr(Path, "lstat", denied_config_lstat)
+    with pytest.raises(host.CalibrationError, match="cannot be inspected"):
         host._validate_codex_home(codex_home)
 
 
@@ -2592,6 +2701,16 @@ def test_disabled_mapped_ipv4_dashboard_listener_remains_readable(
     assert host.verify_profile(profile)["valid"] is True
 
 
+def test_disabled_link_local_dashboard_listener_remains_readable(profile: Path) -> None:
+    content = profile.read_text(encoding="utf-8").replace(
+        'listen_host = "127.0.0.1"', 'listen_host = "fe80::1"'
+    )
+    profile.write_text(content, encoding="utf-8")
+    profile.chmod(0o600)
+    assert host.plan_profile(profile)["schema_read"] == 2
+    assert host.verify_profile(profile)["valid"] is True
+
+
 def test_enabled_mapped_ipv4_profile_is_rejected_by_strict_loader(
     tmp_path: Path, codex_home: Path
 ) -> None:
@@ -2607,6 +2726,24 @@ def test_enabled_mapped_ipv4_profile_is_rejected_by_strict_loader(
     profile.write_text(content, encoding="utf-8")
     profile.chmod(0o600)
     with pytest.raises(host.CalibrationError, match="IPv4-mapped IPv6"):
+        host.plan_profile(profile)
+
+
+def test_enabled_link_local_profile_is_rejected_by_strict_loader(
+    tmp_path: Path, codex_home: Path
+) -> None:
+    profile = _init_enabled_review_profile(tmp_path, codex_home, "link-local-readback")
+    content = (
+        profile.read_text(encoding="utf-8")
+        .replace('listen_host = "127.0.0.1"', 'listen_host = "fe80::1"')
+        .replace(
+            'trusted_readonly_cidrs = ["127.0.0.1/32"]',
+            'trusted_readonly_cidrs = ["fe80::/64"]',
+        )
+    )
+    profile.write_text(content, encoding="utf-8")
+    profile.chmod(0o600)
+    with pytest.raises(host.CalibrationError, match="unscoped link-local"):
         host.plan_profile(profile)
 
 
@@ -2977,6 +3114,12 @@ def test_init_rejects_incomplete_or_invalid_dashboard_trust(
     assert not (tmp_path / "bool-port.toml").exists()
     with pytest.raises(host.CalibrationError, match="exact listen IP"):
         initialize("host.toml", listen_host="bad host")
+    with pytest.raises(host.CalibrationError, match="unscoped link-local"):
+        initialize(
+            "link-local.toml",
+            listen_host="fe80::1",
+            cidrs=("fe80::/64",),
+        )
     with pytest.raises(host.CalibrationError, match="enabled terminal"):
         initialize("terminal.toml", terminal=True)
     with pytest.raises(host.CalibrationError, match="valid networks"):
@@ -3545,6 +3688,16 @@ def test_dashboard_document_files_must_be_service_readable(tmp_path: Path) -> No
             host._validate_dashboard_document_tree(root, protected_file_identities=())
     finally:
         asset.chmod(0o600)
+
+
+def test_dashboard_directories_must_be_service_searchable(tmp_path: Path) -> None:
+    root = tmp_path / "unsearchable-dashboard"
+    root.mkdir(mode=0o600)
+    try:
+        with pytest.raises(host.CalibrationError, match="readable and searchable"):
+            host._validate_dashboard_document_tree(root, protected_file_identities=())
+    finally:
+        root.chmod(0o700)
 
 
 def test_terminal_requires_explicit_origin_mode(
