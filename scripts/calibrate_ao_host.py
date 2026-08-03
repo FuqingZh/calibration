@@ -414,7 +414,7 @@ def _json_object(text: str) -> dict[str, object]:
             parse_constant=_reject_json_constant,
             parse_float=_parse_finite_json_float,
         )
-    except (json.JSONDecodeError, ValueError):
+    except (json.JSONDecodeError, ValueError, RecursionError):
         return {}
     return cast(dict[str, object], value) if isinstance(value, dict) else {}
 
@@ -1387,9 +1387,11 @@ def _validate_codex_auth_file(home: Path) -> os.stat_result:
         raise CalibrationError(f"{auth} must not be accessible by group or other")
     try:
         auth_payload = json.loads(
-            _read_codex_compat_text(auth, auth_metadata, str(auth))
+            _read_codex_compat_text(auth, auth_metadata, str(auth)),
+            parse_constant=_reject_json_constant,
+            parse_float=_parse_finite_json_float,
         )
-    except json.JSONDecodeError as exc:
+    except (json.JSONDecodeError, ValueError) as exc:
         raise CalibrationError(f"{auth} must contain valid JSON: {exc}") from exc
     if not isinstance(auth_payload, dict):
         raise CalibrationError(f"{auth} must contain a JSON object")
@@ -1544,6 +1546,10 @@ def _validate_pid_file_within_state_root(
     if relative_pid_file == Path("."):
         raise CalibrationError(
             "dashboard.pid_file must be a file beneath paths.state_root"
+        )
+    if relative_pid_file.parent != Path("."):
+        raise CalibrationError(
+            "dashboard.pid_file must be directly beneath paths.state_root"
         )
     if relative_pid_file in map(Path, NGINX_TEMP_DIRECTORY_NAMES):
         raise CalibrationError(
@@ -2092,7 +2098,7 @@ def _validate_render_destination_roles(
                 )
 
 
-def _read_profile_text(path: Path) -> str:
+def _read_profile_text(path: Path, *, require_private_identity: bool = False) -> str:
     """Read one bounded regular profile without following a final symlink."""
     flags = os.O_RDONLY
     if hasattr(os, "O_NOFOLLOW"):
@@ -2107,6 +2113,12 @@ def _read_profile_text(path: Path) -> str:
             metadata = os.fstat(descriptor)
             if not stat.S_ISREG(metadata.st_mode):
                 raise CalibrationError("profile must be a regular file")
+            if require_private_identity and (
+                metadata.st_uid != os.geteuid() or metadata.st_nlink != 1
+            ):
+                raise CalibrationError(
+                    "strict profile must be current-user-owned and singly linked"
+                )
             if metadata.st_size > PROFILE_INPUT_LIMIT_BYTES:
                 raise CalibrationError(
                     f"profile must not exceed {PROFILE_INPUT_LIMIT_BYTES} bytes"
@@ -2152,7 +2164,9 @@ def _load_profile_data(
         safe = _safe_path(path, may_create=False, directory=False)
         _private_chain_missing_components(safe.parent)
     try:
-        profile = tomllib.loads(_read_profile_text(safe))
+        profile = tomllib.loads(
+            _read_profile_text(safe, require_private_identity=not structural_only)
+        )
     except tomllib.TOMLDecodeError as exc:
         raise CalibrationError(f"{safe} must contain valid TOML: {exc}") from exc
     version = profile.get("schema_version", 1)

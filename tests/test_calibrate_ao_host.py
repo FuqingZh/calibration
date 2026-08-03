@@ -642,6 +642,33 @@ def test_structural_profile_loader_requires_bounded_regular_input(
         host._load_profile_structure(invalid_utf8)
 
 
+def test_strict_profile_requires_current_owner_and_single_link(
+    monkeypatch: pytest.MonkeyPatch, profile: Path, tmp_path: Path
+) -> None:
+    alias = tmp_path / "profile-alias.toml"
+    os.link(profile, alias)
+    assert host._load_profile_structure(alias)["schema_version"] == 2
+    with pytest.raises(host.CalibrationError, match="singly linked"):
+        host.plan_profile(alias)
+    alias.unlink()
+
+    profile_identity = (profile.stat().st_dev, profile.stat().st_ino)
+    original_fstat = os.fstat
+
+    def foreign_profile_fstat(descriptor: int) -> os.stat_result:
+        metadata = original_fstat(descriptor)
+        if (metadata.st_dev, metadata.st_ino) != profile_identity:
+            return metadata
+        fields = list(metadata)
+        fields[4] = os.geteuid() + 1
+        return os.stat_result(fields)
+
+    monkeypatch.setattr(os, "fstat", foreign_profile_fstat)
+    assert host._load_profile_structure(profile)["schema_version"] == 2
+    with pytest.raises(host.CalibrationError, match="current-user-owned"):
+        host.plan_profile(profile)
+
+
 def test_profile_reader_detects_growth_beyond_bound(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -1524,6 +1551,9 @@ def test_codex_auth_file_type_json_and_permissions(codex_home: Path) -> None:
     with pytest.raises(host.CalibrationError, match="JSON object"):
         host._validate_codex_home(codex_home)
     auth.write_text("bad", encoding="utf-8")
+    with pytest.raises(host.CalibrationError, match="valid JSON"):
+        host._validate_codex_home(codex_home)
+    auth.write_text('{"token": NaN}\n', encoding="utf-8")
     with pytest.raises(host.CalibrationError, match="valid JSON"):
         host._validate_codex_home(codex_home)
     auth.unlink()
@@ -2912,6 +2942,22 @@ def test_init_rejects_pid_file_outside_state_root(
             nginx_pid_file=tmp_path / "outside/nginx.pid",
         )
     assert not target.exists()
+
+
+def test_init_rejects_pid_file_below_missing_nested_parent(
+    tmp_path: Path, codex_home: Path
+) -> None:
+    state_root = tmp_path / "nested-pid-state"
+    with pytest.raises(host.CalibrationError, match="directly beneath"):
+        host.init_profile(
+            tmp_path / "nested-pid.toml",
+            trust_model="untrusted",
+            codex_home=codex_home,
+            data_dir=tmp_path / "data",
+            private_authority=tmp_path / "authority/AGENTS.md",
+            state_root=state_root,
+            nginx_pid_file=state_root / "run/nginx/nginx.pid",
+        )
 
 
 def test_init_rejects_state_root_as_pid_file(tmp_path: Path, codex_home: Path) -> None:
@@ -4866,6 +4912,7 @@ def test_run_and_json_helpers(monkeypatch: pytest.MonkeyPatch) -> None:
     assert host._json_object('{"value": 1.5}') == {"value": 1.5}
     for non_finite in ("NaN", "Infinity", "-Infinity", "1e400"):
         assert host._json_object(f'{{"value": {non_finite}}}') == {}
+    assert host._json_object("[" * 1100 + "]" * 1100) == {}
     assert host._required_subset({"name": "x", "extra": 1}, {"name": str})
     assert not host._required_subset({}, {"name": str})
 
@@ -6671,7 +6718,12 @@ def test_enabled_dashboard_rejects_file_role_inode_aliases(
         source = private_authority
     os.link(source, nginx_artifact)
 
-    with pytest.raises(host.CalibrationError, match="must not alias the same file"):
+    message = (
+        "singly linked"
+        if alias_pair == "source-artifact"
+        else "must not alias the same file"
+    )
+    with pytest.raises(host.CalibrationError, match=message):
         host.plan_profile(profile)
 
 
