@@ -2283,7 +2283,6 @@ def test_init_rejects_writable_ancestor_above_private_parent(
         "private_authority",
         "state_root",
         "codex_home",
-        "desired_nginx_artifact",
     ],
 )
 def test_private_host_paths_require_trusted_ancestors_on_init_and_load(
@@ -2347,8 +2346,6 @@ def test_private_host_paths_require_trusted_ancestors_on_init_and_load(
         "data_dir",
         "codex_home",
         "private_authority",
-        "desired_nginx_artifact",
-        "desired_service_artifact",
         "state_root",
     ],
 )
@@ -2960,6 +2957,14 @@ def test_init_rejects_pid_file_below_missing_nested_parent(
         )
 
 
+def test_existing_pid_file_must_be_owner_writable(tmp_path: Path) -> None:
+    pid_file = tmp_path / "nginx.pid"
+    pid_file.write_text("42\n", encoding="utf-8")
+    pid_file.chmod(0o400)
+    with pytest.raises(host.CalibrationError, match="owner-writable"):
+        host._validate_existing_pid_file(pid_file)
+
+
 def test_init_rejects_state_root_as_pid_file(tmp_path: Path, codex_home: Path) -> None:
     state_root = tmp_path / "state"
     with pytest.raises(host.CalibrationError, match="must be a file beneath"):
@@ -3071,6 +3076,24 @@ def test_v2_storage_boundary_shape_rejections(
     target.chmod(0o600)
     with pytest.raises(host.CalibrationError, match=message):
         host.plan_profile(target)
+
+
+def test_storage_boundaries_reject_conflicting_duplicate_paths() -> None:
+    with pytest.raises(host.CalibrationError, match="conflicting metadata"):
+        host._validate_storage_boundaries(
+            [
+                {
+                    "path": "/srv/example/./state",
+                    "kind": "host-state",
+                    "recursive_search": False,
+                },
+                {
+                    "path": "/srv/example/state",
+                    "kind": "aggregation-root",
+                    "recursive_search": False,
+                },
+            ]
+        )
 
 
 def test_init_rejects_incomplete_or_invalid_dashboard_trust(
@@ -6800,6 +6823,34 @@ def test_host_file_role_inspection_fails_closed(
         host._validate_host_file_role_collisions(payload, profile)
 
 
+def test_file_role_symlink_loop_returns_fixed_json_error(
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+    profile: Path,
+    tmp_path: Path,
+) -> None:
+    loop = tmp_path / "authority-loop-a"
+    partner = tmp_path / "authority-loop-b"
+    loop.symlink_to(partner)
+    partner.symlink_to(loop)
+    payload = host._canonical_v2(host._load_profile(profile))
+    cast(dict[str, object], payload["paths"])["private_authority"] = str(loop)
+    profile.write_text(host._toml(payload), encoding="utf-8")
+    profile.chmod(0o600)
+    original_resolve = Path.resolve
+
+    def looping_resolve(self: Path, *, strict: bool = False) -> Path:
+        if self == loop:
+            raise RuntimeError("symlink loop")
+        return original_resolve(self, strict=strict)
+
+    monkeypatch.setattr(Path, "resolve", looping_resolve)
+
+    assert host.main(["plan", "--profile", str(profile)]) == host.EXIT_INVALID
+    error = json.loads(capsys.readouterr().out)
+    assert "symlink loop" in error["capabilities"]["error"]["message"]
+
+
 def test_existing_file_role_rejects_directory(tmp_path: Path) -> None:
     directory = tmp_path / "file-role-directory"
     directory.mkdir(mode=0o700)
@@ -6827,6 +6878,22 @@ def test_disabled_dashboard_still_validates_private_authority_file_role(
         )
 
 
+def test_disabled_dashboard_skips_inert_artifact_ancestor_checks(profile: Path) -> None:
+    payload = host._canonical_v2(host._load_profile(profile))
+    paths = cast(dict[str, object], payload["paths"])
+    paths["desired_nginx_artifact"] = "/tmp/inert-nginx.conf"
+    paths["desired_service_artifact"] = "/tmp/inert-nginx.service"
+    profile.write_text(host._toml(payload), encoding="utf-8")
+    profile.chmod(0o600)
+    assert host.plan_profile(profile)["artifacts"] == [
+        "AGENTS.md",
+        "host.toml",
+        "runbooks/ao.md",
+        "MANIFEST.json",
+    ]
+    assert host.verify_profile(profile)["valid"] is True
+
+
 def test_file_role_must_not_contain_directory_role(
     tmp_path: Path, codex_home: Path
 ) -> None:
@@ -6838,6 +6905,26 @@ def test_file_role_must_not_contain_directory_role(
             codex_home=codex_home,
             data_dir=authority / "ao-data",
             private_authority=authority,
+            state_root=tmp_path / "state",
+        )
+
+
+@pytest.mark.parametrize("relationship", ["equal", "data-parent", "codex-parent"])
+def test_ao_data_and_codex_home_must_not_overlap(
+    tmp_path: Path, codex_home: Path, relationship: str
+) -> None:
+    data_dir = codex_home
+    if relationship == "data-parent":
+        data_dir = codex_home.parent
+    elif relationship == "codex-parent":
+        data_dir = codex_home / "ao-data"
+    with pytest.raises(host.CalibrationError, match="must not overlap"):
+        host.init_profile(
+            tmp_path / f"directory-overlap-{relationship}.toml",
+            trust_model="untrusted",
+            codex_home=codex_home,
+            data_dir=data_dir,
+            private_authority=tmp_path / "authority/AGENTS.md",
             state_root=tmp_path / "state",
         )
 

@@ -1292,24 +1292,30 @@ def _validate_profile_host_path_ancestors(
     profile: Mapping[str, object],
 ) -> None:
     ao = _section(profile, "ao")
+    dashboard = _section(profile, "dashboard")
     paths = _section(profile, "paths")
-    directories = (
+    directories = [
         ("ao.data_dir", Path(cast(str, ao["data_dir"]))),
         ("ao.codex_home", Path(cast(str, ao["codex_home"]))),
         (
             "paths.private_authority parent",
             Path(cast(str, paths["private_authority"])).parent,
         ),
-        (
-            "paths.desired_nginx_artifact parent",
-            Path(cast(str, paths["desired_nginx_artifact"])).parent,
-        ),
-        (
-            "paths.desired_service_artifact parent",
-            Path(cast(str, paths["desired_service_artifact"])).parent,
-        ),
         ("paths.state_root", Path(cast(str, paths["state_root"]))),
-    )
+    ]
+    if dashboard.get("mode", "read-only") == "read-only":
+        directories.extend(
+            (
+                (
+                    "paths.desired_nginx_artifact parent",
+                    Path(cast(str, paths["desired_nginx_artifact"])).parent,
+                ),
+                (
+                    "paths.desired_service_artifact parent",
+                    Path(cast(str, paths["desired_service_artifact"])).parent,
+                ),
+            )
+        )
     seen: set[Path] = set()
     for label, directory in directories:
         if directory in seen:
@@ -1462,6 +1468,7 @@ def _validate_storage_boundaries(boundaries: object) -> list[dict[str, object]]:
     if not values:
         raise CalibrationError("storage.boundaries must not be empty")
     validated: list[dict[str, object]] = []
+    seen: dict[Path, tuple[str, bool]] = {}
     for raw_boundary in values:
         if not isinstance(raw_boundary, dict):
             raise CalibrationError("storage.boundaries entries must be objects")
@@ -1484,6 +1491,17 @@ def _validate_storage_boundaries(boundaries: object) -> list[dict[str, object]]:
             raise CalibrationError(
                 "storage boundary recursive_search must be false in the host profile"
             )
+        normalized = Path(os.path.normpath(boundary["path"]))
+        metadata = (
+            boundary["kind"],
+            boundary["recursive_search"],
+        )
+        previous = seen.get(normalized)
+        if previous is not None and previous != metadata:
+            raise CalibrationError(
+                "storage boundaries must not assign conflicting metadata to one path"
+            )
+        seen[normalized] = metadata
         validated.append(boundary)
     return validated
 
@@ -1582,6 +1600,10 @@ def _validate_existing_pid_file(path: Path) -> None:
     if stat.S_IMODE(metadata.st_mode) & 0o022:
         raise CalibrationError(
             "dashboard.pid_file must not be group/other-writable when it exists"
+        )
+    if not stat.S_IMODE(metadata.st_mode) & stat.S_IWUSR:
+        raise CalibrationError(
+            "dashboard.pid_file must be owner-writable when it exists"
         )
 
 
@@ -1958,9 +1980,13 @@ def _configured_host_directory_role_paths(
     ao = _section(profile, "ao")
     dashboard = _section(profile, "dashboard")
     paths = _section(profile, "paths")
+    data_dir = Path(cast(str, ao["data_dir"]))
+    codex_home = Path(cast(str, ao["codex_home"]))
+    if _paths_overlap(data_dir, codex_home):
+        raise CalibrationError("ao.data_dir and ao.codex_home must not overlap")
     roles = [
-        ("ao.data_dir", Path(cast(str, ao["data_dir"]))),
-        ("ao.codex_home", Path(cast(str, ao["codex_home"]))),
+        ("ao.data_dir", data_dir),
+        ("ao.codex_home", codex_home),
         ("paths.state_root", Path(cast(str, paths["state_root"]))),
     ]
     if dashboard.get("mode", "read-only") == "read-only":
@@ -1989,7 +2015,7 @@ def _validate_host_file_role_collisions(
     resolved_roles: dict[Path, str] = {}
     inode_roles: dict[tuple[int, int], str] = {}
     for label, path in _configured_host_file_role_paths(profile, source_profile):
-        resolved = path.resolve(strict=False)
+        resolved = _resolve_path(path, label)
         exact_previous = resolved_roles.get(resolved)
         if exact_previous is not None:
             raise CalibrationError(
@@ -2025,7 +2051,7 @@ def _validate_host_file_role_collisions(
         for directory_label, directory_path in _configured_host_directory_role_paths(
             profile
         ):
-            resolved_directory = directory_path.resolve(strict=False)
+            resolved_directory = _resolve_path(directory_path, directory_label)
             if resolved_directory == file_path or resolved_directory.is_relative_to(
                 file_path
             ):
@@ -2038,8 +2064,8 @@ def _validate_host_file_role_collisions(
 
 
 def _paths_overlap(first: Path, second: Path) -> bool:
-    resolved_first = first.resolve(strict=False)
-    resolved_second = second.resolve(strict=False)
+    resolved_first = _resolve_path(first, str(first))
+    resolved_second = _resolve_path(second, str(second))
     for child, parent in (
         (resolved_first, resolved_second),
         (resolved_second, resolved_first),
@@ -2050,6 +2076,13 @@ def _paths_overlap(first: Path, second: Path) -> bool:
             continue
         return True
     return False
+
+
+def _resolve_path(path: Path, label: str) -> Path:
+    try:
+        return path.resolve(strict=False)
+    except RuntimeError as exc:
+        raise CalibrationError(f"{label} must not traverse a symlink loop") from exc
 
 
 def _validate_dashboard_state_write_scope(
