@@ -1680,17 +1680,23 @@ def test_codex_config_inspection_error_is_bounded(
         host._validate_codex_home(codex_home)
 
 
-@pytest.mark.parametrize("mutation", ["unsafe-config", "missing-home"])
+@pytest.mark.parametrize("mutation", ["unsafe-config", "deep-config", "missing-home"])
 def test_strict_commands_revalidate_complete_codex_home(
     tmp_path: Path, profile: Path, codex_home: Path, mutation: str
 ) -> None:
-    if mutation == "unsafe-config":
+    if mutation in {"unsafe-config", "deep-config"}:
         config = codex_home / "config.toml"
-        config.write_text(
-            "[features]\napps = true\nplugins = false\n", encoding="utf-8"
+        content = (
+            "[features]\napps = true\nplugins = false\n"
+            if mutation == "unsafe-config"
+            else "[features]\napps = false\nplugins = false\nvalue = "
+            + "[" * 800
+            + "0"
+            + "]" * 800
         )
+        config.write_text(content, encoding="utf-8")
         config.chmod(0o600)
-        message = "apps=false"
+        message = "apps=false" if mutation == "unsafe-config" else "valid TOML"
     else:
         codex_home.rename(tmp_path / "removed-codex-home")
         message = "does not exist"
@@ -1701,6 +1707,14 @@ def test_strict_commands_revalidate_complete_codex_home(
         host.render_profile(profile, tmp_path / f"candidate-{mutation}")
     with pytest.raises(host.CalibrationError, match=message):
         host.verify_profile(profile)
+
+    if mutation == "deep-config":
+        report = host.inspect_host(
+            FakeRunner(inspect_responses()), profile=profile, context="host"
+        )
+        capabilities = cast(dict[str, object], report["capabilities"])
+        assert capabilities["codex_home_compatible"] is False
+        assert "AO-CODEX-HOME-CONFLICT" in cast(list[str], report["known_issues"])
 
 
 def test_codex_auth_rejects_symlink_hardlink_and_foreign_owner(
@@ -6047,6 +6061,42 @@ def test_profile_probe_and_path_fields_fail_closed(
     profile.chmod(0o600)
     with pytest.raises(host.CalibrationError, match=message):
         host.plan_profile(profile)
+
+
+@pytest.mark.parametrize("command", ["plan", "render", "verify"])
+def test_strict_operations_reject_lexically_unnormalized_systemd_paths(
+    tmp_path: Path, profile: Path, command: str
+) -> None:
+    payload = tomllib.loads(profile.read_text(encoding="utf-8"))
+    cast(dict[str, object], payload["paths"])["state_root"] = (
+        f"{tmp_path}/runtime/../state"
+    )
+    profile.write_text(host._toml(payload), encoding="utf-8")
+    profile.chmod(0o600)
+
+    with pytest.raises(host.CalibrationError, match="normalized absolute path"):
+        if command == "plan":
+            host.plan_profile(profile)
+        elif command == "render":
+            host.render_profile(profile, tmp_path / "candidate")
+        else:
+            host.verify_profile(profile)
+
+
+def test_init_rejects_lexically_unnormalized_reconstruction_path(
+    tmp_path: Path, codex_home: Path
+) -> None:
+    target = tmp_path / "unnormalized-init.toml"
+    with pytest.raises(host.CalibrationError, match="normalized absolute path"):
+        host.init_profile(
+            target,
+            trust_model="untrusted",
+            codex_home=codex_home,
+            data_dir=tmp_path / "data",
+            private_authority=tmp_path / "authority/AGENTS.md",
+            state_root=Path(f"{tmp_path}/runtime/../state"),
+        )
+    assert not target.exists()
 
 
 def test_absolute_ao_cli_requires_trusted_executable_path(tmp_path: Path) -> None:

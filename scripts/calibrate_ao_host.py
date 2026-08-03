@@ -467,6 +467,14 @@ def _validate_interpolated_scalar(value: object, label: str) -> str:
     return value
 
 
+def _validate_normalized_absolute_path(value: object, label: str) -> str:
+    if not isinstance(value, str) or not Path(value).is_absolute():
+        raise CalibrationError(f"{label} must be an absolute path")
+    if any(part in {".", ".."} for part in value.split("/")):
+        raise CalibrationError(f"{label} must be a normalized absolute path")
+    return value
+
+
 def _validate_service_unit(value: object, label: str) -> str:
     if (
         not isinstance(value, str)
@@ -1428,7 +1436,7 @@ def _validate_codex_home(path: Path) -> Path:
         parsed = tomllib.loads(
             _read_codex_compat_text(config, config_metadata, str(config))
         )
-    except tomllib.TOMLDecodeError as exc:
+    except (tomllib.TOMLDecodeError, RecursionError) as exc:
         raise CalibrationError(f"{config} must contain valid TOML: {exc}") from exc
     features = parsed.get("features")
     if not isinstance(features, dict):
@@ -2364,8 +2372,7 @@ def _load_profile_data(
             ]
         )
     for label, value in absolute_fields:
-        if not isinstance(value, str) or not Path(value).is_absolute():
-            raise CalibrationError(f"{label} must be an absolute path")
+        _validate_normalized_absolute_path(value, label)
         _validate_interpolated_scalar(value, label)
     if not structural_only:
         for label, value in (
@@ -2931,6 +2938,9 @@ def init_profile(
     for reconstruction_path in reconstruction_paths:
         if not reconstruction_path.is_absolute():
             raise CalibrationError("reconstruction paths must be absolute")
+        _validate_normalized_absolute_path(
+            str(reconstruction_path), "reconstruction path"
+        )
         _validate_interpolated_scalar(str(reconstruction_path), "reconstruction path")
     _validate_pid_file_within_state_root(pid_file, state_root)
     boundary_values = list(storage_boundaries) or [
