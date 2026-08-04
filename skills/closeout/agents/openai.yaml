@@ -1,0 +1,6 @@
+interface:
+  display_name: "Closeout"
+  short_description: "Close a task with durable handoff context"
+  default_prompt: "Use $closeout to preserve missing durable context, hand off the next action, and archive this task."
+policy:
+  allow_implicit_invocation: false

@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
-MANAGED_SKILLS = ("calibration", "retrospect", "writing-code-docs")
+MANAGED_SKILLS = ("calibration", "closeout", "retrospect", "writing-code-docs")
 MANAGED_THIRDPARTY_SKILLS = (
     "brainstorming",
     "grilling",

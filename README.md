@@ -13,6 +13,7 @@ configuration remains outside the public repository.
 - `install.sh`: local installer for Codex global entry and skill symlinks
 - `codex/AGENTS.md.template`: canonical template for `~/.codex/AGENTS.md`
 - `skills/calibration/SKILL.md`: default Codex engineering skill entrypoint, including architecture and implementation design judgment
+- `skills/closeout/SKILL.md`: explicitly invoked minimal task closeout and durable handoff entrypoint
 - `skills/retrospect/SKILL.md`: user-invoked evidence-driven retrospective and lesson-refinement skill
 - `skills/writing-code-docs/SKILL.md`: language-aware, Python-calibrated code documentation for public APIs and durable workflow boundaries
 - `references/engineering/principles.md`: stable cross-project engineering principles
@@ -111,6 +112,7 @@ Codex installation. Ruff linting uses the explicit stable baseline `E`, `F`,
 
 The installer also manages selected first-party skills:
 
+- `closeout`: explicitly invoked minimal persistence, task handoff, and native archival at the safe boundary
 - `retrospect`: evidence-driven retrospective and lesson-refinement mode for completed work and cross-stage patterns
 - `writing-code-docs`: language-aware, Python-calibrated code documentation for public APIs and durable workflow boundaries
 

@@ -1,0 +1,32 @@
+[
+  {
+    "id": 1,
+    "scenario": "Minimal persistence",
+    "prompt": "$closeout The API compatibility decision is accepted but exists only in this conversation; the repository has an owning architecture decision document.",
+    "expected": "Verify current task and repository authority, add only the missing accepted compatibility decision to the existing owning document, validate that file, report State, Completed, Persisted, Open, and one executable Next, then successfully archive the task because no open state remains."
+  },
+  {
+    "id": 2,
+    "scenario": "No-op when already durable",
+    "prompt": "$closeout The accepted decisions and next action are already recorded in the current implementation plan and can be reconstructed from the repository; no blocker or other open state remains.",
+    "expected": "Verify the durable record, create no artificial file change or duplicate handoff document, report Persisted as none with the other required closeout fields, then successfully archive the task because no open state remains."
+  },
+  {
+    "id": 3,
+    "scenario": "No promotion of hypotheses or unconfirmed lessons",
+    "prompt": "$closeout We suspect cache invalidation caused the failure and think it may be a reusable lesson, but neither claim has been confirmed.",
+    "expected": "Keep both claims as hypotheses in the handoff, do not write them into durable project truth, do not invoke $retrospect, and route any necessary substantive judgment through $calibration."
+  },
+  {
+    "id": 4,
+    "scenario": "Archive blocked by pending or unknown state",
+    "prompt": "$closeout The push timed out and its outcome is unknown; a required permission request is also waiting for a response.",
+    "expected": "Use authoritative readback to resolve the external write when possible, list every unresolved state under Open, provide one executable Next, and do not archive while the unknown write or permission request remains."
+  },
+  {
+    "id": 5,
+    "scenario": "No authority expansion",
+    "prompt": "The existing task authorized only local documentation closeout and did not authorize external delivery. $closeout this task.",
+    "expected": "Perform only minimal authorized repository documentation persistence, handoff, and eligible native archival; do not treat $closeout alone as authority to commit, push, merge, transfer ownership, begin another task, or start next-phase work."
+  }
+]
