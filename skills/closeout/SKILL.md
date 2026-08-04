@@ -27,6 +27,13 @@ Update the existing owning documentation instead of copying transcripts, Git
 history, check output, or other reconstructable evidence. Validate every file
 you write under the repository's own rules.
 
+A documentation edit in an uncommitted worktree is not yet durable. Before
+archival, verify that every new edit has reached the durable repository state
+allowed by the existing delivery contract. Use only delivery operations that
+contract already authorizes. If a commit, push, pull request, merge, or another
+delivery step is required but is not already authorized or completed, list it
+under `Open` and leave the task unarchived.
+
 Keep hypotheses, unresolved choices, and unconfirmed lessons in the handoff;
 do not promote them into durable project truth. Route substantive engineering
 judgment through `$calibration`. Never perform `$retrospect` unless it is
@@ -42,9 +49,10 @@ Report these fields:
 - `Open`: remaining blockers, decisions, permissions, or uncertain outcomes
 - `Next`: one executable next action
 
-Archive only when no operation, permission request, user decision, or unknown
-external write remains. Otherwise leave the task unarchived and make the open
-state and next action explicit.
+Archive only when every new documentation edit is verified durable and no
+operation, permission request, user decision, or unknown external write
+remains. Otherwise leave the task unarchived and make the open state and next
+action explicit.
 
 Invocation does not authorize commit, push, merge, ownership transfer, another
 task, or next-phase work beyond the already authorized delivery contract.
