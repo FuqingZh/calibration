@@ -47,6 +47,7 @@ back to `$HOME/.config/calibration/AGENTS.md`.
 | Five-phase convergence result | `decisions/2026-07-27-ai-native-calibration-convergence-closeout.md` |
 | Default repository quality gate | `decisions/2026-07-30-default-repository-quality-gate.md` |
 | Codex-home adoption compatibility | `decisions/2026-07-30-ao-host-context-and-config-compatibility.md` |
+| AO host calibration CLI closeout | `decisions/2026-08-04-ao-host-calibration-cli-closeout.md` |
 | Dashboard terminal boundary | `decisions/2026-07-30-dashboard-terminal-access-boundary.md` |
 | Portable orchestrator containment | `decisions/2026-07-31-portable-orchestrator-containment.md` |
 | CAL-1 implementation status | `implementation-plan/20260731-v2.1-portable-orchestrator-containment-implementation-plan.md` |
