@@ -112,7 +112,7 @@ Codex installation. Ruff linting uses the explicit stable baseline `E`, `F`,
 
 The installer also manages selected first-party skills:
 
-- `closeout`: explicitly invoked minimal persistence and safe archival reporting for task handoff
+- `closeout`: explicitly invoked minimal persistence, task handoff, and native archival at the safe boundary
 - `retrospect`: evidence-driven retrospective and lesson-refinement mode for completed work and cross-stage patterns
 - `writing-code-docs`: language-aware, Python-calibrated code documentation for public APIs and durable workflow boundaries
 
