@@ -164,6 +164,29 @@ head-change, failure, review-arrival, and cancellation behavior. Those
 unproven AO paths remain disabled unless a separate repository decision
 establishes them.
 
+### AO worker completion and teardown
+
+For a pull-request-bound AO worker, once authoritative readback establishes PR
+attribution or claim and before merge can occur, enable AO's native per-session
+terminate-on-PR-merge policy when the installed AO supports it, then read the
+session policy back. This is teardown policy: it neither grants merge authority
+nor enables GitHub native auto-merge or AO project `autoMerge`.
+
+After a merge, read back both session termination and cleanup or resource
+state. Preserve the terminated session record as archive and audit history;
+cleanup applies to runtime, terminal, and worktree resources, not the session
+record. For a session attributed to multiple or stacked pull requests,
+terminate only when no attributed pull request remains open and at least one
+has merged.
+
+Keep pending cleanup observable and bounded-retryable. Preserve a dirty
+worktree, never force-delete it, and escalate `preserved_dirty`, `failed`, or
+an inability to prove resource release. For cancelled work, work with no pull
+request, or pull requests closed without merge, perform explicit session
+termination only after authoritative session and dirty-worktree checks. Do not
+claim full descendant-process release when no OS-owned containment boundary is
+available.
+
 Use only an already accepted repository, host, identity, and permission
 configuration. Do not silently register every repository, enable
 permissionless execution on another host, or introduce an orchestrator merely
