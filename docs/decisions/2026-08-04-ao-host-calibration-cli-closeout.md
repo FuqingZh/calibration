@@ -22,11 +22,11 @@ The following contracts remain valid independent of the proposed CLI:
 
 - Keep sandbox, worker, daemon, and host evidence distinct. Sandbox-visible
   absence or mismatch is `indeterminate`, not proof of host failure.
-- Reporting `daemon ready` requires positive authoritative host-owned evidence
-  for the active service, AO status, process identity, and health and readiness
-  probes. Repeated failure from the authoritative host context is
-  `unavailable` even when that failure prevents collecting the full positive
-  evidence set; a failure visible only in the sandbox remains `indeterminate`.
+- Reporting `daemon ready` requires an active host service, AO `ready` or
+  `running` readback, and a passing health probe. Repeated failure from the
+  authoritative host context is `unavailable` even when that failure prevents
+  collecting the full positive evidence set; a failure visible only in the
+  sandbox remains `indeterminate`.
 - Classify external integration or authentication failures as `delivery
   degraded` when the core daemon remains ready. Host-owned core failures affect
   daemon readiness, while malformed or incomplete evidence cannot establish a
