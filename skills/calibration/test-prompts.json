@@ -124,5 +124,11 @@
     "scenario": "Review convergence：跨契约扩张或预算耗尽",
     "prompt": "当前 PR 的 exact-current-head 审查要求新增一个超出当前明确声明且已授权契约的公共 API；另一种情况是独立配置的 review-convergence 预算已经耗尽。接下来应继续扩大当前 PR，还是自动建一个定时任务反复审查？",
     "expected": "任一 tripwire 触发时都应停止 remote review 并 preserve branch、head、worktree、owner 和 feedback state。越界 review feedback 不授予 scope authority；calibration 必须先决定 reject/escalate，或接受已授权的 contract expansion，只有接受后才决定维持 one PR、拆成 independent PRs，或建立 dependent stack。review-convergence budget 必须与 transport、polling 或 idempotent-operation retry budget 区分，后者耗尽沿用 preserve-and-report path，不是 topology signal。Independent slices 保持 independent PRs；只有 genuinely dependent slices 才在平台可用时使用 platform-native stacking，否则使用 ordinary dependent PRs。不得发明 scheduler、review tool、通用 LOC/file/review-round thresholds 或自动化产品功能。"
+  },
+  {
+    "id": 22,
+    "scenario": "Harness：AO 合并后的 worker completion 与 teardown",
+    "prompt": "一个 AO worker 拥有的 PR 已合并，但 worker 仍是 idle/live，session 的 terminateOnPrMerge=false。为了清理，是不是应该删除 terminated session 记录，或者打开 AO project autoMerge 让以后自动收尾？",
+    "expected": "不应删除 session 历史或启用 AO project autoMerge。应区分 archived terminated session record 与泄漏的 live runtime、terminal、worktree resources：在 PR attribution/claim 经 authoritative readback 建立后且 merge 前，若 AO 支持，应启用 native per-session terminate-on-PR-merge policy 并回读确认；该 teardown policy 不授予 merge authority，也不启用 GitHub native auto-merge 或 AO project autoMerge。合并后应回读 session termination 与 cleanup/resource state，并保留 terminated session record 作为 archive/audit history。若同一 session 归属多个或 stacked PR，只有在至少一个已 merged 且没有 attributed PR 仍 open 时才终止。pending cleanup 必须 observable 且 bounded-retryable；dirty worktree 要 preserve，遇到 preserved_dirty、failed 或无法证明 release 时升级且不得 force-delete。没有 OS-owned containment boundary 时不得声称 full descendant-process release。cancelled、no-PR 或 closed-unmerged work 应在 authoritative state 与 dirty-worktree checks 后显式 terminate session。"
   }
 ]

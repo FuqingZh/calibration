@@ -220,6 +220,33 @@ GitHub per-pull-request auto-merge is distinct from AO project `autoMerge`.
 Always-on project configuration has different cancellation and state-change
 semantics and remains disabled unless separately proven and accepted.
 
+### Worker completion and teardown
+
+Once authoritative readback establishes that an AO session owns or has claimed
+a pull request, and before that pull request can merge, enable the native
+per-session terminate-on-PR-merge policy when the installed AO supports it and
+read the setting back from the session. This policy closes worker resources
+after delivery. It grants no merge authority and is independent of both GitHub
+native per-pull-request auto-merge and AO project `autoMerge`; do not enable
+either as a side effect.
+
+When a session owns multiple or stacked pull requests, the merge trigger
+terminates it only after no attributed pull request remains open and at least
+one attributed pull request has merged. After the trigger, authoritatively read
+back session termination and cleanup or resource state. Keep the terminated
+session record as archive and audit history: cleanup removes or releases the
+runtime, terminal, and worktree resources, not the historical record.
+
+Pending cleanup remains observable and may be retried only with a bounded
+attempt or deadline budget and the normal transient-operation retry rules.
+Never force-delete a dirty worktree. Preserve it and escalate
+`preserved_dirty`, `failed`, or any inability to prove release. For cancelled
+work, sessions with no pull request, and pull requests closed without merge,
+use explicit session termination after authoritative session-state and
+dirty-worktree checks rather than relying on the merge policy. Without an
+OS-owned containment boundary, report the narrower resource evidence available
+and do not claim full descendant-process release.
+
 ## Dashboard Terminal Boundary
 
 Dashboard Terminal is off by default. Enabling an existing-session terminal is
