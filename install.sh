@@ -146,6 +146,7 @@ if [[ "$PROFILE" == "ao-worker" ]]; then
 fi
 MANAGED_SKILLS=(
   calibration
+  closeout
   retrospect
   writing-code-docs
 )

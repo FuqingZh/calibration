@@ -5,6 +5,8 @@ and portable integration guidance. Reusable cross-project engineering guidance
 lives under `../references/engineering/`.
 
 Calibration is in stable maintenance mode with no active implementation phase.
+The completed bounded v2.4 closeout-skill increment adds an explicitly invoked
+first-party closeout contract and makes no comparative improvement claim.
 The bounded review-convergence routing v2.3 increment clarifies a portable
 contract only and makes no behavioral-improvement claim. The bounded CAL-1
 containment public contract is delivered without a behavioral-improvement
@@ -33,6 +35,7 @@ back to `$HOME/.config/calibration/AGENTS.md`.
 | Repository and installer contract | `../README.md` |
 | Cross-project judgment defaults | `../references/engineering/principles.md` |
 | Calibration routing | `../skills/calibration/SKILL.md` |
+| Explicit task closeout | `../skills/closeout/SKILL.md` |
 | Repository capability and delivery placement | `../references/engineering/discipline/harness.md` |
 | Completion and external-result evidence | `../references/engineering/discipline/verification.md` |
 | Agent and workflow comparison | `../references/engineering/discipline/evaluation.md` |
@@ -48,6 +51,7 @@ back to `$HOME/.config/calibration/AGENTS.md`.
 | Portable orchestrator containment | `decisions/2026-07-31-portable-orchestrator-containment.md` |
 | CAL-1 implementation status | `implementation-plan/20260731-v2.1-portable-orchestrator-containment-implementation-plan.md` |
 | Review-convergence routing status | `implementation-plan/20260803-v2.3-review-convergence-routing-implementation-plan.md` |
+| Closeout skill status | `implementation-plan/20260804-v2.4-closeout-skill-implementation-plan.md` |
 
 The current default is outcome autonomy within repository-local, reversible
 boundaries. AO is optional and conditional. Ordinary engineering tasks do not
