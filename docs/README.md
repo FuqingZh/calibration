@@ -4,9 +4,12 @@ This directory records calibration decisions, evaluations, historical plans,
 and portable integration guidance. Reusable cross-project engineering guidance
 lives under `../references/engineering/`.
 
-Calibration is in stable maintenance mode with no active implementation phase.
-The completed bounded v2.4 closeout-skill increment adds an explicitly invoked
-first-party closeout contract and makes no comparative improvement claim.
+Calibration is in stable maintenance mode. The proportional-validation plan is
+the current bounded validation slice and is layered on the ongoing project-docs
+architecture convergence; neither reopens the completed runtime or AO
+implementation phases. The completed bounded v2.4 closeout-skill increment
+adds an explicitly invoked first-party closeout contract and makes no
+comparative improvement claim.
 The bounded review-convergence routing v2.3 increment clarifies a portable
 contract only and makes no behavioral-improvement claim. The bounded CAL-1
 containment public contract is delivered without a behavioral-improvement
@@ -39,20 +42,23 @@ back to `$HOME/.config/calibration/AGENTS.md`.
 | Repository capability and delivery placement | `../references/engineering/discipline/harness.md` |
 | Completion and external-result evidence | `../references/engineering/discipline/verification.md` |
 | Agent and workflow comparison | `../references/engineering/discipline/evaluation.md` |
+| Project docs architecture | `../references/engineering/docs/workflow/project_docs_architecture/20260805-v1.1-project-docs-architecture.md` |
 | Durable implementation-plan contract | `../references/engineering/docs/document-types/implementation-plan.md` |
+| Project docs architecture convergence plan | `implementation-plans/20260805-v1.0-project-docs-architecture-convergence-implementation-plan.md` |
+| Proportional validation selection plan | `implementation-plans/20260807-v1.0-proportional-validation-selection-implementation-plan.md` |
 | Portable AO integration | `runbooks/agent-orchestrator-review-continuation.md` |
 | Native AO delivery and auto-merge boundary | `decisions/2026-07-29-ao-native-delivery-convergence.md` |
 | Current AI-native direction | `decisions/2026-07-27-ai-native-calibration-review.md` |
 | Writable comparative evidence | `decisions/2026-07-27-ai-native-writable-implementation-evaluation-closeout.md` |
 | Five-phase convergence result | `decisions/2026-07-27-ai-native-calibration-convergence-closeout.md` |
-| Default repository quality gate | `decisions/2026-07-30-default-repository-quality-gate.md` |
+| Proportional validation selection | `decisions/2026-08-07-proportional-validation-selection.md` |
 | Codex-home adoption compatibility | `decisions/2026-07-30-ao-host-context-and-config-compatibility.md` |
 | AO host calibration CLI closeout | `decisions/2026-08-04-ao-host-calibration-cli-closeout.md` |
 | Dashboard terminal boundary | `decisions/2026-07-30-dashboard-terminal-access-boundary.md` |
 | Portable orchestrator containment | `decisions/2026-07-31-portable-orchestrator-containment.md` |
-| CAL-1 implementation status | `implementation-plan/20260731-v2.1-portable-orchestrator-containment-implementation-plan.md` |
-| Review-convergence routing status | `implementation-plan/20260803-v2.3-review-convergence-routing-implementation-plan.md` |
-| Closeout skill status | `implementation-plan/20260804-v2.4-closeout-skill-implementation-plan.md` |
+| CAL-1 implementation status | `implementation-plans/20260731-v2.1-portable-orchestrator-containment-implementation-plan.md` |
+| Review-convergence routing status | `implementation-plans/20260803-v2.3-review-convergence-routing-implementation-plan.md` |
+| Closeout skill status | `implementation-plans/20260804-v2.4-closeout-skill-implementation-plan.md` |
 
 The current default is outcome autonomy within repository-local, reversible
 boundaries. AO is optional and conditional. Ordinary engineering tasks do not
@@ -61,6 +67,11 @@ load private AO material.
 ## Repository Validation
 
 `pdm.lock` is the dependency authority:
+
+Select validation proportionally to the affected behavior and contracts. The
+commands below are the complete repository gate used by CI, not a mandatory
+local checklist for every change; run the smallest relevant checks unless a
+repository rule explicitly requires the complete gate.
 
 ```bash
 pdm lock --check
@@ -143,9 +154,9 @@ evidence remains in its owning public decisions.
 - `decisions/2026-07-21-repository-delivery-feedback-loop.md`
 - `decisions/2026-07-23-ao-review-continuation-adoption.md`
 - `decisions/2026-07-29-ao-native-delivery-convergence.md`
-- `implementation-plan/20260723-v1.6-repository-quality-gate-implementation-plan.md`
-- `implementation-plan/20260723-v1.7-ao-repository-adoption-contract-implementation-plan.md`
-- `implementation-plan/20260727-v1.8-ai-native-calibration-convergence-implementation-plan.md`
-- `implementation-plan/20260728-v1.9-persistent-linear-intake-and-no-product-canary-implementation-plan.md`
-- `implementation-plan/20260728-v2.0-three-scenario-linear-acceptance-implementation-plan.md`
-- `implementation-plan/20260731-v2.1-portable-orchestrator-containment-implementation-plan.md`
+- `implementation-plans/20260723-v1.6-repository-quality-gate-implementation-plan.md`
+- `implementation-plans/20260723-v1.7-ao-repository-adoption-contract-implementation-plan.md`
+- `implementation-plans/20260727-v1.8-ai-native-calibration-convergence-implementation-plan.md`
+- `implementation-plans/20260728-v1.9-persistent-linear-intake-and-no-product-canary-implementation-plan.md`
+- `implementation-plans/20260728-v2.0-three-scenario-linear-acceptance-implementation-plan.md`
+- `implementation-plans/20260731-v2.1-portable-orchestrator-containment-implementation-plan.md`

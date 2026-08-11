@@ -28,10 +28,9 @@ Load only the routers required by the decisions at hand:
 - refactoring, debugging, verification, repository harnesses, and agent or
   workflow evaluation:
   `../../references/engineering/discipline/README.md`
-- repository capability assessment, minimal adoption, and delivery feedback,
-  including implementation-task intake for an already adopted orchestrator,
-  setup discovery, pull-request validation, CI, agent review, cloud execution
-  gaps, and repeated delivery failures:
+- repository capability assessment, minimal adoption, repeated delivery
+  failures, missing CI or review capability, cross-contract review feedback,
+  review-convergence exhaustion, and delivery topology decisions:
   `../../references/engineering/discipline/harness.md`
 - explicit AO onboarding, AO diagnosis, or AO-mediated pull-request delivery
   for an opted-in repository using an already installed Agent Orchestrator:
@@ -43,6 +42,13 @@ Load only the routers required by the decisions at hand:
 
 Do not load the AO guide merely because a repository is opted in. Ordinary
 calibration engineering tasks remain on the engineering references above.
+
+For ordinary GitHub mechanics, use focused installed skills when their triggers
+apply: `github:gh-address-comments` for actionable pull-request feedback and
+`github:gh-fix-ci` for failing GitHub Actions checks. If unavailable, use
+repository- or platform-native tooling. These optional skills provide mechanics;
+they do not grant write or scope authority, transfer AO ownership, or trigger
+calibration merely by being present or absent.
 
 For a completion claim involving a public or cross-boundary contract, always
 load `../../references/engineering/discipline/verification.md`.

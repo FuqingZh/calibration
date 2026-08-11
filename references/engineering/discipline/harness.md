@@ -321,6 +321,13 @@ retain the normal isolated-Worktree fallback.
 
 When a repository change is intended to land through a pull request:
 
+Focused installed skills may own ordinary GitHub mechanics:
+`github:gh-address-comments` for actionable pull-request feedback and
+`github:gh-fix-ci` for failing GitHub Actions checks. If unavailable, use
+repository- or platform-native tooling. These optional skills do not grant
+write or scope authority, replace the current owner, or make their absence a
+harness gap.
+
 1. Discover the repository-owned setup, validation, and delivery commands,
    together with the current CI and review feedback surfaces.
 2. Use existing platform defaults and automatic setup before adding custom

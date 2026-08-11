@@ -1,30 +1,26 @@
 # Design Proposal
 
-Use this type for a not-yet-approved change direction. It is for comparing
-approaches before implementation becomes the contract.
+## Use When
 
-## Where It Lives
+Use this type for a not-yet-approved change direction when alternatives must be
+compared before implementation becomes the contract.
 
-Prefer project `docs/implementation-plan/` for implementation-oriented changes
-or `docs/architecture/` for broad architecture proposals, unless the repository
-has a stricter convention.
+## Method Reference
 
-## Required Content
+Use the repository's architecture and design references for the relevant
+boundary. Keep the proposal separate from an implementation plan until the
+direction is accepted.
 
-- Problem statement and goal.
-- Non-goals and constraints.
-- Viable alternatives.
-- Recommended approach and why it is preferred.
-- Open questions and decision points.
-- Expected impact on modules, contracts, tests, and documentation.
+## Local Requirements
 
-## Do Not Include
-
-- Claims that proposed behavior is already current.
-- Full execution checklists better suited to an implementation plan.
-- Low-value brainstorming branches after a direction has been rejected.
+- Prefer project `docs/architecture/` for broad architecture proposals, or the
+  repository-local proposal location when one already exists.
+- State the problem, goal, non-goals, and constraints.
+- Compare viable alternatives and recommend one with reasons.
+- Identify open questions and decision points.
+- Describe expected impact on modules, contracts, tests, and documentation.
 
 ## Complete When
 
-The reader can accept, reject, or revise the direction without needing hidden
-context from the conversation that produced it.
+The reader can accept, reject, or revise the direction without recovering
+hidden context from the conversation that produced it.

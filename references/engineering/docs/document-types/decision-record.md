@@ -1,28 +1,26 @@
 # Decision Record
 
-Use this type for settled, high-impact choices where the reason matters and
-cannot be cheaply recovered from current code or architecture docs.
+## Use When
 
-## Where It Lives
+Use this type for a settled, high-impact choice where the reason matters and
+cannot be cheaply recovered from current code or architecture documents.
 
-Prefer project `docs/architecture/` or a repository-local decision directory if
-one already exists.
+## Method Reference
 
-## Required Content
+Use the [Architectural Decision Records](https://adr.github.io/) model. The
+[MADR templates](https://adr.github.io/adr-templates/) are an optional format
+reference, not an additional local requirement.
 
-- Decision date and status.
-- Context that made the decision necessary.
-- Alternatives considered.
-- Chosen decision.
-- Consequences, including costs and follow-up obligations.
-- Conditions that would justify reopening the decision.
+## Local Requirements
 
-## Do Not Include
-
-- Routine implementation choices.
-- Decisions with no real alternative.
-- Current architecture explanation that belongs in `architecture-overview.md`.
-- Unsettled proposals that belong in `design-proposal.md`.
+- Prefer project `docs/decisions/`, or a repository-local decision directory
+  when one already exists.
+- Record the decision date and status.
+- Explain the context that made the decision necessary.
+- Compare the viable alternatives that materially affected the choice.
+- State the chosen decision and its consequences, including follow-up
+  obligations.
+- Record conditions that would justify reopening it.
 
 ## Complete When
 

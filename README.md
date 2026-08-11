@@ -83,7 +83,10 @@ Install the locked validation environment:
 pdm sync --clean
 ```
 
-Run the same repository quality gate used by GitHub Actions:
+Select validation proportionally to the affected behavior and contracts. Run
+the smallest relevant checks unless repository policy or the changed surface
+requires the complete gate. The complete repository quality gate used by
+GitHub Actions is:
 
 ```bash
 pdm lock --check
@@ -125,6 +128,13 @@ The managed third-party optional skills are:
 Third-party skills are vendored under `thirdparty/skills/`. The installer does
 not download them from the network. Local patches and source notes are tracked
 in `thirdparty/PATCHES.md` and `thirdparty/sources.tsv`.
+
+Optional GitHub workflow integrations are not vendored or managed by this
+installer. When available, ordinary actionable pull-request feedback routes to
+`github:gh-address-comments`, and failing GitHub Actions checks route to
+`github:gh-fix-ci`. They provide mechanics without granting write or scope
+authority. When unavailable, use repository- or platform-native tooling rather
+than silently installing a provider or invoking calibration for routine work.
 
 `test-prompts.json` files are behavioral evaluation inputs. Their presence does
 not prove an optimization or regression result until the prompts have been run

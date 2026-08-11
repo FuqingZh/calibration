@@ -70,15 +70,52 @@ def test_calibration_prompts_cover_both_review_convergence_branches() -> None:
         assert phrase in reroute
 
 
+def test_focused_github_skills_own_ordinary_provider_mechanics() -> None:
+    skill = compact("skills/calibration/SKILL.md")
+    discipline = compact("references/engineering/discipline/README.md")
+    harness = compact("references/engineering/discipline/harness.md")
+    readme = compact("README.md")
+
+    for surface in (skill, discipline, harness, readme):
+        assert "github:gh-address-comments" in surface
+        assert "github:gh-fix-ci" in surface
+
+    assert "do not grant write or scope authority" in harness
+    assert "make their absence a harness gap" in harness
+    assert "not vendored or managed by this installer" in readme
+    assert "gh-address-comments" not in read("install.sh")
+    assert "gh-fix-ci" not in read("install.sh")
+    assert "/home/" not in skill
+    assert "/home/" not in harness
+
+
+def test_calibration_prompts_cover_focused_github_routing() -> None:
+    prompts = json.loads(read("skills/calibration/test-prompts.json"))
+    cases = {case["id"]: " ".join(case["expected"].split()) for case in prompts}
+
+    assert "github:gh-address-comments" in cases[30]
+    assert "不需要仅因普通 review mechanics 调用 calibration" in cases[30]
+    assert "github:gh-fix-ci" in cases[31]
+    assert "非 GitHub Actions provider 只报告其 URL" in cases[31]
+    assert "不得静默安装 provider" in cases[32]
+    assert "仅因 skill 缺失调用 calibration" in cases[32]
+    assert "不授予写权限、转移 AO ownership 或创建第二 writer" in cases[33]
+    assert "preserve branch、head、worktree、owner 和 feedback state" in cases[33]
+
+
 def test_installer_propagates_global_review_tripwire(tmp_path: Path) -> None:
     expected = (
-        "Continue mechanical review feedback within the current explicitly "
-        "declared and authorized pull request contract through the existing "
-        "bounded owner loop."
+        "Use focused installed skills for ordinary GitHub mechanics when their "
+        "triggers apply: `github:gh-address-comments` for actionable pull-request "
+        "feedback and `github:gh-fix-ci` for failing GitHub Actions checks"
     )
     template = compact("codex/AGENTS.md.template")
     assert expected in template
-    assert "and invoke calibration. For out-of-contract feedback" in template
+    assert "and feedback state and invoke calibration" in template
+    assert "independent pull requests" not in template
+    assert "independent pull requests" in compact(
+        "references/engineering/discipline/harness.md"
+    )
 
     for profile in ("standard", "ao-worker"):
         codex_home = tmp_path / profile
@@ -91,5 +128,5 @@ def test_installer_propagates_global_review_tripwire(tmp_path: Path) -> None:
             (codex_home / "AGENTS.md").read_text(encoding="utf-8").split()
         )
         assert expected in installed
-        assert "distinct configured review-convergence budget is exhausted" in installed
-        assert "is not a topology signal" in installed
+        assert "distinct review-convergence budget is exhausted" in installed
+        assert "remains a preserve-and-report condition" in installed

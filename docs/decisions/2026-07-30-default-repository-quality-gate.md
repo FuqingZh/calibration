@@ -2,7 +2,8 @@
 
 Version: v1.0
 Date: 2026-07-30
-Status: accepted
+Status: superseded
+Superseded by: [Proportional Validation Selection](2026-08-07-proportional-validation-selection.md)
 
 ## Decision
 

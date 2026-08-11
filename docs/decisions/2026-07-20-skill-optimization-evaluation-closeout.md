@@ -76,4 +76,4 @@ Before changing the skill bodies again:
    next optimization round.
 
 Execution is tracked in
-`../implementation-plan/20260720-v1.1-agent-harness-evaluation-implementation-plan.md`.
+`../implementation-plans/20260720-v1.1-agent-harness-evaluation-implementation-plan.md`.

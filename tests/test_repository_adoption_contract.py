@@ -113,7 +113,7 @@ def test_orchestrator_containment_is_portable_and_bounded() -> None:
     runbook = compact("docs/runbooks/agent-orchestrator-review-continuation.md")
     decision = compact("docs/decisions/2026-07-31-portable-orchestrator-containment.md")
     plan = compact(
-        "docs/implementation-plan/"
+        "docs/implementation-plans/"
         "20260731-v2.1-portable-orchestrator-containment-implementation-plan.md"
     )
 
@@ -743,7 +743,7 @@ def test_shared_aggregation_root_has_behavioral_prompt_coverage() -> None:
 
 def test_future_behavior_evaluation_is_conditional_and_correctly_scoped() -> None:
     plan = compact(
-        "docs/implementation-plan/"
+        "docs/implementation-plans/"
         "20260731-v2.1-portable-orchestrator-containment-implementation-plan.md"
     )
 
