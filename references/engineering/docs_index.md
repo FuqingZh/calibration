@@ -30,7 +30,7 @@ may be loaded selectively when the task requires more detail.
   - Use when defining, reviewing, or applying branch naming, PR branch flow,
     protected main policy, staging/test branch usage, merge policy, auto-merge,
     merge queue, or CI/CD-driven merge rules.
-- `docs/workflow/project_docs_architecture/20260527-v1.0-project-docs-architecture.md`
+- `docs/workflow/project_docs_architecture/20260805-v1.1-project-docs-architecture.md`
   - Use when defining project `docs/` layout, documentation file names,
     README navigation, document lifecycle, and long-lived knowledge placement.
 - `docs/workflow/task_traces_and_retros/20260527-v1.0-task-traces-and-retros.md`

@@ -126,7 +126,9 @@ Install the locked validation environment with:
 pdm sync --clean
 ```
 
-Before delivery, run:
+Select validation proportionally to the affected behavior and contracts. Run
+the smallest relevant checks that can decide the changed surface. The complete
+repository gate is:
 
 ```bash
 pdm lock --check
@@ -141,9 +143,12 @@ git status --short
 `pdm.lock` is the dependency authority for local and CI validation. Use an
 explicit temporary `CODEX_HOME`; never overwrite the user's active Codex
 installation during validation.
-Run all three diff checks before delivery: the worktree, staged changes, and
-the committed branch range are distinct surfaces. Set `BASE_REF` to the pull
-request base SHA or an available local base branch when `main` is unavailable.
+Run the complete gate when the affected behavior or contracts, or an explicit
+repository policy, require it. Otherwise select the relevant checks without
+treating a file extension as proof of behavioral impact. When diff checks are
+selected, remember that the worktree, staged changes, and committed branch
+range are distinct surfaces. Set `BASE_REF` to the pull request base SHA or an
+available local base branch when `main` is unavailable.
 Treat unexpected status entries after validation as artifacts to remove or
 classify before delivery.
 

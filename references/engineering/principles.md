@@ -20,6 +20,10 @@ topics.
 - Treat plans as working hypotheses rather than implementation authority. When
   repository or runtime evidence disproves a planned path, update the path
   instead of preserving the plan.
+- Select validation proportionally to the affected behavior and contracts. Run
+  the smallest relevant checks that can decide the changed surface, while
+  preserving any repository-local rule that explicitly requires a stronger
+  gate.
 - Add durable process artifacts only when coordination, risk, interruption, or
   repeated failure makes them useful. Do not require plans, specifications, or
   approval stages merely because a task changes code.

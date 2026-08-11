@@ -472,12 +472,14 @@ def test_calibration_defaults_to_outcome_autonomy() -> None:
 
     assert "## Outcome Autonomy And Feedback" in principles
     assert "Treat plans as working hypotheses" in principles
+    assert "Select validation proportionally" in principles
     assert "Prefer outcome constraints and executable feedback" in skill
     assert "work directly from those sources" in agents_template
-    assert "discover and run the repository-owned validation entrypoint" in (
-        agents_contract
-    )
-    assert "complete canonical gate before delivery" in agents_contract
+    assert "repository-owned validation entrypoint" in agents_contract
+    assert "select validation proportionally" in agents_contract
+    assert "smallest relevant checks" in agents_contract
+    assert "repository-local policy explicitly requires it" in agents_contract
+    assert "complete canonical gate before delivery" not in agents_contract
     assert "authoritative host context" in agents_contract
 
 
@@ -583,7 +585,7 @@ def test_agents_content_boundary_has_one_canonical_owner() -> None:
     project_docs = (
         REPOSITORY_ROOT
         / "references/engineering/docs/workflow/project_docs_architecture"
-        / "20260527-v1.0-project-docs-architecture.md"
+        / "20260805-v1.1-project-docs-architecture.md"
     ).read_text(encoding="utf-8")
 
     assert "## `AGENTS.md` Contract" in harness

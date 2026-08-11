@@ -1,27 +1,26 @@
 # Architecture Overview
 
+## Use When
+
 Use this type for current system facts: how the system works now, where the
 important boundaries are, and which contracts are active.
 
-## Where It Lives
+## Method Reference
 
-Prefer project `docs/architecture/`, or the repository-local architecture
-location if one already exists.
+Use the repository's current source of truth and keep the overview concise.
+Deeper contracts may live in architecture subdocuments or schemas.
 
-## Required Content
+## Local Requirements
 
-- Current scope and purpose.
-- Main components, ownership boundaries, and data flow.
-- Public contracts, schemas, APIs, CLIs, or artifact shapes that callers rely on.
-- Current source-of-truth links for deeper details.
-- Key decisions that still affect implementation, kept short.
-
-## Do Not Include
-
-- Unapproved future plans.
-- Long exploration transcripts.
-- Completed task retrospectives.
-- Historical material unless it explains an active boundary.
+- Place it in project `docs/architecture/`, or the repository-local
+  architecture location when one already exists.
+- State current scope and purpose.
+- Describe main components, ownership boundaries, and data flow.
+- Link public contracts, schemas, APIs, CLIs, or artifact shapes that callers
+  rely on.
+- Keep key decisions that still affect implementation short and link their
+  decision records.
+- Separate current behavior from proposed or historical material.
 
 ## Complete When
 

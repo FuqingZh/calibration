@@ -17,6 +17,18 @@ type file that matches the current phase.
   `decision-record.md`
 - Execution slices, affected boundaries, verification, and risks:
   `implementation-plan.md`
+- Durable validation strategy and acceptance evidence:
+  `test-plan.md`
+- Reproducible performance, numerical, or scale measurement:
+  `benchmark-record.md`
+- Guided learning from a starting state to a new capability:
+  `tutorial.md`
+- One concrete task for a competent reader:
+  `how-to-guide.md`
+- Controlled or high-risk operational procedure:
+  `runbook.md`
+- Verified external or third-party behavior and safe adaptation:
+  `compatibility-record.md`
 - Task-level expectation-versus-actual learning:
   `trace-retro.md`
 
@@ -34,10 +46,14 @@ type file that matches the current phase.
 
 Repository-local documentation conventions override these defaults.
 
-Use `../workflow/project_docs_architecture/20260527-v1.0-project-docs-architecture.md`
+Use `../workflow/project_docs_architecture/20260805-v1.1-project-docs-architecture.md`
 for project `docs/` layout, file naming, README navigation, and archive
 lifecycle rules.
 
 Use `../workflow/task_traces_and_retros/20260527-v1.0-task-traces-and-retros.md`
 for `.traces/` layout, retrospective format, evidence handling, and promotion
 rules.
+
+For tutorial and how-to method guidance, use the linked Diataxis references in
+the corresponding type files. External methods inform authoring; they do not
+silently change the local contract.

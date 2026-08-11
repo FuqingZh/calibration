@@ -8,9 +8,12 @@ documentation. For ordinary local implementation with clear repository rules
 and executable feedback, work directly from those sources without adding a
 calibration step. Load only the references routed for the current task.
 
-For code changes, discover and run the repository-owned validation entrypoint
-and any focused checks relevant to the changed surface. Run the complete
-canonical gate before delivery when one exists. Prefer configured repository
+For repository changes, select validation proportionally to the affected
+behavior and contracts. Run the smallest relevant checks that can decide the
+changed surface, using the repository-owned validation entrypoint when it is
+relevant. Run the complete canonical gate when the change can affect runtime
+behavior, generated artifacts, executable workflows, or compatibility, or when
+repository-local policy explicitly requires it. Prefer configured repository
 tools over a universal language checklist. If a required check cannot be found
 or run, report the exact gap and residual risk rather than silently skipping it.
 
@@ -88,17 +91,15 @@ state and report the actual stop reason. Use `delivery degraded` only for a
 corresponding external integration or authentication failure while the core
 daemon remains ready.
 
-Continue mechanical review feedback within the current explicitly declared and
-authorized pull request contract through the existing bounded owner loop. When
-exact-current-head review proposes work beyond that contract or the distinct
-configured review-convergence budget is exhausted, pause remote review,
-preserve branch, head, worktree, owner, and feedback state, and invoke
-calibration. For out-of-contract feedback, first reject or escalate it or accept
-an authorized contract expansion; only after acceptance select one pull
-request, independent pull requests, or a genuinely dependent stack. For
-review-convergence budget exhaustion, make the same topology choice from the
-preserved state. Transport, polling, and idempotent-operation retry exhaustion
-retains its existing preserve-and-report path and is not a topology signal.
+Use focused installed skills for ordinary GitHub mechanics when their triggers
+apply: `github:gh-address-comments` for actionable pull-request feedback and
+`github:gh-fix-ci` for failing GitHub Actions checks; otherwise use repository-
+or platform-native tooling. These skills do not grant write or scope authority
+or transfer AO ownership. Keep same-scope feedback in the current owner loop.
+If review crosses the authorized pull-request contract or the distinct
+review-convergence budget is exhausted, preserve branch, head, worktree, owner,
+and feedback state and invoke calibration. Transport, polling, and
+idempotent-operation retry exhaustion remains a preserve-and-report condition.
 
 If AO is unavailable, isolated-worktree fallback applies only to new or unowned
 PR-bound work. Preserve an existing AO-owned PR's branch, worktree, and feedback

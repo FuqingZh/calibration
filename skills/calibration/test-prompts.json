@@ -8,8 +8,8 @@
   {
     "id": 2,
     "scenario": "复杂场景：项目文档类型选择",
-    "prompt": "这次重构后要把文档补一下：当前架构、为什么选这个方向、执行计划、复盘分别应该写到哪里？",
-    "expected": "skill 应通过 docs_index 进入 document-types 路由，区分 architecture-overview、decision-record、implementation-plan、trace-retro；应说明 PR body 不是长期文档，archive 是生命周期状态，不是文档类型。"
+    "prompt": "这次重构后要把文档补一下：当前架构、为什么选这个方向、执行计划、从零学习路径、一个已知任务、生产恢复、第三方解析器规则、测试策略、基准结果、复盘分别应该写到哪里？",
+    "expected": "skill 应通过 docs_index 进入 document-types 路由，区分 architecture-overview、decision-record、implementation-plan、tutorial、how-to-guide、runbook、compatibility-record、test-plan、benchmark-record、trace-retro；应说明 guided capability acquisition 选 tutorial、one concrete task 选 how-to guide、controlled or high-risk operation 选 runbook、opaque external behavior 选 compatibility record；还应说明 PR body 不是长期文档，archive 是生命周期状态，不是文档类型。"
   },
   {
     "id": 3,
@@ -130,5 +130,71 @@
     "scenario": "Harness：AO 合并后的 worker completion 与 teardown",
     "prompt": "一个 AO worker 拥有的 PR 已合并，但 worker 仍是 idle/live，session 的 terminateOnPrMerge=false。为了清理，是不是应该删除 terminated session 记录，或者打开 AO project autoMerge 让以后自动收尾？",
     "expected": "不应删除 session 历史或启用 AO project autoMerge。应区分 archived terminated session record 与泄漏的 live runtime、terminal、worktree resources：在 PR attribution/claim 经 authoritative readback 建立后且 merge 前，若 AO 支持，应启用 native per-session terminate-on-PR-merge policy 并回读确认；该 teardown policy 不授予 merge authority，也不启用 GitHub native auto-merge 或 AO project autoMerge。合并后应回读 session termination 与 cleanup/resource state，并保留 terminated session record 作为 archive/audit history。若同一 session 归属多个或 stacked PR，只有在至少一个已 merged 且没有 attributed PR 仍 open 时才终止。pending cleanup 必须 observable 且 bounded-retryable；dirty worktree 要 preserve，遇到 preserved_dirty、failed 或无法证明 release 时升级且不得 force-delete。没有 OS-owned containment boundary 时不得声称 full descendant-process release。cancelled、no-PR 或 closed-unmerged work 应在 authoritative state 与 dirty-worktree checks 后显式 terminate session。"
+  },
+  {
+    "id": 23,
+    "scenario": "文档路由：从零学习一项能力",
+    "prompt": "团队新成员完全不会用这个分析 CLI。请从安装、准备输入到第一次成功运行，设计一条能让他边做边学会的路径。",
+    "expected": "主类型应是 tutorial，放在 docs/tutorials/；它需要从已知起点引导到一个可验证能力，并给出前置条件、渐进步骤和练习。不能把它路由成 how-to guide（那只解决一个已知任务），也不能把 architecture overview 或 reference 文档当成学习路径。"
+  },
+  {
+    "id": 24,
+    "scenario": "文档路由：完成一个已知任务",
+    "prompt": "我已经知道系统原理，只需要一份步骤，告诉我如何导入一批样本并确认导入成功。",
+    "expected": "主类型应是 how-to guide，放在 docs/how-to-guides/；它应聚焦一个具体结果、前置条件、可执行步骤和验证方式。不能路由成 tutorial（不需要从零教学），也不能路由成 runbook，除非该操作具有生产恢复、高风险控制或回滚升级要求。"
+  },
+  {
+    "id": 25,
+    "scenario": "文档路由：生产恢复程序",
+    "prompt": "生产服务出现数据积压，需要值班人员按检查点恢复，确认结果，必要时回滚并升级。请把这套流程写成团队可执行的文档。",
+    "expected": "主类型应是 runbook，放在 docs/runbooks/；它需要权限和前置条件、检查点、验证、恢复、回滚、停止条件和升级路径。不能只写成 how-to guide，因为这是生产邻接且受控的恢复操作；也不能把未经验证的排障过程直接写成当前 runbook。"
+  },
+  {
+    "id": 26,
+    "scenario": "文档路由：第三方黑箱兼容规则",
+    "prompt": "我们反复验证了某供应商解析器在版本 4.2 下对这个字段的特殊行为，并找到安全适配方式。请记录下来供后续调用者使用。",
+    "expected": "主类型应是 compatibility record，放在 docs/compatibility/；需要记录外部边界、版本、环境、观察证据、失败特征和安全适配，并区分事实与推断。不能放成 architecture overview 或 tutorial；尚未重复验证的试错过程应留在 .traces/。"
+  },
+  {
+    "id": 27,
+    "scenario": "文档路由：记录一项已定决策",
+    "prompt": "我们比较了三个存储方案，最终选择其中一个，未来可能因为成本和兼容性变化而重开。请记录为什么这样选。",
+    "expected": "主类型应是 decision record，放在 docs/decisions/；需要背景、替代方案、选择、后果和重开条件。不能用 architecture overview 代替选择理由，也不能把尚未决定的方案比较写成 decision record。"
+  },
+  {
+    "id": 28,
+    "scenario": "文档路由：拆解已接受的迁移",
+    "prompt": "迁移方向已经批准。请把它拆成有依赖关系的实施切片，列出影响边界、风险、验证命令和验收证据，供后续执行。",
+    "expected": "主类型应是 implementation plan，放在 docs/implementation-plans/；需要决策完成的切片、依赖、影响边界、风险、验证和验收。不能用 design proposal（方向已经批准），也不能用 decision record（不再记录为什么选方向），更不能把执行计划藏在 PR body。"
+  },
+  {
+    "id": 29,
+    "scenario": "验证选择：普通文档变更",
+    "prompt": "我只修正 README 措辞并移动一份普通说明文档，没有修改生成器、可执行示例、agent 指令、skill、配置或运行时合同。仓库存在一个完整代码质量 gate，这次是否必须全部运行？",
+    "expected": "应根据受影响行为和合同成比例选择验证，运行足以决定文档措辞、导航、链接、格式和 diff 的最小相关检查；不能仅因仓库存在完整代码 gate 就机械运行 runtime tests。若仓库本地政策明确要求所有此类变更运行完整 gate，则该更具体的规则优先。文件扩展名本身不能证明有无行为影响。"
+  },
+  {
+    "id": 30,
+    "scenario": "GitHub 路由：普通 PR review feedback",
+    "prompt": "这个 GitHub PR 有若干 unresolved inline review threads。请先识别哪些仍可执行、哪些重复或已经 resolved，再处理当前授权范围内的反馈。需要先调用 calibration 吗？",
+    "expected": "不需要仅因普通 review mechanics 调用 calibration。若已安装且触发条件满足，应路由到 github:gh-address-comments，使用 thread-aware 状态区分 actionable、duplicate、resolved 和 informational feedback；写权限、当前 PR contract 与 AO owner 保持不变。只有反馈越过已授权 contract、产生冲突或触发 review-convergence tripwire 时才进入 calibration。"
+  },
+  {
+    "id": 31,
+    "scenario": "GitHub 路由：Actions 检查失败",
+    "prompt": "当前 PR 的一个 GitHub Actions check 失败了。请读取失败日志、判断根因并提出聚焦修复，不要把所有代码检查机械重跑一遍。",
+    "expected": "若已安装且触发条件满足，应路由到 github:gh-fix-ci，聚焦 GitHub Actions check 和日志，先报告根因和相关修复，再运行与失败表面相关的验证。非 GitHub Actions provider 只报告其 URL 和边界。普通 Actions 诊断不需要加载完整 calibration harness，也不能扩张现有写权限或任务 scope。"
+  },
+  {
+    "id": 32,
+    "scenario": "GitHub 路由：可选 skill 缺失",
+    "prompt": "新环境没有安装 GitHub 插件，但需要读取普通 PR 评论或 Actions 失败。是否应该自动联网安装插件，或者因为缺少 skill 就调用 calibration？",
+    "expected": "都不应该。可选 skill 缺失时使用仓库或平台原生工具完成当前 mechanics，并明确真实的认证或观测缺口；不得静默安装 provider、虚构插件能力，或仅因 skill 缺失调用 calibration。只有反复证明缺少的是持久 delivery capability 或出现 scope、ownership、topology 决策时才路由到 harness/calibration。"
+  },
+  {
+    "id": 33,
+    "scenario": "GitHub 路由：AO owner 与外部 mechanics",
+    "prompt": "AO worker 已拥有这个 PR。GitHub review 只要求同范围机械修复，Actions 也有一个相关失败。controller 能否调用两个 GitHub skill 后直接修改 owner 的 sibling worktree？",
+    "expected": "不能。github:gh-address-comments 与 github:gh-fix-ci 只提供 review/Actions mechanics，不授予写权限、转移 AO ownership 或创建第二 writer。当前 owner 在既有授权和 bounded loop 内处理同范围反馈；controller 只做允许的 readback 和路由。若反馈跨越 PR contract 或 review-convergence budget 耗尽，应 preserve branch、head、worktree、owner 和 feedback state 并调用 calibration。"
   }
 ]
