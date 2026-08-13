@@ -465,6 +465,32 @@ def test_standard_preserves_foreign_teach_link_until_force(tmp_path: Path) -> No
     assert teach.readlink() == REPOSITORY_ROOT / "thirdparty/skills/teach"
 
 
+def test_nonregular_agents_target_is_preflighted_before_home_mutation(
+    tmp_path: Path,
+) -> None:
+    codex_home = tmp_path / "codex-home"
+    agents = codex_home / "AGENTS.md"
+    agents.mkdir(parents=True)
+    marker = agents / "user-content"
+    marker.write_text("preserve\n", encoding="utf-8")
+    before = snapshot_tree(codex_home)
+
+    refused = run_installer(codex_home)
+
+    assert refused.returncode == 1
+    assert "non-regular AGENTS target without --force" in refused.stderr
+    assert snapshot_tree(codex_home) == before
+    assert not (codex_home / "skills").exists()
+
+    forced = run_installer(codex_home, "--force")
+
+    assert forced.returncode == 0, forced.stderr
+    assert_standard_installed(REPOSITORY_ROOT, codex_home)
+    backups = list(codex_home.glob("AGENTS.md.bak.*"))
+    assert len(backups) == 1
+    assert (backups[0] / "user-content").read_text(encoding="utf-8") == ("preserve\n")
+
+
 def test_ao_worker_preserves_unowned_codex_state_byte_exactly(
     tmp_path: Path,
 ) -> None:

@@ -30,6 +30,21 @@ def test_discovers_root_files_and_nested_markdown(tmp_path: Path) -> None:
     assert discover_markdown_files(tmp_path) == [tmp_path / "README.md", nested]
 
 
+def test_excludes_exact_evaluation_artifacts_from_document_validation(
+    tmp_path: Path,
+) -> None:
+    artifact = (
+        tmp_path / "evaluations/teach-adaptation/artifacts/run/learning/generated.md"
+    )
+    artifact.parent.mkdir(parents=True)
+    artifact.write_text("[preserved raw link](missing.md)\n", encoding="utf-8")
+    result = tmp_path / "evaluations/teach-adaptation/results.md"
+    result.write_text("# Reviewed result\n", encoding="utf-8")
+
+    assert discover_markdown_files(tmp_path) == [result]
+    assert validate_markdown_links(tmp_path) == []
+
+
 @pytest.mark.parametrize(
     ("target", "expected"),
     [

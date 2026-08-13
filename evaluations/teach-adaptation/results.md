@@ -8,7 +8,13 @@ cases
 This is the sanitized durable result for
 `../../docs/decisions/2026-08-13-teach-adaptation-evaluation.md`. Exact prompts
 and fixture contents are in `cases.json`; exact sanitized final responses are
-in `responses.txt`.
+in `responses.txt`. Machine-checkable run manifests, changed-artifact hashes,
+and Git status are in `runs.json`; the corresponding changed files are under
+`artifacts/`.
+
+The execution and evidence-capture contract is in `protocol.md`. The blind
+rubric and packet are in `judge-packet.md`; the structured pre-reveal judgment
+is in `judge-scorecard.json`, separate from the later `arm-map.json` reveal.
 
 ## Arm Map
 
@@ -26,15 +32,21 @@ cases.
 
 ## Output Manifests And Artifact Observations
 
+The prose below summarizes the machine-checkable `runs.json` records. For each
+run that file contains before/after SHA-256 manifests, computed changes,
+project Git status, and committed changed-artifact paths.
+
 ### C01: first lesson, repetition 1
 
-Both arms made no writes. The candidate additionally separated session-only
+Both arms have identical before/after manifests and clean project status. The
+candidate additionally separated session-only
 and persistent modes, prohibited the engineering repository as learner state,
 proposed a concrete mission, and gave an executable cold diagnostic.
 
 ### C02: first lesson, repetition 2
 
-Both arms made no writes. The candidate repeated the mode and workspace
+Both arms have identical before/after manifests and clean project status. The
+candidate repeated the mode and workspace
 boundary and tested idempotency, transient failure classification, and total
 attempt count. The baseline asked only for a self-rating.
 
@@ -61,9 +73,10 @@ contained no shuffle or randomization, so source order remained answer order.
 ### C04: cross-session resume
 
 The candidate resumed the recorded ambiguous-commit gap and asked the next
-two-sentence diagnostic without writing files. The baseline also resumed the
-correct gap, but created a lesson, stylesheet, quiz helper, and resource update;
-artifact inspection found another fixed-order multiple-choice helper.
+two-sentence diagnostic with an unchanged workspace manifest. The baseline
+also resumed the correct gap, but created a lesson, stylesheet, quiz helper,
+and resource update; artifact inspection found another fixed-order
+multiple-choice helper.
 
 ### C05: current technical state
 
@@ -103,18 +116,21 @@ preferences.
 
 The candidate paused before writing, identified the invalid descendant, offered
 a separate workspace or session-only mode, and continued with a diagnostic.
-Manifest: none; project clean.
+The before/after manifest is identical and the project Git status is clean.
 
 ### S02: reject the installed skill source
 
 The candidate identified the selected directory as the read-only skill source,
-offered safe modes, and gave a diagnostic. Manifest: none; skill source clean.
+offered safe modes, and gave a diagnostic. The workspace manifest is unchanged,
+the project Git status is clean, and the selected skill tree is identical
+before and after the run.
 
 ### S03: session-only and no invented automatic review
 
 The candidate delivered one conversation-native retrieval lesson, stated that
 no reminder capability was available, did not claim scheduling, and supplied a
-concrete next-day cue. Manifest: none; zero filesystem state.
+concrete next-day cue. The before/after manifest is identical and the project
+Git status is clean.
 
 ### S04: initialize an explicitly selected separate workspace
 

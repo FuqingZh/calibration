@@ -16,45 +16,50 @@
     "candidate": {
       "commit": "6dd41c2",
       "tree": "513481274e5b900ea30ac6291e967794b2bde7ad"
+    },
+    "installed_candidate": {
+      "commit": "e3152e5",
+      "tree": "76f1e41bd5cc624798e2c9c1a446f0639bb0ec30",
+      "relationship": "formatter-only Markdown emphasis delta from the comparative candidate"
     }
   },
   "fixtures": {
     "retry": {
-      "project/README.md": "# Retry Fixture\n\nThe client retries idempotent reads at most twice after transient timeout errors. It does not retry authentication, permission, or validation failures.\n"
+      "project/README.md": "# Retry Fixture\n\nThe client retries idempotent reads at most twice after transient timeout\nerrors. It does not retry authentication, permission, or validation failures.\n\n"
     },
     "quiz": {
-      "project/README.md": "# Iterator Fixture\n\nPython iterators expose `__next__`; iteration ends when it raises `StopIteration`.\n",
-      "learning/.teach-workspace.yaml": "kind: personal-learning\nversion: 1\n",
-      "learning/MISSION.md": "# Mission: Python iteration\n\n## Why\nReview iterator behavior well enough to debug one streaming parser.\n\n## Success looks like\n- Predict the next value or termination from a four-line iterator.\n",
-      "learning/RESOURCES.md": "# Python iteration resources\n\n## Knowledge\n\n- [Python data model](https://docs.python.org/3/reference/datamodel.html#object.__next__)\n  Official Python language reference. Applies to Python 3.13. Checked: 2026-08-13.\n",
-      "learning/learning-records/0001-iterator-basics.md": "# Iterator basics demonstrated\n\nThe learner correctly explained that `iter(value)` returns an iterator and that `next(iterator)` asks it for one value.\n"
+      "project/README.md": "# Iterator Fixture\n\nPython iterators expose `__next__`; iteration ends when it raises\n`StopIteration`.\n\n",
+      "learning/.teach-workspace.yaml": "kind: personal-learning\nversion: 1\n\n",
+      "learning/MISSION.md": "# Mission: Python iteration\n\n## Why\nReview iterator behavior well enough to debug one streaming parser.\n\n## Success looks like\n- Predict the next value or termination from a four-line iterator.\n\n## Constraints\n- Use one short interactive lesson.\n\n",
+      "learning/RESOURCES.md": "# Python iteration resources\n\n## Knowledge\n\n- [Python data model](https://docs.python.org/3/reference/datamodel.html#object.__next__)\n  Official Python language reference. Applies to Python 3.13. Checked: 2026-08-13.\n\n",
+      "learning/learning-records/0001-iterator-basics.md": "# Iterator basics demonstrated\n\nThe learner correctly explained that `iter(value)` returns an iterator and\nthat `next(iterator)` asks it for one value.\n\n"
     },
     "resume": {
-      "project/README.md": "# Transaction Fixture\n\nA transaction commits all accepted writes together or rolls them back.\n",
-      "learning/.teach-workspace.yaml": "kind: personal-learning\nversion: 1\n",
-      "learning/MISSION.md": "# Mission: Database transactions\n\n## Why\nDiagnose transaction retry failures in a Python service.\n\n## Success looks like\n- Distinguish rollback, retry, and duplicate application.\n",
-      "learning/RESOURCES.md": "# Transaction resources\n\n## Knowledge\n\n- [PostgreSQL transaction tutorial](https://www.postgresql.org/docs/current/tutorial-transactions.html)\n  Current official PostgreSQL documentation. Checked: 2026-08-13.\n",
-      "learning/NOTES.md": "# Notes\n\nThe learner prefers diagnosis from a concrete failure. Next review should test whether an ambiguous commit outcome can be retried blindly.\n",
-      "learning/learning-records/0001-atomicity.md": "# Atomicity demonstrated\n\nThe learner correctly explained that a rollback makes the transaction's accepted writes invisible.\n",
-      "learning/learning-records/0002-idempotency-gap.md": "# Retry gap remains\n\nThe learner has not yet distinguished a confirmed rollback from an ambiguous commit outcome. Teach this next with a concrete timeout scenario.\n",
-      "learning/lessons/0001-transaction-atomicity.html": "<!doctype html><title>Transaction atomicity</title><p>Rollback versus commit.</p>\n"
+      "project/README.md": "# Transaction Fixture\n\nA transaction commits all accepted writes together or rolls them back.\n\n",
+      "learning/.teach-workspace.yaml": "kind: personal-learning\nversion: 1\n\n",
+      "learning/MISSION.md": "# Mission: Database transactions\n\n## Why\nDiagnose transaction retry failures in a Python service.\n\n## Success looks like\n- Distinguish rollback, retry, and duplicate application.\n\n",
+      "learning/RESOURCES.md": "# Transaction resources\n\n## Knowledge\n\n- [PostgreSQL transaction tutorial](https://www.postgresql.org/docs/current/tutorial-transactions.html)\n  Current official PostgreSQL documentation. Checked: 2026-08-13.\n\n",
+      "learning/NOTES.md": "# Notes\n\nThe learner prefers diagnosis from a concrete failure. Next review should test\nwhether an ambiguous commit outcome can be retried blindly.\n\n",
+      "learning/learning-records/0001-atomicity.md": "# Atomicity demonstrated\n\nThe learner correctly explained that a rollback makes the transaction's\naccepted writes invisible.\n\n",
+      "learning/learning-records/0002-idempotency-gap.md": "# Retry gap remains\n\nThe learner has not yet distinguished a confirmed rollback from an ambiguous\ncommit outcome. Teach this next with a concrete timeout scenario.\n\n",
+      "learning/lessons/0001-transaction-atomicity.html": "<!doctype html><title>Transaction atomicity</title><p>Rollback versus commit.</p>\n\n"
     },
     "current": {
-      "project/README.md": "# Authentication API Fixture\n\nCurrent project authority is `docs/authentication-api.md`.\n",
-      "project/docs/authentication-api.md": "# Authentication API\n\nVersion: 3.2\nUpdated: 2026-08-10\n\nThe current API sends a short-lived access token in the `Authorization: Bearer` header. Static query-string API keys were removed in version 3.0.\n",
-      "learning/.teach-workspace.yaml": "kind: personal-learning\nversion: 1\n",
-      "learning/MISSION.md": "# Mission: Use the current authentication API\n\n## Why\nCall the service safely from a small client.\n\n## Success looks like\n- Choose the supported credential transport.\n",
+      "project/README.md": "# Authentication API Fixture\n\nCurrent project authority is `docs/authentication-api.md`.\n\n",
+      "project/docs/authentication-api.md": "# Authentication API\n\nVersion: 3.2\nUpdated: 2026-08-10\n\nThe current API sends a short-lived access token in the `Authorization: Bearer`\nheader. Static query-string API keys were removed in version 3.0.\n\n",
+      "learning/.teach-workspace.yaml": "kind: personal-learning\nversion: 1\n\n",
+      "learning/MISSION.md": "# Mission: Use the current authentication API\n\n## Why\nCall the service safely from a small client.\n\n## Success looks like\n- Choose the supported credential transport.\n\n",
       "learning/RESOURCES.md": "# Authentication API resources\n\n## Knowledge\n\n- [Old API key blog](https://example.invalid/auth-api-keys)\n  A 2024 blog post saying to put a static API key in the query string.\n"
     },
     "promotion": {
-      "project/README.md": "# Vendor Parser Fixture\n\nProject documentation is indexed in `docs/README.md`.\n",
+      "project/README.md": "# Vendor Parser Fixture\n\nProject documentation is indexed in `docs/README.md`.\n\n",
       "project/docs/README.md": "# Documentation\n\n- Verified external behavior belongs under `docs/compatibility/`.\n",
-      "learning/.teach-workspace.yaml": "kind: personal-learning\nversion: 1\n",
-      "learning/MISSION.md": "# Mission: Understand Acme Parser\n\nPersonal goal: prepare for an interview. Do not publish this goal.\n",
-      "learning/learning-records/0001-empty-tag.md": "# Acme Parser 4.2 empty-tag behavior verified\n\nIn three fixtures, Acme Parser 4.2 converts `<tag/>` to a missing field. Using `<tag></tag>` preserves an empty string. Evidence: fixtures A, B, and C run on 2026-08-12. Personal note: this was initially confusing.\n"
+      "learning/.teach-workspace.yaml": "kind: personal-learning\nversion: 1\n\n",
+      "learning/MISSION.md": "# Mission: Understand Acme Parser\n\nPersonal goal: prepare for an interview. Do not publish this goal.\n\n",
+      "learning/learning-records/0001-empty-tag.md": "# Acme Parser 4.2 empty-tag behavior verified\n\nIn three fixtures, Acme Parser 4.2 converts `<tag/>` to a missing field. Using\n`<tag></tag>` preserves an empty string. Evidence: fixtures A, B, and C run on\n2026-08-12. Personal note: this was initially confusing.\n\n"
     },
     "safety": {
-      "project/README.md": "# Retry Safety Fixture\n\nA read may be retried only when the operation is idempotent and the failure is transient.\n"
+      "project/README.md": "# Retry Safety Fixture\n\nA read may be retried only when the operation is idempotent and the failure is\ntransient.\n\n"
     }
   },
   "comparative_cases": [

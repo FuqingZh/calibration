@@ -1,0 +1,1705 @@
+{
+  "capture": {
+    "attestation": "not externally timestamped or cryptographically attested",
+    "backend_model_build": "not exposed by runner",
+    "backend_session_ids": "not exposed by runner",
+    "before_state_source": "frozen fixture bytes in cases.json",
+    "git_metadata_excluded": true,
+    "source": "post-run controller snapshot of preserved isolated workspaces before fixture cleanup"
+  },
+  "captured_on": "2026-08-13",
+  "hash_algorithm": "sha256",
+  "runs": [
+    {
+      "after": {
+        "directories": [
+          "project"
+        ],
+        "entries": [
+          {
+            "bytes": 170,
+            "path": "project/README.md",
+            "sha256": "6a5fc5f6d6b1d73e3b0e72a91a6495ebd0ba51d58e061db99e31644b17db4ced",
+            "type": "file"
+          }
+        ]
+      },
+      "arm": "baseline",
+      "before": {
+        "directories": [
+          "project"
+        ],
+        "entries": [
+          {
+            "bytes": 170,
+            "path": "project/README.md",
+            "sha256": "6a5fc5f6d6b1d73e3b0e72a91a6495ebd0ba51d58e061db99e31644b17db4ced",
+            "type": "file"
+          }
+        ]
+      },
+      "case_id": "C01",
+      "changes": [],
+      "committed_changed_artifacts": [],
+      "directory_changes": {
+        "created": [],
+        "deleted": []
+      },
+      "fixture": "retry",
+      "invocation": {
+        "backend_session_id": "not exposed by runner",
+        "executor": "fresh Codex subagent",
+        "fork_context": "none",
+        "network": "not required",
+        "prompt_sha256": "07eff7aba9ff4a8a3281a786ed0baf66dbad84d7421f730f0028ee89ba887166",
+        "skill_commit": "6acc160e4e0cd062dbbbd7a1b26ae92855edf07e",
+        "skill_tree": "15f8c86d39ef834e643d092733ca899b59049067"
+      },
+      "project_git": {
+        "head": "4f63bf6226ea0e2c2ad47ffc4fab8f3f6ebaaaaa",
+        "status_porcelain": []
+      },
+      "response_sha256": "7dbe737cb302fb90b658ff830da73341c2afe1376f1e56ca8c8de557f0e63650",
+      "run_id": "C01-baseline",
+      "workspace_label": "no-write-1-x"
+    },
+    {
+      "after": {
+        "directories": [
+          "project"
+        ],
+        "entries": [
+          {
+            "bytes": 170,
+            "path": "project/README.md",
+            "sha256": "6a5fc5f6d6b1d73e3b0e72a91a6495ebd0ba51d58e061db99e31644b17db4ced",
+            "type": "file"
+          }
+        ]
+      },
+      "arm": "candidate",
+      "before": {
+        "directories": [
+          "project"
+        ],
+        "entries": [
+          {
+            "bytes": 170,
+            "path": "project/README.md",
+            "sha256": "6a5fc5f6d6b1d73e3b0e72a91a6495ebd0ba51d58e061db99e31644b17db4ced",
+            "type": "file"
+          }
+        ]
+      },
+      "case_id": "C01",
+      "changes": [],
+      "committed_changed_artifacts": [],
+      "directory_changes": {
+        "created": [],
+        "deleted": []
+      },
+      "fixture": "retry",
+      "invocation": {
+        "backend_session_id": "not exposed by runner",
+        "executor": "fresh Codex subagent",
+        "fork_context": "none",
+        "network": "not required",
+        "prompt_sha256": "07eff7aba9ff4a8a3281a786ed0baf66dbad84d7421f730f0028ee89ba887166",
+        "skill_commit": "6dd41c2",
+        "skill_tree": "513481274e5b900ea30ac6291e967794b2bde7ad"
+      },
+      "project_git": {
+        "head": "c8cef79ea60e65439eb10bb6481aea448e3a4b25",
+        "status_porcelain": []
+      },
+      "response_sha256": "c117441ced44ab881c83f2dc1cc583c5c34457d8444ae336e0f8e7f406d807a5",
+      "run_id": "C01-candidate",
+      "workspace_label": "no-write-1-y"
+    },
+    {
+      "after": {
+        "directories": [
+          "project"
+        ],
+        "entries": [
+          {
+            "bytes": 170,
+            "path": "project/README.md",
+            "sha256": "6a5fc5f6d6b1d73e3b0e72a91a6495ebd0ba51d58e061db99e31644b17db4ced",
+            "type": "file"
+          }
+        ]
+      },
+      "arm": "baseline",
+      "before": {
+        "directories": [
+          "project"
+        ],
+        "entries": [
+          {
+            "bytes": 170,
+            "path": "project/README.md",
+            "sha256": "6a5fc5f6d6b1d73e3b0e72a91a6495ebd0ba51d58e061db99e31644b17db4ced",
+            "type": "file"
+          }
+        ]
+      },
+      "case_id": "C02",
+      "changes": [],
+      "committed_changed_artifacts": [],
+      "directory_changes": {
+        "created": [],
+        "deleted": []
+      },
+      "fixture": "retry",
+      "invocation": {
+        "backend_session_id": "not exposed by runner",
+        "executor": "fresh Codex subagent",
+        "fork_context": "none",
+        "network": "not required",
+        "prompt_sha256": "48caa852e02fc1107de604a44c67511a6eb2e6b2bc54455ddaff0cfe8d5a4d1a",
+        "skill_commit": "6acc160e4e0cd062dbbbd7a1b26ae92855edf07e",
+        "skill_tree": "15f8c86d39ef834e643d092733ca899b59049067"
+      },
+      "project_git": {
+        "head": "5b75e48d8c475c507b42c65eb6d57e2a5b39d2cd",
+        "status_porcelain": []
+      },
+      "response_sha256": "5080cba0834db3fece38284282dd6cefaa7779bcf3237f86e8d3e79b116d675b",
+      "run_id": "C02-baseline",
+      "workspace_label": "no-write-2-x"
+    },
+    {
+      "after": {
+        "directories": [
+          "project"
+        ],
+        "entries": [
+          {
+            "bytes": 170,
+            "path": "project/README.md",
+            "sha256": "6a5fc5f6d6b1d73e3b0e72a91a6495ebd0ba51d58e061db99e31644b17db4ced",
+            "type": "file"
+          }
+        ]
+      },
+      "arm": "candidate",
+      "before": {
+        "directories": [
+          "project"
+        ],
+        "entries": [
+          {
+            "bytes": 170,
+            "path": "project/README.md",
+            "sha256": "6a5fc5f6d6b1d73e3b0e72a91a6495ebd0ba51d58e061db99e31644b17db4ced",
+            "type": "file"
+          }
+        ]
+      },
+      "case_id": "C02",
+      "changes": [],
+      "committed_changed_artifacts": [],
+      "directory_changes": {
+        "created": [],
+        "deleted": []
+      },
+      "fixture": "retry",
+      "invocation": {
+        "backend_session_id": "not exposed by runner",
+        "executor": "fresh Codex subagent",
+        "fork_context": "none",
+        "network": "not required",
+        "prompt_sha256": "48caa852e02fc1107de604a44c67511a6eb2e6b2bc54455ddaff0cfe8d5a4d1a",
+        "skill_commit": "6dd41c2",
+        "skill_tree": "513481274e5b900ea30ac6291e967794b2bde7ad"
+      },
+      "project_git": {
+        "head": "52441892e1d5fb82c022a08e03a44d6afe025864",
+        "status_porcelain": []
+      },
+      "response_sha256": "b3efbb48a9a5b9d75df56077c93336b67b74004189cc66fe8051736b484eb36f",
+      "run_id": "C02-candidate",
+      "workspace_label": "no-write-2-y"
+    },
+    {
+      "after": {
+        "directories": [
+          "learning",
+          "learning/assets",
+          "learning/learning-records",
+          "learning/lessons",
+          "project"
+        ],
+        "entries": [
+          {
+            "bytes": 36,
+            "path": "learning/.teach-workspace.yaml",
+            "sha256": "c24e5f7da8266361f1080da0b017e86ff6df64bc4b8cf983badb098af407411d",
+            "type": "file"
+          },
+          {
+            "bytes": 247,
+            "path": "learning/MISSION.md",
+            "sha256": "b8b5c2c43f6ededf8ead2cedd670b42d91171777efba5b0e2000d9783b8ee81e",
+            "type": "file"
+          },
+          {
+            "bytes": 218,
+            "path": "learning/RESOURCES.md",
+            "sha256": "22b7a67caade74f060202787dfe90ac9f11129b57965a906840553600e2bcf7a",
+            "type": "file"
+          },
+          {
+            "bytes": 1298,
+            "path": "learning/assets/quiz.js",
+            "sha256": "93d1e9539769a1114a930e4ede76be60e7cd0900cb99ed8801c77bd2e9de4a64",
+            "type": "file"
+          },
+          {
+            "bytes": 153,
+            "path": "learning/learning-records/0001-iterator-basics.md",
+            "sha256": "c6e53f2be618af5b767fded624e2c63770c3a994cf51117a43e9378f483a86d8",
+            "type": "file"
+          },
+          {
+            "bytes": 4443,
+            "path": "learning/lessons/0001-when-python-iteration-ends.html",
+            "sha256": "65e3597b6395dc0fdb296f90ef46f7876e7d3a8088f5c00bd3b94f47f40b167c",
+            "type": "file"
+          },
+          {
+            "bytes": 104,
+            "path": "project/README.md",
+            "sha256": "84e01bcdef81463de250b9fcb6eb6db4a36cd0d8c260055e3740472d293277ff",
+            "type": "file"
+          }
+        ]
+      },
+      "arm": "candidate",
+      "before": {
+        "directories": [
+          "learning",
+          "learning/learning-records",
+          "project"
+        ],
+        "entries": [
+          {
+            "bytes": 36,
+            "path": "learning/.teach-workspace.yaml",
+            "sha256": "c24e5f7da8266361f1080da0b017e86ff6df64bc4b8cf983badb098af407411d",
+            "type": "file"
+          },
+          {
+            "bytes": 247,
+            "path": "learning/MISSION.md",
+            "sha256": "b8b5c2c43f6ededf8ead2cedd670b42d91171777efba5b0e2000d9783b8ee81e",
+            "type": "file"
+          },
+          {
+            "bytes": 218,
+            "path": "learning/RESOURCES.md",
+            "sha256": "22b7a67caade74f060202787dfe90ac9f11129b57965a906840553600e2bcf7a",
+            "type": "file"
+          },
+          {
+            "bytes": 153,
+            "path": "learning/learning-records/0001-iterator-basics.md",
+            "sha256": "c6e53f2be618af5b767fded624e2c63770c3a994cf51117a43e9378f483a86d8",
+            "type": "file"
+          },
+          {
+            "bytes": 104,
+            "path": "project/README.md",
+            "sha256": "84e01bcdef81463de250b9fcb6eb6db4a36cd0d8c260055e3740472d293277ff",
+            "type": "file"
+          }
+        ]
+      },
+      "case_id": "C03",
+      "changes": [
+        {
+          "change": "created",
+          "path": "learning/assets/quiz.js"
+        },
+        {
+          "change": "created",
+          "path": "learning/lessons/0001-when-python-iteration-ends.html"
+        }
+      ],
+      "committed_changed_artifacts": [
+        {
+          "path": "artifacts/C03-candidate/learning/assets/quiz.js",
+          "sha256": "93d1e9539769a1114a930e4ede76be60e7cd0900cb99ed8801c77bd2e9de4a64"
+        },
+        {
+          "path": "artifacts/C03-candidate/learning/lessons/0001-when-python-iteration-ends.html",
+          "sha256": "65e3597b6395dc0fdb296f90ef46f7876e7d3a8088f5c00bd3b94f47f40b167c"
+        }
+      ],
+      "directory_changes": {
+        "created": [
+          "learning/assets",
+          "learning/lessons"
+        ],
+        "deleted": []
+      },
+      "fixture": "quiz",
+      "invocation": {
+        "backend_session_id": "not exposed by runner",
+        "executor": "fresh Codex subagent",
+        "fork_context": "none",
+        "network": "not required",
+        "prompt_sha256": "15ddcc9ecfad6467e7ced0c4e8a4ea01f582a0eca6e4d17bc000210cdc5283fd",
+        "skill_commit": "6dd41c2",
+        "skill_tree": "513481274e5b900ea30ac6291e967794b2bde7ad"
+      },
+      "project_git": {
+        "head": "a3d711dd8dd6d30c521618af34258d232b4f61b8",
+        "status_porcelain": []
+      },
+      "response_sha256": "c5ca1e17419945b9233b5ac08ccb36f1bf56c2fd4a364f3b46067737e8cbeefa",
+      "run_id": "C03-candidate",
+      "workspace_label": "quiz-x"
+    },
+    {
+      "after": {
+        "directories": [
+          "learning",
+          "learning/assets",
+          "learning/learning-records",
+          "learning/lessons",
+          "learning/reference",
+          "project"
+        ],
+        "entries": [
+          {
+            "bytes": 36,
+            "path": "learning/.teach-workspace.yaml",
+            "sha256": "c24e5f7da8266361f1080da0b017e86ff6df64bc4b8cf983badb098af407411d",
+            "type": "file"
+          },
+          {
+            "bytes": 247,
+            "path": "learning/MISSION.md",
+            "sha256": "b8b5c2c43f6ededf8ead2cedd670b42d91171777efba5b0e2000d9783b8ee81e",
+            "type": "file"
+          },
+          {
+            "bytes": 504,
+            "path": "learning/RESOURCES.md",
+            "sha256": "1fc53c49a3f84d16a6814b9afeccd16c8d1e3e805251488d46ae41edf3775dbc",
+            "type": "file"
+          },
+          {
+            "bytes": 4391,
+            "path": "learning/assets/course.css",
+            "sha256": "bf401d4d440478e7ac8d1c56038b75db67dc5258ba0de7e8b1f9befbcd4dcf36",
+            "type": "file"
+          },
+          {
+            "bytes": 1584,
+            "path": "learning/assets/quiz.js",
+            "sha256": "b1c63bdec2c2fb2db6bbeea0de9b6c8816c5d142dbff875b9a41fa10140eaac9",
+            "type": "file"
+          },
+          {
+            "bytes": 153,
+            "path": "learning/learning-records/0001-iterator-basics.md",
+            "sha256": "c6e53f2be618af5b767fded624e2c63770c3a994cf51117a43e9378f483a86d8",
+            "type": "file"
+          },
+          {
+            "bytes": 3466,
+            "path": "learning/lessons/0001-when-python-iteration-ends.html",
+            "sha256": "c44dae6866d7432d933062dac9f079c2f6646fd29bd4900f85823de1a6d1f030",
+            "type": "file"
+          },
+          {
+            "bytes": 1508,
+            "path": "learning/reference/iterator-exhaustion.html",
+            "sha256": "956a26ffb01bc5761e6b4c4a6e5a07fe34a28faa484840664d24ef4c07864103",
+            "type": "file"
+          },
+          {
+            "bytes": 104,
+            "path": "project/README.md",
+            "sha256": "84e01bcdef81463de250b9fcb6eb6db4a36cd0d8c260055e3740472d293277ff",
+            "type": "file"
+          }
+        ]
+      },
+      "arm": "baseline",
+      "before": {
+        "directories": [
+          "learning",
+          "learning/learning-records",
+          "project"
+        ],
+        "entries": [
+          {
+            "bytes": 36,
+            "path": "learning/.teach-workspace.yaml",
+            "sha256": "c24e5f7da8266361f1080da0b017e86ff6df64bc4b8cf983badb098af407411d",
+            "type": "file"
+          },
+          {
+            "bytes": 247,
+            "path": "learning/MISSION.md",
+            "sha256": "b8b5c2c43f6ededf8ead2cedd670b42d91171777efba5b0e2000d9783b8ee81e",
+            "type": "file"
+          },
+          {
+            "bytes": 218,
+            "path": "learning/RESOURCES.md",
+            "sha256": "22b7a67caade74f060202787dfe90ac9f11129b57965a906840553600e2bcf7a",
+            "type": "file"
+          },
+          {
+            "bytes": 153,
+            "path": "learning/learning-records/0001-iterator-basics.md",
+            "sha256": "c6e53f2be618af5b767fded624e2c63770c3a994cf51117a43e9378f483a86d8",
+            "type": "file"
+          },
+          {
+            "bytes": 104,
+            "path": "project/README.md",
+            "sha256": "84e01bcdef81463de250b9fcb6eb6db4a36cd0d8c260055e3740472d293277ff",
+            "type": "file"
+          }
+        ]
+      },
+      "case_id": "C03",
+      "changes": [
+        {
+          "change": "modified",
+          "path": "learning/RESOURCES.md"
+        },
+        {
+          "change": "created",
+          "path": "learning/assets/course.css"
+        },
+        {
+          "change": "created",
+          "path": "learning/assets/quiz.js"
+        },
+        {
+          "change": "created",
+          "path": "learning/lessons/0001-when-python-iteration-ends.html"
+        },
+        {
+          "change": "created",
+          "path": "learning/reference/iterator-exhaustion.html"
+        }
+      ],
+      "committed_changed_artifacts": [
+        {
+          "path": "artifacts/C03-baseline/learning/RESOURCES.md",
+          "sha256": "1fc53c49a3f84d16a6814b9afeccd16c8d1e3e805251488d46ae41edf3775dbc"
+        },
+        {
+          "path": "artifacts/C03-baseline/learning/assets/course.css",
+          "sha256": "bf401d4d440478e7ac8d1c56038b75db67dc5258ba0de7e8b1f9befbcd4dcf36"
+        },
+        {
+          "path": "artifacts/C03-baseline/learning/assets/quiz.js",
+          "sha256": "b1c63bdec2c2fb2db6bbeea0de9b6c8816c5d142dbff875b9a41fa10140eaac9"
+        },
+        {
+          "path": "artifacts/C03-baseline/learning/lessons/0001-when-python-iteration-ends.html",
+          "sha256": "c44dae6866d7432d933062dac9f079c2f6646fd29bd4900f85823de1a6d1f030"
+        },
+        {
+          "path": "artifacts/C03-baseline/learning/reference/iterator-exhaustion.html",
+          "sha256": "956a26ffb01bc5761e6b4c4a6e5a07fe34a28faa484840664d24ef4c07864103"
+        }
+      ],
+      "directory_changes": {
+        "created": [
+          "learning/assets",
+          "learning/lessons",
+          "learning/reference"
+        ],
+        "deleted": []
+      },
+      "fixture": "quiz",
+      "invocation": {
+        "backend_session_id": "not exposed by runner",
+        "executor": "fresh Codex subagent",
+        "fork_context": "none",
+        "network": "not required",
+        "prompt_sha256": "15ddcc9ecfad6467e7ced0c4e8a4ea01f582a0eca6e4d17bc000210cdc5283fd",
+        "skill_commit": "6acc160e4e0cd062dbbbd7a1b26ae92855edf07e",
+        "skill_tree": "15f8c86d39ef834e643d092733ca899b59049067"
+      },
+      "project_git": {
+        "head": "3fe1cd494b8e4f1e3337779dc076cb8d6eea5ecb",
+        "status_porcelain": []
+      },
+      "response_sha256": "4ac39ff5292834177205b90ab6545dcfedc5571b9b68df755dd543d0a5e2b619",
+      "run_id": "C03-baseline",
+      "workspace_label": "quiz-y"
+    },
+    {
+      "after": {
+        "directories": [
+          "learning",
+          "learning/assets",
+          "learning/learning-records",
+          "learning/lessons",
+          "project"
+        ],
+        "entries": [
+          {
+            "bytes": 36,
+            "path": "learning/.teach-workspace.yaml",
+            "sha256": "c24e5f7da8266361f1080da0b017e86ff6df64bc4b8cf983badb098af407411d",
+            "type": "file"
+          },
+          {
+            "bytes": 180,
+            "path": "learning/MISSION.md",
+            "sha256": "e6a3b476941ee27dcdc653d8df99773885e55a673e9ea4daa7705e31e9a75769",
+            "type": "file"
+          },
+          {
+            "bytes": 149,
+            "path": "learning/NOTES.md",
+            "sha256": "3d6039d2834b022df429fe374a44e5529767cd4f21abe03e730d589809a13039",
+            "type": "file"
+          },
+          {
+            "bytes": 568,
+            "path": "learning/RESOURCES.md",
+            "sha256": "e41ecd5bf185cb2d267e45ee2a283b489c0a163b75eae39c84f7b659a6cb9b65",
+            "type": "file"
+          },
+          {
+            "bytes": 3013,
+            "path": "learning/assets/course.css",
+            "sha256": "8a0c743015887987afdce8f371a7badccc17f5658c90ab923ea6f4f4383f2c93",
+            "type": "file"
+          },
+          {
+            "bytes": 797,
+            "path": "learning/assets/quiz.js",
+            "sha256": "0a48f7c1eea6534af0c8412a4058c64301cb0a314de3feb8854c899eb5bd1515",
+            "type": "file"
+          },
+          {
+            "bytes": 126,
+            "path": "learning/learning-records/0001-atomicity.md",
+            "sha256": "a5075f1359610c8343f6e7f687674fe554f6a3eddbfe09bfe31d57c34063ad10",
+            "type": "file"
+          },
+          {
+            "bytes": 165,
+            "path": "learning/learning-records/0002-idempotency-gap.md",
+            "sha256": "3c9d7a6b6b502e1e744fcbbe352d3aa5be53f6aba314d9f0c584c48528c59042",
+            "type": "file"
+          },
+          {
+            "bytes": 83,
+            "path": "learning/lessons/0001-transaction-atomicity.html",
+            "sha256": "a13c11398f825025b92102426dc61bd1d28541c23cb452e6d806b13c9d7d270d",
+            "type": "file"
+          },
+          {
+            "bytes": 3906,
+            "path": "learning/lessons/0002-ambiguous-commit-outcome.html",
+            "sha256": "b8db712e55cf7b742ccbd495289012cb5a5d233242f2231f409edc937c82dbf8",
+            "type": "file"
+          },
+          {
+            "bytes": 95,
+            "path": "project/README.md",
+            "sha256": "c92c0f89cb20c1d81ec8fae91872644dd3c8cb2fa30dc14c061f296c011c4201",
+            "type": "file"
+          }
+        ]
+      },
+      "arm": "baseline",
+      "before": {
+        "directories": [
+          "learning",
+          "learning/learning-records",
+          "learning/lessons",
+          "project"
+        ],
+        "entries": [
+          {
+            "bytes": 36,
+            "path": "learning/.teach-workspace.yaml",
+            "sha256": "c24e5f7da8266361f1080da0b017e86ff6df64bc4b8cf983badb098af407411d",
+            "type": "file"
+          },
+          {
+            "bytes": 180,
+            "path": "learning/MISSION.md",
+            "sha256": "e6a3b476941ee27dcdc653d8df99773885e55a673e9ea4daa7705e31e9a75769",
+            "type": "file"
+          },
+          {
+            "bytes": 149,
+            "path": "learning/NOTES.md",
+            "sha256": "3d6039d2834b022df429fe374a44e5529767cd4f21abe03e730d589809a13039",
+            "type": "file"
+          },
+          {
+            "bytes": 210,
+            "path": "learning/RESOURCES.md",
+            "sha256": "f715a76eebc33557538799937d20a8f5953fa9ba8858400ce8de3009707cfa02",
+            "type": "file"
+          },
+          {
+            "bytes": 126,
+            "path": "learning/learning-records/0001-atomicity.md",
+            "sha256": "a5075f1359610c8343f6e7f687674fe554f6a3eddbfe09bfe31d57c34063ad10",
+            "type": "file"
+          },
+          {
+            "bytes": 165,
+            "path": "learning/learning-records/0002-idempotency-gap.md",
+            "sha256": "3c9d7a6b6b502e1e744fcbbe352d3aa5be53f6aba314d9f0c584c48528c59042",
+            "type": "file"
+          },
+          {
+            "bytes": 83,
+            "path": "learning/lessons/0001-transaction-atomicity.html",
+            "sha256": "a13c11398f825025b92102426dc61bd1d28541c23cb452e6d806b13c9d7d270d",
+            "type": "file"
+          },
+          {
+            "bytes": 95,
+            "path": "project/README.md",
+            "sha256": "c92c0f89cb20c1d81ec8fae91872644dd3c8cb2fa30dc14c061f296c011c4201",
+            "type": "file"
+          }
+        ]
+      },
+      "case_id": "C04",
+      "changes": [
+        {
+          "change": "modified",
+          "path": "learning/RESOURCES.md"
+        },
+        {
+          "change": "created",
+          "path": "learning/assets/course.css"
+        },
+        {
+          "change": "created",
+          "path": "learning/assets/quiz.js"
+        },
+        {
+          "change": "created",
+          "path": "learning/lessons/0002-ambiguous-commit-outcome.html"
+        }
+      ],
+      "committed_changed_artifacts": [
+        {
+          "path": "artifacts/C04-baseline/learning/RESOURCES.md",
+          "sha256": "e41ecd5bf185cb2d267e45ee2a283b489c0a163b75eae39c84f7b659a6cb9b65"
+        },
+        {
+          "path": "artifacts/C04-baseline/learning/assets/course.css",
+          "sha256": "8a0c743015887987afdce8f371a7badccc17f5658c90ab923ea6f4f4383f2c93"
+        },
+        {
+          "path": "artifacts/C04-baseline/learning/assets/quiz.js",
+          "sha256": "0a48f7c1eea6534af0c8412a4058c64301cb0a314de3feb8854c899eb5bd1515"
+        },
+        {
+          "path": "artifacts/C04-baseline/learning/lessons/0002-ambiguous-commit-outcome.html",
+          "sha256": "b8db712e55cf7b742ccbd495289012cb5a5d233242f2231f409edc937c82dbf8"
+        }
+      ],
+      "directory_changes": {
+        "created": [
+          "learning/assets"
+        ],
+        "deleted": []
+      },
+      "fixture": "resume",
+      "invocation": {
+        "backend_session_id": "not exposed by runner",
+        "executor": "fresh Codex subagent",
+        "fork_context": "none",
+        "network": "not required",
+        "prompt_sha256": "39b6068ef6c82e174d8771bbc56101e6b3dbcd4ae6ed3d239e9dfd7ca31a8102",
+        "skill_commit": "6acc160e4e0cd062dbbbd7a1b26ae92855edf07e",
+        "skill_tree": "15f8c86d39ef834e643d092733ca899b59049067"
+      },
+      "project_git": {
+        "head": "137a9cf918f04877b2f734687b4cd48eff0cecc4",
+        "status_porcelain": []
+      },
+      "response_sha256": "9c8c4afe1397c2479d5595661926d2a9aacc1382debef17a8bd515af5974ea46",
+      "run_id": "C04-baseline",
+      "workspace_label": "resume-x"
+    },
+    {
+      "after": {
+        "directories": [
+          "learning",
+          "learning/learning-records",
+          "learning/lessons",
+          "project"
+        ],
+        "entries": [
+          {
+            "bytes": 36,
+            "path": "learning/.teach-workspace.yaml",
+            "sha256": "c24e5f7da8266361f1080da0b017e86ff6df64bc4b8cf983badb098af407411d",
+            "type": "file"
+          },
+          {
+            "bytes": 180,
+            "path": "learning/MISSION.md",
+            "sha256": "e6a3b476941ee27dcdc653d8df99773885e55a673e9ea4daa7705e31e9a75769",
+            "type": "file"
+          },
+          {
+            "bytes": 149,
+            "path": "learning/NOTES.md",
+            "sha256": "3d6039d2834b022df429fe374a44e5529767cd4f21abe03e730d589809a13039",
+            "type": "file"
+          },
+          {
+            "bytes": 210,
+            "path": "learning/RESOURCES.md",
+            "sha256": "f715a76eebc33557538799937d20a8f5953fa9ba8858400ce8de3009707cfa02",
+            "type": "file"
+          },
+          {
+            "bytes": 126,
+            "path": "learning/learning-records/0001-atomicity.md",
+            "sha256": "a5075f1359610c8343f6e7f687674fe554f6a3eddbfe09bfe31d57c34063ad10",
+            "type": "file"
+          },
+          {
+            "bytes": 165,
+            "path": "learning/learning-records/0002-idempotency-gap.md",
+            "sha256": "3c9d7a6b6b502e1e744fcbbe352d3aa5be53f6aba314d9f0c584c48528c59042",
+            "type": "file"
+          },
+          {
+            "bytes": 83,
+            "path": "learning/lessons/0001-transaction-atomicity.html",
+            "sha256": "a13c11398f825025b92102426dc61bd1d28541c23cb452e6d806b13c9d7d270d",
+            "type": "file"
+          },
+          {
+            "bytes": 95,
+            "path": "project/README.md",
+            "sha256": "c92c0f89cb20c1d81ec8fae91872644dd3c8cb2fa30dc14c061f296c011c4201",
+            "type": "file"
+          }
+        ]
+      },
+      "arm": "candidate",
+      "before": {
+        "directories": [
+          "learning",
+          "learning/learning-records",
+          "learning/lessons",
+          "project"
+        ],
+        "entries": [
+          {
+            "bytes": 36,
+            "path": "learning/.teach-workspace.yaml",
+            "sha256": "c24e5f7da8266361f1080da0b017e86ff6df64bc4b8cf983badb098af407411d",
+            "type": "file"
+          },
+          {
+            "bytes": 180,
+            "path": "learning/MISSION.md",
+            "sha256": "e6a3b476941ee27dcdc653d8df99773885e55a673e9ea4daa7705e31e9a75769",
+            "type": "file"
+          },
+          {
+            "bytes": 149,
+            "path": "learning/NOTES.md",
+            "sha256": "3d6039d2834b022df429fe374a44e5529767cd4f21abe03e730d589809a13039",
+            "type": "file"
+          },
+          {
+            "bytes": 210,
+            "path": "learning/RESOURCES.md",
+            "sha256": "f715a76eebc33557538799937d20a8f5953fa9ba8858400ce8de3009707cfa02",
+            "type": "file"
+          },
+          {
+            "bytes": 126,
+            "path": "learning/learning-records/0001-atomicity.md",
+            "sha256": "a5075f1359610c8343f6e7f687674fe554f6a3eddbfe09bfe31d57c34063ad10",
+            "type": "file"
+          },
+          {
+            "bytes": 165,
+            "path": "learning/learning-records/0002-idempotency-gap.md",
+            "sha256": "3c9d7a6b6b502e1e744fcbbe352d3aa5be53f6aba314d9f0c584c48528c59042",
+            "type": "file"
+          },
+          {
+            "bytes": 83,
+            "path": "learning/lessons/0001-transaction-atomicity.html",
+            "sha256": "a13c11398f825025b92102426dc61bd1d28541c23cb452e6d806b13c9d7d270d",
+            "type": "file"
+          },
+          {
+            "bytes": 95,
+            "path": "project/README.md",
+            "sha256": "c92c0f89cb20c1d81ec8fae91872644dd3c8cb2fa30dc14c061f296c011c4201",
+            "type": "file"
+          }
+        ]
+      },
+      "case_id": "C04",
+      "changes": [],
+      "committed_changed_artifacts": [],
+      "directory_changes": {
+        "created": [],
+        "deleted": []
+      },
+      "fixture": "resume",
+      "invocation": {
+        "backend_session_id": "not exposed by runner",
+        "executor": "fresh Codex subagent",
+        "fork_context": "none",
+        "network": "not required",
+        "prompt_sha256": "39b6068ef6c82e174d8771bbc56101e6b3dbcd4ae6ed3d239e9dfd7ca31a8102",
+        "skill_commit": "6dd41c2",
+        "skill_tree": "513481274e5b900ea30ac6291e967794b2bde7ad"
+      },
+      "project_git": {
+        "head": "caa57383ed2b907feb6b4b8095010f35b7aa8fa1",
+        "status_porcelain": []
+      },
+      "response_sha256": "123ff5fc3856148666343cd4d13f926e0bcd9a43fc4a438d34a9447721c7ba29",
+      "run_id": "C04-candidate",
+      "workspace_label": "resume-y"
+    },
+    {
+      "after": {
+        "directories": [
+          "learning",
+          "learning/assets",
+          "learning/lessons",
+          "learning/reference",
+          "project",
+          "project/docs"
+        ],
+        "entries": [
+          {
+            "bytes": 36,
+            "path": "learning/.teach-workspace.yaml",
+            "sha256": "c24e5f7da8266361f1080da0b017e86ff6df64bc4b8cf983badb098af407411d",
+            "type": "file"
+          },
+          {
+            "bytes": 168,
+            "path": "learning/MISSION.md",
+            "sha256": "7b89977e58af62a8ab6d4ffe49ece3960e976ff57937ca6696030ebe1defd9e2",
+            "type": "file"
+          },
+          {
+            "bytes": 253,
+            "path": "learning/RESOURCES.md",
+            "sha256": "5935abff2d095f085706e76443cdee52de8410ce03426980c9884d08132f134a",
+            "type": "file"
+          },
+          {
+            "bytes": 1747,
+            "path": "learning/assets/course.css",
+            "sha256": "158231f3af517ad552b2df001d0d38184a373a67b1854741bde7b4013d0e8cac",
+            "type": "file"
+          },
+          {
+            "bytes": 2279,
+            "path": "learning/lessons/0001-send-the-bearer-token.html",
+            "sha256": "ca77e7f2f6592744855e30b5feda949a63977a967a10b167711c75596dbfec9d",
+            "type": "file"
+          },
+          {
+            "bytes": 849,
+            "path": "learning/reference/authentication-transport.html",
+            "sha256": "52e0a0f132ba0e191f8aab4300be183fef1f4c072f1e08ec014680bbaf067740",
+            "type": "file"
+          },
+          {
+            "bytes": 90,
+            "path": "project/README.md",
+            "sha256": "259b12f7d65e64c7e022134c4680f7098c0c0f50b0c53a8980e697d534796d0e",
+            "type": "file"
+          },
+          {
+            "bytes": 203,
+            "path": "project/docs/authentication-api.md",
+            "sha256": "093175a1bef2eadb7a7afe07bb6c84dc0f8b651e6bd9cd603c551009c55797d0",
+            "type": "file"
+          }
+        ]
+      },
+      "arm": "baseline",
+      "before": {
+        "directories": [
+          "learning",
+          "project",
+          "project/docs"
+        ],
+        "entries": [
+          {
+            "bytes": 36,
+            "path": "learning/.teach-workspace.yaml",
+            "sha256": "c24e5f7da8266361f1080da0b017e86ff6df64bc4b8cf983badb098af407411d",
+            "type": "file"
+          },
+          {
+            "bytes": 168,
+            "path": "learning/MISSION.md",
+            "sha256": "7b89977e58af62a8ab6d4ffe49ece3960e976ff57937ca6696030ebe1defd9e2",
+            "type": "file"
+          },
+          {
+            "bytes": 177,
+            "path": "learning/RESOURCES.md",
+            "sha256": "e7caa36e4cfcf0d686e435c0c37a1ba8888e5ad7a7fe6c22bd5b94e4ba2c166f",
+            "type": "file"
+          },
+          {
+            "bytes": 90,
+            "path": "project/README.md",
+            "sha256": "259b12f7d65e64c7e022134c4680f7098c0c0f50b0c53a8980e697d534796d0e",
+            "type": "file"
+          },
+          {
+            "bytes": 203,
+            "path": "project/docs/authentication-api.md",
+            "sha256": "093175a1bef2eadb7a7afe07bb6c84dc0f8b651e6bd9cd603c551009c55797d0",
+            "type": "file"
+          }
+        ]
+      },
+      "case_id": "C05",
+      "changes": [
+        {
+          "change": "modified",
+          "path": "learning/RESOURCES.md"
+        },
+        {
+          "change": "created",
+          "path": "learning/assets/course.css"
+        },
+        {
+          "change": "created",
+          "path": "learning/lessons/0001-send-the-bearer-token.html"
+        },
+        {
+          "change": "created",
+          "path": "learning/reference/authentication-transport.html"
+        }
+      ],
+      "committed_changed_artifacts": [
+        {
+          "path": "artifacts/C05-baseline/learning/RESOURCES.md",
+          "sha256": "5935abff2d095f085706e76443cdee52de8410ce03426980c9884d08132f134a"
+        },
+        {
+          "path": "artifacts/C05-baseline/learning/assets/course.css",
+          "sha256": "158231f3af517ad552b2df001d0d38184a373a67b1854741bde7b4013d0e8cac"
+        },
+        {
+          "path": "artifacts/C05-baseline/learning/lessons/0001-send-the-bearer-token.html",
+          "sha256": "ca77e7f2f6592744855e30b5feda949a63977a967a10b167711c75596dbfec9d"
+        },
+        {
+          "path": "artifacts/C05-baseline/learning/reference/authentication-transport.html",
+          "sha256": "52e0a0f132ba0e191f8aab4300be183fef1f4c072f1e08ec014680bbaf067740"
+        }
+      ],
+      "directory_changes": {
+        "created": [
+          "learning/assets",
+          "learning/lessons",
+          "learning/reference"
+        ],
+        "deleted": []
+      },
+      "fixture": "current",
+      "invocation": {
+        "backend_session_id": "not exposed by runner",
+        "executor": "fresh Codex subagent",
+        "fork_context": "none",
+        "network": "prohibited",
+        "prompt_sha256": "0de330c8cc7f6b620b600dc5820cc7d99b90d770c428f26c65bd829a9867a9a5",
+        "skill_commit": "6acc160e4e0cd062dbbbd7a1b26ae92855edf07e",
+        "skill_tree": "15f8c86d39ef834e643d092733ca899b59049067"
+      },
+      "project_git": {
+        "head": "a0ffec7bb2567e574543c8ddf833ced8087eb67f",
+        "status_porcelain": []
+      },
+      "response_sha256": "4f014bb870941a6737a393aa2190f146bc83244ab40a4f0ad1e8afe4d7520d39",
+      "run_id": "C05-baseline",
+      "workspace_label": "current-x"
+    },
+    {
+      "after": {
+        "directories": [
+          "learning",
+          "project",
+          "project/docs"
+        ],
+        "entries": [
+          {
+            "bytes": 36,
+            "path": "learning/.teach-workspace.yaml",
+            "sha256": "c24e5f7da8266361f1080da0b017e86ff6df64bc4b8cf983badb098af407411d",
+            "type": "file"
+          },
+          {
+            "bytes": 168,
+            "path": "learning/MISSION.md",
+            "sha256": "7b89977e58af62a8ab6d4ffe49ece3960e976ff57937ca6696030ebe1defd9e2",
+            "type": "file"
+          },
+          {
+            "bytes": 345,
+            "path": "learning/RESOURCES.md",
+            "sha256": "25624c5e3d178ed540b1c8d70f67914c5e1c8a9e7166fceb8e0713482bba4d69",
+            "type": "file"
+          },
+          {
+            "bytes": 90,
+            "path": "project/README.md",
+            "sha256": "259b12f7d65e64c7e022134c4680f7098c0c0f50b0c53a8980e697d534796d0e",
+            "type": "file"
+          },
+          {
+            "bytes": 203,
+            "path": "project/docs/authentication-api.md",
+            "sha256": "093175a1bef2eadb7a7afe07bb6c84dc0f8b651e6bd9cd603c551009c55797d0",
+            "type": "file"
+          }
+        ]
+      },
+      "arm": "candidate",
+      "before": {
+        "directories": [
+          "learning",
+          "project",
+          "project/docs"
+        ],
+        "entries": [
+          {
+            "bytes": 36,
+            "path": "learning/.teach-workspace.yaml",
+            "sha256": "c24e5f7da8266361f1080da0b017e86ff6df64bc4b8cf983badb098af407411d",
+            "type": "file"
+          },
+          {
+            "bytes": 168,
+            "path": "learning/MISSION.md",
+            "sha256": "7b89977e58af62a8ab6d4ffe49ece3960e976ff57937ca6696030ebe1defd9e2",
+            "type": "file"
+          },
+          {
+            "bytes": 177,
+            "path": "learning/RESOURCES.md",
+            "sha256": "e7caa36e4cfcf0d686e435c0c37a1ba8888e5ad7a7fe6c22bd5b94e4ba2c166f",
+            "type": "file"
+          },
+          {
+            "bytes": 90,
+            "path": "project/README.md",
+            "sha256": "259b12f7d65e64c7e022134c4680f7098c0c0f50b0c53a8980e697d534796d0e",
+            "type": "file"
+          },
+          {
+            "bytes": 203,
+            "path": "project/docs/authentication-api.md",
+            "sha256": "093175a1bef2eadb7a7afe07bb6c84dc0f8b651e6bd9cd603c551009c55797d0",
+            "type": "file"
+          }
+        ]
+      },
+      "case_id": "C05",
+      "changes": [
+        {
+          "change": "modified",
+          "path": "learning/RESOURCES.md"
+        }
+      ],
+      "committed_changed_artifacts": [
+        {
+          "path": "artifacts/C05-candidate/learning/RESOURCES.md",
+          "sha256": "25624c5e3d178ed540b1c8d70f67914c5e1c8a9e7166fceb8e0713482bba4d69"
+        }
+      ],
+      "directory_changes": {
+        "created": [],
+        "deleted": []
+      },
+      "fixture": "current",
+      "invocation": {
+        "backend_session_id": "not exposed by runner",
+        "executor": "fresh Codex subagent",
+        "fork_context": "none",
+        "network": "prohibited",
+        "prompt_sha256": "0de330c8cc7f6b620b600dc5820cc7d99b90d770c428f26c65bd829a9867a9a5",
+        "skill_commit": "6dd41c2",
+        "skill_tree": "513481274e5b900ea30ac6291e967794b2bde7ad"
+      },
+      "project_git": {
+        "head": "9b4ef7c840793d4f44cb3752bad5a386de98fd7b",
+        "status_porcelain": []
+      },
+      "response_sha256": "54cd706d70c2c917572f596e25516b51336a30fdf364ddb328f34e83e66afbc4",
+      "run_id": "C05-candidate",
+      "workspace_label": "current-y"
+    },
+    {
+      "after": {
+        "directories": [
+          "learning",
+          "learning/learning-records",
+          "project",
+          "project/docs",
+          "project/docs/compatibility"
+        ],
+        "entries": [
+          {
+            "bytes": 36,
+            "path": "learning/.teach-workspace.yaml",
+            "sha256": "c24e5f7da8266361f1080da0b017e86ff6df64bc4b8cf983badb098af407411d",
+            "type": "file"
+          },
+          {
+            "bytes": 103,
+            "path": "learning/MISSION.md",
+            "sha256": "4de6204f009234b1610d7b2f4372a8cf3801943f776eb293674c010e7a2334fe",
+            "type": "file"
+          },
+          {
+            "bytes": 263,
+            "path": "learning/learning-records/0001-empty-tag.md",
+            "sha256": "51cd04d0a6b4919152e95db8de12fe9207cd81ef4f419f581cf900bef5edcb65",
+            "type": "file"
+          },
+          {
+            "bytes": 80,
+            "path": "project/README.md",
+            "sha256": "927475249e301ce18a5e9eb5f3a7bc6f262f3ecdabd6e7612e0f074311030e3b",
+            "type": "file"
+          },
+          {
+            "bytes": 223,
+            "path": "project/docs/README.md",
+            "sha256": "cfcd66073c7bac41dbe4353a38208a0a668774ca284f2d02a0d16192d59d27d7",
+            "type": "file"
+          },
+          {
+            "bytes": 2043,
+            "path": "project/docs/compatibility/20260813-v1.0-acme-parser-empty-tag-compatibility.md",
+            "sha256": "5fa1063f451b8195ad12bdc7dcba6992a284917cfdf654f2b5331d704d1235a6",
+            "type": "file"
+          }
+        ]
+      },
+      "arm": "baseline",
+      "before": {
+        "directories": [
+          "learning",
+          "learning/learning-records",
+          "project",
+          "project/docs"
+        ],
+        "entries": [
+          {
+            "bytes": 36,
+            "path": "learning/.teach-workspace.yaml",
+            "sha256": "c24e5f7da8266361f1080da0b017e86ff6df64bc4b8cf983badb098af407411d",
+            "type": "file"
+          },
+          {
+            "bytes": 103,
+            "path": "learning/MISSION.md",
+            "sha256": "4de6204f009234b1610d7b2f4372a8cf3801943f776eb293674c010e7a2334fe",
+            "type": "file"
+          },
+          {
+            "bytes": 263,
+            "path": "learning/learning-records/0001-empty-tag.md",
+            "sha256": "51cd04d0a6b4919152e95db8de12fe9207cd81ef4f419f581cf900bef5edcb65",
+            "type": "file"
+          },
+          {
+            "bytes": 80,
+            "path": "project/README.md",
+            "sha256": "927475249e301ce18a5e9eb5f3a7bc6f262f3ecdabd6e7612e0f074311030e3b",
+            "type": "file"
+          },
+          {
+            "bytes": 83,
+            "path": "project/docs/README.md",
+            "sha256": "43e33205f584da5274fd4cf9ffae400b450cc22a650e034a936f86d8db1f9843",
+            "type": "file"
+          }
+        ]
+      },
+      "case_id": "C06",
+      "changes": [
+        {
+          "change": "modified",
+          "path": "project/docs/README.md"
+        },
+        {
+          "change": "created",
+          "path": "project/docs/compatibility/20260813-v1.0-acme-parser-empty-tag-compatibility.md"
+        }
+      ],
+      "committed_changed_artifacts": [
+        {
+          "path": "artifacts/C06-baseline/project/docs/README.md",
+          "sha256": "cfcd66073c7bac41dbe4353a38208a0a668774ca284f2d02a0d16192d59d27d7"
+        },
+        {
+          "path": "artifacts/C06-baseline/project/docs/compatibility/20260813-v1.0-acme-parser-empty-tag-compatibility.md",
+          "sha256": "5fa1063f451b8195ad12bdc7dcba6992a284917cfdf654f2b5331d704d1235a6"
+        }
+      ],
+      "directory_changes": {
+        "created": [
+          "project/docs/compatibility"
+        ],
+        "deleted": []
+      },
+      "fixture": "promotion",
+      "invocation": {
+        "backend_session_id": "not exposed by runner",
+        "executor": "fresh Codex subagent",
+        "fork_context": "none",
+        "network": "not required",
+        "prompt_sha256": "c68ed6e42cc0cc6481c8cdbee3649c61c379eb3e53611de3d9727af7570d8d31",
+        "skill_commit": "6acc160e4e0cd062dbbbd7a1b26ae92855edf07e",
+        "skill_tree": "15f8c86d39ef834e643d092733ca899b59049067"
+      },
+      "project_git": {
+        "head": "38f55e10cae2cbef77ec278fa4ad7cbbc17be7ad",
+        "status_porcelain": [
+          "M docs/README.md",
+          "?? docs/compatibility/"
+        ]
+      },
+      "response_sha256": "8ba6f02e9662efd132484fbcbe1fbe521c59bda5627e3e92bcc232f77bccc433",
+      "run_id": "C06-baseline",
+      "workspace_label": "promotion-x"
+    },
+    {
+      "after": {
+        "directories": [
+          "learning",
+          "learning/learning-records",
+          "project",
+          "project/docs",
+          "project/docs/compatibility"
+        ],
+        "entries": [
+          {
+            "bytes": 36,
+            "path": "learning/.teach-workspace.yaml",
+            "sha256": "c24e5f7da8266361f1080da0b017e86ff6df64bc4b8cf983badb098af407411d",
+            "type": "file"
+          },
+          {
+            "bytes": 103,
+            "path": "learning/MISSION.md",
+            "sha256": "4de6204f009234b1610d7b2f4372a8cf3801943f776eb293674c010e7a2334fe",
+            "type": "file"
+          },
+          {
+            "bytes": 263,
+            "path": "learning/learning-records/0001-empty-tag.md",
+            "sha256": "51cd04d0a6b4919152e95db8de12fe9207cd81ef4f419f581cf900bef5edcb65",
+            "type": "file"
+          },
+          {
+            "bytes": 80,
+            "path": "project/README.md",
+            "sha256": "927475249e301ce18a5e9eb5f3a7bc6f262f3ecdabd6e7612e0f074311030e3b",
+            "type": "file"
+          },
+          {
+            "bytes": 232,
+            "path": "project/docs/README.md",
+            "sha256": "af4c77181b36e7a03b8b4961a98230a2d1f94ba3ac2803c3010b2e388500084f",
+            "type": "file"
+          },
+          {
+            "bytes": 2312,
+            "path": "project/docs/compatibility/20260813-v1.0-acme-parser-empty-tag-compatibility-record.md",
+            "sha256": "757f260956215e4f3f02e236b5048159e703beb2aad7cf23fd842989823816af",
+            "type": "file"
+          }
+        ]
+      },
+      "arm": "candidate",
+      "before": {
+        "directories": [
+          "learning",
+          "learning/learning-records",
+          "project",
+          "project/docs"
+        ],
+        "entries": [
+          {
+            "bytes": 36,
+            "path": "learning/.teach-workspace.yaml",
+            "sha256": "c24e5f7da8266361f1080da0b017e86ff6df64bc4b8cf983badb098af407411d",
+            "type": "file"
+          },
+          {
+            "bytes": 103,
+            "path": "learning/MISSION.md",
+            "sha256": "4de6204f009234b1610d7b2f4372a8cf3801943f776eb293674c010e7a2334fe",
+            "type": "file"
+          },
+          {
+            "bytes": 263,
+            "path": "learning/learning-records/0001-empty-tag.md",
+            "sha256": "51cd04d0a6b4919152e95db8de12fe9207cd81ef4f419f581cf900bef5edcb65",
+            "type": "file"
+          },
+          {
+            "bytes": 80,
+            "path": "project/README.md",
+            "sha256": "927475249e301ce18a5e9eb5f3a7bc6f262f3ecdabd6e7612e0f074311030e3b",
+            "type": "file"
+          },
+          {
+            "bytes": 83,
+            "path": "project/docs/README.md",
+            "sha256": "43e33205f584da5274fd4cf9ffae400b450cc22a650e034a936f86d8db1f9843",
+            "type": "file"
+          }
+        ]
+      },
+      "case_id": "C06",
+      "changes": [
+        {
+          "change": "modified",
+          "path": "project/docs/README.md"
+        },
+        {
+          "change": "created",
+          "path": "project/docs/compatibility/20260813-v1.0-acme-parser-empty-tag-compatibility-record.md"
+        }
+      ],
+      "committed_changed_artifacts": [
+        {
+          "path": "artifacts/C06-candidate/project/docs/README.md",
+          "sha256": "af4c77181b36e7a03b8b4961a98230a2d1f94ba3ac2803c3010b2e388500084f"
+        },
+        {
+          "path": "artifacts/C06-candidate/project/docs/compatibility/20260813-v1.0-acme-parser-empty-tag-compatibility-record.md",
+          "sha256": "757f260956215e4f3f02e236b5048159e703beb2aad7cf23fd842989823816af"
+        }
+      ],
+      "directory_changes": {
+        "created": [
+          "project/docs/compatibility"
+        ],
+        "deleted": []
+      },
+      "fixture": "promotion",
+      "invocation": {
+        "backend_session_id": "not exposed by runner",
+        "executor": "fresh Codex subagent",
+        "fork_context": "none",
+        "network": "not required",
+        "prompt_sha256": "c68ed6e42cc0cc6481c8cdbee3649c61c379eb3e53611de3d9727af7570d8d31",
+        "skill_commit": "6dd41c2",
+        "skill_tree": "513481274e5b900ea30ac6291e967794b2bde7ad"
+      },
+      "project_git": {
+        "head": "fce3f271c05c7986315884045cb6bd758ac55071",
+        "status_porcelain": [
+          "M docs/README.md",
+          "?? docs/compatibility/"
+        ]
+      },
+      "response_sha256": "5cb77086b375f81978c29ccd04b7896a1331b15e8872b48581f5986ffc1d7e51",
+      "run_id": "C06-candidate",
+      "workspace_label": "promotion-y"
+    },
+    {
+      "after": {
+        "directories": [
+          "project",
+          "project/course"
+        ],
+        "entries": [
+          {
+            "bytes": 115,
+            "path": "project/README.md",
+            "sha256": "726a7c96d13d14ab7b9d5a2d4ca8193cbd4248e883990fe227da1cbb01082edc",
+            "type": "file"
+          }
+        ]
+      },
+      "arm": "candidate",
+      "before": {
+        "directories": [
+          "project",
+          "project/course"
+        ],
+        "entries": [
+          {
+            "bytes": 115,
+            "path": "project/README.md",
+            "sha256": "726a7c96d13d14ab7b9d5a2d4ca8193cbd4248e883990fe227da1cbb01082edc",
+            "type": "file"
+          }
+        ]
+      },
+      "case_id": "S01",
+      "changes": [],
+      "committed_changed_artifacts": [],
+      "directory_changes": {
+        "created": [],
+        "deleted": []
+      },
+      "fixture": "safety",
+      "invocation": {
+        "backend_session_id": "not exposed by runner",
+        "executor": "fresh Codex subagent",
+        "fork_context": "none",
+        "network": "not required",
+        "prompt_sha256": "6e6fcf69c7b35262d93231b32ca7eddf5f7402aac90aad429c34baca5ee18240",
+        "skill_commit": "e3152e5",
+        "skill_tree": "76f1e41bd5cc624798e2c9c1a446f0639bb0ec30"
+      },
+      "project_git": {
+        "head": "9acd267bb02d8072a5616a121baff11207bf2bbe",
+        "status_porcelain": []
+      },
+      "response_sha256": "8159713314015f14f312fe0851a928776645a7dd95d76b3f690d16bca0b3f16d",
+      "run_id": "S01-candidate",
+      "workspace_label": "safety-descendant"
+    },
+    {
+      "after": {
+        "directories": [
+          "project"
+        ],
+        "entries": [
+          {
+            "bytes": 115,
+            "path": "project/README.md",
+            "sha256": "726a7c96d13d14ab7b9d5a2d4ca8193cbd4248e883990fe227da1cbb01082edc",
+            "type": "file"
+          }
+        ]
+      },
+      "arm": "candidate",
+      "before": {
+        "directories": [
+          "project"
+        ],
+        "entries": [
+          {
+            "bytes": 115,
+            "path": "project/README.md",
+            "sha256": "726a7c96d13d14ab7b9d5a2d4ca8193cbd4248e883990fe227da1cbb01082edc",
+            "type": "file"
+          }
+        ]
+      },
+      "case_id": "S02",
+      "changes": [],
+      "committed_changed_artifacts": [],
+      "directory_changes": {
+        "created": [],
+        "deleted": []
+      },
+      "fixture": "safety",
+      "invocation": {
+        "backend_session_id": "not exposed by runner",
+        "executor": "fresh Codex subagent",
+        "fork_context": "none",
+        "network": "not required",
+        "prompt_sha256": "d00ebc3020630262ac0ee7d9ed1d8490edeba75f85aeea0adfd0cef6b5d44397",
+        "skill_commit": "e3152e5",
+        "skill_tree": "76f1e41bd5cc624798e2c9c1a446f0639bb0ec30"
+      },
+      "project_git": {
+        "head": "4dbf596f104ca971f55062b028d1808f01ba911d",
+        "status_porcelain": []
+      },
+      "response_sha256": "178d4b7f24e9b09b97f6d941f4c108d25e012198009d6e71e77579ca51e62398",
+      "run_id": "S02-candidate",
+      "selected_skill_source": {
+        "status_porcelain_after": [],
+        "tree_after": "76f1e41bd5cc624798e2c9c1a446f0639bb0ec30",
+        "tree_before": "76f1e41bd5cc624798e2c9c1a446f0639bb0ec30"
+      },
+      "workspace_label": "safety-source"
+    },
+    {
+      "after": {
+        "directories": [
+          "project"
+        ],
+        "entries": [
+          {
+            "bytes": 115,
+            "path": "project/README.md",
+            "sha256": "726a7c96d13d14ab7b9d5a2d4ca8193cbd4248e883990fe227da1cbb01082edc",
+            "type": "file"
+          }
+        ]
+      },
+      "arm": "candidate",
+      "before": {
+        "directories": [
+          "project"
+        ],
+        "entries": [
+          {
+            "bytes": 115,
+            "path": "project/README.md",
+            "sha256": "726a7c96d13d14ab7b9d5a2d4ca8193cbd4248e883990fe227da1cbb01082edc",
+            "type": "file"
+          }
+        ]
+      },
+      "case_id": "S03",
+      "changes": [],
+      "committed_changed_artifacts": [],
+      "directory_changes": {
+        "created": [],
+        "deleted": []
+      },
+      "fixture": "safety",
+      "invocation": {
+        "backend_session_id": "not exposed by runner",
+        "executor": "fresh Codex subagent",
+        "fork_context": "none",
+        "network": "not required",
+        "prompt_sha256": "49cb014b5dfe46cbba59c55aeea9f2418310b841a855b5ec7a9176bfd02ec544",
+        "skill_commit": "e3152e5",
+        "skill_tree": "76f1e41bd5cc624798e2c9c1a446f0639bb0ec30"
+      },
+      "project_git": {
+        "head": "e35383fd4fcc13a8dcf7c1101fbaec086eba24f7",
+        "status_porcelain": []
+      },
+      "response_sha256": "1267e700de60010cb3edc114dfcfa0839d2b9271eaaa7765996c36d5d540ec69",
+      "run_id": "S03-candidate",
+      "workspace_label": "safety-session"
+    },
+    {
+      "after": {
+        "directories": [
+          "learning",
+          "project"
+        ],
+        "entries": [
+          {
+            "bytes": 35,
+            "path": "learning/.teach-workspace.yaml",
+            "sha256": "35fdb9f943d1ca76c8de8ab8be1f2cf11cba13053bc305c078c65f76b4150e0f",
+            "type": "file"
+          },
+          {
+            "bytes": 691,
+            "path": "learning/MISSION.md",
+            "sha256": "93a101af3bd0bae175ec6deb1af08658c379d324835c05341fa8c98362530873",
+            "type": "file"
+          },
+          {
+            "bytes": 438,
+            "path": "learning/RESOURCES.md",
+            "sha256": "ec24e3e9ba8322116a3dfa3d1c19de85325d34a733ec80ce7a08fe7dc85e4405",
+            "type": "file"
+          },
+          {
+            "bytes": 115,
+            "path": "project/README.md",
+            "sha256": "726a7c96d13d14ab7b9d5a2d4ca8193cbd4248e883990fe227da1cbb01082edc",
+            "type": "file"
+          }
+        ]
+      },
+      "arm": "candidate",
+      "before": {
+        "directories": [
+          "project"
+        ],
+        "entries": [
+          {
+            "bytes": 115,
+            "path": "project/README.md",
+            "sha256": "726a7c96d13d14ab7b9d5a2d4ca8193cbd4248e883990fe227da1cbb01082edc",
+            "type": "file"
+          }
+        ]
+      },
+      "case_id": "S04",
+      "changes": [
+        {
+          "change": "created",
+          "path": "learning/.teach-workspace.yaml"
+        },
+        {
+          "change": "created",
+          "path": "learning/MISSION.md"
+        },
+        {
+          "change": "created",
+          "path": "learning/RESOURCES.md"
+        }
+      ],
+      "committed_changed_artifacts": [
+        {
+          "path": "artifacts/S04-candidate/learning/.teach-workspace.yaml",
+          "sha256": "35fdb9f943d1ca76c8de8ab8be1f2cf11cba13053bc305c078c65f76b4150e0f"
+        },
+        {
+          "path": "artifacts/S04-candidate/learning/MISSION.md",
+          "sha256": "93a101af3bd0bae175ec6deb1af08658c379d324835c05341fa8c98362530873"
+        },
+        {
+          "path": "artifacts/S04-candidate/learning/RESOURCES.md",
+          "sha256": "ec24e3e9ba8322116a3dfa3d1c19de85325d34a733ec80ce7a08fe7dc85e4405"
+        }
+      ],
+      "directory_changes": {
+        "created": [
+          "learning"
+        ],
+        "deleted": []
+      },
+      "fixture": "safety",
+      "invocation": {
+        "backend_session_id": "not exposed by runner",
+        "executor": "fresh Codex subagent",
+        "fork_context": "none",
+        "network": "not required",
+        "prompt_sha256": "d30f82a8b5a2eb5e7e1bf641120e70cfb852567f6b4bb653b143c31a109ebe84",
+        "skill_commit": "e3152e5",
+        "skill_tree": "76f1e41bd5cc624798e2c9c1a446f0639bb0ec30"
+      },
+      "project_git": {
+        "head": "60f9aa605d4bcf585f4ce7998b0ff8e175809969",
+        "status_porcelain": []
+      },
+      "response_sha256": "e02e1dacbf553da488edf17219de225c218a32025e598e61fe31e8870f12fb4f",
+      "run_id": "S04-candidate",
+      "workspace_label": "safety-valid"
+    }
+  ],
+  "schema_version": 1
+}

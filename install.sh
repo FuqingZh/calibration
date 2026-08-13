@@ -200,6 +200,17 @@ render_template() {
     "$TEMPLATE"
 }
 
+preflight_agents_file() {
+  render_template >/dev/null
+  if [[ ! -e "$AGENTS_TARGET" && ! -L "$AGENTS_TARGET" ]]; then
+    return 0
+  fi
+  if [[ -L "$AGENTS_TARGET" || ! -f "$AGENTS_TARGET" ]] && ! $FORCE; then
+    echo "Refusing to replace non-regular AGENTS target without --force: $AGENTS_TARGET" >&2
+    exit 1
+  fi
+}
+
 say() {
   printf '%s\n' "$*"
 }
@@ -305,18 +316,16 @@ install_agents_file() {
     return
   fi
   if [[ -e "$AGENTS_TARGET" || -L "$AGENTS_TARGET" ]]; then
-    if [[ ! -f "$AGENTS_TARGET" && ! -L "$AGENTS_TARGET" ]] && ! $FORCE; then
-      rm -f "$tmp"
-      echo "Refusing to replace non-regular AGENTS target without --force: $AGENTS_TARGET" >&2
-      exit 1
-    fi
     backup_agents_target
+    if [[ -L "$AGENTS_TARGET" || ! -f "$AGENTS_TARGET" ]]; then
+      run rm -rf "$AGENTS_TARGET"
+    fi
   fi
   if $DRY_RUN; then
     say "[dry-run] write rendered AGENTS.md to $AGENTS_TARGET"
     rm -f "$tmp"
   else
-    mv "$tmp" "$AGENTS_TARGET"
+    mv -T "$tmp" "$AGENTS_TARGET"
     say "AGENTS.md installed: $AGENTS_TARGET"
   fi
 }
@@ -342,6 +351,7 @@ main() {
       preflight_skill_link "$skill" "$THIRDPARTY_SKILL_SOURCE_ROOT"
     done
   fi
+  preflight_agents_file
 
   if [[ "$PROFILE" == "ao-worker" ]]; then
     if [[ ! -d "$CODEX_HOME" ]]; then

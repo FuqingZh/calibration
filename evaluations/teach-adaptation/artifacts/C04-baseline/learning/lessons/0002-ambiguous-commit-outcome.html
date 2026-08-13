@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>The missing COMMIT reply</title>
+    <link rel="stylesheet" href="../assets/course.css">
+    <script src="../assets/quiz.js" defer></script>
+  </head>
+  <body>
+    <main>
+      <header>
+        <p class="eyebrow">Transaction diagnosis · Lesson 2 · 3 minutes</p>
+        <h1>The missing COMMIT reply</h1>
+        <p class="lede">
+          You already know what a confirmed rollback means. Now diagnose the
+          harder case: the database's answer never reaches the service.
+        </p>
+      </header>
+
+      <section class="card" aria-labelledby="incident-title">
+        <h2 id="incident-title">The incident</h2>
+        <ol class="timeline">
+          <li>The service starts a transaction.</li>
+          <li>It inserts a payment with <code>request_id = 'rq-42'</code>.</li>
+          <li>It sends <code>COMMIT</code>.</li>
+          <li>The connection drops before the client receives the reply.</li>
+        </ol>
+        <p>
+          The Python client raises a connection error. Nobody has checked the
+          database yet.
+        </p>
+      </section>
+
+      <section
+        class="card"
+        data-quiz
+        data-answer="unknown"
+        data-correct-feedback="Exactly. The missing reply hides whether COMMIT finished, so a blind retry could apply the payment twice."
+        data-incorrect-feedback="Not yet. A client timeout tells you the reply was lost; it does not reveal whether COMMIT finished on the server."
+        aria-labelledby="question-title"
+      >
+        <h2 id="question-title">Your diagnosis</h2>
+        <fieldset>
+          <legend>What can you conclude from the timeout alone?</legend>
+          <label class="choice">
+            <input type="radio" name="commit-outcome" value="success">
+            <span>Commit outcome: known success</span>
+          </label>
+          <label class="choice">
+            <input type="radio" name="commit-outcome" value="failure">
+            <span>Commit outcome: known failure</span>
+          </label>
+          <label class="choice">
+            <input type="radio" name="commit-outcome" value="unknown">
+            <span>Commit outcome: still unknown</span>
+          </label>
+        </fieldset>
+        <button type="button" data-check-answer>Check my diagnosis</button>
+        <p class="feedback" data-feedback hidden aria-live="polite"></p>
+      </section>
+
+      <section class="card takeaway" aria-labelledby="rule-title">
+        <h2 id="rule-title">The rule to keep</h2>
+        <p>
+          <strong>Known rollback:</strong> retrying cannot duplicate that
+          transaction. <strong>Missing COMMIT reply:</strong> treat the outcome
+          as unknown, then reconcile by a stable request key before retrying.
+        </p>
+        <p>
+          PostgreSQL's SQLSTATE catalog names this class
+          <code>08007 transaction_resolution_unknown</code>. Its
+          <a href="https://www.postgresql.org/docs/current/sql-commit.html">COMMIT reference</a>
+          explains what a completed commit guarantees; the
+          <a href="https://www.postgresql.org/docs/current/errcodes-appendix.html">error-code appendix</a>
+          is the primary reference for the unknown-resolution condition.
+        </p>
+      </section>
+
+      <section aria-labelledby="handoff-title">
+        <h2 id="handoff-title">One-sentence handoff</h2>
+        <p class="prompt">
+          Reply to your teacher: <strong>“The timeout proves ___; before
+          retrying I would ___.”</strong>
+        </p>
+        <p>Ask any follow-up question if the distinction still feels slippery.</p>
+      </section>
+
+      <footer>
+        <a href="0001-transaction-atomicity.html">← Review lesson 1: transaction atomicity</a>
+      </footer>
+    </main>
+  </body>
+</html>

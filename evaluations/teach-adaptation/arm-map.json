@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "revealed_after_judgment": true,
+  "cases": [
+    {"case_id": "C01", "A": "baseline", "B": "candidate"},
+    {"case_id": "C02", "A": "baseline", "B": "candidate"},
+    {"case_id": "C03", "A": "candidate", "B": "baseline"},
+    {"case_id": "C04", "A": "baseline", "B": "candidate"},
+    {"case_id": "C05", "A": "baseline", "B": "candidate"},
+    {"case_id": "C06", "A": "baseline", "B": "candidate"}
+  ]
+}

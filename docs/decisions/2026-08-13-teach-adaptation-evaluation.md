@@ -24,6 +24,9 @@ learning outcomes, retention, token use, or every model and repository.
   `15f8c86d39ef834e643d092733ca899b59049067`;
 - local candidate: commit `6dd41c2`, tree
   `513481274e5b900ea30ac6291e967794b2bde7ad`;
+- installed candidate: commit `e3152e5`, tree
+  `76f1e41bd5cc624798e2c9c1a446f0639bb0ec30`; its delta from the
+  comparative candidate only adds repository-required Markdown emphasis;
 - same current Codex agent configuration and tools for both arms; the exact
   model build and reasoning setting were not exposed to the evaluation runner;
 - fresh isolated fixture directories for every run; and
@@ -67,16 +70,26 @@ excluded artifact was reused by an official run.
 The sanitized evaluation bundle is retained in
 `../../evaluations/teach-adaptation/`:
 
+- `protocol.md` specifies execution, filesystem capture, blind judging, and
+  verification limits;
 - `cases.json` freezes fixture contents, actual prompts, arm source commits,
-  and run conditions; and
+  and run conditions;
+- `runs.json` retains stable run identities, prompt and response hashes,
+  before/after manifests, changed paths, Git status, and artifact hashes;
+- `artifacts/` retains the generated or modified outputs named by those
+  manifests;
+- `judge-packet.md` and `judge-scorecard.json` retain the blind rubric, inputs,
+  and structured pre-reveal decision, while `arm-map.json` is the separate
+  reveal; and
 - `responses.txt` retains the exact sanitized final responses, while
-  `results.md` retains manifests, artifact observations, the blind verdict,
-  revealed arm map, safety-run results, exclusions, and limitations.
+  `results.md` explains the bounded interpretation.
 
 The skill's reusable behavioral inputs remain in
 `../../thirdparty/skills/teach/test-prompts.json`. Raw temporary workspaces are
-not committed; the durable bundle contains the evidence needed to audit and
-reconstruct the bounded comparison without them.
+not committed. `SHA256SUMS` and the focused contract test verify the committed
+bundle. The evidence is independently checkable from committed files, but is
+not externally timestamped or cryptographically attested and cannot identify
+an unexposed backend session or model build.
 
 ## Limitations And Reopen Conditions
 

@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Send the Bearer token</title>
+  <link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+  <main>
+    <p class="eyebrow">Authentication API · Lesson 1 · About 3 minutes</p>
+    <h1>Send the Bearer token</h1>
+    <p class="lede">Your one win: put the current credential in the right place.</p>
+
+    <div class="callout">
+      The supported mechanism is a <strong>short-lived access token</strong> in
+      the HTTP <code>Authorization</code> header, using the <code>Bearer</code>
+      scheme.
+    </div>
+
+    <p>The shape to remember is:</p>
+    <pre><code>Authorization: Bearer &lt;access-token&gt;</code></pre>
+
+    <p>So a small client request starts like this:</p>
+    <pre><code>GET /widgets HTTP/1.1
+Host: api.example
+Authorization: Bearer eyJ…</code></pre>
+
+    <p>
+      Do not put a static key in the URL query string. That older mechanism was
+      removed in API version 3.0. This course follows the project's current v3.2
+      contract, not the older blog that was previously saved.
+      <a href="../../project/docs/authentication-api.md">Read the primary source</a>.
+    </p>
+
+    <h2>Retrieval check</h2>
+    <p>Without looking back, which request uses the currently supported transport?</p>
+
+    <p class="meta">Request A</p>
+    <pre><code>GET /widgets?api_key=abc123 HTTP/1.1</code></pre>
+
+    <p class="meta">Request B</p>
+    <pre><code>GET /widgets HTTP/1.1
+Authorization: Bearer abc123</code></pre>
+
+    <details>
+      <summary>Reveal feedback</summary>
+      <p>
+        <strong>Request B.</strong> The credential travels in
+        <code>Authorization: Bearer …</code>. Request A uses the removed static
+        query-string API-key mechanism.
+      </p>
+    </details>
+
+    <h2>Make it stick</h2>
+    <p>
+      Close this page and say the header aloud once:
+      “Authorization, Bearer, access token.” Then adapt that one header in your
+      client when you are ready.
+    </p>
+
+    <footer>
+      <a href="../reference/authentication-transport.html">Quick reference</a>
+      · Ask your teaching agent any follow-up question that is unclear.
+    </footer>
+  </main>
+</body>
+</html>

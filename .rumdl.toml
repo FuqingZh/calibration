@@ -1,5 +1,8 @@
 [global]
-exclude = ["thirdparty/**"]
+exclude = [
+  "thirdparty/**",
+  "evaluations/teach-adaptation/artifacts/**",
+]
 
 [MD013]
 enabled = false
