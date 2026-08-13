@@ -23,9 +23,15 @@ PRIVATE_DEPLOYMENT_NETWORKS = tuple(
     )
 )
 KNOWN_PRIVATE_TOKENS = (b"fq" + b"zhang",)
-# Vendored source may retain a private value when provenance requires it. Keep
-# each exception exact and reviewable instead of excluding thirdparty wholesale.
+# Immutable provenance may retain a denied-looking value when its exact bytes
+# are part of the evidence. Keep every exception path-scoped and reviewable.
 THIRDPARTY_PROVENANCE_ALLOWLIST: dict[str, tuple[bytes, ...]] = {}
+ROOT_HOME_MARKER = b"/ro" + b"ot/"
+FIRST_PARTY_PROVENANCE_ALLOWLIST: dict[str, tuple[bytes, ...]] = {
+    "evaluations/teach-adaptation/v2/judge-scorecard.json": (ROOT_HOME_MARKER,),
+    "evaluations/teach-adaptation/v2/raw-judge-response.json": (ROOT_HOME_MARKER,),
+}
+FROZEN_JUDGE_TASK = ROOT_HOME_MARKER + b"teach_v2_bound_judge"
 
 
 def tracked_text() -> dict[str, bytes]:
@@ -74,7 +80,12 @@ def portability_violations(tracked: dict[str, bytes], *, thirdparty: bool) -> li
         if is_thirdparty != thirdparty:
             continue
         values = private_values(relative.encode()) | private_values(content)
-        allowed = set(THIRDPARTY_PROVENANCE_ALLOWLIST.get(relative, ()))
+        allowlist = (
+            THIRDPARTY_PROVENANCE_ALLOWLIST
+            if is_thirdparty
+            else FIRST_PARTY_PROVENANCE_ALLOWLIST
+        )
+        allowed = set(allowlist.get(relative, ()))
         unexpected = sorted(value for value in values if value not in allowed)
         if unexpected:
             rendered = ", ".join(repr(value.decode()) for value in unexpected)
@@ -83,7 +94,13 @@ def portability_violations(tracked: dict[str, bytes], *, thirdparty: bool) -> li
 
 
 def test_first_party_surfaces_have_no_personal_paths_or_private_ipv4() -> None:
-    assert portability_violations(tracked_text(), thirdparty=False) == []
+    tracked = tracked_text()
+    assert portability_violations(tracked, thirdparty=False) == []
+    assert set(FIRST_PARTY_PROVENANCE_ALLOWLIST) <= set(tracked)
+    for relative, allowed in FIRST_PARTY_PROVENANCE_ALLOWLIST.items():
+        assert set(allowed) <= private_values(tracked[relative])
+        assert tracked[relative].count(FROZEN_JUDGE_TASK) == 1
+        assert tracked[relative].count(ROOT_HOME_MARKER) == 1
 
 
 def test_vendored_surfaces_document_private_values_as_provenance() -> None:

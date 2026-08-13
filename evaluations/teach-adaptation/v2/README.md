@@ -33,6 +33,10 @@ A/B arms with paths and UUIDs removed. The Git history establishes ordering:
 3. the following result commit reveals `arm-map.json` and interprets the
    already-frozen judgment.
 
+The judge's canonical task value is an orchestrator namespace, not a filesystem
+home. The immutable raw response and its scorecard retain that exact value
+under a path-scoped public-portability allowlist.
+
 The reveal maps every non-tie preferred local arm to the candidate. The judge
 found no candidate critical failure, found upstream critical failures in C01
 through C05, and tied both arms in C06.
