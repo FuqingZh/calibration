@@ -32,7 +32,10 @@ learning outcomes, retention, token use, or every model and repository.
 The official comparison used 12 agent runs: one run per arm for six pairs. The
 critical first-lesson boundary was repeated with two independently worded
 prompts. A separate blind judge saw arm labels that changed meaning across
-cases and did not receive either skill source.
+cases and did not receive either skill source. Four candidate-only safety runs
+then verified descendant-path rejection, skill-source rejection, session-only
+zero-write behavior without an invented reminder, and initialization of an
+explicitly selected separate learning workspace.
 
 ## Results
 
@@ -59,16 +62,21 @@ README. Those outputs were excluded. The fixtures were rebuilt as clean Git
 repositories with one committed source file before all official pairs. No
 excluded artifact was reused by an official run.
 
-## Integrity
+## Durable Evidence
 
-- blind judge packet SHA-256:
-  `993a58002ac17b0afb99454dd388b1b9b8ab1b7ed71be739b558891935f02db8`;
-- non-Git fixture and output manifest SHA-256:
-  `5b79d6ea6f112c45dbf14029f4a5145ed99e223d881befd6230c4a5fb02a5738`;
-- behavioral cases are retained in
-  `../../thirdparty/skills/teach/test-prompts.json`; and
-- raw workspaces, arm mapping, and judge packet remain uncommitted under the
-  temporary evaluation root.
+The sanitized evaluation bundle is retained in
+`../../evaluations/teach-adaptation/`:
+
+- `cases.json` freezes fixture contents, actual prompts, arm source commits,
+  and run conditions; and
+- `responses.txt` retains the exact sanitized final responses, while
+  `results.md` retains manifests, artifact observations, the blind verdict,
+  revealed arm map, safety-run results, exclusions, and limitations.
+
+The skill's reusable behavioral inputs remain in
+`../../thirdparty/skills/teach/test-prompts.json`. Raw temporary workspaces are
+not committed; the durable bundle contains the evidence needed to audit and
+reconstruct the bounded comparison without them.
 
 ## Limitations And Reopen Conditions
 

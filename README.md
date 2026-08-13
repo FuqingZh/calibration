@@ -26,6 +26,8 @@ configuration remains outside the public repository.
 - `evaluations/ai-native-implementation/`: writable repository fixtures,
   deterministic contracts, and the blind-review rubric for calibration
   behavior comparison
+- `evaluations/teach-adaptation/`: sanitized fixtures, outputs, arm mapping,
+  and blind judgment for the bounded `teach` adoption comparison
 - `docs/README.md`: current decision, evaluation, and implementation-plan map
 - `scripts/adopt_ao_repository.py`: optional plan/apply and readback gate for a
   repository using an already installed, CLI-capable AO
@@ -143,7 +145,8 @@ not prove an optimization or regression result until the prompts have been run
 under a stated model, reasoning effort, and comparison method.
 
 The installed `teach` adaptation has bounded regression-acceptance evidence in
-`docs/decisions/2026-08-13-teach-adaptation-evaluation.md`. It does not claim a
+`docs/decisions/2026-08-13-teach-adaptation-evaluation.md`, with reconstructable
+sanitized evidence under `evaluations/teach-adaptation/`. It does not claim a
 general improvement in teaching effectiveness or token use.
 
 `writing-plans` remains vendored for source and provenance review but is no

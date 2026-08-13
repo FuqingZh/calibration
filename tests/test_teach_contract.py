@@ -9,6 +9,7 @@ import yaml
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 TEACH_ROOT = REPOSITORY_ROOT / "thirdparty/skills/teach"
+EVALUATION_ROOT = REPOSITORY_ROOT / "evaluations/teach-adaptation"
 
 
 def read_skill() -> str:
@@ -98,3 +99,30 @@ def test_teach_metadata_remains_explicit_only() -> None:
 
     assert metadata["policy"]["allow_implicit_invocation"] is False
     assert "$teach" in metadata["interface"]["default_prompt"]
+
+
+def test_teach_evaluation_bundle_is_reconstructable() -> None:
+    cases = json.loads((EVALUATION_ROOT / "cases.json").read_text(encoding="utf-8"))
+    results = (EVALUATION_ROOT / "results.md").read_text(encoding="utf-8")
+    responses = (EVALUATION_ROOT / "responses.txt").read_text(encoding="utf-8")
+
+    comparative_ids = {case["id"] for case in cases["comparative_cases"]}
+    safety_ids = {case["id"] for case in cases["candidate_safety_cases"]}
+    assert comparative_ids == {"C01", "C02", "C03", "C04", "C05", "C06"}
+    assert safety_ids == {"S01", "S02", "S03", "S04"}
+    assert set(cases["fixtures"]) == {
+        "retry",
+        "quiz",
+        "resume",
+        "current",
+        "promotion",
+        "safety",
+    }
+    assert cases["conditions"]["comparative_runs"] == 12
+    assert cases["conditions"]["candidate_safety_runs"] == 4
+    assert cases["frozen_arms"]["candidate"]["commit"] == "6dd41c2"
+    for case_id in comparative_ids | safety_ids:
+        assert f"### {case_id}:" in results
+        assert f"=== {case_id} " in responses
+    assert "## Arm Map" in results
+    assert "## Blind Judgment Before Arm Reveal" in results
