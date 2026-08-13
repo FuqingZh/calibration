@@ -15,13 +15,13 @@ def read_skill() -> str:
     return (TEACH_ROOT / "SKILL.md").read_text(encoding="utf-8")
 
 
-def test_teach_is_not_installed_before_evaluation_acceptance() -> None:
+def test_teach_is_installed_after_evaluation_acceptance() -> None:
     installer = (REPOSITORY_ROOT / "install.sh").read_text(encoding="utf-8")
 
     managed_block = installer.split("MANAGED_THIRDPARTY_SKILLS=(", 1)[1].split(")", 1)[
         0
     ]
-    assert "teach" not in managed_block.split()
+    assert "teach" in managed_block.split()
 
 
 def test_teach_keeps_writes_inside_an_explicit_learning_workspace() -> None:

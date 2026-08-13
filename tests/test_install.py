@@ -11,6 +11,7 @@ MANAGED_SKILLS = ("calibration", "closeout", "retrospect", "writing-code-docs")
 MANAGED_THIRDPARTY_SKILLS = (
     "brainstorming",
     "grilling",
+    "teach",
     "writing-great-skills",
 )
 

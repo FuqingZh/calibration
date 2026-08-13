@@ -10,6 +10,9 @@ architecture convergence; neither reopens the completed runtime or AO
 implementation phases. The completed bounded v2.4 closeout-skill increment
 adds an explicitly invoked first-party closeout contract and makes no
 comparative improvement claim.
+The adapted third-party `teach` skill is accepted for standard-profile
+installation from a bounded blind regression comparison; that result does not
+claim general learning-outcome improvement.
 The bounded review-convergence routing v2.3 increment clarifies a portable
 contract only and makes no behavioral-improvement claim. The bounded CAL-1
 containment public contract is delivered without a behavioral-improvement
@@ -42,6 +45,7 @@ back to `$HOME/.config/calibration/AGENTS.md`.
 | Repository capability and delivery placement | `../references/engineering/discipline/harness.md` |
 | Completion and external-result evidence | `../references/engineering/discipline/verification.md` |
 | Agent and workflow comparison | `../references/engineering/discipline/evaluation.md` |
+| Teach adaptation evidence | `decisions/2026-08-13-teach-adaptation-evaluation.md` |
 | Project docs architecture | `../references/engineering/docs/workflow/project_docs_architecture/20260805-v1.1-project-docs-architecture.md` |
 | Durable implementation-plan contract | `../references/engineering/docs/document-types/implementation-plan.md` |
 | Project docs architecture convergence plan | `implementation-plans/20260805-v1.0-project-docs-architecture-convergence-implementation-plan.md` |

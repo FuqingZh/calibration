@@ -153,6 +153,7 @@ MANAGED_SKILLS=(
 MANAGED_THIRDPARTY_SKILLS=(
   brainstorming
   grilling
+  teach
   writing-great-skills
 )
 RETIRED_SKILLS=(

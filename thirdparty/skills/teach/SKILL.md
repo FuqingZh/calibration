@@ -25,7 +25,7 @@ Never infer that the current directory or the installed skill source is the
 learning workspace. For persistent mode, confirm the exact learning-workspace
 path and verify that it is not the skill source, current engineering Git root,
 or a directory inside that Git root. After first confirmation, create
-`.teach-workspace.yaml` containing `kind: personal-learning` and `version: 1`;
+**.teach-workspace.yaml** containing `kind: personal-learning` and `version: 1`;
 that marker is durable evidence for later sessions. Ask before adopting an
 existing unmarked workspace.
 
@@ -41,18 +41,18 @@ lessons, notes, records, or assets. Continue teaching in the conversation.
 
 Keep all learner-specific state relative to the confirmed learning workspace:
 
-- `MISSION.md`: the learner's concrete reason and observable goal; use
+- **MISSION.md**: the learner's concrete reason and observable goal; use
   [MISSION-FORMAT.md](./MISSION-FORMAT.md).
-- `RESOURCES.md`: current trusted sources and communities; use
+- **RESOURCES.md**: current trusted sources and communities; use
   [RESOURCES-FORMAT.md](./RESOURCES-FORMAT.md).
-- `learning-records/*.md`: demonstrated knowledge, prior capability, corrected
+- **learning-records/*.md**: demonstrated knowledge, prior capability, corrected
   misconceptions, and mission changes; use
   [LEARNING-RECORD-FORMAT.md](./LEARNING-RECORD-FORMAT.md).
-- `lessons/*.html`: short, self-contained lessons.
-- `reference/*.html` and `GLOSSARY.md`: compressed material for later recall;
+- **lessons/*.html**: short, self-contained lessons.
+- **reference/*.html** and **GLOSSARY.md**: compressed material for later recall;
   use [GLOSSARY-FORMAT.md](./GLOSSARY-FORMAT.md) for the glossary.
 - `assets/*`: reusable lesson components.
-- `NOTES.md`: personal teaching preferences, review cues, and temporary working
+- **NOTES.md**: personal teaching preferences, review cues, and temporary working
   notes.
 
 Create directories and files lazily. Never promote these personal artifacts to
@@ -60,7 +60,7 @@ team-authoritative project documentation.
 
 ## Start Or Resume
 
-For a marked existing workspace, read `MISSION.md`, `RESOURCES.md`, `NOTES.md`,
+For a marked existing workspace, read **MISSION.md**, **RESOURCES.md**, **NOTES.md**,
 the glossary, and the learning-record inventory. Inspect the latest relevant
 records, lesson titles, and reusable assets before choosing the next step. Use
 that state to resume; do not restart a generic curriculum. Confirm material
@@ -82,7 +82,7 @@ enough to select the learner's zone of proximal development.
 Gather lesson claims from high-trust sources. Prefer current primary sources,
 official documentation, standards, peer-reviewed work, and recognized experts.
 Verify facts that may have changed, and record the publisher, title, URL,
-applicable version or date, and check date in `RESOURCES.md`. Label historical
+applicable version or date, and check date in **RESOURCES.md**. Label historical
 material as historical context. When a current authoritative source cannot be
 found, state the gap instead of presenting parametric knowledge as verified.
 
@@ -104,7 +104,7 @@ For each lesson:
    prerequisite makes another small lesson the better next step.
 
 Use conversation-native teaching in session-only mode. In persistent mode,
-save a short lesson as `lessons/NNNN-dash-case-name.html` when a reusable lesson
+save a short lesson as **lessons/NNNN-dash-case-name.html** when a reusable lesson
 artifact helps. Keep it readable and printable, link its sources, and reuse
 workspace assets rather than duplicating components.
 
@@ -122,7 +122,7 @@ choosing new material.
 
 ## Change The Mission Deliberately
 
-Confirm a mission change with the user before editing `MISSION.md`. Record why
+Confirm a mission change with the user before editing **MISSION.md**. Record why
 the change matters in a new learning record so later sessions can distinguish a
 changed goal from forgotten context.
 
