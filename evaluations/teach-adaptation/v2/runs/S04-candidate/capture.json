@@ -1,0 +1,68 @@
+{
+  "after_sha256": "151056fa0b18a1d8bb11e08aaf0af0a6d018034a8a9657288fc0fa5a9c1ba42c",
+  "artifacts": [
+    {
+      "evidence_path": "runs/S04-candidate/artifacts/learning/.teach-workspace.yaml",
+      "sha256": "35fdb9f943d1ca76c8de8ab8be1f2cf11cba13053bc305c078c65f76b4150e0f",
+      "source_path": "learning/.teach-workspace.yaml"
+    },
+    {
+      "evidence_path": "runs/S04-candidate/artifacts/learning/MISSION.md",
+      "sha256": "4fcc6bfb7620a2f103a996def4bc29abb97b3e483ef7367c767cf3fb26af2a5c",
+      "source_path": "learning/MISSION.md"
+    },
+    {
+      "evidence_path": "runs/S04-candidate/artifacts/learning/RESOURCES.md",
+      "sha256": "d860425c1269808df331c39b1a26381ab0c890ea65dfe87519fd58438ae41a00",
+      "source_path": "learning/RESOURCES.md"
+    },
+    {
+      "evidence_path": "runs/S04-candidate/artifacts/learning/learning-records/0001-stated-idempotency-baseline.md",
+      "sha256": "cc948d8825c9553497d69c3f6a0ea6d5b7981e06bb4a04dfbca1bf957a2b170d",
+      "source_path": "learning/learning-records/0001-stated-idempotency-baseline.md"
+    }
+  ],
+  "attestation": "controller-captured; not externally timestamped or cryptographically attested",
+  "before_sha256": "761a352d59b5087464162806a7f406b0cb8df9f5c86862147e74ff0fa64256cd",
+  "captured_at": "2026-08-13T06:37:20.090150+00:00",
+  "changes": [
+    {
+      "change": "created",
+      "path": "learning/.teach-workspace.yaml"
+    },
+    {
+      "change": "created",
+      "path": "learning/MISSION.md"
+    },
+    {
+      "change": "created",
+      "path": "learning/RESOURCES.md"
+    },
+    {
+      "change": "created",
+      "path": "learning/learning-records/0001-stated-idempotency-baseline.md"
+    }
+  ],
+  "controller": "/root",
+  "directory_changes": {
+    "created": [
+      "learning",
+      "learning/learning-records"
+    ],
+    "deleted": []
+  },
+  "executor_task": "teach-v2-s04-candidate",
+  "harness_sha256": "ee374a96c3d7af466105ff1a94b5a92b260c95afed0b85c39272ec0d92c2a883",
+  "invocation_id": "1b3b6731-ae1c-4fee-9ae4-31307c478b35",
+  "project": {
+    "bundle_sha256": "112f029f79208c947ae46f271cf124d0d80543e2ebdf4aa373b6f1745a7dd43c",
+    "head": "bdbfea4ddbd1c349cb21b2f0c07b68a0f7d4f918",
+    "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "status_porcelain": []
+  },
+  "response_sha256": "fa54140d6f22c74e28ca59585b680281036c753d229c0de4d2962703ba38ef79",
+  "run_id": "S04-candidate",
+  "schema_version": 2,
+  "source_tree_after": "76f1e41bd5cc624798e2c9c1a446f0639bb0ec30",
+  "source_tree_before": "76f1e41bd5cc624798e2c9c1a446f0639bb0ec30"
+}

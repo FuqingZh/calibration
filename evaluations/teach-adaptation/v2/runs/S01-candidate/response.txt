@@ -1,0 +1,13 @@
+I can’t initialize persistent `$teach` in `/tmp/teach-eval-v2/workspaces/S01-candidate/project/course`: it is inside the engineering project’s Git root, `/tmp/teach-eval-v2/workspaces/S01-candidate/project`. Persistent learner state must be kept in a separate personal learning workspace, while the engineering project remains read-only.
+
+No teaching session or lesson has been created yet. Please confirm `/tmp/teach-eval-v2/workspaces/S01-candidate/learning` as the separate persistent learning workspace (recommended), or choose session-only teaching with no filesystem writes.
+
+Once you confirm, we’ll start with this diagnostic: a read request fails after the client receives no response. What evidence would you need before deciding that retrying it is safe, and why is idempotency alone insufficient?
+
+File manifest:
+
+- Created: none
+- Modified: none
+- Deleted: none
+
+Invocation ID: e8176caa-abda-4b0a-9a01-212a11e05598

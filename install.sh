@@ -19,7 +19,7 @@ Options:
   --profile PROFILE   Install profile: standard (default) or ao-worker.
   --codex-home PATH   Override CODEX_HOME. Required for ao-worker.
   --dry-run           Show planned actions without modifying files.
-  --force             Replace non-regular AGENTS targets or skill paths.
+  --force             Replace existing foreign skill or non-regular AGENTS paths.
   --no-backup         Do not back up AGENTS.md before replacing it.
   -h, --help          Show this help text.
 EOF
@@ -153,6 +153,7 @@ MANAGED_SKILLS=(
 MANAGED_THIRDPARTY_SKILLS=(
   brainstorming
   grilling
+  teach
   writing-great-skills
 )
 RETIRED_SKILLS=(
@@ -199,6 +200,17 @@ render_template() {
     "$TEMPLATE"
 }
 
+preflight_agents_file() {
+  render_template >/dev/null
+  if [[ ! -e "$AGENTS_TARGET" && ! -L "$AGENTS_TARGET" ]]; then
+    return 0
+  fi
+  if [[ -L "$AGENTS_TARGET" || ! -f "$AGENTS_TARGET" ]] && ! $FORCE; then
+    echo "Refusing to replace non-regular AGENTS target without --force: $AGENTS_TARGET" >&2
+    exit 1
+  fi
+}
+
 say() {
   printf '%s\n' "$*"
 }
@@ -221,7 +233,7 @@ install_skill_link() {
     return
   fi
   if [[ -e "$target" || -L "$target" ]]; then
-    if [[ ! -L "$target" ]] && ! $FORCE; then
+    if ! $FORCE; then
       echo "Refusing to replace existing skill path without --force: $target" >&2
       exit 1
     fi
@@ -232,6 +244,20 @@ install_skill_link() {
     say "Skill link planned: $target -> $source"
   else
     say "Skill link installed: $target -> $source"
+  fi
+}
+
+preflight_skill_link() {
+  local skill="$1" source_root="$2"
+  local target="$SKILLS_DIR/$skill" source="$source_root/$skill"
+  require_dir "$source"
+
+  if [[ -L "$target" ]] && [[ "$(readlink "$target")" == "$source" ]]; then
+    return
+  fi
+  if [[ -e "$target" || -L "$target" ]] && ! $FORCE; then
+    echo "Refusing to replace existing skill path without --force: $target" >&2
+    exit 1
   fi
 }
 
@@ -284,24 +310,23 @@ install_agents_file() {
   local tmp
   tmp="$(mktemp)"
   render_template >"$tmp"
-  if [[ -f "$AGENTS_TARGET" ]] && cmp -s "$tmp" "$AGENTS_TARGET"; then
+  if [[ ! -L "$AGENTS_TARGET" && -f "$AGENTS_TARGET" ]] &&
+    cmp -s "$tmp" "$AGENTS_TARGET"; then
     rm -f "$tmp"
     say "AGENTS.md already current: $AGENTS_TARGET"
     return
   fi
   if [[ -e "$AGENTS_TARGET" || -L "$AGENTS_TARGET" ]]; then
-    if [[ ! -f "$AGENTS_TARGET" && ! -L "$AGENTS_TARGET" ]] && ! $FORCE; then
-      rm -f "$tmp"
-      echo "Refusing to replace non-regular AGENTS target without --force: $AGENTS_TARGET" >&2
-      exit 1
-    fi
     backup_agents_target
+    if [[ -L "$AGENTS_TARGET" || ! -f "$AGENTS_TARGET" ]]; then
+      run rm -rf "$AGENTS_TARGET"
+    fi
   fi
   if $DRY_RUN; then
     say "[dry-run] write rendered AGENTS.md to $AGENTS_TARGET"
     rm -f "$tmp"
   else
-    mv "$tmp" "$AGENTS_TARGET"
+    mv -T "$tmp" "$AGENTS_TARGET"
     say "AGENTS.md installed: $AGENTS_TARGET"
   fi
 }
@@ -318,6 +343,16 @@ main() {
   say "Codex home: $CODEX_HOME"
   say "Private host authority: $HOST_AUTHORITY"
   say "Skills target root: $SKILLS_DIR"
+
+  for skill in "${MANAGED_SKILLS[@]}"; do
+    preflight_skill_link "$skill" "$SKILL_SOURCE_ROOT"
+  done
+  if [[ "$PROFILE" == "standard" ]]; then
+    for skill in "${MANAGED_THIRDPARTY_SKILLS[@]}"; do
+      preflight_skill_link "$skill" "$THIRDPARTY_SKILL_SOURCE_ROOT"
+    done
+  fi
+  preflight_agents_file
 
   if [[ "$PROFILE" == "ao-worker" ]]; then
     if [[ ! -d "$CODEX_HOME" ]]; then

@@ -19,6 +19,11 @@ MARKDOWN_ROOTS = (
     Path("codex"),
 )
 MARKDOWN_LINK_PATTERN = re.compile(r"(?<!!)\[[^]]*]\(([^)]+)\)")
+MARKDOWN_EXCLUDES = (
+    Path("evaluations/teach-adaptation/artifacts"),
+    Path("evaluations/teach-adaptation/v2/blind-packet.md"),
+    Path("evaluations/teach-adaptation/v2/runs"),
+)
 
 
 def discover_markdown_files(root: Path) -> list[Path]:
@@ -29,7 +34,13 @@ def discover_markdown_files(root: Path) -> list[Path]:
         if path.is_file():
             files.append(path)
         elif path.is_dir():
-            files.extend(path.rglob("*.md"))
+            for candidate in path.rglob("*.md"):
+                relative = candidate.relative_to(root)
+                if any(
+                    relative.is_relative_to(excluded) for excluded in MARKDOWN_EXCLUDES
+                ):
+                    continue
+                files.append(candidate)
     return sorted(files)
 
 

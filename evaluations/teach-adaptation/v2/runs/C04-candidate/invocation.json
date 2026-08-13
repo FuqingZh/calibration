@@ -1,0 +1,23 @@
+{
+  "arm": "candidate",
+  "backend_model_build": "not exposed by runner",
+  "backend_session_id": "not exposed by runner",
+  "case_id": "C04",
+  "controller_response_path": "/tmp/teach-eval-v2/controller-output/80fe543c-7ea0-4b75-a85d-224073300a9b.txt",
+  "executor_task": "teach-v2-c04-candidate",
+  "fixture": "resume",
+  "harness_sha256": "ee374a96c3d7af466105ff1a94b5a92b260c95afed0b85c39272ec0d92c2a883",
+  "invocation_id": "80fe543c-7ea0-4b75-a85d-224073300a9b",
+  "prepared_at": "2026-08-13T06:16:36.997063+00:00",
+  "prompt_sha256": "39b6068ef6c82e174d8771bbc56101e6b3dbcd4ae6ed3d239e9dfd7ca31a8102",
+  "run_id": "C04-candidate",
+  "schema_version": 2,
+  "source": {
+    "path": "/tmp/calibration-teach-upstream/thirdparty/skills/teach",
+    "repository_commit": "075016e3745eb2419cd39d565b402f8fea668f3b",
+    "tree": "76f1e41bd5cc624798e2c9c1a446f0639bb0ec30",
+    "upstream_commit": "6acc160e4e0cd062dbbbd7a1b26ae92855edf07e"
+  },
+  "task_sha256": "3916720947d59c710d32de6e3428781094fd7a136dd40b5ae38022c97481f564",
+  "workspace_label": "/tmp/teach-eval-v2/workspaces/C04-candidate"
+}

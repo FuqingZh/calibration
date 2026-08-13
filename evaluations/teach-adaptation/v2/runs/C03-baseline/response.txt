@@ -1,0 +1,22 @@
+Your lesson is ready: [When Python iteration ends](/tmp/teach-eval-v2/workspaces/C03-baseline/learning/lessons/0001-when-iteration-ends.html). It is a short four-option retrieval quiz with immediate feedback, grounded in the existing mission and prior learning record. The shared stylesheet and quiz controller are reusable by later lessons.
+
+No new learning record was added yet; that should happen after you complete the quiz and demonstrate the result.
+
+## File manifest
+
+Created:
+
+- `/tmp/teach-eval-v2/workspaces/C03-baseline/learning/lessons/0001-when-iteration-ends.html`
+- `/tmp/teach-eval-v2/workspaces/C03-baseline/learning/reference/iterator-exhaustion.html`
+- `/tmp/teach-eval-v2/workspaces/C03-baseline/learning/assets/course.css`
+- `/tmp/teach-eval-v2/workspaces/C03-baseline/learning/assets/quiz.js`
+
+Modified:
+
+- None.
+
+Deleted:
+
+- None.
+
+Invocation ID: 8f4b71f8-2fc0-47d6-80bd-2bbe3226dfa1

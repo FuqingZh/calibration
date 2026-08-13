@@ -1,0 +1,84 @@
+{
+  "directories": [
+    "learning",
+    "learning/assets",
+    "learning/learning-records",
+    "learning/lessons",
+    "learning/reference",
+    "project"
+  ],
+  "entries": [
+    {
+      "bytes": 36,
+      "path": "learning/.teach-workspace.yaml",
+      "sha256": "c24e5f7da8266361f1080da0b017e86ff6df64bc4b8cf983badb098af407411d",
+      "type": "file"
+    },
+    {
+      "bytes": 180,
+      "path": "learning/MISSION.md",
+      "sha256": "e6a3b476941ee27dcdc653d8df99773885e55a673e9ea4daa7705e31e9a75769",
+      "type": "file"
+    },
+    {
+      "bytes": 149,
+      "path": "learning/NOTES.md",
+      "sha256": "3d6039d2834b022df429fe374a44e5529767cd4f21abe03e730d589809a13039",
+      "type": "file"
+    },
+    {
+      "bytes": 210,
+      "path": "learning/RESOURCES.md",
+      "sha256": "f715a76eebc33557538799937d20a8f5953fa9ba8858400ce8de3009707cfa02",
+      "type": "file"
+    },
+    {
+      "bytes": 1807,
+      "path": "learning/assets/course.css",
+      "sha256": "ecd4fbfe62ba93e48edb0911c18812a39be2a6c7c5fbc3f72d4fa090ec6ec1c0",
+      "type": "file"
+    },
+    {
+      "bytes": 491,
+      "path": "learning/assets/quiz.js",
+      "sha256": "6d608d4772e5ba737b93f94cd7cd7bd9cbe705b1db8eebcea4dd6e3d31514f89",
+      "type": "file"
+    },
+    {
+      "bytes": 126,
+      "path": "learning/learning-records/0001-atomicity.md",
+      "sha256": "a5075f1359610c8343f6e7f687674fe554f6a3eddbfe09bfe31d57c34063ad10",
+      "type": "file"
+    },
+    {
+      "bytes": 165,
+      "path": "learning/learning-records/0002-idempotency-gap.md",
+      "sha256": "3c9d7a6b6b502e1e744fcbbe352d3aa5be53f6aba314d9f0c584c48528c59042",
+      "type": "file"
+    },
+    {
+      "bytes": 728,
+      "path": "learning/lessons/0001-transaction-atomicity.html",
+      "sha256": "7076b0e31353c537b65c8d46658ae3e87a44d9d62e0947eea3bebef6644f32b3",
+      "type": "file"
+    },
+    {
+      "bytes": 2726,
+      "path": "learning/lessons/0002-ambiguous-commit-outcome.html",
+      "sha256": "6f4157c90ffbdd85f851d320f92af24f038e26ed1705c202b1bb66ed1bfe5e10",
+      "type": "file"
+    },
+    {
+      "bytes": 1369,
+      "path": "learning/reference/transaction-outcomes.html",
+      "sha256": "c13cea7dd37787a98145e5757a0ea42a7af8699efabcb4052f7960928c72044d",
+      "type": "file"
+    },
+    {
+      "bytes": 95,
+      "path": "project/README.md",
+      "sha256": "c92c0f89cb20c1d81ec8fae91872644dd3c8cb2fa30dc14c061f296c011c4201",
+      "type": "file"
+    }
+  ]
+}

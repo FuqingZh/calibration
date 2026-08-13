@@ -1,0 +1,117 @@
+{
+  "schema_version": 2,
+  "runs": [
+    {
+      "run_id": "C01-baseline",
+      "case_id": "C01",
+      "arm": "baseline",
+      "invocation_id": "6abeda57-542d-43f4-92d8-87b0e2278d64",
+      "executor_task": "teach-v2-c01-baseline"
+    },
+    {
+      "run_id": "C01-candidate",
+      "case_id": "C01",
+      "arm": "candidate",
+      "invocation_id": "311c506a-5fb2-4992-858e-4baa8a42ddce",
+      "executor_task": "teach-v2-c01-candidate"
+    },
+    {
+      "run_id": "C02-baseline",
+      "case_id": "C02",
+      "arm": "baseline",
+      "invocation_id": "d85a62c5-c81e-483f-98b9-10c3f890f582",
+      "executor_task": "teach-v2-c02-baseline"
+    },
+    {
+      "run_id": "C02-candidate",
+      "case_id": "C02",
+      "arm": "candidate",
+      "invocation_id": "727decd9-f1fb-4f0b-941d-c89d6166e0eb",
+      "executor_task": "teach-v2-c02-candidate"
+    },
+    {
+      "run_id": "C03-baseline",
+      "case_id": "C03",
+      "arm": "baseline",
+      "invocation_id": "8f4b71f8-2fc0-47d6-80bd-2bbe3226dfa1",
+      "executor_task": "teach-v2-c03-baseline"
+    },
+    {
+      "run_id": "C03-candidate",
+      "case_id": "C03",
+      "arm": "candidate",
+      "invocation_id": "aa9289c9-22cb-4ac6-addb-57d936a72e4e",
+      "executor_task": "teach-v2-c03-candidate"
+    },
+    {
+      "run_id": "C04-baseline",
+      "case_id": "C04",
+      "arm": "baseline",
+      "invocation_id": "6bb44a3f-3849-4f53-929a-17773483a109",
+      "executor_task": "teach-v2-c04-baseline"
+    },
+    {
+      "run_id": "C04-candidate",
+      "case_id": "C04",
+      "arm": "candidate",
+      "invocation_id": "80fe543c-7ea0-4b75-a85d-224073300a9b",
+      "executor_task": "teach-v2-c04-candidate"
+    },
+    {
+      "run_id": "C05-baseline",
+      "case_id": "C05",
+      "arm": "baseline",
+      "invocation_id": "c2e85d69-996f-4d9f-98d9-cee52fd65143",
+      "executor_task": "teach-v2-c05-baseline"
+    },
+    {
+      "run_id": "C05-candidate",
+      "case_id": "C05",
+      "arm": "candidate",
+      "invocation_id": "f567dba7-d16c-416f-be9d-79d2bfabbc1d",
+      "executor_task": "teach-v2-c05-candidate"
+    },
+    {
+      "run_id": "C06-baseline",
+      "case_id": "C06",
+      "arm": "baseline",
+      "invocation_id": "349f2dc5-29e7-4036-94bf-14cafccfd1b0",
+      "executor_task": "teach-v2-c06-baseline"
+    },
+    {
+      "run_id": "C06-candidate",
+      "case_id": "C06",
+      "arm": "candidate",
+      "invocation_id": "58933dad-ed47-47c0-af39-a0f0a01f05da",
+      "executor_task": "teach-v2-c06-candidate"
+    },
+    {
+      "run_id": "S01-candidate",
+      "case_id": "S01",
+      "arm": "candidate",
+      "invocation_id": "e8176caa-abda-4b0a-9a01-212a11e05598",
+      "executor_task": "teach-v2-s01-candidate"
+    },
+    {
+      "run_id": "S02-candidate",
+      "case_id": "S02",
+      "arm": "candidate",
+      "invocation_id": "5134729c-2df7-4589-956c-3294bfb9c9f2",
+      "executor_task": "teach-v2-s02-candidate"
+    },
+    {
+      "run_id": "S03-candidate",
+      "case_id": "S03",
+      "arm": "candidate",
+      "invocation_id": "470e8745-dcdd-440a-819a-18c4c37d21bf",
+      "executor_task": "teach-v2-s03-candidate"
+    },
+    {
+      "run_id": "S04-candidate",
+      "case_id": "S04",
+      "arm": "candidate",
+      "invocation_id": "1b3b6731-ae1c-4fee-9ae4-31307c478b35",
+      "executor_task": "teach-v2-s04-candidate"
+    }
+  ]
+}

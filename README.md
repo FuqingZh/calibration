@@ -26,6 +26,8 @@ configuration remains outside the public repository.
 - `evaluations/ai-native-implementation/`: writable repository fixtures,
   deterministic contracts, and the blind-review rubric for calibration
   behavior comparison
+- `evaluations/teach-adaptation/`: sanitized fixtures, outputs, arm mapping,
+  and blind judgment for the bounded `teach` adoption comparison
 - `docs/README.md`: current decision, evaluation, and implementation-plan map
 - `scripts/adopt_ao_repository.py`: optional plan/apply and readback gate for a
   repository using an already installed, CLI-capable AO
@@ -123,6 +125,8 @@ The managed third-party optional skills are:
 
 - `brainstorming`: exploratory design mode for ambiguous work
 - `grilling`: adversarial stress-test mode for plans and designs
+- `teach`: explicitly invoked teaching with session-only mode or isolated
+  personal learning state
 - `writing-great-skills`: reference for writing and editing skills predictably
 
 Third-party skills are vendored under `thirdparty/skills/`. The installer does
@@ -139,6 +143,11 @@ than silently installing a provider or invoking calibration for routine work.
 `test-prompts.json` files are behavioral evaluation inputs. Their presence does
 not prove an optimization or regression result until the prompts have been run
 under a stated model, reasoning effort, and comparison method.
+
+The installed `teach` adaptation has bounded regression-acceptance evidence in
+`docs/decisions/2026-08-13-teach-adaptation-evaluation.md`, with reconstructable
+sanitized evidence under `evaluations/teach-adaptation/`. It does not claim a
+general improvement in teaching effectiveness or token use.
 
 `writing-plans` remains vendored for source and provenance review but is no
 longer installed as a runtime skill. Codex Plan Mode plus the

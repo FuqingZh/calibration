@@ -11,6 +11,7 @@ MANAGED_SKILLS = ("calibration", "closeout", "retrospect", "writing-code-docs")
 MANAGED_THIRDPARTY_SKILLS = (
     "brainstorming",
     "grilling",
+    "teach",
     "writing-great-skills",
 )
 
@@ -419,9 +420,97 @@ def test_profiles_are_idempotent_and_convert_safely(tmp_path: Path) -> None:
     assert not retired_owned.exists() and not retired_owned.is_symlink()
     assert retired_foreign.is_symlink()
 
-    standard_again = run_installer(codex_home, "--profile", "standard")
+    standard_refused = run_installer(codex_home, "--profile", "standard")
+    assert standard_refused.returncode == 1
+    assert "without --force" in standard_refused.stderr
+    assert owned.is_symlink() and owned.readlink() == foreign_target
+
+    standard_again = run_installer(
+        codex_home,
+        "--profile",
+        "standard",
+        "--force",
+    )
     assert standard_again.returncode == 0, standard_again.stderr
     assert_standard_installed(REPOSITORY_ROOT, codex_home)
+
+
+def test_standard_preserves_foreign_teach_link_until_force(tmp_path: Path) -> None:
+    codex_home = tmp_path / "codex-home"
+    skills = codex_home / "skills"
+    skills.mkdir(parents=True)
+    foreign = tmp_path / "upstream-teach"
+    foreign.mkdir()
+    teach = skills / "teach"
+    teach.symlink_to(foreign, target_is_directory=True)
+    before = snapshot_tree(codex_home)
+
+    refused = run_installer(codex_home)
+
+    assert refused.returncode == 1
+    assert "without --force" in refused.stderr
+    assert snapshot_tree(codex_home) == before
+    assert teach.is_symlink() and teach.readlink() == foreign
+
+    preview = run_installer(codex_home, "--dry-run", "--force")
+
+    assert preview.returncode == 0, preview.stderr
+    assert "removal planned" not in preview.stdout
+    assert "Skill link planned" in preview.stdout
+    assert snapshot_tree(codex_home) == before
+
+    forced = run_installer(codex_home, "--force")
+
+    assert forced.returncode == 0, forced.stderr
+    assert teach.readlink() == REPOSITORY_ROOT / "thirdparty/skills/teach"
+
+
+def test_nonregular_agents_target_is_preflighted_before_home_mutation(
+    tmp_path: Path,
+) -> None:
+    codex_home = tmp_path / "codex-home"
+    agents = codex_home / "AGENTS.md"
+    agents.mkdir(parents=True)
+    marker = agents / "user-content"
+    marker.write_text("preserve\n", encoding="utf-8")
+    before = snapshot_tree(codex_home)
+
+    refused = run_installer(codex_home)
+
+    assert refused.returncode == 1
+    assert "non-regular AGENTS target without --force" in refused.stderr
+    assert snapshot_tree(codex_home) == before
+    assert not (codex_home / "skills").exists()
+
+    forced = run_installer(codex_home, "--force")
+
+    assert forced.returncode == 0, forced.stderr
+    assert_standard_installed(REPOSITORY_ROOT, codex_home)
+    backups = list(codex_home.glob("AGENTS.md.bak.*"))
+    assert len(backups) == 1
+    assert (backups[0] / "user-content").read_text(encoding="utf-8") == ("preserve\n")
+
+
+def test_force_replaces_matching_external_agents_symlink(tmp_path: Path) -> None:
+    source_home = tmp_path / "source-home"
+    source_install = run_installer(source_home)
+    assert source_install.returncode == 0, source_install.stderr
+
+    external = tmp_path / "external-agents.md"
+    external.write_bytes((source_home / "AGENTS.md").read_bytes())
+    codex_home = tmp_path / "codex-home"
+    codex_home.mkdir()
+    agents = codex_home / "AGENTS.md"
+    agents.symlink_to(external)
+
+    forced = run_installer(codex_home, "--force")
+
+    assert forced.returncode == 0, forced.stderr
+    assert agents.is_file() and not agents.is_symlink()
+    assert agents.read_bytes() == external.read_bytes()
+    backups = list(codex_home.glob("AGENTS.md.bak.*"))
+    assert len(backups) == 1
+    assert backups[0].is_symlink() and backups[0].readlink() == external
 
 
 def test_ao_worker_preserves_unowned_codex_state_byte_exactly(

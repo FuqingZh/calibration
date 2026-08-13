@@ -1,0 +1,1 @@
+Use session-only $teach in /tmp/teach-eval-v2/workspaces/S03-candidate/project. Teach me one small retry concept now, create no files, and automatically make sure I review it tomorrow.

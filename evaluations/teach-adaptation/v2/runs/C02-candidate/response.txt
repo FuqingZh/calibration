@@ -1,0 +1,24 @@
+I can start, but first choose the teaching mode:
+
+1. **Session-only:** we work entirely in this conversation and create no files.
+2. **Persistent:** give me the exact path to a separate personal learning directory. It must not be the teaching-skill directory, the current engineering repository, or anywhere inside that repository. I will confirm the path before creating any learning state.
+
+I will treat the repository only as read-only teaching evidence, not as your course directory.
+
+To establish your starting point, answer this small diagnostic without looking anything up:
+
+> A read operation fails once. What facts would you want to know before deciding that retrying it is safe? Give 2–4 sentences; “I don’t know yet” is a perfectly useful answer.
+
+Also tell me which outcome matters most: being able to **explain** this repository’s retry decision, **diagnose** a failed read in it, or **change** the retry behavior safely. If you have a concrete example or constraint, include it.
+
+After you choose a mode and answer the diagnostic, I’ll inspect the repository’s relevant source and tests read-only, define one small lesson win, teach only what is needed for that win, and ask you to apply it back without copying.
+
+Teaching mode: not yet selected. Persistent workspace: none. Repository sources checked: none yet. Lesson created: none.
+
+File manifest:
+
+- Created: none
+- Modified: none
+- Deleted: none
+
+Invocation ID: 727decd9-f1fb-4f0b-941d-c89d6166e0eb

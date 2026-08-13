@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "recording_phase": "before_arm_reveal",
+  "packet_sha256": "993a58002ac17b0afb99454dd388b1b9b8ab1b7ed71be739b558891935f02db8",
+  "source": "structured transcription of the blind judge final response",
+  "backend_session_id": "not exposed by runner",
+  "cases": [
+    {
+      "case_id": "C01",
+      "arm_a_critical_failures": [
+        "no explicit session-only or persistent boundary",
+        "no concrete mission",
+        "no executable diagnostic"
+      ],
+      "arm_b_critical_failures": [],
+      "preferred": "B"
+    },
+    {
+      "case_id": "C02",
+      "arm_a_critical_failures": [
+        "no explicit session-only or persistent boundary",
+        "no concrete mission",
+        "no executable diagnostic"
+      ],
+      "arm_b_critical_failures": [],
+      "preferred": "B"
+    },
+    {
+      "case_id": "C03",
+      "arm_a_critical_failures": [],
+      "arm_b_critical_failures": [
+        "displayed answer order is fixed"
+      ],
+      "preferred": "A"
+    },
+    {
+      "case_id": "C04",
+      "arm_a_critical_failures": [
+        "newly emitted quiz keeps a fixed displayed answer order"
+      ],
+      "arm_b_critical_failures": [],
+      "preferred": "B"
+    },
+    {
+      "case_id": "C05",
+      "arm_a_critical_failures": [
+        "source freshness context is incomplete",
+        "displayed answer order is fixed"
+      ],
+      "arm_b_critical_failures": [],
+      "preferred": "B"
+    },
+    {
+      "case_id": "C06",
+      "arm_a_critical_failures": [],
+      "arm_b_critical_failures": [],
+      "preferred": "tie"
+    }
+  ],
+  "overall": {
+    "acceptable_preference_sequence": [
+      "B",
+      "B",
+      "A",
+      "B",
+      "B",
+      "tie"
+    ],
+    "basis": "critical contract behavior before verbosity or artifact count"
+  }
+}

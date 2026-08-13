@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta
+      name="description"
+      content="A quick reference for Python iterator exhaustion."
+    >
+    <title>Iterator exhaustion reference</title>
+    <link rel="stylesheet" href="../assets/course.css">
+  </head>
+  <body>
+    <main class="reference-sheet">
+      <article class="reference-card">
+        <header>
+          <p class="eyebrow">Python iteration · Quick reference</p>
+          <h1>Iterator exhaustion</h1>
+          <p class="lede">The compact rule for debugging a stream boundary.</p>
+        </header>
+
+        <ol class="reference-list">
+          <li><code>next(iterator)</code> returns the next available item.</li>
+          <li>After the last item, <code>next(iterator)</code> raises <code>StopIteration</code>.</li>
+          <li>Later calls on that exhausted iterator raise <code>StopIteration</code> again.</li>
+          <li>A <code>for</code> loop catches this signal and stops for you.</li>
+        </ol>
+
+        <footer class="reference-footer">
+          <p>
+            Practice:
+            <a href="../lessons/0001-when-python-iteration-ends.html">when Python iteration ends</a>.
+          </p>
+          <p>
+            Source:
+            <a href="https://docs.python.org/3.13/glossary.html#term-iterator">Python 3.13 iterator glossary</a>.
+          </p>
+        </footer>
+      </article>
+    </main>
+  </body>
+</html>

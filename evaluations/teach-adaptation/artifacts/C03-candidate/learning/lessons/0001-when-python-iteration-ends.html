@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>When Python iteration ends</title>
+    <script src="../assets/quiz.js" defer></script>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: system-ui, sans-serif;
+        line-height: 1.5;
+      }
+
+      body {
+        margin: 0 auto;
+        max-width: 44rem;
+        padding: 2rem 1rem;
+      }
+
+      main {
+        border: 1px solid #8886;
+        border-radius: 0.75rem;
+        padding: 1.25rem;
+      }
+
+      h1 {
+        margin-top: 0;
+      }
+
+      pre {
+        background: #7772;
+        border-radius: 0.5rem;
+        overflow-x: auto;
+        padding: 1rem;
+      }
+
+      [data-teach-options] {
+        display: grid;
+        gap: 0.6rem;
+        margin: 1rem 0;
+      }
+
+      [data-option-id] {
+        font: inherit;
+        padding: 0.7rem 0.85rem;
+        text-align: left;
+      }
+
+      [data-option-id][aria-pressed="true"] {
+        outline: 3px solid #3578e5;
+      }
+
+      [data-feedback] {
+        min-height: 3rem;
+      }
+
+      footer {
+        border-top: 1px solid #8886;
+        margin-top: 1.5rem;
+        padding-top: 1rem;
+      }
+
+      @media print {
+        [data-teach-options] button {
+          border: 1px solid #555;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>When does iteration end?</h1>
+      <p><strong>Win:</strong> predict whether the next call returns a value or ends iteration.</p>
+
+      <section
+        aria-labelledby="quiz-question"
+        data-teach-quiz
+        data-answer-id="raises-stop-iteration"
+      >
+        <pre><code>1  chunks = iter(["header"])
+2  first = next(chunks)
+3  second = next(chunks)
+4  third = next(chunks)</code></pre>
+
+        <h2 id="quiz-question">What happens when Python evaluates line 3?</h2>
+        <p>Choose one answer. If needed, use the feedback and try again.</p>
+
+        <div data-teach-options>
+          <button type="button" data-option-id="raises-stop-iteration" aria-pressed="false">
+            Python raises <code>StopIteration</code>.
+          </button>
+          <button type="button" data-option-id="returns-none" aria-pressed="false">
+            Python returns the value <code>None</code>.
+          </button>
+          <button type="button" data-option-id="returns-empty-string" aria-pressed="false">
+            Python returns an empty string.
+          </button>
+          <button type="button" data-option-id="creates-new-iterator" aria-pressed="false">
+            Python creates a fresh iterator.
+          </button>
+        </div>
+
+        <p data-feedback role="status" aria-live="polite">Make your prediction.</p>
+      </section>
+
+      <details>
+        <summary>Rule to keep</summary>
+        <p>
+          An iterator's <code>__next__()</code> returns the next item. When no items remain,
+          it raises <code>StopIteration</code>; here, line 2 consumes the only item, so line 3
+          signals exhaustion and line 4 is not evaluated.
+          <a href="https://docs.python.org/3/reference/datamodel.html#object.__next__">Python 3.13 language reference</a>
+        </p>
+      </details>
+
+      <footer>
+        <strong>Review cue:</strong> the next time you see <code>next(iterator)</code>, count
+        the remaining items before predicting a value or <code>StopIteration</code>.
+      </footer>
+    </main>
+
+    <script>
+      (function enableFeedback() {
+        "use strict";
+
+        const quiz = document.querySelector("[data-teach-quiz]");
+        const feedback = quiz.querySelector("[data-feedback]");
+        const options = quiz.querySelectorAll("[data-option-id]");
+
+        options.forEach((option) => {
+          option.addEventListener("click", () => {
+            options.forEach((item) => item.setAttribute("aria-pressed", "false"));
+            option.setAttribute("aria-pressed", "true");
+
+            if (option.dataset.optionId === quiz.dataset.answerId) {
+              feedback.textContent =
+                'Correct. Line 2 consumes "header". Line 3 asks the exhausted iterator for another item, so it raises StopIteration; line 4 does not run.';
+              return;
+            }
+
+            feedback.textContent =
+              "Not yet. Count how many items remain after line 2, then choose again.";
+          });
+        });
+      })();
+    </script>
+  </body>
+</html>

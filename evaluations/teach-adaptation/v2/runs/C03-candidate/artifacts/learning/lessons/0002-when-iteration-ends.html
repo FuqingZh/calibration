@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>When Python iteration ends</title>
+    <script src="../assets/quiz.js" defer></script>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: system-ui, sans-serif;
+        line-height: 1.5;
+      }
+      body {
+        margin: 2rem auto;
+        max-width: 44rem;
+        padding: 0 1rem;
+      }
+      pre, form {
+        border: 1px solid currentColor;
+        border-radius: 0.5rem;
+        padding: 1rem;
+      }
+      label {
+        display: block;
+        margin: 0.5rem 0;
+      }
+      button {
+        margin-top: 0.75rem;
+        padding: 0.45rem 0.8rem;
+      }
+      #feedback[data-result="correct"] {
+        color: #18702c;
+        font-weight: 700;
+      }
+      #feedback[data-result="incorrect"] {
+        color: #a12b1f;
+      }
+      @media print {
+        button { display: none; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>When does Python iteration end?</h1>
+      <p><strong>Win:</strong> predict the signal produced after an iterator's last value.</p>
+      <p>
+        An iterator is exhausted when its <code>__next__()</code> method raises
+        <code>StopIteration</code>. The built-in <code>next()</code> exposes that signal when
+        no default value is supplied.
+        <a href="https://docs.python.org/3/reference/datamodel.html#object.__next__">Python 3.13 data model</a>
+      </p>
+
+      <pre><code>items = iter([4, 7])
+next(items)  # 4
+next(items)  # 7
+next(items)  # ?</code></pre>
+
+      <form id="termination-quiz" data-correct-option-id="stop-iteration">
+        <fieldset>
+          <legend>What happens on the third call to <code>next(items)</code>?</legend>
+          <div data-teach-options>
+            <label data-option-id="stop-iteration">
+              <input type="radio" name="answer" value="stop-iteration">
+              Raises <code>StopIteration</code>
+            </label>
+            <label data-option-id="return-none">
+              <input type="radio" name="answer" value="return-none">
+              Returns the value <code>None</code>
+            </label>
+            <label data-option-id="repeat-value">
+              <input type="radio" name="answer" value="repeat-value">
+              Repeats the last value
+            </label>
+            <label data-option-id="index-error">
+              <input type="radio" name="answer" value="index-error">
+              Raises an <code>IndexError</code>
+            </label>
+          </div>
+        </fieldset>
+        <button type="submit">Check answer</button>
+        <p id="feedback" role="status" aria-live="polite"></p>
+      </form>
+
+      <p><strong>Review cue:</strong> tomorrow, predict the fourth call to <code>next(iter([1, 2, 3]))</code> before running it.</p>
+    </main>
+    <script>
+      "use strict";
+
+      const form = document.querySelector("#termination-quiz");
+      const feedback = document.querySelector("#feedback");
+      const explanations = {
+        "return-none": "Not quite: an exhausted iterator does not implicitly return None. Try again.",
+        "repeat-value": "Not quite: an exhausted iterator does not repeat its last item. Try again.",
+        "index-error": "Not quite: the iterator protocol uses StopIteration, not IndexError. Try again.",
+      };
+
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const selected = form.querySelector('input[name="answer"]:checked');
+        if (!selected) {
+          feedback.dataset.result = "incorrect";
+          feedback.textContent = "Choose one answer, then check it.";
+          return;
+        }
+
+        if (selected.value === form.dataset.correctOptionId) {
+          feedback.dataset.result = "correct";
+          feedback.textContent = "Correct. After 7, the iterator is exhausted, so next(items) raises StopIteration.";
+          return;
+        }
+
+        feedback.dataset.result = "incorrect";
+        feedback.textContent = explanations[selected.value];
+      });
+    </script>
+  </body>
+</html>

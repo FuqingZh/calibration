@@ -1,0 +1,17 @@
+Promoted the reusable Acme Parser 4.2 result into durable team documentation. The personal interview goal and confusion note remain only in the personal learning workspace.
+
+Teaching mode: persistent  
+Learning workspace: `/tmp/teach-eval-v2/workspaces/C06-candidate/learning`  
+Lesson win and evidence: Acme Parser 4.2 was verified in fixtures A, B, and C to treat `<tag/>` as a missing field while `<tag></tag>` preserves an empty string.  
+Sources checked: the personal learning record, the project documentation authority, and the project documentation index.  
+Review cue: repeat the paired-tag reproduction check before upgrading the parser or materially changing its configuration.
+
+Validation: `git diff --check` passed; readback confirmed the compatibility record and its index link. The original evidence did not record the operating system or additional parser configuration, so the document states that limitation.
+
+File manifest:
+
+- Created: `/tmp/teach-eval-v2/workspaces/C06-candidate/project/docs/compatibility/20260813-v1.0-acme-parser-empty-tag-compatibility-record.md`
+- Modified: `/tmp/teach-eval-v2/workspaces/C06-candidate/project/docs/README.md`
+- Deleted: none
+
+Invocation ID: 58933dad-ed47-47c0-af39-a0f0a01f05da

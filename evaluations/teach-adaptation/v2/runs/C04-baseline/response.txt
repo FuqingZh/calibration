@@ -1,0 +1,14 @@
+Your next step is ready: [When the commit answer goes missing](/tmp/teach-eval-v2/workspaces/C04-baseline/learning/lessons/0002-ambiguous-commit-outcome.html). It is a three-minute scenario that asks you to distinguish a confirmed rollback from an ambiguous commit outcome and gives immediate feedback.
+
+After choosing an answer, reply with one sentence completing: “A timeout is not a rollback because …” I’ll use your explanation to decide the following step.
+
+File manifest:
+
+- Created `assets/course.css`
+- Created `assets/quiz.js`
+- Created `lessons/0002-ambiguous-commit-outcome.html`
+- Created `reference/transaction-outcomes.html`
+- Modified `lessons/0001-transaction-atomicity.html`
+- Deleted: none
+
+Invocation ID: 6bb44a3f-3849-4f53-929a-17773483a109

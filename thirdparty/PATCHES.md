@@ -64,6 +64,28 @@ Local changes:
 - Retain the source for provenance while excluding it from installer management;
   Codex Plan Mode and the shared implementation-plan reference are active.
 
+## teach
+
+Imported from Matt Pocock's `skills/productivity/teach` at release `v1.2.3`.
+
+Local changes:
+
+- Keep explicit invocation, mission grounding, trusted-source research, small
+  lessons, retrieval practice, reusable learner state, and tight feedback.
+- Separate the read-only installed skill source and engineering-project context
+  from an explicitly selected personal learning workspace; provide a
+  conversation-only mode that writes no files.
+- Confirm a persistent workspace with `.teach-workspace.yaml`, assess starting
+  capability before the first lesson, and resume from existing learning state.
+- Require current authoritative sources for time-sensitive claims and extend
+  resource records with applicable version or date plus check date.
+- Add a reusable runtime quiz shuffler so answer position is not fixed, while
+  retaining comparable option formatting.
+- Add explicit lesson stopping, review-cue, and session-resume behavior without
+  claiming an automatic spaced-repetition scheduler.
+- Require a separate explicit request before distilling team-neutral learning
+  into the owning project's documentation workflow.
+
 ## darwin-skill (retired, not vendored)
 
 Imported from `alchaincyf/darwin-skill`.

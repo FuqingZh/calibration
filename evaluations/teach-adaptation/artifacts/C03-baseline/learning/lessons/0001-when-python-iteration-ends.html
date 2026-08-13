@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta
+      name="description"
+      content="A one-question retrieval quiz about Python iterator exhaustion."
+    >
+    <title>When Python iteration ends</title>
+    <link rel="stylesheet" href="../assets/course.css">
+    <script src="../assets/quiz.js" defer></script>
+  </head>
+  <body>
+    <main class="lesson">
+      <article class="lesson-card">
+        <header>
+          <p class="eyebrow">Python iteration · 2-minute retrieval</p>
+          <h1>When does this iterator end?</h1>
+          <p class="lede">
+            You already know what <code>iter()</code> and <code>next()</code>
+            do. Now predict the boundary a streaming parser must handle.
+          </p>
+        </header>
+
+        <pre class="code-sample" aria-label="Four lines of Python"><code>stream = iter(["header", "row"])
+first = next(stream)
+second = next(stream)
+third = next(stream)</code></pre>
+
+        <form
+          class="quiz"
+          data-quiz
+          data-correct="stop"
+          data-correct-message="Correct — line 4 signals exhaustion."
+          data-incorrect-message="Not quite — line 4 raises StopIteration."
+        >
+          <fieldset>
+            <legend>What happens on the fourth line?</legend>
+            <div class="quiz-options">
+              <label class="quiz-option">
+                <input type="radio" name="answer" value="stop">
+                <span>Python raises StopIteration on this next call.</span>
+              </label>
+              <label class="quiz-option">
+                <input type="radio" name="answer" value="repeat">
+                <span>Python returns the final item once more.</span>
+              </label>
+              <label class="quiz-option">
+                <input type="radio" name="answer" value="none">
+                <span>Python returns None on this next call.</span>
+              </label>
+              <label class="quiz-option">
+                <input type="radio" name="answer" value="restart">
+                <span>Python restarts the iterator from its beginning.</span>
+              </label>
+            </div>
+          </fieldset>
+
+          <div class="quiz-actions">
+            <button type="submit">Check answer</button>
+            <button class="secondary" type="reset">Try again</button>
+          </div>
+
+          <div
+            class="quiz-feedback"
+            data-quiz-feedback
+            role="status"
+            aria-live="polite"
+            hidden
+          >
+            <strong data-quiz-status>Result</strong>
+            <p data-quiz-explanation>
+              The iterator has already produced its two items. The next call
+              raises <code>StopIteration</code>; a <code>for</code> loop uses
+              that signal to stop automatically.
+            </p>
+          </div>
+        </form>
+
+        <footer class="lesson-footer">
+          <p>
+            Keep the rule nearby:
+            <a href="../reference/iterator-exhaustion.html">iterator exhaustion reference</a>.
+          </p>
+          <p>
+            Primary source:
+            <a href="https://docs.python.org/3.13/glossary.html#term-iterator">Python 3.13 iterator glossary</a>.
+          </p>
+          <p>Ask your teacher any follow-up question that still feels unclear.</p>
+        </footer>
+      </article>
+    </main>
+  </body>
+</html>

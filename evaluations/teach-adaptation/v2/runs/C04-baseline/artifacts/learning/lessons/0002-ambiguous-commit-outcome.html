@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>When the commit answer goes missing</title>
+    <link rel="stylesheet" href="../assets/course.css">
+    <script src="../assets/quiz.js" defer></script>
+  </head>
+  <body>
+    <main>
+      <p class="eyebrow">Transaction course · Lesson 2 · 3 minutes</p>
+      <h1>When the commit answer goes missing</h1>
+      <p><strong>Your win:</strong> decide whether a failed request is safe to
+      retry blindly.</p>
+
+      <section class="scenario">
+        <h2>The failure</h2>
+        <p>A Python service inserts a payment row and sends
+        <code>COMMIT</code>. The client times out before receiving the
+        database response. The service cannot tell whether PostgreSQL committed
+        before the connection disappeared.</p>
+      </section>
+
+      <section class="rule">
+        <h2>One distinction</h2>
+        <p><strong>Confirmed rollback</strong> means the attempted transaction
+        did not take effect. <strong>Ambiguous outcome</strong> means the client
+        lacks evidence either way. A timeout describes what the client heard;
+        it does not prove what the database did.</p>
+      </section>
+
+      <section
+        class="quiz"
+        data-quiz
+        data-correct-feedback="Correct. Establish the outcome or use an idempotency key before replaying; a blind retry could create a second payment."
+        data-incorrect-feedback="Not yet. The missing commit response leaves both outcomes possible, so replaying immediately can duplicate the effect."
+      >
+        <h2>Your turn</h2>
+        <p>The service sees this timeout. What should its retry path do first?</p>
+        <div class="choices">
+          <button type="button" data-answer="incorrect">Retry now</button>
+          <button type="button" data-answer="correct">Verify it</button>
+        </div>
+        <p data-feedback role="status" aria-live="polite"></p>
+      </section>
+
+      <h2>Retrieval prompt</h2>
+      <p>Without looking back, say one sentence beginning:
+      <em>“A timeout is not a rollback because …”</em> Send that sentence to
+      your agent for feedback or ask any follow-up question that remains
+      unclear.</p>
+
+      <p class="source"><strong>Primary source:</strong>
+        <a href="https://www.postgresql.org/docs/current/tutorial-transactions.html">PostgreSQL:
+        Transactions tutorial</a>, especially the commit/rollback model.</p>
+
+      <nav>
+        <a href="0001-transaction-atomicity.html">Previous lesson</a> ·
+        <a href="../reference/transaction-outcomes.html">Outcome guide</a>
+      </nav>
+    </main>
+  </body>
+</html>

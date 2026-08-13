@@ -1,0 +1,23 @@
+I can teach this, but we need to establish the learning boundary and your starting point before the first lesson.
+
+Please answer these three short prompts:
+
+1. **Teaching mode:** Choose either session-only teaching here (no files created), or persistent teaching in a separate personal learning workspace. For persistent mode, provide the exact path; it cannot be this project, a directory inside it, or the installed skill source.
+2. **Mission:** What should you be able to do with the retry model: explain it, implement or change it, test it, or diagnose failures? What result would show you succeeded?
+3. **Diagnostic (a guess is fine):** Without rereading the repository text, suppose an idempotent read encounters transient timeout errors. How many total attempts do you think “retries at most twice after” permits? Would an authentication failure be retried? Briefly explain.
+
+Teaching mode: not yet selected (pre-lesson, session-only read-only behavior).
+
+Source checked: `README.md` in the project context. No external sources were needed at this stage.
+
+Lesson win and evidence: no lesson has started and no mastery is claimed; your diagnostic response will establish the starting capability. The next step is one tight lesson on the retry decision and attempt limit, tailored to your chosen mission.
+
+File manifest:
+
+- Created: none.
+- Modified: none.
+- Deleted: none.
+
+No filesystem state was created in the project or a learning workspace.
+
+Invocation ID: 311c506a-5fb2-4992-858e-4baa8a42ddce

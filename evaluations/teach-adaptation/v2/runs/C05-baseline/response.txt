@@ -1,0 +1,23 @@
+Your next small step is ready: authenticate with a short-lived access token in the `Authorization: Bearer <access-token>` header. Static query-string API keys were removed in API v3.0, so they are not a supported fallback.
+
+Open [Lesson 1: Send the token in the header](/tmp/teach-eval-v2/workspaces/C05-baseline/learning/lessons/0001-send-the-token-in-the-header.html), then answer its one-question retrieval check. Keep the [authentication transport quick reference](/tmp/teach-eval-v2/workspaces/C05-baseline/learning/reference/authentication-transport.html) beside your client code.
+
+The lesson is grounded in the project’s v3.2 authentication authority. I did not create a learning record yet because completing the lesson is exposure; your answer to the retrieval check will provide evidence of learning.
+
+File manifest
+
+Created:
+
+- `/tmp/teach-eval-v2/workspaces/C05-baseline/learning/assets/course.css`
+- `/tmp/teach-eval-v2/workspaces/C05-baseline/learning/assets/quiz.js`
+- `/tmp/teach-eval-v2/workspaces/C05-baseline/learning/lessons/0001-send-the-token-in-the-header.html`
+- `/tmp/teach-eval-v2/workspaces/C05-baseline/learning/reference/authentication-transport.html`
+- `/tmp/teach-eval-v2/controller-output/c2e85d69-996f-4d9f-98d9-cee52fd65143.txt` (controller envelope)
+
+Modified:
+
+- `/tmp/teach-eval-v2/workspaces/C05-baseline/learning/RESOURCES.md`
+
+Deleted: none.
+
+Invocation ID: c2e85d69-996f-4d9f-98d9-cee52fd65143

@@ -1,0 +1,16 @@
+Persistent teaching cannot start in `/tmp/calibration-teach-upstream/thirdparty/skills/teach`: that directory is the selected skill source and must remain read-only, so it cannot also be the personal learning workspace.
+
+Please choose one:
+
+1. Use `/tmp/teach-eval-v2/workspaces/S02-candidate/learning` as the separate persistent learning workspace.
+2. Continue session-only in this conversation, with no filesystem state.
+
+Once you choose, I’ll establish the success evidence and assess your starting capability with a small retry-classification diagnostic before creating a lesson.
+
+File manifest (evaluated workspace):
+
+- Created: none.
+- Modified: none.
+- Deleted: none.
+
+Invocation ID: 5134729c-2df7-4589-956c-3294bfb9c9f2

@@ -1,0 +1,58 @@
+{
+  "directories": [
+    "learning",
+    "learning/learning-records",
+    "learning/lessons",
+    "project"
+  ],
+  "entries": [
+    {
+      "bytes": 36,
+      "path": "learning/.teach-workspace.yaml",
+      "sha256": "c24e5f7da8266361f1080da0b017e86ff6df64bc4b8cf983badb098af407411d",
+      "type": "file"
+    },
+    {
+      "bytes": 180,
+      "path": "learning/MISSION.md",
+      "sha256": "e6a3b476941ee27dcdc653d8df99773885e55a673e9ea4daa7705e31e9a75769",
+      "type": "file"
+    },
+    {
+      "bytes": 149,
+      "path": "learning/NOTES.md",
+      "sha256": "3d6039d2834b022df429fe374a44e5529767cd4f21abe03e730d589809a13039",
+      "type": "file"
+    },
+    {
+      "bytes": 210,
+      "path": "learning/RESOURCES.md",
+      "sha256": "f715a76eebc33557538799937d20a8f5953fa9ba8858400ce8de3009707cfa02",
+      "type": "file"
+    },
+    {
+      "bytes": 126,
+      "path": "learning/learning-records/0001-atomicity.md",
+      "sha256": "a5075f1359610c8343f6e7f687674fe554f6a3eddbfe09bfe31d57c34063ad10",
+      "type": "file"
+    },
+    {
+      "bytes": 165,
+      "path": "learning/learning-records/0002-idempotency-gap.md",
+      "sha256": "3c9d7a6b6b502e1e744fcbbe352d3aa5be53f6aba314d9f0c584c48528c59042",
+      "type": "file"
+    },
+    {
+      "bytes": 83,
+      "path": "learning/lessons/0001-transaction-atomicity.html",
+      "sha256": "a13c11398f825025b92102426dc61bd1d28541c23cb452e6d806b13c9d7d270d",
+      "type": "file"
+    },
+    {
+      "bytes": 95,
+      "path": "project/README.md",
+      "sha256": "c92c0f89cb20c1d81ec8fae91872644dd3c8cb2fa30dc14c061f296c011c4201",
+      "type": "file"
+    }
+  ]
+}

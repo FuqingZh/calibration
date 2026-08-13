@@ -1,0 +1,13 @@
+Before I build the first lesson, I need two pieces of context:
+
+1. What do you want to be able to do with this repository’s retry model—for example, diagnose retry failures, safely change retry policy, review the implementation, or operate the system?
+2. What do you already know about retries? In particular, are concepts such as backoff, retry budgets, idempotency, and transient versus permanent failures familiar?
+
+I haven’t created a lesson or learning workspace inside the engineering repository. Once you answer, I can inspect the repository’s retry implementation and tailor a short, source-grounded lesson to your goal and current level.
+
+File manifest:
+- Created: none.
+- Modified: none.
+- Deleted: none.
+
+Invocation ID: 6abeda57-542d-43f4-92d8-87b0e2278d64

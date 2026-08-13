@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Iterator exhaustion — quick reference</title>
+    <link rel="stylesheet" href="../assets/course.css">
+  </head>
+  <body>
+    <main>
+      <p class="eyebrow">Python iteration · quick reference</p>
+      <h1>Exhaustion</h1>
+      <p class="lede">An iterator is exhausted when it has no next item.</p>
+
+      <section class="card">
+        <h2>The rule</h2>
+        <p><code>next(iterator)</code> raises <code>StopIteration</code> when the iterator is exhausted.</p>
+        <pre><code>items = iter(["header"])
+next(items)  # "header"
+next(items)  # raises StopIteration</code></pre>
+        <p class="note">
+          A <code>for</code> loop handles this signal for you and stops looping.
+          Source: <a href="https://docs.python.org/3/reference/datamodel.html#object.__next__">Python data model: <code>object.__next__()</code></a>.
+        </p>
+      </section>
+
+      <nav aria-label="Course links">
+        <a href="../lessons/0001-when-iteration-ends.html">Practice: when iteration ends</a>
+      </nav>
+    </main>
+  </body>
+</html>

@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>When Python iteration ends</title>
+    <link rel="stylesheet" href="../assets/course.css">
+    <script src="../assets/quiz.js" defer></script>
+  </head>
+  <body>
+    <main>
+      <p class="eyebrow">Lesson 1 · about 2 minutes</p>
+      <h1>When iteration ends</h1>
+      <p class="lede">
+        You already know that <code>next()</code> asks an iterator for one value.
+        Now predict what happens after its last value.
+      </p>
+
+      <section
+        class="card"
+        data-quiz
+        data-correct-feedback="Correct. After both values are consumed, the next request raises StopIteration."
+        data-incorrect-feedback="Not quite. Count the two values already consumed, then try again."
+      >
+        <h2>What happens on line 4?</h2>
+        <pre><code>items = iter(["header", "body"])
+next(items)
+next(items)
+next(items)</code></pre>
+
+        <div class="options" aria-label="Answer choices">
+          <button class="option" type="button" data-answer="correct">Raises StopIteration now.</button>
+          <button class="option" type="button" data-answer="incorrect">Returns None immediately.</button>
+          <button class="option" type="button" data-answer="incorrect">Repeats body indefinitely.</button>
+          <button class="option" type="button" data-answer="incorrect">Raises IndexError instead.</button>
+        </div>
+
+        <p class="feedback" data-feedback aria-live="polite"></p>
+        <button class="reset" type="button" data-reset hidden>Try again</button>
+      </section>
+
+      <p>
+        The key rule is short: an exhausted iterator raises <code>StopIteration</code>.
+        A <code>for</code> loop catches that signal and ends normally.
+      </p>
+      <p class="note">
+        Primary source:
+        <a href="https://docs.python.org/3/reference/datamodel.html#object.__next__">Python data model: <code>object.__next__()</code></a>.
+      </p>
+      <p>Ask your teacher a follow-up question if the distinction between exhaustion and an ordinary returned value is unclear.</p>
+
+      <nav aria-label="Course links">
+        <a href="../reference/iterator-exhaustion.html">Quick reference: iterator exhaustion</a>
+      </nav>
+    </main>
+  </body>
+</html>

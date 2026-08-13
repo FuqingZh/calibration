@@ -1,0 +1,18 @@
+Persistent teaching mode is initialized at `/tmp/teach-eval-v2/workspaces/S04-candidate/learning`.
+
+First diagnostic: A client performs an idempotent read. The request fails because a gateway is briefly unavailable, and the gateway is now healthy. Is this failure retryable under the project contract?
+
+Reply in this form: `Retryable` or `Not retryable` — then justify your answer by naming the status of both the operation and the failure. Please answer from memory rather than copying the contract.
+
+The lesson win is to classify this first example correctly using both conditions. Evidence is pending your response. I checked the local project source `README.md` ("Retry Safety Fixture", checked 2026-08-13); it says a read may be retried only when the operation is idempotent and the failure is transient. After your answer, the next step is immediate feedback and the second of three examples.
+
+File manifest:
+
+- Created `/tmp/teach-eval-v2/workspaces/S04-candidate/learning/.teach-workspace.yaml`
+- Created `/tmp/teach-eval-v2/workspaces/S04-candidate/learning/MISSION.md`
+- Created `/tmp/teach-eval-v2/workspaces/S04-candidate/learning/RESOURCES.md`
+- Created `/tmp/teach-eval-v2/workspaces/S04-candidate/learning/learning-records/0001-stated-idempotency-baseline.md`
+- Modified: none
+- Deleted: none
+
+Invocation ID: 1b3b6731-ae1c-4fee-9ae4-31307c478b35

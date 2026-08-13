@@ -1,0 +1,53 @@
+{
+  "directories": [
+    "learning",
+    "learning/assets",
+    "learning/learning-records",
+    "learning/lessons",
+    "project"
+  ],
+  "entries": [
+    {
+      "bytes": 36,
+      "path": "learning/.teach-workspace.yaml",
+      "sha256": "c24e5f7da8266361f1080da0b017e86ff6df64bc4b8cf983badb098af407411d",
+      "type": "file"
+    },
+    {
+      "bytes": 247,
+      "path": "learning/MISSION.md",
+      "sha256": "b8b5c2c43f6ededf8ead2cedd670b42d91171777efba5b0e2000d9783b8ee81e",
+      "type": "file"
+    },
+    {
+      "bytes": 218,
+      "path": "learning/RESOURCES.md",
+      "sha256": "22b7a67caade74f060202787dfe90ac9f11129b57965a906840553600e2bcf7a",
+      "type": "file"
+    },
+    {
+      "bytes": 1298,
+      "path": "learning/assets/quiz.js",
+      "sha256": "93d1e9539769a1114a930e4ede76be60e7cd0900cb99ed8801c77bd2e9de4a64",
+      "type": "file"
+    },
+    {
+      "bytes": 153,
+      "path": "learning/learning-records/0001-iterator-basics.md",
+      "sha256": "c6e53f2be618af5b767fded624e2c63770c3a994cf51117a43e9378f483a86d8",
+      "type": "file"
+    },
+    {
+      "bytes": 4148,
+      "path": "learning/lessons/0002-when-iteration-ends.html",
+      "sha256": "42463abccaed616b461f20dcc6f9e5084972f334d7078a52d73e26fa4a00d8ae",
+      "type": "file"
+    },
+    {
+      "bytes": 104,
+      "path": "project/README.md",
+      "sha256": "84e01bcdef81463de250b9fcb6eb6db4a36cd0d8c260055e3740472d293277ff",
+      "type": "file"
+    }
+  ]
+}

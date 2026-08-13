@@ -1,0 +1,38 @@
+{
+  "schema_version": 2,
+  "reveal_phase": "after_judgment_commit",
+  "judgment_commit": "2322cb37034a72bad001764be4d7e6bd9a25e22f",
+  "judge_invocation_id": "7b1bef2d-16c5-478c-ae43-1338421913d9",
+  "cases": [
+    {
+      "case_id": "C01",
+      "A": "candidate",
+      "B": "baseline"
+    },
+    {
+      "case_id": "C02",
+      "A": "baseline",
+      "B": "candidate"
+    },
+    {
+      "case_id": "C03",
+      "A": "candidate",
+      "B": "baseline"
+    },
+    {
+      "case_id": "C04",
+      "A": "baseline",
+      "B": "candidate"
+    },
+    {
+      "case_id": "C05",
+      "A": "baseline",
+      "B": "candidate"
+    },
+    {
+      "case_id": "C06",
+      "A": "baseline",
+      "B": "candidate"
+    }
+  ]
+}

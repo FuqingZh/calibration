@@ -1,0 +1,39 @@
+{
+  "directories": [
+    "learning",
+    "project",
+    "project/docs"
+  ],
+  "entries": [
+    {
+      "bytes": 36,
+      "path": "learning/.teach-workspace.yaml",
+      "sha256": "c24e5f7da8266361f1080da0b017e86ff6df64bc4b8cf983badb098af407411d",
+      "type": "file"
+    },
+    {
+      "bytes": 168,
+      "path": "learning/MISSION.md",
+      "sha256": "7b89977e58af62a8ab6d4ffe49ece3960e976ff57937ca6696030ebe1defd9e2",
+      "type": "file"
+    },
+    {
+      "bytes": 177,
+      "path": "learning/RESOURCES.md",
+      "sha256": "e7caa36e4cfcf0d686e435c0c37a1ba8888e5ad7a7fe6c22bd5b94e4ba2c166f",
+      "type": "file"
+    },
+    {
+      "bytes": 90,
+      "path": "project/README.md",
+      "sha256": "259b12f7d65e64c7e022134c4680f7098c0c0f50b0c53a8980e697d534796d0e",
+      "type": "file"
+    },
+    {
+      "bytes": 203,
+      "path": "project/docs/authentication-api.md",
+      "sha256": "093175a1bef2eadb7a7afe07bb6c84dc0f8b651e6bd9cd603c551009c55797d0",
+      "type": "file"
+    }
+  ]
+}

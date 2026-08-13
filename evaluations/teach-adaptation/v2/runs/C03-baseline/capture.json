@@ -1,0 +1,69 @@
+{
+  "after_sha256": "932bbf1e390b8d96c92ca368e64423a6d0e3524af253c9504085744f53badeb3",
+  "artifacts": [
+    {
+      "evidence_path": "runs/C03-baseline/artifacts/learning/assets/course.css",
+      "sha256": "c0561e1717a5f71627d8a2cad9fec8a4a25293f2a9019a0e9dc73c503e2ca5c5",
+      "source_path": "learning/assets/course.css"
+    },
+    {
+      "evidence_path": "runs/C03-baseline/artifacts/learning/assets/quiz.js",
+      "sha256": "079810cd47bebe5755819e2ed54ac15f8af37e6dd7131152da01fa54cd278154",
+      "source_path": "learning/assets/quiz.js"
+    },
+    {
+      "evidence_path": "runs/C03-baseline/artifacts/learning/lessons/0001-when-iteration-ends.html",
+      "sha256": "be22670a410f21b457a5764bba28b024bfd3eec0617f4bde5add7ccc58d97301",
+      "source_path": "learning/lessons/0001-when-iteration-ends.html"
+    },
+    {
+      "evidence_path": "runs/C03-baseline/artifacts/learning/reference/iterator-exhaustion.html",
+      "sha256": "766948105eded410a269fa728bf3cf9171e4b0077e67d770e860155bd06897ab",
+      "source_path": "learning/reference/iterator-exhaustion.html"
+    }
+  ],
+  "attestation": "controller-captured; not externally timestamped or cryptographically attested",
+  "before_sha256": "43067a04c2dfb01c542712c5236aa5f047c2b402c8bf8522974e574b8a067f08",
+  "captured_at": "2026-08-13T06:22:06.443941+00:00",
+  "changes": [
+    {
+      "change": "created",
+      "path": "learning/assets/course.css"
+    },
+    {
+      "change": "created",
+      "path": "learning/assets/quiz.js"
+    },
+    {
+      "change": "created",
+      "path": "learning/lessons/0001-when-iteration-ends.html"
+    },
+    {
+      "change": "created",
+      "path": "learning/reference/iterator-exhaustion.html"
+    }
+  ],
+  "controller": "/root",
+  "directory_changes": {
+    "created": [
+      "learning/assets",
+      "learning/lessons",
+      "learning/reference"
+    ],
+    "deleted": []
+  },
+  "executor_task": "teach-v2-c03-baseline",
+  "harness_sha256": "ee374a96c3d7af466105ff1a94b5a92b260c95afed0b85c39272ec0d92c2a883",
+  "invocation_id": "8f4b71f8-2fc0-47d6-80bd-2bbe3226dfa1",
+  "project": {
+    "bundle_sha256": "28432e77798e5b399ae43d226752f87a4bd153069ffc283228ff20028e2fe8dc",
+    "head": "4098192e341a2d7917f164947008f45ebd200d3a",
+    "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "status_porcelain": []
+  },
+  "response_sha256": "dbd64ce2e3189dd7d9c23609c6103ebbc6a29d74d1855da158e20f54f4a3d2c6",
+  "run_id": "C03-baseline",
+  "schema_version": 2,
+  "source_tree_after": "15f8c86d39ef834e643d092733ca899b59049067",
+  "source_tree_before": "15f8c86d39ef834e643d092733ca899b59049067"
+}
