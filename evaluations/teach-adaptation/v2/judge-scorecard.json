@@ -1,54 +1,70 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "recording_phase": "before_arm_reveal",
-  "judge_invocation_id": null,
-  "judge_executor_task": null,
+  "judge_invocation_id": "7b1bef2d-16c5-478c-ae43-1338421913d9",
+  "judge_executor_task": "/root/teach_v2_bound_judge",
+  "runs_commit": "bd6fc99be9e00558cb471bf075da6291965dd181",
   "packet_sha256": "92ea6610042fcc6308bf988158d58f9139cd92cddacf9ce3cfdb312b125feea1",
-  "raw_judge_response_sha256": null,
+  "raw_judge_response_sha256": "5bb1983efc0c301e6f54508a68ca23991f9d2f52b25b0f5f13071edb10a530db",
   "cases": [
     {
       "case_id": "C01",
       "arm_a_critical_failures": [],
-      "arm_b_critical_failures": [],
-      "preferred": null,
-      "reason": null
+      "arm_b_critical_failures": [
+        "Does not explicitly offer session-only no-write mode or select a separate personal workspace for persistent state.",
+        "Uses familiarity self-report instead of a small capability diagnostic and does not define concrete success evidence for the mission."
+      ],
+      "preferred": "A",
+      "reason": "A establishes the storage boundary, a concrete mission, and an applied diagnostic before teaching; B does not."
     },
     {
       "case_id": "C02",
-      "arm_a_critical_failures": [],
+      "arm_a_critical_failures": [
+        "Requires a persistent course directory without offering session-only no-write mode.",
+        "Asks for experience self-report rather than a small applied diagnostic before the first lesson."
+      ],
       "arm_b_critical_failures": [],
-      "preferred": null,
-      "reason": null
+      "preferred": "B",
+      "reason": "B explicitly offers both safe modes, requests a separate workspace only for persistence, and pairs a concrete outcome with a small diagnostic."
     },
     {
       "case_id": "C03",
       "arm_a_critical_failures": [],
-      "arm_b_critical_failures": [],
-      "preferred": null,
-      "reason": null
+      "arm_b_critical_failures": [
+        "Creates lesson 0001 despite being asked to continue an existing course, conflicting with resumption of the established lesson sequence.",
+        "Does not establish the required runtime answer-order randomization or preservation of stable answer identity for the reusable HTML quiz."
+      ],
+      "preferred": "A",
+      "reason": "A visibly continues at lesson 0002 and explicitly provides runtime-randomized choices; B appears to restart and omits the quiz-order contract."
     },
     {
       "case_id": "C04",
-      "arm_a_critical_failures": [],
+      "arm_a_critical_failures": [
+        "Does not show that the existing learner record or demonstrated capability was resumed before selecting the next step; modifying the prior lesson and creating 0002 proves file continuity but not learner-state adaptation."
+      ],
       "arm_b_critical_failures": [],
-      "preferred": null,
-      "reason": null
+      "preferred": "B",
+      "reason": "B explicitly resumes the prior rollback-atomicity evidence and targets the next unmastered distinction with a small diagnostic."
     },
     {
       "case_id": "C05",
-      "arm_a_critical_failures": [],
+      "arm_a_critical_failures": [
+        "Creates the first lesson before establishing starting capability with a diagnostic.",
+        "Does not demonstrate resumption of existing learner state and starts again at lesson 0001.",
+        "Retains incomplete authority context: it gives a version but not the exact source, source date, and check date for the current authentication claim."
+      ],
       "arm_b_critical_failures": [],
-      "preferred": null,
-      "reason": null
+      "preferred": "B",
+      "reason": "B resumes the workspace state, performs the missing diagnostic first, and records the current primary source with version, update date, and check date while replacing the stale source."
     },
     {
       "case_id": "C06",
       "arm_a_critical_failures": [],
       "arm_b_critical_failures": [],
-      "preferred": null,
-      "reason": null
+      "preferred": "tie",
+      "reason": "Both promote only the verified reusable result through the project documentation route, exclude personal material, preserve evidence scope, and make no unavailable review-delivery claim."
     }
   ],
-  "overall": null,
-  "attestation": "blind scorecard must be committed before arm reveal"
+  "overall": "A is preferred for C01 and C03, B for C02, C04, and C05, and C06 is a tie. The decisive contract differences are safe workspace selection, pre-lesson mission and diagnostics, genuine learner-state resumption, runtime quiz randomization, and current-source provenance.",
+  "attestation": "controller-captured blind response; commit before arm reveal"
 }
