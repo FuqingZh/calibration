@@ -491,6 +491,28 @@ def test_nonregular_agents_target_is_preflighted_before_home_mutation(
     assert (backups[0] / "user-content").read_text(encoding="utf-8") == ("preserve\n")
 
 
+def test_force_replaces_matching_external_agents_symlink(tmp_path: Path) -> None:
+    source_home = tmp_path / "source-home"
+    source_install = run_installer(source_home)
+    assert source_install.returncode == 0, source_install.stderr
+
+    external = tmp_path / "external-agents.md"
+    external.write_bytes((source_home / "AGENTS.md").read_bytes())
+    codex_home = tmp_path / "codex-home"
+    codex_home.mkdir()
+    agents = codex_home / "AGENTS.md"
+    agents.symlink_to(external)
+
+    forced = run_installer(codex_home, "--force")
+
+    assert forced.returncode == 0, forced.stderr
+    assert agents.is_file() and not agents.is_symlink()
+    assert agents.read_bytes() == external.read_bytes()
+    backups = list(codex_home.glob("AGENTS.md.bak.*"))
+    assert len(backups) == 1
+    assert backups[0].is_symlink() and backups[0].readlink() == external
+
+
 def test_ao_worker_preserves_unowned_codex_state_byte_exactly(
     tmp_path: Path,
 ) -> None:

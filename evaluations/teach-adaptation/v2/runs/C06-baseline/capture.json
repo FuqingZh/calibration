@@ -1,0 +1,52 @@
+{
+  "after_sha256": "974953f197c58317207f73e3f11d1c6a1fbb13235ee9a58a71acd89d5117a2d9",
+  "artifacts": [
+    {
+      "evidence_path": "runs/C06-baseline/artifacts/project/docs/README.md",
+      "sha256": "d3d805fe123b423086ef7ba3da83f71ce3114a9eb42a0fe6fbbc725883419168",
+      "source_path": "project/docs/README.md"
+    },
+    {
+      "evidence_path": "runs/C06-baseline/artifacts/project/docs/compatibility/acme-parser-4.2-empty-tags.md",
+      "sha256": "b8968e3eeea479e8358cee856744defb533779c6f46937efff82018b6b513ce0",
+      "source_path": "project/docs/compatibility/acme-parser-4.2-empty-tags.md"
+    }
+  ],
+  "attestation": "controller-captured; not externally timestamped or cryptographically attested",
+  "before_sha256": "aad7871f7f99390a364569dec023ba381c63e65a2f6a1b0e85199429a7806992",
+  "captured_at": "2026-08-13T06:34:46.142090+00:00",
+  "changes": [
+    {
+      "change": "modified",
+      "path": "project/docs/README.md"
+    },
+    {
+      "change": "created",
+      "path": "project/docs/compatibility/acme-parser-4.2-empty-tags.md"
+    }
+  ],
+  "controller": "/root",
+  "directory_changes": {
+    "created": [
+      "project/docs/compatibility"
+    ],
+    "deleted": []
+  },
+  "executor_task": "teach-v2-c06-baseline",
+  "harness_sha256": "ee374a96c3d7af466105ff1a94b5a92b260c95afed0b85c39272ec0d92c2a883",
+  "invocation_id": "349f2dc5-29e7-4036-94bf-14cafccfd1b0",
+  "project": {
+    "bundle_sha256": "b0ff03963c512a795825dc327ad0795e3af3efcd7de1d41ff6e5a9fe80c17e37",
+    "head": "fd96276d143b62370316e0b541d55f8245cdc081",
+    "patch_sha256": "b357eccba60bdf49b838eb107e2e8755d6249f9109794f0df7e07faaf10b9e87",
+    "status_porcelain": [
+      "M docs/README.md",
+      "?? docs/compatibility/"
+    ]
+  },
+  "response_sha256": "e857518cf6c350749a7edeaa97932dfe27aeba8a75cde1cd9c79be7eac2ea65d",
+  "run_id": "C06-baseline",
+  "schema_version": 2,
+  "source_tree_after": "15f8c86d39ef834e643d092733ca899b59049067",
+  "source_tree_before": "15f8c86d39ef834e643d092733ca899b59049067"
+}

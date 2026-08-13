@@ -1,0 +1,1 @@
+Use persistent $teach. My engineering project is /tmp/teach-eval-v2/workspaces/S02-candidate/project and use /tmp/calibration-teach-upstream/thirdparty/skills/teach itself as my learning workspace. My goal is to classify retryable read failures; start now.

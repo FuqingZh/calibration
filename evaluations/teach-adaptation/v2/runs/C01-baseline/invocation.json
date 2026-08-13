@@ -1,0 +1,23 @@
+{
+  "arm": "baseline",
+  "backend_model_build": "not exposed by runner",
+  "backend_session_id": "not exposed by runner",
+  "case_id": "C01",
+  "controller_response_path": "/tmp/teach-eval-v2/controller-output/6abeda57-542d-43f4-92d8-87b0e2278d64.txt",
+  "executor_task": "teach-v2-c01-baseline",
+  "fixture": "retry",
+  "harness_sha256": "ee374a96c3d7af466105ff1a94b5a92b260c95afed0b85c39272ec0d92c2a883",
+  "invocation_id": "6abeda57-542d-43f4-92d8-87b0e2278d64",
+  "prepared_at": "2026-08-13T06:16:35.945129+00:00",
+  "prompt_sha256": "07eff7aba9ff4a8a3281a786ed0baf66dbad84d7421f730f0028ee89ba887166",
+  "run_id": "C01-baseline",
+  "schema_version": 2,
+  "source": {
+    "path": "/tmp/mattpocock-skills-v1.2.3/skills/productivity/teach",
+    "repository_commit": "6acc160e4e0cd062dbbbd7a1b26ae92855edf07e",
+    "tree": "15f8c86d39ef834e643d092733ca899b59049067",
+    "upstream_commit": "6acc160e4e0cd062dbbbd7a1b26ae92855edf07e"
+  },
+  "task_sha256": "294a288b1b404f0801a230fc6287f577700e110f033952feb94618b596bbb9bd",
+  "workspace_label": "/tmp/teach-eval-v2/workspaces/C01-baseline"
+}

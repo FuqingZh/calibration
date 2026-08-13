@@ -1,0 +1,66 @@
+{
+  "directories": [
+    "learning",
+    "learning/assets",
+    "learning/lessons",
+    "learning/reference",
+    "project",
+    "project/docs"
+  ],
+  "entries": [
+    {
+      "bytes": 36,
+      "path": "learning/.teach-workspace.yaml",
+      "sha256": "c24e5f7da8266361f1080da0b017e86ff6df64bc4b8cf983badb098af407411d",
+      "type": "file"
+    },
+    {
+      "bytes": 168,
+      "path": "learning/MISSION.md",
+      "sha256": "7b89977e58af62a8ab6d4ffe49ece3960e976ff57937ca6696030ebe1defd9e2",
+      "type": "file"
+    },
+    {
+      "bytes": 366,
+      "path": "learning/RESOURCES.md",
+      "sha256": "745d6461030fbbd93222c4de18f98d3dc4182218e37af23acd5973c45121ea11",
+      "type": "file"
+    },
+    {
+      "bytes": 2104,
+      "path": "learning/assets/course.css",
+      "sha256": "01e6992345e648acb1699d231fb33d5d11f72d06c57809a8698983fe6f47f679",
+      "type": "file"
+    },
+    {
+      "bytes": 711,
+      "path": "learning/assets/quiz.js",
+      "sha256": "28b48b080811dc2cab4973dfd80b8b767e6f380c7fb3268005c8cd5e44b81aab",
+      "type": "file"
+    },
+    {
+      "bytes": 2332,
+      "path": "learning/lessons/0001-send-the-token-in-the-header.html",
+      "sha256": "647c857369ec74dfab4f1c1351d3277ff5eebc8d1eb454a41f2db706a4cd19c6",
+      "type": "file"
+    },
+    {
+      "bytes": 990,
+      "path": "learning/reference/authentication-transport.html",
+      "sha256": "48684a815033f8634f754787c4f72ae7815285bfe41fd66ef5c794c5b5b6155c",
+      "type": "file"
+    },
+    {
+      "bytes": 90,
+      "path": "project/README.md",
+      "sha256": "259b12f7d65e64c7e022134c4680f7098c0c0f50b0c53a8980e697d534796d0e",
+      "type": "file"
+    },
+    {
+      "bytes": 203,
+      "path": "project/docs/authentication-api.md",
+      "sha256": "093175a1bef2eadb7a7afe07bb6c84dc0f8b651e6bd9cd603c551009c55797d0",
+      "type": "file"
+    }
+  ]
+}

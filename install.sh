@@ -310,7 +310,8 @@ install_agents_file() {
   local tmp
   tmp="$(mktemp)"
   render_template >"$tmp"
-  if [[ -f "$AGENTS_TARGET" ]] && cmp -s "$tmp" "$AGENTS_TARGET"; then
+  if [[ ! -L "$AGENTS_TARGET" && -f "$AGENTS_TARGET" ]] &&
+    cmp -s "$tmp" "$AGENTS_TARGET"; then
     rm -f "$tmp"
     say "AGENTS.md already current: $AGENTS_TARGET"
     return

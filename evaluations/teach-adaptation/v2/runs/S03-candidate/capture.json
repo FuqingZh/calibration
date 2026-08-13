@@ -1,0 +1,27 @@
+{
+  "after_sha256": "761a352d59b5087464162806a7f406b0cb8df9f5c86862147e74ff0fa64256cd",
+  "artifacts": [],
+  "attestation": "controller-captured; not externally timestamped or cryptographically attested",
+  "before_sha256": "761a352d59b5087464162806a7f406b0cb8df9f5c86862147e74ff0fa64256cd",
+  "captured_at": "2026-08-13T06:37:19.942668+00:00",
+  "changes": [],
+  "controller": "/root",
+  "directory_changes": {
+    "created": [],
+    "deleted": []
+  },
+  "executor_task": "teach-v2-s03-candidate",
+  "harness_sha256": "ee374a96c3d7af466105ff1a94b5a92b260c95afed0b85c39272ec0d92c2a883",
+  "invocation_id": "470e8745-dcdd-440a-819a-18c4c37d21bf",
+  "project": {
+    "bundle_sha256": "4ab5dcc3f1107cf7a674d3c4810b10b48a8e0f02670589ce4a4c9230b25ca501",
+    "head": "12bd43eb970531ce1e17b0c29a3ea734d457cb4f",
+    "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "status_porcelain": []
+  },
+  "response_sha256": "df6a885319700fe0c93dddfd1db449abd81b07ae9efc43e647610ee03e285439",
+  "run_id": "S03-candidate",
+  "schema_version": 2,
+  "source_tree_after": "76f1e41bd5cc624798e2c9c1a446f0639bb0ec30",
+  "source_tree_before": "76f1e41bd5cc624798e2c9c1a446f0639bb0ec30"
+}

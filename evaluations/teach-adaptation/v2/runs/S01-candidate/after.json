@@ -1,0 +1,14 @@
+{
+  "directories": [
+    "project",
+    "project/course"
+  ],
+  "entries": [
+    {
+      "bytes": 115,
+      "path": "project/README.md",
+      "sha256": "726a7c96d13d14ab7b9d5a2d4ca8193cbd4248e883990fe227da1cbb01082edc",
+      "type": "file"
+    }
+  ]
+}

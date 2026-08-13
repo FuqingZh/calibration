@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Send the token in the header</title>
+    <link rel="stylesheet" href="../assets/course.css">
+    <script src="../assets/quiz.js" defer></script>
+  </head>
+  <body>
+    <main>
+      <p class="kicker">Lesson 1 · About 2 minutes</p>
+      <h1>Send the token in the header</h1>
+      <p>
+        Your mission is to call the service safely from a small client. The one
+        choice to lock in today is <em>where the credential goes</em>.
+      </p>
+
+      <section class="win">
+        The currently supported mechanism is a <strong>short-lived access token</strong>
+        sent in the <code>Authorization: Bearer</code> header.
+      </section>
+
+      <h2>See the request shape</h2>
+      <pre><code>GET /resource HTTP/1.1
+Host: service.example
+Authorization: Bearer &lt;access-token&gt;</code></pre>
+      <p>
+        The older static query-string API key is not a fallback: it was removed
+        in API v3.0.
+      </p>
+
+      <h2>Retrieve it</h2>
+      <section class="quiz" data-quiz>
+        <form>
+          <fieldset>
+            <legend>A new client needs to authenticate. Which transport do you choose?</legend>
+            <label>
+              <input type="radio" name="transport" data-correct="true">
+              Bearer auth header
+            </label>
+            <label>
+              <input type="radio" name="transport" data-correct="false">
+              Static query token
+            </label>
+          </fieldset>
+          <button type="button">Check my answer</button>
+          <p class="feedback" aria-live="polite"></p>
+        </form>
+      </section>
+
+      <h2>Keep it handy</h2>
+      <p>
+        Open the
+        <a href="../reference/authentication-transport.html">authentication transport quick reference</a>
+        when wiring up your client.
+      </p>
+
+      <p class="meta">
+        Primary source:
+        <a href="../../project/docs/authentication-api.md">project authentication API</a>,
+        version 3.2, updated 2026-08-10.
+      </p>
+
+      <footer>
+        Ask me a follow-up question if the header syntax or the difference from
+        the removed query-string mechanism is unclear.
+      </footer>
+    </main>
+  </body>
+</html>

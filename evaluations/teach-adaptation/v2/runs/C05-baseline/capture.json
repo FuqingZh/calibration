@@ -1,0 +1,78 @@
+{
+  "after_sha256": "a4a6433f1eb2611b02e0cbc6f82a77553d063667e2674ca5a1a07a8a38bb053a",
+  "artifacts": [
+    {
+      "evidence_path": "runs/C05-baseline/artifacts/learning/RESOURCES.md",
+      "sha256": "745d6461030fbbd93222c4de18f98d3dc4182218e37af23acd5973c45121ea11",
+      "source_path": "learning/RESOURCES.md"
+    },
+    {
+      "evidence_path": "runs/C05-baseline/artifacts/learning/assets/course.css",
+      "sha256": "01e6992345e648acb1699d231fb33d5d11f72d06c57809a8698983fe6f47f679",
+      "source_path": "learning/assets/course.css"
+    },
+    {
+      "evidence_path": "runs/C05-baseline/artifacts/learning/assets/quiz.js",
+      "sha256": "28b48b080811dc2cab4973dfd80b8b767e6f380c7fb3268005c8cd5e44b81aab",
+      "source_path": "learning/assets/quiz.js"
+    },
+    {
+      "evidence_path": "runs/C05-baseline/artifacts/learning/lessons/0001-send-the-token-in-the-header.html",
+      "sha256": "647c857369ec74dfab4f1c1351d3277ff5eebc8d1eb454a41f2db706a4cd19c6",
+      "source_path": "learning/lessons/0001-send-the-token-in-the-header.html"
+    },
+    {
+      "evidence_path": "runs/C05-baseline/artifacts/learning/reference/authentication-transport.html",
+      "sha256": "48684a815033f8634f754787c4f72ae7815285bfe41fd66ef5c794c5b5b6155c",
+      "source_path": "learning/reference/authentication-transport.html"
+    }
+  ],
+  "attestation": "controller-captured; not externally timestamped or cryptographically attested",
+  "before_sha256": "be76493e70613f4cd2d2bba1047a17b31865f79409df52baaec5b6689bc84603",
+  "captured_at": "2026-08-13T06:30:11.121844+00:00",
+  "changes": [
+    {
+      "change": "modified",
+      "path": "learning/RESOURCES.md"
+    },
+    {
+      "change": "created",
+      "path": "learning/assets/course.css"
+    },
+    {
+      "change": "created",
+      "path": "learning/assets/quiz.js"
+    },
+    {
+      "change": "created",
+      "path": "learning/lessons/0001-send-the-token-in-the-header.html"
+    },
+    {
+      "change": "created",
+      "path": "learning/reference/authentication-transport.html"
+    }
+  ],
+  "controller": "/root",
+  "directory_changes": {
+    "created": [
+      "learning/assets",
+      "learning/lessons",
+      "learning/reference"
+    ],
+    "deleted": []
+  },
+  "executor_task": "teach-v2-c05-baseline",
+  "harness_sha256": "ee374a96c3d7af466105ff1a94b5a92b260c95afed0b85c39272ec0d92c2a883",
+  "invocation_id": "c2e85d69-996f-4d9f-98d9-cee52fd65143",
+  "project": {
+    "bundle_sha256": "fd52a28e035413aefd8f94c4a7d54ac0982e839e907474694d149b6e39c0571b",
+    "head": "e4c559a0ceb5905745006764d94f580f80b2b8ed",
+    "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "status_porcelain": []
+  },
+  "response_sha256": "60515e0fc76fbcc5f42b36901281569433351d40ce5baecf989cc82e83c66b38",
+  "run_id": "C05-baseline",
+  "schema_version": 2,
+  "source_tree_after": "15f8c86d39ef834e643d092733ca899b59049067",
+  "source_tree_before": "15f8c86d39ef834e643d092733ca899b59049067"
+}

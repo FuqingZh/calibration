@@ -19,7 +19,11 @@ MARKDOWN_ROOTS = (
     Path("codex"),
 )
 MARKDOWN_LINK_PATTERN = re.compile(r"(?<!!)\[[^]]*]\(([^)]+)\)")
-MARKDOWN_EXCLUDES = (Path("evaluations/teach-adaptation/artifacts"),)
+MARKDOWN_EXCLUDES = (
+    Path("evaluations/teach-adaptation/artifacts"),
+    Path("evaluations/teach-adaptation/v2/blind-packet.md"),
+    Path("evaluations/teach-adaptation/v2/runs"),
+)
 
 
 def discover_markdown_files(root: Path) -> list[Path]:

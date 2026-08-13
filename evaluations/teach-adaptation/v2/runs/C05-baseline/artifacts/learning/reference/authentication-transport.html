@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Authentication transport quick reference</title>
+    <link rel="stylesheet" href="../assets/course.css">
+  </head>
+  <body>
+    <main>
+      <p class="kicker">Quick reference · API v3.2</p>
+      <h1>Authentication transport</h1>
+
+      <section class="win">
+        <strong>Use:</strong> a short-lived access token in the
+        <code>Authorization: Bearer</code> header.
+      </section>
+
+      <h2>Request shape</h2>
+      <pre><code>Authorization: Bearer &lt;access-token&gt;</code></pre>
+
+      <h2>Do not use</h2>
+      <p>Do not put a static API key in the query string. That mechanism was removed in API v3.0.</p>
+
+      <p class="meta">
+        Source:
+        <a href="../../project/docs/authentication-api.md">project authentication API</a>,
+        version 3.2, updated 2026-08-10.
+      </p>
+    </main>
+  </body>
+</html>

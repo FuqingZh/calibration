@@ -1,0 +1,1 @@
+Please start teaching me how this repository decides when a failed read is safe to retry. I have no course directory yet and have not told you my experience.

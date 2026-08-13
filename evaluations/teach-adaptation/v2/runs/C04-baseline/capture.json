@@ -1,0 +1,77 @@
+{
+  "after_sha256": "a37d6c6781f62ab682240e205048ec6a2456be8f32526c608df23dcc1e8e42c9",
+  "artifacts": [
+    {
+      "evidence_path": "runs/C04-baseline/artifacts/learning/assets/course.css",
+      "sha256": "ecd4fbfe62ba93e48edb0911c18812a39be2a6c7c5fbc3f72d4fa090ec6ec1c0",
+      "source_path": "learning/assets/course.css"
+    },
+    {
+      "evidence_path": "runs/C04-baseline/artifacts/learning/assets/quiz.js",
+      "sha256": "6d608d4772e5ba737b93f94cd7cd7bd9cbe705b1db8eebcea4dd6e3d31514f89",
+      "source_path": "learning/assets/quiz.js"
+    },
+    {
+      "evidence_path": "runs/C04-baseline/artifacts/learning/lessons/0001-transaction-atomicity.html",
+      "sha256": "7076b0e31353c537b65c8d46658ae3e87a44d9d62e0947eea3bebef6644f32b3",
+      "source_path": "learning/lessons/0001-transaction-atomicity.html"
+    },
+    {
+      "evidence_path": "runs/C04-baseline/artifacts/learning/lessons/0002-ambiguous-commit-outcome.html",
+      "sha256": "6f4157c90ffbdd85f851d320f92af24f038e26ed1705c202b1bb66ed1bfe5e10",
+      "source_path": "learning/lessons/0002-ambiguous-commit-outcome.html"
+    },
+    {
+      "evidence_path": "runs/C04-baseline/artifacts/learning/reference/transaction-outcomes.html",
+      "sha256": "c13cea7dd37787a98145e5757a0ea42a7af8699efabcb4052f7960928c72044d",
+      "source_path": "learning/reference/transaction-outcomes.html"
+    }
+  ],
+  "attestation": "controller-captured; not externally timestamped or cryptographically attested",
+  "before_sha256": "1d2413bcbfb6b656b9069e10aab31342091935ccc974807332bc9616ddb32eb4",
+  "captured_at": "2026-08-13T06:22:06.745876+00:00",
+  "changes": [
+    {
+      "change": "created",
+      "path": "learning/assets/course.css"
+    },
+    {
+      "change": "created",
+      "path": "learning/assets/quiz.js"
+    },
+    {
+      "change": "modified",
+      "path": "learning/lessons/0001-transaction-atomicity.html"
+    },
+    {
+      "change": "created",
+      "path": "learning/lessons/0002-ambiguous-commit-outcome.html"
+    },
+    {
+      "change": "created",
+      "path": "learning/reference/transaction-outcomes.html"
+    }
+  ],
+  "controller": "/root",
+  "directory_changes": {
+    "created": [
+      "learning/assets",
+      "learning/reference"
+    ],
+    "deleted": []
+  },
+  "executor_task": "teach-v2-c04-baseline",
+  "harness_sha256": "ee374a96c3d7af466105ff1a94b5a92b260c95afed0b85c39272ec0d92c2a883",
+  "invocation_id": "6bb44a3f-3849-4f53-929a-17773483a109",
+  "project": {
+    "bundle_sha256": "b8e620aab715b3a8eec59f620c9da124b34b8516e2297d96b878a6f981bce43e",
+    "head": "cbff3b417e032c04d7671f26b7e053d9dd20b928",
+    "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "status_porcelain": []
+  },
+  "response_sha256": "af0460c9793efa2b16d35b2493f5870ff9302b24ae71507e0279306f68344a7d",
+  "run_id": "C04-baseline",
+  "schema_version": 2,
+  "source_tree_after": "15f8c86d39ef834e643d092733ca899b59049067",
+  "source_tree_before": "15f8c86d39ef834e643d092733ca899b59049067"
+}

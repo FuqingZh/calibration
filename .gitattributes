@@ -1,1 +1,2 @@
 docs/runbooks/patches/*.patch -whitespace
+evaluations/teach-adaptation/v2/runs/** -whitespace

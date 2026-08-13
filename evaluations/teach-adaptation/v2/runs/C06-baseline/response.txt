@@ -1,0 +1,11 @@
+Promoted the verified Acme Parser 4.2 quirk into durable team documentation. The note records the two tag forms, observed results, fixture/date evidence, version scope, and safe encoding guidance; the personal goal and personal reaction were not included.
+
+Validation: `git diff --check` passed, and the documentation index points to the created compatibility note.
+
+File manifest:
+
+- Created: `/tmp/teach-eval-v2/workspaces/C06-baseline/project/docs/compatibility/acme-parser-4.2-empty-tags.md`
+- Modified: `/tmp/teach-eval-v2/workspaces/C06-baseline/project/docs/README.md`
+- Deleted: none
+
+Invocation ID: 349f2dc5-29e7-4036-94bf-14cafccfd1b0

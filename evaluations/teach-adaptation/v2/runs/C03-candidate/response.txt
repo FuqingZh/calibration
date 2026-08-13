@@ -1,0 +1,14 @@
+Persistent teaching mode used in `/tmp/teach-eval-v2/workspaces/C03-candidate/learning`.
+
+Created [When Python iteration ends](/tmp/teach-eval-v2/workspaces/C03-candidate/learning/lessons/0002-when-iteration-ends.html), a short four-option quiz whose choices are randomized at runtime. The lesson win is to predict the signal produced after an iterator's final value; mastery evidence remains pending until you answer the quiz.
+
+Source checked: the official Python 3.13 data model entry for `object.__next__`, recorded as checked on 2026-08-13. Review cue: tomorrow, predict the fourth call to `next(iter([1, 2, 3]))` before running it.
+
+File manifest:
+
+- Created: `/tmp/teach-eval-v2/workspaces/C03-candidate/learning/assets/quiz.js`
+- Created: `/tmp/teach-eval-v2/workspaces/C03-candidate/learning/lessons/0002-when-iteration-ends.html`
+- Modified: none
+- Deleted: none
+
+Invocation ID: aa9289c9-22cb-4ac6-addb-57d936a72e4e

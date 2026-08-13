@@ -1,0 +1,24 @@
+Persistent teaching mode — workspace: `/tmp/teach-eval-v2/workspaces/C04-candidate/learning`.
+
+Next small step: diagnose an ambiguous commit.
+
+Ground rule: PostgreSQL makes a transaction’s updates durable on `COMMIT`, while `ROLLBACK` discards them ([official PostgreSQL transaction tutorial](https://www.postgresql.org/docs/current/tutorial-transactions.html)).
+
+Scenario: your Python service sends `COMMIT`. Before it receives a reply, the connection times out. The service has no idempotency key and cannot reconnect to the same transaction.
+
+Without looking anything up, answer in 2–3 sentences:
+
+1. What are the two possible server-side histories?
+2. Is it safe to rerun the same transaction blindly? Why?
+
+Stopping condition: you identify both possible histories and justify the retry decision without treating the client timeout as proof of rollback.
+
+Evidence so far: you previously demonstrated rollback atomicity; ambiguous commit handling is not yet demonstrated, so no new mastery is recorded. Source checked: PostgreSQL, “Transactions,” current documentation, checked 2026-08-13. Review cue: whenever a timeout occurs immediately after `COMMIT`, first ask, “Do I know the outcome, or do I only know I missed the reply?”
+
+File manifest for the evaluated learning workspace:
+
+- Created: none
+- Modified: none
+- Deleted: none
+
+Invocation ID: 80fe543c-7ea0-4b75-a85d-224073300a9b

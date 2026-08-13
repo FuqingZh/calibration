@@ -1,0 +1,47 @@
+{
+  "directories": [
+    "learning",
+    "learning/learning-records",
+    "project",
+    "project/docs",
+    "project/docs/compatibility"
+  ],
+  "entries": [
+    {
+      "bytes": 36,
+      "path": "learning/.teach-workspace.yaml",
+      "sha256": "c24e5f7da8266361f1080da0b017e86ff6df64bc4b8cf983badb098af407411d",
+      "type": "file"
+    },
+    {
+      "bytes": 103,
+      "path": "learning/MISSION.md",
+      "sha256": "4de6204f009234b1610d7b2f4372a8cf3801943f776eb293674c010e7a2334fe",
+      "type": "file"
+    },
+    {
+      "bytes": 263,
+      "path": "learning/learning-records/0001-empty-tag.md",
+      "sha256": "51cd04d0a6b4919152e95db8de12fe9207cd81ef4f419f581cf900bef5edcb65",
+      "type": "file"
+    },
+    {
+      "bytes": 80,
+      "path": "project/README.md",
+      "sha256": "927475249e301ce18a5e9eb5f3a7bc6f262f3ecdabd6e7612e0f074311030e3b",
+      "type": "file"
+    },
+    {
+      "bytes": 167,
+      "path": "project/docs/README.md",
+      "sha256": "d3d805fe123b423086ef7ba3da83f71ce3114a9eb42a0fe6fbbc725883419168",
+      "type": "file"
+    },
+    {
+      "bytes": 546,
+      "path": "project/docs/compatibility/acme-parser-4.2-empty-tags.md",
+      "sha256": "b8968e3eeea479e8358cee856744defb533779c6f46937efff82018b6b513ce0",
+      "type": "file"
+    }
+  ]
+}

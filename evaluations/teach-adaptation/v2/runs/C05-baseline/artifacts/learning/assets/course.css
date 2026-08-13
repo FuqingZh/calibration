@@ -1,0 +1,146 @@
+:root {
+  color-scheme: light;
+  --ink: #18201d;
+  --muted: #5d6863;
+  --paper: #fbfaf6;
+  --panel: #ffffff;
+  --accent: #176b52;
+  --accent-soft: #e4f2ec;
+  --rule: #d9ded9;
+  --danger: #9a382f;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font: 17px/1.6 ui-serif, Georgia, serif;
+}
+
+main {
+  width: min(720px, calc(100% - 2rem));
+  margin: 3rem auto;
+}
+
+h1,
+h2 {
+  line-height: 1.18;
+}
+
+h1 {
+  font-size: clamp(2rem, 6vw, 3.25rem);
+  letter-spacing: -0.035em;
+  margin-bottom: 0.4rem;
+}
+
+h2 {
+  font-size: 1.25rem;
+  margin-top: 2.2rem;
+}
+
+.kicker,
+.meta {
+  color: var(--muted);
+  font: 0.78rem/1.4 ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.win,
+.quiz,
+.card {
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  border-radius: 0.75rem;
+  padding: 1.2rem 1.35rem;
+}
+
+.win {
+  border-left: 0.35rem solid var(--accent);
+}
+
+code {
+  background: var(--accent-soft);
+  border-radius: 0.25rem;
+  font: 0.9em/1.5 ui-monospace, SFMono-Regular, Consolas, monospace;
+  padding: 0.12rem 0.28rem;
+}
+
+pre {
+  background: #17221e;
+  border-radius: 0.65rem;
+  color: #f5faf7;
+  overflow-x: auto;
+  padding: 1rem 1.2rem;
+}
+
+pre code {
+  background: transparent;
+  padding: 0;
+}
+
+fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+label {
+  display: block;
+  margin: 0.55rem 0;
+}
+
+button {
+  background: var(--accent);
+  border: 0;
+  border-radius: 999px;
+  color: white;
+  cursor: pointer;
+  font: 600 0.9rem/1 ui-sans-serif, system-ui, sans-serif;
+  margin-top: 0.65rem;
+  padding: 0.75rem 1rem;
+}
+
+.feedback {
+  font-weight: 700;
+  min-height: 1.6em;
+}
+
+.feedback[data-state="correct"] {
+  color: var(--accent);
+}
+
+.feedback[data-state="incorrect"] {
+  color: var(--danger);
+}
+
+a {
+  color: var(--accent);
+}
+
+footer {
+  border-top: 1px solid var(--rule);
+  color: var(--muted);
+  margin-top: 2.5rem;
+  padding-top: 1rem;
+}
+
+@media print {
+  body {
+    background: white;
+    font-size: 11pt;
+  }
+
+  main {
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  button {
+    display: none;
+  }
+}

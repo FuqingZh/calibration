@@ -1,0 +1,15 @@
+Before I create the first lesson, I need three details so I can make it relevant and appropriately challenging:
+
+1. Why do you want to understand failed-read retries in this repository—for example, to debug incidents, review changes, implement retry logic, or operate the system?
+2. What experience do you have with this repository and with retry concepts such as transient errors, idempotency, backoff, and retry budgets?
+3. Where should I create your personal course workspace? The engineering repository is read-only for this request, so I need a separate writable directory for the mission, lessons, references, and learning records.
+
+Once you answer, I’ll start with one short lesson tied to your goal and use the repository’s actual retry decision path as the teaching material.
+
+File manifest:
+
+- Created: none
+- Modified: none
+- Deleted: none
+
+Invocation ID: d85a62c5-c81e-483f-98b9-10c3f890f582

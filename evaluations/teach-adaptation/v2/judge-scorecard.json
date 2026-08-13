@@ -1,0 +1,54 @@
+{
+  "schema_version": 2,
+  "recording_phase": "before_arm_reveal",
+  "judge_invocation_id": null,
+  "judge_executor_task": null,
+  "packet_sha256": "92ea6610042fcc6308bf988158d58f9139cd92cddacf9ce3cfdb312b125feea1",
+  "raw_judge_response_sha256": null,
+  "cases": [
+    {
+      "case_id": "C01",
+      "arm_a_critical_failures": [],
+      "arm_b_critical_failures": [],
+      "preferred": null,
+      "reason": null
+    },
+    {
+      "case_id": "C02",
+      "arm_a_critical_failures": [],
+      "arm_b_critical_failures": [],
+      "preferred": null,
+      "reason": null
+    },
+    {
+      "case_id": "C03",
+      "arm_a_critical_failures": [],
+      "arm_b_critical_failures": [],
+      "preferred": null,
+      "reason": null
+    },
+    {
+      "case_id": "C04",
+      "arm_a_critical_failures": [],
+      "arm_b_critical_failures": [],
+      "preferred": null,
+      "reason": null
+    },
+    {
+      "case_id": "C05",
+      "arm_a_critical_failures": [],
+      "arm_b_critical_failures": [],
+      "preferred": null,
+      "reason": null
+    },
+    {
+      "case_id": "C06",
+      "arm_a_critical_failures": [],
+      "arm_b_critical_failures": [],
+      "preferred": null,
+      "reason": null
+    }
+  ],
+  "overall": null,
+  "attestation": "blind scorecard must be committed before arm reveal"
+}

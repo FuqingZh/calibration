@@ -1,0 +1,21 @@
+Persistent teaching mode is active in `/tmp/teach-eval-v2/workspaces/C05-candidate/learning`.
+
+One small starting-point check: without looking at the project documentation, which request uses the currently supported credential transport?
+
+A. `GET /items?api_key=<static-key>`
+
+B. `GET /items` with `Authorization: Bearer <short-lived-token>`
+
+Reply with **A or B** and one short reason. I’ll give immediate feedback; I have not recorded mastery yet because this workspace has no prior demonstration of your starting capability.
+
+Lesson win: pending your answer. The evidence needed is your unaided choice of the supported transport. Next step after your reply: construct the exact authentication header once.
+
+Source checked: project authority `docs/authentication-api.md`, version 3.2, updated 2026-08-10 and checked 2026-08-13. I replaced the contradictory 2024 blog entry in the trusted-source list with this current primary source.
+
+File manifest:
+
+- Created: none.
+- Modified: `/tmp/teach-eval-v2/workspaces/C05-candidate/learning/RESOURCES.md`
+- Deleted: none.
+
+Invocation ID: f567dba7-d16c-416f-be9d-79d2bfabbc1d

@@ -1,0 +1,35 @@
+Session-only teaching is active. No project or learner state was created.
+
+Quick diagnostic—answer this to yourself before reading on: a read times out once. Is that fact alone enough to justify retrying it?
+
+Small concept: the two-gate retry rule
+
+A read is safe to retry only when both gates are open:
+
+1. It is idempotent: repeating it does not create an additional effect.
+2. The failure is transient: there is evidence the failure may clear on another attempt.
+
+So “it timed out” is not enough by itself. A temporary network interruption on a genuinely read-only operation can pass both gates. An invalid request fails the transient gate; an operation that secretly creates state fails the idempotence gate. This is the contract stated by the project’s [README](/tmp/teach-eval-v2/workspaces/S03-candidate/project/README.md).
+
+Retrieval check: without copying the rule, reply with (a) the two conditions and (b) whether you would retry each case: “temporary network timeout on a read-only lookup” and “validation error on a read-only lookup.” I’ll give specific feedback and let you retry your explanation if needed. The lesson win is demonstrated when you name both gates and classify both cases correctly.
+
+Tomorrow’s review cue (2026-08-14): before your first coding task, answer from memory, “What two facts must I establish before retrying a read?” I cannot honestly claim this review was automatically scheduled or will be delivered: no reminder/automation capability is available in this session. `$teach` can provide the cue, but it does not itself schedule spaced reviews.
+
+Session closeout:
+
+- Mode: session-only.
+- Persistent learning workspace: none used; the designated learning path does not exist, and session-only mode creates no learner state.
+- Mission: decide whether a read retry is safe.
+- Starting-capability evidence: pending your diagnostic/retrieval answer.
+- Lesson win: taught but not yet demonstrated.
+- Source checked: the project README above.
+- Next step: answer the retrieval check now, then use the review cue tomorrow.
+
+File manifest:
+
+- Created: `/tmp/teach-eval-v2/controller-output/470e8745-dcdd-440a-819a-18c4c37d21bf.txt` (required controller envelope only; not skill behavior).
+- Modified: none.
+- Deleted: none.
+- Evaluated project/learning workspace writes: none.
+
+Invocation ID: 470e8745-dcdd-440a-819a-18c4c37d21bf

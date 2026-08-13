@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Transaction outcome guide</title>
+    <link rel="stylesheet" href="../assets/course.css">
+  </head>
+  <body>
+    <main>
+      <p class="eyebrow">Quick reference</p>
+      <h1>Transaction outcome guide</h1>
+      <section class="rule">
+        <h2>Confirmed rollback</h2>
+        <p>The transaction did not take effect. Retrying the transaction does
+        not duplicate that transaction's database effects.</p>
+      </section>
+      <section class="scenario">
+        <h2>Ambiguous outcome</h2>
+        <p>The client lost the result around commit. Do not infer rollback from
+        a timeout. Establish the outcome or make replay idempotent before
+        retrying.</p>
+      </section>
+      <p><strong>Diagnostic question:</strong> “What authoritative evidence
+      proves whether the first attempt committed?”</p>
+      <p class="source">Source:
+        <a href="https://www.postgresql.org/docs/current/tutorial-transactions.html">PostgreSQL
+        transaction tutorial</a>.</p>
+      <nav>
+        <a href="../lessons/0001-transaction-atomicity.html">Atomicity</a> ·
+        <a href="../lessons/0002-ambiguous-commit-outcome.html">Ambiguous commit lesson</a>
+      </nav>
+    </main>
+  </body>
+</html>

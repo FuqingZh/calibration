@@ -1,0 +1,52 @@
+{
+  "after_sha256": "d6551ae5a91b192e5e4c23f584ddf0139fd8b61448e0ca8f1b9ba028b92067d0",
+  "artifacts": [
+    {
+      "evidence_path": "runs/C06-candidate/artifacts/project/docs/README.md",
+      "sha256": "368283e6da1992a739f2804ec5150f0be86f9ce778d6c5777d5d013d5c1099c0",
+      "source_path": "project/docs/README.md"
+    },
+    {
+      "evidence_path": "runs/C06-candidate/artifacts/project/docs/compatibility/20260813-v1.0-acme-parser-empty-tag-compatibility-record.md",
+      "sha256": "8743e547cd125ba2a4b9e7377c78657639981dd5c3c902901ea44aeff9666c5a",
+      "source_path": "project/docs/compatibility/20260813-v1.0-acme-parser-empty-tag-compatibility-record.md"
+    }
+  ],
+  "attestation": "controller-captured; not externally timestamped or cryptographically attested",
+  "before_sha256": "aad7871f7f99390a364569dec023ba381c63e65a2f6a1b0e85199429a7806992",
+  "captured_at": "2026-08-13T06:34:46.295098+00:00",
+  "changes": [
+    {
+      "change": "modified",
+      "path": "project/docs/README.md"
+    },
+    {
+      "change": "created",
+      "path": "project/docs/compatibility/20260813-v1.0-acme-parser-empty-tag-compatibility-record.md"
+    }
+  ],
+  "controller": "/root",
+  "directory_changes": {
+    "created": [
+      "project/docs/compatibility"
+    ],
+    "deleted": []
+  },
+  "executor_task": "teach-v2-c06-candidate",
+  "harness_sha256": "ee374a96c3d7af466105ff1a94b5a92b260c95afed0b85c39272ec0d92c2a883",
+  "invocation_id": "58933dad-ed47-47c0-af39-a0f0a01f05da",
+  "project": {
+    "bundle_sha256": "867bc02a70fa955a91dca236da3dcf8e5f2940cff22250febdbd1ad1140e6694",
+    "head": "98b870e03e16e4571a073744b2e2883e58ee12b0",
+    "patch_sha256": "b51f4ff08b46186a5ba85a35971e10c21d85406f4936be5b4d0ec714d430dc2a",
+    "status_porcelain": [
+      "M docs/README.md",
+      "?? docs/compatibility/"
+    ]
+  },
+  "response_sha256": "5149dc1509e06280e806f9adfafef8d875769aaa8a4327563259e5257b63afff",
+  "run_id": "C06-candidate",
+  "schema_version": 2,
+  "source_tree_after": "76f1e41bd5cc624798e2c9c1a446f0639bb0ec30",
+  "source_tree_before": "76f1e41bd5cc624798e2c9c1a446f0639bb0ec30"
+}
