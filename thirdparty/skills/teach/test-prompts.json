@@ -1,0 +1,50 @@
+[
+  {
+    "id": 1,
+    "scenario": "First lesson from an engineering repository",
+    "prompt": "Use $teach to teach me the retry model in this repository. I have not created a learning workspace and have not said what I already know.",
+    "expected": "Treat the engineering repository and installed skill source as read-only context. Offer a separate personal learning workspace or session-only mode, then establish the learner's concrete mission and use a small diagnostic question or task before creating a lesson. Do not write MISSION.md, lessons, notes, assets, or project docs in the current repository."
+  },
+  {
+    "id": 2,
+    "scenario": "Persistent personal learning workspace",
+    "prompt": "Use $teach persistently. My current directory is a code repository, but use /tmp/my-rust-course as my personal learning workspace.",
+    "expected": "Resolve the skill source, code repository, and requested learning workspace separately; verify that the selected workspace is not the skill source, current engineering Git root, or inside that Git root; confirm or adopt the personal workspace before writing; then confine .teach-workspace.yaml, mission, resources, records, lessons, reference material, assets, and notes to /tmp/my-rust-course."
+  },
+  {
+    "id": 3,
+    "scenario": "Resume prior learning",
+    "prompt": "Use $teach in my already marked learning workspace. It contains a mission, resources, notes, three learning records, two lessons, and an existing glossary. Continue where I left off.",
+    "expected": "Read the durable mission, resources, notes, glossary, learning-record inventory, recent relevant records, lesson titles, and reusable assets before choosing the next step. Infer the next zone of proximal development from demonstrated state and current review cues instead of restarting a generic curriculum or asking the user to restate everything."
+  },
+  {
+    "id": 4,
+    "scenario": "Current technical state",
+    "prompt": "Use $teach to explain the current authentication API. The workspace resources contain a two-year-old blog post, while the project links current official API documentation.",
+    "expected": "Prefer and verify the current official or primary source, record the publisher, title, URL, applicable version or date, and check date, and label the older post as historical context if retained. Do not teach time-sensitive API behavior from parametric memory or silently treat the old post as current."
+  },
+  {
+    "id": 5,
+    "scenario": "Quiz answer-position resistance",
+    "prompt": "Use $teach to create a reusable four-option HTML quiz in my confirmed learning workspace.",
+    "expected": "Give answer choices stable identities, copy or reuse assets/quiz.js, load it with defer, and randomize displayed order at runtime. Keep option length and formatting comparable. Do not rely on a fixed correct-answer position or on prompt wording alone to prevent answer-position leakage."
+  },
+  {
+    "id": 6,
+    "scenario": "Session-only teaching",
+    "prompt": "Use $teach, but keep this session ephemeral and do not create a learning workspace. Teach me one small concept now.",
+    "expected": "Teach one bounded lesson in the conversation, use retrieval or application plus immediate feedback, and create or edit no files. At session end, explicitly report session-only mode and that no filesystem state was created."
+  },
+  {
+    "id": 7,
+    "scenario": "Explicit team documentation promotion",
+    "prompt": "We finished a personal $teach lesson about a verified vendor parser quirk. Now explicitly turn only the reusable result into durable team documentation.",
+    "expected": "Exclude personal mission, preferences, mastery, review cues, and session notes; distill only team-neutral source-backed material; route the repeatedly verified external behavior to a compatibility record; and follow the target repository's documentation authority and validation rules."
+  },
+  {
+    "id": 8,
+    "scenario": "No automatic spaced-review claim",
+    "prompt": "Use $teach to finish today's lesson and make sure I review it later automatically.",
+    "expected": "Record or state a concrete future review cue and use it when a later session begins, but explicitly avoid claiming that the skill schedules or delivers reminders automatically. Stop after the lesson win is demonstrated or a missing prerequisite makes a new bounded lesson necessary."
+  }
+]

@@ -10,9 +10,9 @@
 ## Knowledge
 
 - [Book: _The Science and Practice of Strength Training_ — Zatsiorsky & Kraemer](https://example.com)
-  Foundational text on programming and adaptation. Use for: anything to do with periodisation, recovery, intensity zones.
+  Foundational text on programming and adaptation. Applies to: 2006 second edition. Checked: YYYY-MM-DD. Use for: anything to do with periodisation, recovery, intensity zones.
 - [Article: "How Much Should I Train?" — Greg Nuckols (Stronger By Science)](https://example.com)
-  Evidence-based review of volume landmarks. Use for: weekly set targets per muscle group.
+  Evidence-based review of volume landmarks. Published: YYYY-MM-DD. Checked: YYYY-MM-DD. Use for: weekly set targets per muscle group.
 
 ## Wisdom (Communities)
 
@@ -26,6 +26,10 @@
 
 - **High-trust only.** Prefer primary sources, recognised experts, peer-reviewed work, and communities with strong moderation. If a resource is marketing dressed as education, leave it out.
 - **Annotate every entry.** A bare link is useless in three months. Add one line: what it covers and when to reach for it.
+- **Record current-state context.** For material that can change, record the
+  publisher, applicable version or publication/update date, and the date it was
+  checked. Label historical sources as historical context and re-check stale
+  entries before relying on them for a current lesson.
 - **Group by Knowledge / Wisdom.** Mirrors the philosophy in [SKILL.md](./SKILL.md). It is fine for a resource to appear in only one group.
 - **Surface gaps explicitly.** If no good resource exists for an area the mission needs, write a `## Gaps` section listing what is missing. This drives future search.
 - **Prune ruthlessly.** A resource that turned out to be wrong, shallow, or off-mission should be removed, not buried. Better five sharp sources than thirty mediocre ones.
