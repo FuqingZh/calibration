@@ -5,13 +5,14 @@ import json
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import yaml
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 TEACH_ROOT = REPOSITORY_ROOT / "thirdparty/skills/teach"
 EVALUATION_ROOT = REPOSITORY_ROOT / "evaluations/teach-adaptation"
+TRACEABLE_EVALUATION_ROOT = EVALUATION_ROOT / "v2"
 
 
 def read_skill() -> str:
@@ -103,157 +104,84 @@ def test_teach_metadata_remains_explicit_only() -> None:
     assert "$teach" in metadata["interface"]["default_prompt"]
 
 
-def test_teach_evaluation_bundle_is_reconstructable() -> None:
-    cases = json.loads((EVALUATION_ROOT / "cases.json").read_text(encoding="utf-8"))
-    runs = json.loads((EVALUATION_ROOT / "runs.json").read_text(encoding="utf-8"))
-    scorecard = json.loads(
-        (EVALUATION_ROOT / "judge-scorecard.json").read_text(encoding="utf-8")
+def read_json(path: Path) -> dict[str, Any]:
+    return cast(dict[str, Any], json.loads(path.read_text(encoding="utf-8")))
+
+
+def test_traceable_teach_evaluation_runs_verify() -> None:
+    result = subprocess.run(
+        [
+            "python",
+            str(TRACEABLE_EVALUATION_ROOT / "harness.py"),
+            "verify",
+        ],
+        cwd=REPOSITORY_ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
     )
-    arm_map = json.loads((EVALUATION_ROOT / "arm-map.json").read_text(encoding="utf-8"))
-    results = (EVALUATION_ROOT / "results.md").read_text(encoding="utf-8")
-    responses = (EVALUATION_ROOT / "responses.txt").read_text(encoding="utf-8")
 
-    comparative_ids = {case["id"] for case in cases["comparative_cases"]}
-    safety_ids = {case["id"] for case in cases["candidate_safety_cases"]}
-    assert comparative_ids == {"C01", "C02", "C03", "C04", "C05", "C06"}
-    assert safety_ids == {"S01", "S02", "S03", "S04"}
-    assert set(cases["fixtures"]) == {
-        "retry",
-        "quiz",
-        "resume",
-        "current",
-        "promotion",
-        "safety",
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.count("verified ") == 16
+
+
+def test_traceable_safety_manifests_enforce_workspace_boundaries() -> None:
+    captures = {
+        run_id: read_json(TRACEABLE_EVALUATION_ROOT / "runs" / run_id / "capture.json")
+        for run_id in (
+            "S01-candidate",
+            "S02-candidate",
+            "S03-candidate",
+            "S04-candidate",
+        )
     }
-    assert cases["conditions"]["comparative_runs"] == 12
-    assert cases["conditions"]["candidate_safety_runs"] == 4
-    assert cases["frozen_arms"]["candidate"]["commit"] == "6dd41c2"
-    assert cases["frozen_arms"]["installed_candidate"]["commit"] == "e3152e5"
-    for case_id in comparative_ids | safety_ids:
-        assert f"### {case_id}:" in results
-        assert f"=== {case_id} " in responses
-    assert "## Arm Map" in results
-    assert "## Blind Judgment Before Arm Reveal" in results
-
-    by_run = {run["run_id"]: run for run in runs["runs"]}
-    assert len(by_run) == 16
-    assert set(by_run) == {
-        f"{case_id}-{arm}"
-        for case_id in comparative_ids
-        for arm in ("baseline", "candidate")
-    } | {f"{case_id}-candidate" for case_id in safety_ids}
-    assert runs["capture"]["backend_session_ids"] == "not exposed by runner"
-    assert runs["capture"]["attestation"].startswith("not externally")
-
-    prompt_by_case = {
-        case["id"]: case["prompt"]
-        for group in ("comparative_cases", "candidate_safety_cases")
-        for case in cases[group]
-    }
-    response_sections: dict[str, str] = {}
-    current_key: str | None = None
-    current_lines: list[str] = []
-    for line in responses.splitlines(keepends=True):
-        if line.startswith("=== ") and line.rstrip().endswith(" ==="):
-            if current_key is not None:
-                response_sections[current_key] = "".join(current_lines).rstrip() + "\n"
-            _, case_id, arm, _ = line.rstrip().split()
-            current_key = f"{case_id}-{arm}"
-            current_lines = []
-        elif current_key is not None:
-            current_lines.append(line)
-    assert current_key is not None
-    response_sections[current_key] = "".join(current_lines).rstrip() + "\n"
-
-    for run in by_run.values():
-        prompt = prompt_by_case[run["case_id"]].encode()
-        response = response_sections[run["run_id"]].encode()
-        assert hashlib.sha256(prompt).hexdigest() == run["invocation"]["prompt_sha256"]
-        assert hashlib.sha256(response).hexdigest() == run["response_sha256"]
-
-        fixture = cases["fixtures"][run["fixture"]]
-        expected_before = {
-            relative: {
-                "path": relative,
-                "type": "file",
-                "bytes": len(content.encode()),
-                "sha256": hashlib.sha256(content.encode()).hexdigest(),
-            }
-            for relative, content in fixture.items()
-        }
-        actual_before = {entry["path"]: entry for entry in run["before"]["entries"]}
-        assert actual_before == expected_before
-
-        before_entries = {entry["path"]: entry for entry in run["before"]["entries"]}
-        after_entries = {entry["path"]: entry for entry in run["after"]["entries"]}
-        expected_changes: list[dict[str, str]] = []
-        for relative in sorted(before_entries.keys() | after_entries.keys()):
-            if relative not in before_entries:
-                expected_changes.append({"path": relative, "change": "created"})
-            elif relative not in after_entries:
-                expected_changes.append({"path": relative, "change": "deleted"})
-            elif before_entries[relative] != after_entries[relative]:
-                expected_changes.append({"path": relative, "change": "modified"})
-        assert run["changes"] == expected_changes
-
-        before_directories = set(run["before"]["directories"])
-        after_directories = set(run["after"]["directories"])
-        assert run["directory_changes"] == {
-            "created": sorted(after_directories - before_directories),
-            "deleted": sorted(before_directories - after_directories),
-        }
-
-        changed_after: dict[str, Any] = {
-            change["path"]: after_entries[change["path"]]
-            for change in expected_changes
-            if change["change"] != "deleted"
-        }
-        committed_by_source = {
-            artifact["path"].removeprefix(f"artifacts/{run['run_id']}/"): artifact
-            for artifact in run["committed_changed_artifacts"]
-        }
-        assert set(committed_by_source) == set(changed_after)
-
-        for artifact in run["committed_changed_artifacts"]:
-            artifact_path = EVALUATION_ROOT / artifact["path"]
-            assert artifact_path.is_file()
-            digest = hashlib.sha256(artifact_path.read_bytes()).hexdigest()
-            assert digest == artifact["sha256"]
-            source_path = artifact["path"].removeprefix(f"artifacts/{run['run_id']}/")
-            assert digest == changed_after[source_path]["sha256"]
 
     for run_id in ("S01-candidate", "S02-candidate", "S03-candidate"):
-        run = by_run[run_id]
-        assert run["changes"] == []
-        assert run["directory_changes"] == {"created": [], "deleted": []}
-        assert run["project_git"]["status_porcelain"] == []
+        capture = captures[run_id]
+        assert capture["changes"] == []
+        assert capture["directory_changes"] == {"created": [], "deleted": []}
+        assert capture["project"]["status_porcelain"] == []
+        assert capture["source_tree_before"] == capture["source_tree_after"]
 
-    source = by_run["S02-candidate"]["selected_skill_source"]
-    assert source["tree_before"] == source["tree_after"]
-    assert source["status_porcelain_after"] == []
+    initialized = captures["S04-candidate"]
     assert {
-        (change["path"], change["change"])
-        for change in by_run["S04-candidate"]["changes"]
+        (change["path"], change["change"]) for change in initialized["changes"]
     } == {
         ("learning/.teach-workspace.yaml", "created"),
         ("learning/MISSION.md", "created"),
         ("learning/RESOURCES.md", "created"),
+        ("learning/learning-records/0001-stated-idempotency-baseline.md", "created"),
     }
-    assert by_run["S04-candidate"]["project_git"]["status_porcelain"] == []
+    assert initialized["project"]["status_porcelain"] == []
+    assert initialized["source_tree_before"] == initialized["source_tree_after"]
 
-    packet = (EVALUATION_ROOT / "judge-packet.md").read_bytes()
+
+def test_traceable_blind_judgment_maps_five_preferences_and_one_tie() -> None:
+    packet = (TRACEABLE_EVALUATION_ROOT / "blind-packet.md").read_bytes()
+    raw_response = (TRACEABLE_EVALUATION_ROOT / "raw-judge-response.json").read_bytes()
+    raw_judgment = cast(dict[str, Any], json.loads(raw_response))
+    scorecard = read_json(TRACEABLE_EVALUATION_ROOT / "judge-scorecard.json")
+    arm_map = read_json(TRACEABLE_EVALUATION_ROOT / "arm-map.json")
+
     assert scorecard["recording_phase"] == "before_arm_reveal"
+    assert scorecard["judge_invocation_id"] == ("7b1bef2d-16c5-478c-ae43-1338421913d9")
+    assert raw_judgment["judge_invocation_id"] == scorecard["judge_invocation_id"]
+    assert raw_judgment["judge_executor_task"] == scorecard["judge_executor_task"]
+    assert raw_judgment["cases"] == scorecard["cases"]
+    assert raw_judgment["overall"] == scorecard["overall"]
     assert hashlib.sha256(packet).hexdigest() == scorecard["packet_sha256"]
-    assert {case["case_id"] for case in scorecard["cases"]} == comparative_ids
+    assert (
+        hashlib.sha256(raw_response).hexdigest()
+        == scorecard["raw_judge_response_sha256"]
+    )
     reveal = {case["case_id"]: case for case in arm_map["cases"]}
-    preferred_variants: list[str] = []
-    for judgment in scorecard["cases"]:
-        preferred = judgment["preferred"]
-        if preferred == "tie":
-            preferred_variants.append("tie")
-        else:
-            preferred_variants.append(str(reveal[judgment["case_id"]][preferred]))
-    assert preferred_variants == [
+    resolved_preferences = [
+        "tie"
+        if judgment["preferred"] == "tie"
+        else reveal[judgment["case_id"]][judgment["preferred"]]
+        for judgment in scorecard["cases"]
+    ]
+    assert resolved_preferences == [
         "candidate",
         "candidate",
         "candidate",
@@ -263,7 +191,68 @@ def test_teach_evaluation_bundle_is_reconstructable() -> None:
     ]
 
 
-def test_teach_evaluation_checksum_inventory_is_current() -> None:
+def test_traceable_blind_order_is_anchored_by_parent_commits() -> None:
+    runs_commit = "bd6fc99be9e00558cb471bf075da6291965dd181"
+    judgment_commit = "2322cb37034a72bad001764be4d7e6bd9a25e22f"
+    arm_map = read_json(TRACEABLE_EVALUATION_ROOT / "arm-map.json")
+    assert arm_map["judgment_commit"] == judgment_commit
+    assert arm_map["judge_invocation_id"] == ("7b1bef2d-16c5-478c-ae43-1338421913d9")
+    assert (
+        subprocess.run(
+            ["git", "merge-base", "--is-ancestor", runs_commit, judgment_commit],
+            cwd=REPOSITORY_ROOT,
+            check=False,
+        ).returncode
+        == 0
+    )
+    assert (
+        subprocess.run(
+            ["git", "merge-base", "--is-ancestor", judgment_commit, "HEAD"],
+            cwd=REPOSITORY_ROOT,
+            check=False,
+        ).returncode
+        == 0
+    )
+
+    runs_tree = subprocess.run(
+        [
+            "git",
+            "ls-tree",
+            "-r",
+            "--name-only",
+            runs_commit,
+            "--",
+            str(TRACEABLE_EVALUATION_ROOT.relative_to(REPOSITORY_ROOT)),
+        ],
+        cwd=REPOSITORY_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout
+    judgment_tree = subprocess.run(
+        [
+            "git",
+            "ls-tree",
+            "-r",
+            "--name-only",
+            judgment_commit,
+            "--",
+            str(TRACEABLE_EVALUATION_ROOT.relative_to(REPOSITORY_ROOT)),
+        ],
+        cwd=REPOSITORY_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout
+    assert "blind-packet.md" in runs_tree
+    assert "judge-scorecard.json" in runs_tree
+    assert "raw-judge-response.json" not in runs_tree
+    assert "arm-map.json" not in runs_tree
+    assert "raw-judge-response.json" in judgment_tree
+    assert "arm-map.json" not in judgment_tree
+
+
+def test_historical_teach_bundle_checksum_inventory_is_current() -> None:
     inventory = EVALUATION_ROOT / "SHA256SUMS"
     entries: dict[str, str] = {}
     for line in inventory.read_text(encoding="utf-8").splitlines():
@@ -273,7 +262,9 @@ def test_teach_evaluation_checksum_inventory_is_current() -> None:
     expected = {
         path.relative_to(EVALUATION_ROOT).as_posix()
         for path in EVALUATION_ROOT.rglob("*")
-        if path.is_file() and path != inventory
+        if path.is_file()
+        and path != inventory
+        and TRACEABLE_EVALUATION_ROOT not in path.parents
     }
     assert set(entries) == expected
     for relative, digest in entries.items():

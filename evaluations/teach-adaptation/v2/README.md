@@ -8,7 +8,7 @@ its records to durable individual invocations.
 
 For every run, `harness.py` now retains:
 
-- a UUID invocation ID and stable executor task name;
+- a UUID invocation ID and controller-selected executor label;
 - the exact controller task and user prompt;
 - the raw final response containing the same UUID;
 - controller `prepared` and `captured` events;
@@ -24,10 +24,18 @@ backend session ID, exact model build, or reasoning setting; each invocation
 records those gaps explicitly.
 
 `blind-packet.md` is generated from captured runs and contains randomized local
-A/B arms with paths and UUIDs removed. `judge-scorecard.json` is intentionally
-an empty pre-reveal template at this commit. The private arm map is excluded
-from this commit. A fresh judge must fill and commit the raw blind response and
-scorecard before the map is revealed in a later commit.
+A/B arms with paths and UUIDs removed. The Git history establishes ordering:
+
+1. commit `bd6fc99` contains the runs, packet, and empty scorecard without an
+   arm map;
+2. commit `2322cb3` adds the fresh judge's UUID-bound raw response and filled
+   scorecard, still without an arm map; and
+3. the following result commit reveals `arm-map.json` and interprets the
+   already-frozen judgment.
+
+The reveal maps every non-tie preferred local arm to the candidate. The judge
+found no candidate critical failure, found upstream critical failures in C01
+through C05, and tied both arms in C06.
 
 Verify completed runs with:
 

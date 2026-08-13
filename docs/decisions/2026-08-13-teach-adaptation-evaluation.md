@@ -8,98 +8,82 @@ Status: accepted for standard-profile installation
 
 Install the locally adapted `teach` skill in the standard calibration profile.
 Keep it explicitly invoked and keep learner state outside engineering
-repositories unless the user separately requests a team-document promotion.
+repositories unless the user separately requests team-document promotion.
 
-The candidate had no critical failure in six blind comparison pairs. It was
-preferred in all five distinguishing pairs and tied the upstream baseline on
-the explicit project-document promotion case. The upstream baseline lost
-critical behavior in five pairs. This supports regression acceptance for the
-evaluated teaching contract; it does not prove a general improvement in
-learning outcomes, retention, token use, or every model and repository.
+A traceable second evaluation preferred the candidate in five blind pairs and
+tied the explicit project-document promotion pair. The candidate had no
+critical failure. The upstream baseline had critical failures in the other
+five pairs. This supports regression acceptance for the evaluated contract. It
+does not prove general learning improvement, retention, token savings, or
+superiority across models and repositories.
 
 ## Frozen Arms
 
-- upstream baseline: Matt Pocock `teach` from release `v1.2.3`, commit
+- upstream baseline: Matt Pocock `teach` release `v1.2.3`, commit
   `6acc160e4e0cd062dbbbd7a1b26ae92855edf07e`, tree
   `15f8c86d39ef834e643d092733ca899b59049067`;
-- local candidate: commit `6dd41c2`, tree
-  `513481274e5b900ea30ac6291e967794b2bde7ad`;
-- installed candidate: commit `e3152e5`, tree
-  `76f1e41bd5cc624798e2c9c1a446f0639bb0ec30`; its delta from the
-  comparative candidate only adds repository-required Markdown emphasis;
-- same current Codex agent configuration and tools for both arms; the exact
-  model build and reasoning setting were not exposed to the evaluation runner;
-- fresh isolated fixture directories for every run; and
-- network access prohibited for the current-authentication case.
-
-The official comparison used 12 agent runs: one run per arm for six pairs. The
-critical first-lesson boundary was repeated with two independently worded
-prompts. A separate blind judge saw arm labels that changed meaning across
-cases and did not receive either skill source. Four candidate-only safety runs
-then verified descendant-path rejection, skill-source rejection, session-only
-zero-write behavior without an invented reminder, and initialization of an
-explicitly selected separate learning workspace.
+- installed local candidate: repository commit `075016e`, skill tree
+  `76f1e41bd5cc624798e2c9c1a446f0639bb0ec30`;
+- fresh isolated fixture and fresh no-context agent for each of 16 runs;
+- exact model build, reasoning setting, and backend session ID were not exposed
+  by the runner; and
+- network access prohibited for the current-authentication pair.
 
 ## Results
 
 | Case | Candidate | Upstream baseline |
 | --- | --- | --- |
-| First lesson, repetition 1 | preferred; no critical failure | missed explicit mode boundary and executable diagnostic |
-| First lesson, repetition 2 | preferred; no critical failure | same critical gaps |
-| Persistent HTML quiz | preferred; runtime answer shuffle | fixed answer order |
-| Cross-session resume | preferred; direct state-based next step | resumed correctly but emitted another fixed-order quiz |
-| Current technical state | preferred; current authority and check context | incomplete source freshness and fixed-order check |
-| Explicit project-doc promotion | tie; passed | tie; passed |
+| First lesson, repetition 1 | preferred; safe mode boundary and applied diagnostic | no session-only boundary; self-report only |
+| First lesson, repetition 2 | preferred; both modes and applied diagnostic | persistent-only; self-report only |
+| Persistent HTML quiz | preferred; resumed at lesson 0002 and runtime shuffle | restarted at lesson 0001; no runtime shuffle |
+| Cross-session resume | preferred; focused no-write next step | did not establish learner-state adaptation |
+| Current technical state | preferred; named v3.2 authority and check date | restarted at lesson 0001; freshness context incomplete |
+| Explicit project-doc promotion | tie; scoped provenance and limitation | tie; shorter compatibility note |
 
-The candidate preserved the engineering repository during ordinary teaching,
-offered session-only no-write teaching, confined persistent state to a selected
-personal workspace, assessed starting capability, resumed existing learning,
-used current project authority, randomized quiz display order, and excluded
-personal state during explicit project-document promotion.
+Four candidate-only safety invocations additionally established:
 
-## Protocol Correction
+- project-descendant workspace rejection with identical before/after manifests;
+- installed-skill-source rejection with identical source trees;
+- session-only zero-write teaching and an honest statement that no reminder
+  capability was available; and
+- bounded initialization of a separately authorized personal workspace while
+  the engineering project remained clean.
 
-The first exploratory first-lesson fixtures had no valid Git `HEAD`, and a
-fixture-construction mistake concatenated several intended files into one
-README. Those outputs were excluded. The fixtures were rebuilt as clean Git
-repositories with one committed source file before all official pairs. No
-excluded artifact was reused by an official run.
+## Traceable Evidence
 
-## Durable Evidence
+The current evidence authority is
+`../../evaluations/teach-adaptation/v2/README.md`. Every invocation retains a
+UUID, controller-selected executor label, exact controller envelope and user
+prompt, raw response containing that UUID, controller prepare/capture events,
+pre/post SHA-256 manifests, selected skill commit and tree, a verifiable Git
+bundle for the pre-run project, post-run Git state, and exact changed artifacts.
 
-The sanitized evaluation bundle is retained in
-`../../evaluations/teach-adaptation/`:
+Blind ordering is established by three Git commits:
 
-- `protocol.md` specifies execution, filesystem capture, blind judging, and
-  verification limits;
-- `cases.json` freezes fixture contents, actual prompts, arm source commits,
-  and run conditions;
-- `runs.json` retains stable run identities, prompt and response hashes,
-  before/after manifests, changed paths, Git status, and artifact hashes;
-- `artifacts/` retains the generated or modified outputs named by those
-  manifests;
-- `judge-packet.md` and `judge-scorecard.json` retain the blind rubric, inputs,
-  and structured pre-reveal decision, while `arm-map.json` is the separate
-  reveal; and
-- `responses.txt` retains the exact sanitized final responses, while
-  `results.md` explains the bounded interpretation.
+1. `bd6fc99` committed all 16 runs, the sanitized blind packet, and an empty
+   scorecard, but no arm map;
+2. `2322cb3` committed the independent judge's UUID-bound raw A/B response and
+   filled scorecard, still without the arm map; and
+3. the following result commit reveals `arm-map.json` and interprets the
+   already-frozen preferences.
 
-The skill's reusable behavioral inputs remain in
-`../../thirdparty/skills/teach/test-prompts.json`. Raw temporary workspaces are
-not committed. `SHA256SUMS` and the focused contract test verify the committed
-bundle. The evidence is independently checkable from committed files, but is
-not externally timestamped or cryptographically attested and cannot identify
-an unexposed backend session or model build.
+This is controller-captured evidence rather than an externally attested event
+log. It is independently reviewable and internally verifiable, but cannot
+recover the runner's unexposed backend identity or prove external timestamping.
+
+The older bundle directly under `../../evaluations/teach-adaptation/` is
+retained as historical evidence of the first evaluation. It is not the current
+execution-identity or blind-ordering authority.
 
 ## Limitations And Reopen Conditions
 
-This evaluation used small synthetic technical-learning fixtures, one current
-agent configuration, and one run per arm outside the repeated first-lesson
-boundary. It did not measure delayed retention, real reminder delivery,
-long-running course evolution, visual quality across browsers, token use, or
-production work.
+The evaluation used small synthetic technical-learning fixtures, one current
+agent configuration, one run per arm outside the repeated first-lesson
+boundary, and one blind judge. It did not measure delayed retention, real
+reminder delivery, long-running course evolution, browser rendering quality,
+token use, or production learning outcomes.
 
-Reopen installation acceptance if representative use writes learner state into
-an engineering repository, restarts instead of resuming, teaches stale current
+Reopen acceptance if representative use writes learner state into an
+engineering repository, restarts rather than resumes, teaches stale current
 behavior, leaks answer position, promotes personal state, or if another model
-or non-technical learning domain reverses a critical result.
+or non-technical domain reverses a critical result.
