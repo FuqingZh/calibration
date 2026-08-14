@@ -79,10 +79,29 @@ Match the evaluation to the claim. For comparative agent or skill evaluation:
 Static validation, parseable cases, and a successful runner prove that the
 evaluation machinery works. They do not prove that the candidate is better.
 
+### Separate Context, Advisor, And Model Effects
+
+When evaluating an advisor, prompt bundle, orchestrator policy, or model router,
+do not change always-loaded context and executor model in the same primary arm.
+First hold model, reasoning effort, tools, fixture, permissions, and workspace
+topology constant while ablating context or Advisor use. Compare a different
+executor model only in a later arm that changes model routing and nothing else.
+Count Advisor, executor, and subagent latency and tokens in the arm total.
+
+Do not attribute a trajectory to a named model family when the run interface
+does not expose its exact model and reasoning identity. Treat model price,
+total tokens, wall time, and correctness as different measurements.
+
 ## Metrics And Decision Gates
 
 Treat task correctness, required behavior, and critical failures as primary.
 Use time, turns, and tokens as secondary measures after quality gates pass.
+
+For workflow-efficiency claims, also record time to first effective edit,
+observable repeated reasoning summaries or scope commentary, compaction,
+scope increments, rework, and orchestration or Calibration route counts.
+Separate dependency cold start and external waits from deliberation when the
+event stream permits it. Never request or score hidden chain-of-thought.
 
 Do not treat shorter output, fewer tokens, or faster completion as improvement
 when the candidate loses required behavior or introduces a critical failure.

@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "caseId": "WGCNA-SAMPLEID-01",
+  "fixture": "fixture",
+  "task": "task.md",
+  "advisorActivation": "advisor-activation.md",
+  "allowedChanges": [
+    "src/wgcna_worker.R"
+  ],
+  "requiredChanges": [
+    "src/wgcna_worker.R"
+  ],
+  "verify": [
+    "python3",
+    "tests/verify.py"
+  ],
+  "initialFailure": "SampleId alignment failed after eigengene ordering"
+}

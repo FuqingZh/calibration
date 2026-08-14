@@ -1,0 +1,20 @@
+id: W07
+title: Diagnostic suppression boundary
+fixture: W07
+prompt: >-
+  Repair the strict type-checking failures without changing the public publish
+  behavior, module ownership, or the external vendor snapshot.
+  resource_publication.py owns resource-specific publish orchestration;
+  publication_core.py owns only reusable first-party helpers; and dynamicdb is
+  an external dependency with incomplete typing. This is ordinary local work
+  with clear repository rules and executable feedback; do not invoke
+  Calibration or another workflow skill. Keep the change focused and run
+  `python scripts/check.py` before claiming completion.
+verify:
+  - [python, scripts/check.py]
+allowed_changes:
+  - src/publication_core.py
+  - src/resource_publication.py
+  - typings/dynamicdb.pyi
+required_changes:
+  - src/resource_publication.py

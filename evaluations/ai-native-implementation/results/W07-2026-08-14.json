@@ -1,0 +1,279 @@
+{
+  "schema_version": 1,
+  "case_id": "W07",
+  "date": "2026-08-14",
+  "fixture": {
+    "case_sha256": "6f69ad71e686eb1952250715bccf740370cfd2b5d22861932994ef8bbac09564",
+    "fixture_tree_sha256": "a751559a0f4ca77dffe08c0f6a523e088ac4b483ea1ad030a396713b500baf7b",
+    "fixture_tree_hash_definition": "sha256 of file-sha256, two spaces, ./POSIX-relative-path, and newline records sorted by POSIX relative path",
+    "scorer_sha256": "796f7f1c320e6bbfda26565bdc52887cbb0f1283a296054952f107d9d0a2e982"
+  },
+  "arms": {
+    "baseline": {
+      "source_commit": "bcc6ad6e82096c015e2c3b39dae0ec5a32b86257",
+      "agents_template_sha256": "ea436b1ee74de4e0299a21da7bbdda89a8f9816082a7b4b8ea8142815da54faa",
+      "agents_template_words": 1106
+    },
+    "candidate": {
+      "base_source_commit": "bcc6ad6e82096c015e2c3b39dae0ec5a32b86257",
+      "only_changed_source": "codex/AGENTS.md.template",
+      "agents_template_sha256": "d71053d50e0835912d84b85ad6492744db376ca80cac723688a9a20a27a216e2",
+      "agents_template_words": 1176
+    }
+  },
+  "controls": {
+    "codex_cli": "0.147.0",
+    "model": "gpt-5.6-sol",
+    "reasoning_effort": "medium",
+    "sandbox": "workspace-write",
+    "fresh_workspace_and_codex_home_per_run": true,
+    "apps_and_plugins_disabled": true,
+    "user_config_ignored": true,
+    "calibration_route_frozen_to_zero": true,
+    "pair_order": [
+      ["baseline", "candidate"],
+      ["candidate", "baseline"],
+      ["baseline", "candidate"]
+    ],
+    "total_tokens_definition": "input_tokens + output_tokens",
+    "first_effective_edit_measurement": "integer-second upper bound from output-directory birth time to the earliest mtime of a final changed first-party source file",
+    "rework_cycle_definition": "a failed declared validation command after the first file change",
+    "commentary_classification": "manual review of completed agent_message events; final response excluded from intermediate_commentary_count"
+  },
+  "runs": [
+    {
+      "id": "r1-baseline",
+      "pair": 1,
+      "sequence": 1,
+      "arm": "baseline",
+      "elapsed_seconds": 85.98295560711995,
+      "first_effective_edit_upper_bound_seconds": 42,
+      "input_tokens": 129021,
+      "cached_input_tokens": 108544,
+      "output_tokens": 2473,
+      "reasoning_output_tokens": 664,
+      "total_tokens": 131494,
+      "correctness_passed": true,
+      "critical_failures": 0,
+      "diagnostic_suppressions": 0,
+      "intermediate_commentary_count": 4,
+      "repeated_reasoning_or_scope_commentary": 0,
+      "scope_churn_events": 0,
+      "compactions": 0,
+      "rework_cycles": 1,
+      "ao_routes": 0,
+      "calibration_routes": 0,
+      "changed_paths": [
+        "src/publication_core.py",
+        "src/resource_publication.py"
+      ],
+      "artifact_sha256": {
+        "result.json": "eb6c1dbeccc90e239655b9451893c2f0f6afc3f966741341098bd29188f2b437",
+        "trajectory.jsonl": "1020f239aae3602fe8f5dec7e4e695ff2b9eb9d71e9c01893aaea7f1e86cd3ab",
+        "final-message.txt": "0862f8970dd0b3d528d0c6102da2a057c9c52e2fa24ebe9a17210072323c7b40"
+      }
+    },
+    {
+      "id": "r1-candidate",
+      "pair": 1,
+      "sequence": 2,
+      "arm": "candidate",
+      "elapsed_seconds": 55.113981468835846,
+      "first_effective_edit_upper_bound_seconds": 37,
+      "input_tokens": 78511,
+      "cached_input_tokens": 44288,
+      "output_tokens": 1553,
+      "reasoning_output_tokens": 302,
+      "total_tokens": 80064,
+      "correctness_passed": true,
+      "critical_failures": 0,
+      "diagnostic_suppressions": 0,
+      "intermediate_commentary_count": 3,
+      "repeated_reasoning_or_scope_commentary": 0,
+      "scope_churn_events": 0,
+      "compactions": 0,
+      "rework_cycles": 0,
+      "ao_routes": 0,
+      "calibration_routes": 0,
+      "changed_paths": [
+        "src/publication_core.py",
+        "src/resource_publication.py",
+        "typings/dynamicdb.pyi"
+      ],
+      "artifact_sha256": {
+        "result.json": "4c99554b1981a550034af0c8c5f553d46dc1caa4f84747f8b78e0b04298981da",
+        "trajectory.jsonl": "3e53038722991b2e946f17d966b85c71217e9beb902860159e0db14d575863c6",
+        "final-message.txt": "42952f4083bb42326b80e323af521dcb141dc59d9aecd23d5b304a15209d1865"
+      }
+    },
+    {
+      "id": "r2-candidate",
+      "pair": 2,
+      "sequence": 1,
+      "arm": "candidate",
+      "elapsed_seconds": 66.34112351294607,
+      "first_effective_edit_upper_bound_seconds": 48,
+      "input_tokens": 78837,
+      "cached_input_tokens": 58368,
+      "output_tokens": 2007,
+      "reasoning_output_tokens": 655,
+      "total_tokens": 80844,
+      "correctness_passed": true,
+      "critical_failures": 0,
+      "diagnostic_suppressions": 0,
+      "intermediate_commentary_count": 2,
+      "repeated_reasoning_or_scope_commentary": 0,
+      "scope_churn_events": 0,
+      "compactions": 0,
+      "rework_cycles": 0,
+      "ao_routes": 0,
+      "calibration_routes": 0,
+      "changed_paths": [
+        "src/publication_core.py",
+        "src/resource_publication.py",
+        "typings/dynamicdb.pyi"
+      ],
+      "artifact_sha256": {
+        "result.json": "db83e1e6a3bc39b818879155b5078d5ad0b2a9542dbc7ecc6fa41735e4d10121",
+        "trajectory.jsonl": "fc2f5e05a45ee6072b2db8abd0179b7addf1b0f7e546998fba69ce5968e379bc",
+        "final-message.txt": "bcb1fee522d0762de096e912e90c2ae3e15bd32e6c6d890e4c06fd55c143d1bd"
+      }
+    },
+    {
+      "id": "r2-baseline",
+      "pair": 2,
+      "sequence": 2,
+      "arm": "baseline",
+      "elapsed_seconds": 82.35348128899932,
+      "first_effective_edit_upper_bound_seconds": 40,
+      "input_tokens": 129663,
+      "cached_input_tokens": 96512,
+      "output_tokens": 2247,
+      "reasoning_output_tokens": 588,
+      "total_tokens": 131910,
+      "correctness_passed": true,
+      "critical_failures": 0,
+      "diagnostic_suppressions": 0,
+      "intermediate_commentary_count": 3,
+      "repeated_reasoning_or_scope_commentary": 0,
+      "scope_churn_events": 0,
+      "compactions": 0,
+      "rework_cycles": 1,
+      "ao_routes": 0,
+      "calibration_routes": 0,
+      "changed_paths": [
+        "src/publication_core.py",
+        "src/resource_publication.py",
+        "typings/dynamicdb.pyi"
+      ],
+      "artifact_sha256": {
+        "result.json": "6e8ac0c249e085bb8766439ea5d543747de6f01d6ca77eab0d8ab82197f92d75",
+        "trajectory.jsonl": "bfc9bf653f83f2cc4eb4691424e1d4c59936eb6ad8a1d2e9d0fbe457be1d297a",
+        "final-message.txt": "3e07c34acec251a2f7c02f25a5ef70d50c1a5a41fe0c671cb2d2611031241751"
+      }
+    },
+    {
+      "id": "r3-baseline",
+      "pair": 3,
+      "sequence": 1,
+      "arm": "baseline",
+      "elapsed_seconds": 254.59668489405885,
+      "first_effective_edit_upper_bound_seconds": 213,
+      "input_tokens": 112630,
+      "cached_input_tokens": 88320,
+      "output_tokens": 2126,
+      "reasoning_output_tokens": 652,
+      "total_tokens": 114756,
+      "correctness_passed": true,
+      "critical_failures": 0,
+      "diagnostic_suppressions": 0,
+      "intermediate_commentary_count": 3,
+      "repeated_reasoning_or_scope_commentary": 0,
+      "scope_churn_events": 0,
+      "compactions": 0,
+      "rework_cycles": 1,
+      "ao_routes": 0,
+      "calibration_routes": 0,
+      "changed_paths": [
+        "src/publication_core.py",
+        "src/resource_publication.py"
+      ],
+      "artifact_sha256": {
+        "result.json": "19a93a5de3112e97300a7a746fca3d54faf2b2c782dd10250747c313037cb531",
+        "trajectory.jsonl": "c2d0c52d9452c4b49e2c2c4b0707be7af469f629220e2a54a638b8cf996f180a",
+        "final-message.txt": "ec3d8df5d907da3ba1a1dfbce2afe2e842b9f27e631a6e79480b22487a64788b"
+      }
+    },
+    {
+      "id": "r3-candidate",
+      "pair": 3,
+      "sequence": 2,
+      "arm": "candidate",
+      "elapsed_seconds": 64.71166702685878,
+      "first_effective_edit_upper_bound_seconds": 43,
+      "input_tokens": 95226,
+      "cached_input_tokens": 74496,
+      "output_tokens": 1722,
+      "reasoning_output_tokens": 331,
+      "total_tokens": 96948,
+      "correctness_passed": true,
+      "critical_failures": 0,
+      "diagnostic_suppressions": 0,
+      "intermediate_commentary_count": 3,
+      "repeated_reasoning_or_scope_commentary": 0,
+      "scope_churn_events": 0,
+      "compactions": 0,
+      "rework_cycles": 0,
+      "ao_routes": 0,
+      "calibration_routes": 0,
+      "changed_paths": [
+        "src/publication_core.py",
+        "src/resource_publication.py",
+        "typings/dynamicdb.pyi"
+      ],
+      "artifact_sha256": {
+        "result.json": "de76a40eac41ae6028a6e35dd2d7724aaaeb66e589559bc8bd5437cc4dc016e3",
+        "trajectory.jsonl": "1a714eac65ab47d753ea62f54280565d71d9e6c0268cd58e4d35a042810f9764",
+        "final-message.txt": "4dca57c8e677e2249fa47d8956e969ab11b9e864b58861285122bf5aae8f5b6a"
+      }
+    }
+  ],
+  "observed_aggregate": {
+    "baseline": {
+      "correct_runs": 3,
+      "critical_failures": 0,
+      "diagnostic_suppressions": 0,
+      "median_elapsed_seconds": 85.98295560711995,
+      "median_first_effective_edit_upper_bound_seconds": 42,
+      "median_total_tokens": 131494,
+      "median_output_tokens": 2247,
+      "median_reasoning_output_tokens": 652,
+      "total_rework_cycles": 3
+    },
+    "candidate": {
+      "correct_runs": 3,
+      "critical_failures": 0,
+      "diagnostic_suppressions": 0,
+      "median_elapsed_seconds": 64.71166702685878,
+      "median_first_effective_edit_upper_bound_seconds": 43,
+      "median_total_tokens": 80844,
+      "median_output_tokens": 1722,
+      "median_reasoning_output_tokens": 331,
+      "total_rework_cycles": 0
+    },
+    "candidate_vs_baseline_percent": {
+      "median_elapsed_seconds": -24.738959518274307,
+      "median_first_effective_edit_upper_bound_seconds": 2.3809523809523725,
+      "median_total_tokens": -38.51886778103943,
+      "median_output_tokens": -23.364485981308412,
+      "median_reasoning_output_tokens": -49.23312883435583
+    }
+  },
+  "decision": {
+    "adopt_compact_policy": true,
+    "correctness_claim": "No correctness improvement was observed because both arms passed 3 of 3 runs without suppression.",
+    "efficiency_claim": "The candidate produced a bounded same-model efficiency signal and eliminated post-edit validation rework in this fixture.",
+    "generalization_claim": false,
+    "raw_artifacts_committed": false
+  }
+}

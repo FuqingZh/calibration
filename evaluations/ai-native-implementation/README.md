@@ -15,6 +15,8 @@ repository work rather than read-only descriptions of intended behavior.
   context before diagnosing persistent AO state.
 - `W06`: invoke `$calibration` to adopt the shared Ruff fallback where no local
   rule contract exists while preserving an existing repository-local contract.
+- `W07`: repair first-party and external-boundary strict typing failures without
+  using diagnostic suppression as a substitute for a real internal interface.
 
 Every case is a tiny dependency-free Python repository. The runner copies a
 fixture into a fresh workspace, creates an initial Git commit, runs one Codex
@@ -86,3 +88,20 @@ project's existing `E`, `F`, and `S` contract, and left preview disabled.
 This is focused evidence for the Ruff routing contract, not a broad workflow or
 model-quality claim. Raw trajectory and isolated-home artifacts remain private
 temporary evidence under the protocol above.
+
+## Focused W07 Evidence
+
+On 2026-08-14, three counterbalanced same-model pairs compared the exact
+baseline template with a candidate that added only the compact diagnostic
+suppression rule. Both arms passed 3/3 runs with zero suppressions and zero
+critical failures. The candidate reduced median total tokens from 131,494 to
+80,844 and median wall time from 86.0 to 64.7 seconds, but did not improve the
+median first-effective-edit upper bound. Each baseline run required one failed
+post-edit validation; no candidate run did.
+
+This is a bounded efficiency and no-regression signal for one synthetic strict
+typing case, not evidence of a general correctness, speed, token, model, or
+multi-language improvement. The exact controls, per-run observations,
+calculation inputs, and artifact hashes are in
+`results/W07-2026-08-14.json`; the accepted scope and limitations are in
+`../../docs/decisions/2026-08-14-diagnostic-suppression-policy.md`.

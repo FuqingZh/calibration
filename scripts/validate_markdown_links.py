@@ -23,6 +23,8 @@ MARKDOWN_EXCLUDES = (
     Path("evaluations/teach-adaptation/artifacts"),
     Path("evaluations/teach-adaptation/v2/blind-packet.md"),
     Path("evaluations/teach-adaptation/v2/runs"),
+    Path("evaluations/sol-advisor-calibration-ablation/advisor-activation.md"),
+    Path("evaluations/sol-advisor-calibration-ablation/task.md"),
 )
 
 
