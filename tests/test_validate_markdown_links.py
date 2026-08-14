@@ -61,6 +61,20 @@ def test_excludes_traceable_raw_runs_and_generated_blind_packet(
     assert validate_markdown_links(tmp_path) == []
 
 
+def test_excludes_exact_sol_advisor_ablation_prompts(tmp_path: Path) -> None:
+    evaluation = tmp_path / "evaluations/sol-advisor-calibration-ablation"
+    evaluation.mkdir(parents=True)
+    activation = evaluation / "advisor-activation.md"
+    activation.write_text("[raw activation](missing.md)\n", encoding="utf-8")
+    task = evaluation / "task.md"
+    task.write_text("[raw task](missing.md)\n", encoding="utf-8")
+    readme = evaluation / "README.md"
+    readme.write_text("# Reviewed protocol\n", encoding="utf-8")
+
+    assert discover_markdown_files(tmp_path) == [readme]
+    assert validate_markdown_links(tmp_path) == []
+
+
 @pytest.mark.parametrize(
     ("target", "expected"),
     [

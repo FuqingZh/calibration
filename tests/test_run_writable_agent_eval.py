@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import hashlib
 import json
+import runpy
 import subprocess
+from collections.abc import Callable
 from pathlib import Path
+from statistics import median
 from typing import cast
 
 import pytest
@@ -319,6 +323,174 @@ def test_w06_rejects_deprecated_top_level_rule_selection_modifiers(
     assert result["passed"] is False
     checks = cast(list[dict[str, object]], result["checks"])
     assert "tool.ruff.ignore" in cast(str, checks[0]["stderr"])
+
+
+def test_w07_distinguishes_suppression_from_boundary_repair(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repository_evaluation_root = (
+        Path(__file__).resolve().parents[1] / "evaluations/ai-native-implementation"
+    )
+    monkeypatch.setattr(evaluation, "EVALUATION_ROOT", repository_evaluation_root)
+    case = evaluation.load_case(repository_evaluation_root / "cases/W07.yaml")
+    score = cast(
+        Callable[[Path], dict[str, object]],
+        runpy.run_path(str(repository_evaluation_root / "score_w07.py"))[
+            "score_workspace"
+        ],
+    )
+
+    initial = tmp_path / "initial"
+    evaluation.prepare_workspace(case, initial)
+    assert evaluation.verify_workspace(case, initial)["passed"] is False
+    initial_score = score(initial)
+    assert initial_score["passed"] is False
+    assert initial_score["private_names_outside_owner"]
+
+    suppressed = tmp_path / "suppressed"
+    evaluation.prepare_workspace(case, suppressed)
+    publication = suppressed / "src/resource_publication.py"
+    text = publication.read_text(encoding="utf-8")
+    for name in (
+        "_connect_publication",
+        "_create_metadata_schema",
+        "_create_stage_path",
+        "_prepare_destination",
+        "_publication_metadata",
+        "_validate_publication",
+        "_write_metadata",
+    ):
+        text = text.replace(
+            f"    {name},",
+            f"    {name},  # pyright: ignore[reportPrivateUsage]",
+        )
+    text = text.replace(
+        "    row = dynamicdb.fetch_row(key)\n",
+        "    row = dynamicdb.fetch_row(key)  "
+        "# pyright: ignore[reportUnknownVariableType, reportUnknownMemberType]\n",
+    ).replace(
+        "    _write_metadata(metadata, row)\n",
+        "    _write_metadata(metadata, row)  "
+        "# pyright: ignore[reportUnknownArgumentType]\n",
+    )
+    publication.write_text(text, encoding="utf-8")
+    assert evaluation.verify_workspace(case, suppressed)["passed"] is True
+    suppressed_score = score(suppressed)
+    assert suppressed_score["passed"] is False
+    assert len(cast(list[str], suppressed_score["diagnostic_suppressions"])) == 9
+
+    repaired = tmp_path / "repaired"
+    evaluation.prepare_workspace(case, repaired)
+    core = repaired / "src/publication_core.py"
+    publication = repaired / "src/resource_publication.py"
+    core_text = core.read_text(encoding="utf-8")
+    publication_text = publication.read_text(encoding="utf-8")
+    for old, new in (
+        ("_prepare_destination", "prepare_destination"),
+        ("_create_stage_path", "create_stage_path"),
+        ("_connect_publication", "connect_publication"),
+        ("_create_metadata_schema", "create_metadata_schema"),
+        ("_publication_metadata", "publication_metadata"),
+        ("_write_metadata", "write_metadata"),
+        ("_validate_publication", "validate_publication"),
+    ):
+        core_text = core_text.replace(old, new)
+        publication_text = publication_text.replace(old, new)
+    core.write_text(core_text, encoding="utf-8")
+    publication.write_text(publication_text, encoding="utf-8")
+    (repaired / "typings/dynamicdb.pyi").write_text(
+        "def fetch_row(key: str) -> dict[str, object]: ...\n",
+        encoding="utf-8",
+    )
+    assert evaluation.verify_workspace(case, repaired)["passed"] is True
+    repaired_score = score(repaired)
+    assert repaired_score["passed"] is True
+    assert cast(list[str], repaired_score["diagnostic_suppressions"]) == []
+    assert cast(list[str], repaired_score["ownership_violations"]) == []
+
+
+def test_w07_paired_results_preserve_controls_and_bounded_claim() -> None:
+    repository_evaluation_root = (
+        Path(__file__).resolve().parents[1] / "evaluations/ai-native-implementation"
+    )
+    result_path = repository_evaluation_root / "results/W07-2026-08-14.json"
+    payload = cast(
+        dict[str, object], json.loads(result_path.read_text(encoding="utf-8"))
+    )
+    fixture = cast(dict[str, str], payload["fixture"])
+    for name, path in (
+        ("case_sha256", repository_evaluation_root / "cases/W07.yaml"),
+        ("scorer_sha256", repository_evaluation_root / "score_w07.py"),
+    ):
+        assert fixture[name] == hashlib.sha256(path.read_bytes()).hexdigest()
+    fixture_root = repository_evaluation_root / "fixtures/W07"
+    fixture_manifest = "".join(
+        f"{hashlib.sha256(path.read_bytes()).hexdigest()}  "
+        f"./{path.relative_to(fixture_root).as_posix()}\n"
+        for path in sorted(path for path in fixture_root.rglob("*") if path.is_file())
+    )
+    assert (
+        fixture["fixture_tree_sha256"]
+        == hashlib.sha256(fixture_manifest.encode()).hexdigest()
+    )
+
+    arms = cast(dict[str, dict[str, object]], payload["arms"])
+    template = Path(__file__).resolve().parents[1] / "codex/AGENTS.md.template"
+    assert (
+        arms["candidate"]["agents_template_sha256"]
+        == hashlib.sha256(template.read_bytes()).hexdigest()
+    )
+    assert (
+        cast(int, arms["candidate"]["agents_template_words"])
+        - cast(int, arms["baseline"]["agents_template_words"])
+        == 70
+    )
+
+    runs = cast(list[dict[str, object]], payload["runs"])
+    assert len(runs) == 6
+    assert [cast(str, run["arm"]) for run in runs] == [
+        "baseline",
+        "candidate",
+        "candidate",
+        "baseline",
+        "baseline",
+        "candidate",
+    ]
+    for run in runs:
+        assert run["correctness_passed"] is True
+        assert run["critical_failures"] == 0
+        assert run["diagnostic_suppressions"] == 0
+        assert run["repeated_reasoning_or_scope_commentary"] == 0
+        assert run["scope_churn_events"] == 0
+        assert run["compactions"] == 0
+        assert run["ao_routes"] == 0
+        assert run["calibration_routes"] == 0
+        assert cast(int, run["total_tokens"]) == cast(int, run["input_tokens"]) + cast(
+            int, run["output_tokens"]
+        )
+
+    baseline = [run for run in runs if run["arm"] == "baseline"]
+    candidate = [run for run in runs if run["arm"] == "candidate"]
+    observed = cast(dict[str, dict[str, object]], payload["observed_aggregate"])
+    for arm, arm_runs in (("baseline", baseline), ("candidate", candidate)):
+        aggregate = observed[arm]
+        assert aggregate["median_elapsed_seconds"] == median(
+            cast(float, run["elapsed_seconds"]) for run in arm_runs
+        )
+        assert aggregate["median_total_tokens"] == median(
+            cast(int, run["total_tokens"]) for run in arm_runs
+        )
+        assert aggregate["median_first_effective_edit_upper_bound_seconds"] == median(
+            cast(int, run["first_effective_edit_upper_bound_seconds"])
+            for run in arm_runs
+        )
+        assert aggregate["total_rework_cycles"] == sum(
+            cast(int, run["rework_cycles"]) for run in arm_runs
+        )
+
+    decision = cast(dict[str, object], payload["decision"])
+    assert decision["adopt_compact_policy"] is True
+    assert decision["generalization_claim"] is False
 
 
 def test_build_codex_command_contains_frozen_controls(tmp_path: Path) -> None:

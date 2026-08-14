@@ -1,0 +1,807 @@
+{
+  "schemaVersion": 1,
+  "decision": "reject-cal-min-as-tested-and-do-not-default-sol-advisor-for-bounded-local-repair",
+  "source": {
+    "registeredCalibrationCommit": "bcc6ad6e82096c015e2c3b39dae0ec5a32b86257",
+    "currentArmSha256": "ea436b1ee74de4e0299a21da7bbdda89a8f9816082a7b4b8ea8142815da54faa",
+    "candidateArmSha256": "c1d1b4016ebfbbd01019ac36ed70f5efa30c48c73731de20f7056cbd068c7ca1",
+    "calibrationSkillTree": "b5e2e4ff050c3fb51bd53253e01f03215d9d387c",
+    "solAdvisorCommit": "676d200733ebd57caf1270ba94d892c95e9f8aee",
+    "codexCli": "0.147.0",
+    "codexBinarySha256": "cb0a15567e9a60a5820d54b0f6ae86d504dc3805c1eab21a47f70e3eb7b73a40",
+    "requestedModel": "gpt-5.6-sol",
+    "requestedReasoningEffort": "max",
+    "runtimeFixtureTreeSha256": "9688075f080664d379c57d773bb535646bd05f3e5a94ea544eac3d84db7e10a2",
+    "distributableFixtureSha256": "367f0681759671c8a017a5cb9b6077bde3ea7af6b42517b3bb450711825a3145",
+    "runtimeIgnoredArtifact": "src/__pycache__/xlsx_export.cpython-313.pyc"
+  },
+  "protocol": {
+    "officialRepetitions": 3,
+    "officialRuns": [
+      {
+        "repetition": 1,
+        "runId": "20260813T090344Z-b7656858",
+        "armOrder": [
+          "C0-A0",
+          "C1-A1",
+          "C1-A0",
+          "C0-A1"
+        ]
+      },
+      {
+        "repetition": 2,
+        "runId": "20260813T092435Z-3226a93e",
+        "armOrder": [
+          "C1-A0",
+          "C0-A1",
+          "C1-A1",
+          "C0-A0"
+        ]
+      },
+      {
+        "repetition": 3,
+        "runId": "20260813T095041Z-5f097bda",
+        "armOrder": [
+          "C0-A1",
+          "C0-A0",
+          "C1-A1",
+          "C1-A0"
+        ]
+      }
+    ],
+    "promptMatrixValidEveryRepetition": true,
+    "backendBuildIdentityExposed": false,
+    "lunaArmRun": false,
+    "rawTrajectoriesCommitted": false
+  },
+  "medians": {
+    "C0-A0": {
+      "wallSeconds": 81.522,
+      "timeToFirstEffectiveEditSeconds": 48.802,
+      "inputTokens": 118242,
+      "outputTokens": 2152,
+      "totalTokens": 120035,
+      "commentary": 4
+    },
+    "C0-A1": {
+      "wallSeconds": 478.219,
+      "timeToFirstEffectiveEditSeconds": 163.537,
+      "inputTokens": 1114209,
+      "outputTokens": 13617,
+      "totalTokens": 1127823,
+      "commentary": 8
+    },
+    "C1-A0": {
+      "wallSeconds": 115.615,
+      "timeToFirstEffectiveEditSeconds": 75.922,
+      "inputTokens": 184862,
+      "outputTokens": 3661,
+      "totalTokens": 188523,
+      "commentary": 5
+    },
+    "C1-A1": {
+      "wallSeconds": 532.69,
+      "timeToFirstEffectiveEditSeconds": 245.337,
+      "inputTokens": 1385915,
+      "outputTokens": 19464,
+      "totalTokens": 1403815,
+      "commentary": 9
+    }
+  },
+  "contrasts": {
+    "calMinWithoutAdvisor": {
+      "candidateArm": "C1-A0",
+      "referenceArm": "C0-A0",
+      "pairedDeltas": [
+        {
+          "repetition": 1,
+          "wallSeconds": 16.755,
+          "timeToFirstEffectiveEditSeconds": 15.7,
+          "inputTokens": 68937,
+          "totalTokens": 70326,
+          "commentary": 0
+        },
+        {
+          "repetition": 2,
+          "wallSeconds": 34.093,
+          "timeToFirstEffectiveEditSeconds": 33.172,
+          "inputTokens": 87672,
+          "totalTokens": 89410,
+          "commentary": 2
+        },
+        {
+          "repetition": 3,
+          "wallSeconds": 49.028,
+          "timeToFirstEffectiveEditSeconds": 35.677,
+          "inputTokens": 59227,
+          "totalTokens": 60729,
+          "commentary": 1
+        }
+      ],
+      "medianDelta": {
+        "wallSeconds": 34.093,
+        "timeToFirstEffectiveEditSeconds": 33.172,
+        "inputTokens": 68937,
+        "totalTokens": 70326,
+        "commentary": 1
+      }
+    },
+    "calMinWithAdvisor": {
+      "candidateArm": "C1-A1",
+      "referenceArm": "C0-A1",
+      "pairedDeltas": [
+        {
+          "repetition": 1,
+          "wallSeconds": 32.197,
+          "timeToFirstEffectiveEditSeconds": 25.368,
+          "inputTokens": 28807,
+          "totalTokens": 34654,
+          "commentary": 0
+        },
+        {
+          "repetition": 2,
+          "wallSeconds": 51.045,
+          "timeToFirstEffectiveEditSeconds": 43.404,
+          "inputTokens": -264899,
+          "totalTokens": -264999,
+          "commentary": -4
+        },
+        {
+          "repetition": 3,
+          "wallSeconds": 54.471,
+          "timeToFirstEffectiveEditSeconds": 85.581,
+          "inputTokens": 271706,
+          "totalTokens": 275992,
+          "commentary": 1
+        }
+      ],
+      "medianDelta": {
+        "wallSeconds": 51.045,
+        "timeToFirstEffectiveEditSeconds": 43.404,
+        "inputTokens": 28807,
+        "totalTokens": 34654,
+        "commentary": 0
+      }
+    },
+    "advisorWithCurrentCalibration": {
+      "candidateArm": "C0-A1",
+      "referenceArm": "C0-A0",
+      "pairedDeltas": [
+        {
+          "repetition": 1,
+          "wallSeconds": 345.979,
+          "timeToFirstEffectiveEditSeconds": 105.519,
+          "inputTokens": 920578,
+          "totalTokens": 931923,
+          "commentary": 3
+        },
+        {
+          "repetition": 2,
+          "wallSeconds": 545.57,
+          "timeToFirstEffectiveEditSeconds": 158.967,
+          "inputTokens": 1636625,
+          "totalTokens": 1654984,
+          "commentary": 10
+        },
+        {
+          "repetition": 3,
+          "wallSeconds": 402.595,
+          "timeToFirstEffectiveEditSeconds": 119.511,
+          "inputTokens": 995967,
+          "totalTokens": 1007788,
+          "commentary": 4
+        }
+      ],
+      "medianDelta": {
+        "wallSeconds": 402.595,
+        "timeToFirstEffectiveEditSeconds": 119.511,
+        "inputTokens": 995967,
+        "totalTokens": 1007788,
+        "commentary": 4
+      }
+    },
+    "advisorWithCalMin": {
+      "candidateArm": "C1-A1",
+      "referenceArm": "C1-A0",
+      "pairedDeltas": [
+        {
+          "repetition": 1,
+          "wallSeconds": 361.421,
+          "timeToFirstEffectiveEditSeconds": 115.187,
+          "inputTokens": 880448,
+          "totalTokens": 896251,
+          "commentary": 3
+        },
+        {
+          "repetition": 2,
+          "wallSeconds": 562.522,
+          "timeToFirstEffectiveEditSeconds": 169.199,
+          "inputTokens": 1284054,
+          "totalTokens": 1300575,
+          "commentary": 4
+        },
+        {
+          "repetition": 3,
+          "wallSeconds": 408.038,
+          "timeToFirstEffectiveEditSeconds": 169.415,
+          "inputTokens": 1208446,
+          "totalTokens": 1223051,
+          "commentary": 4
+        }
+      ],
+      "medianDelta": {
+        "wallSeconds": 408.038,
+        "timeToFirstEffectiveEditSeconds": 169.199,
+        "inputTokens": 1208446,
+        "totalTokens": 1223051,
+        "commentary": 4
+      }
+    }
+  },
+  "runs": [
+    {
+      "repetition": 1,
+      "runId": "20260813T090344Z-b7656858",
+      "orderIndex": 0,
+      "arm": "C0-A0",
+      "passed": true,
+      "criticalFailures": [],
+      "changedPaths": [
+        "src/wgcna_worker.R"
+      ],
+      "wallSeconds": 89.852,
+      "timeToFirstEffectiveEditSeconds": 58.018,
+      "tokens": {
+        "input": 115925,
+        "cachedInput": 70400,
+        "output": 2272,
+        "reasoningOutput": 994,
+        "total": 118197
+      },
+      "observable": {
+        "commentary": 5,
+        "repeatedPairs": 0,
+        "compactions": 0,
+        "reworkFingerprints": 0,
+        "scopeArtifactMentions": 0
+      },
+      "routes": {
+        "ao": 0,
+        "calibration": 0,
+        "calibrationReferenceLoads": 0,
+        "decisionCapsules": 0,
+        "advisorNativeRoles": 0,
+        "collaborationWaits": 0
+      },
+      "roleSessions": [],
+      "protocolDeviations": [],
+      "promptSha256": "dd121aa30814bea5ee3eb4709796eb443b81823114c16426e824d338b87aa2a7",
+      "finalDiffSha256": "a218afa0705fbca98091771395223f35e7766823059b0d8c954173818bd86b81"
+    },
+    {
+      "repetition": 1,
+      "runId": "20260813T090344Z-b7656858",
+      "orderIndex": 1,
+      "arm": "C1-A1",
+      "passed": true,
+      "criticalFailures": [],
+      "changedPaths": [
+        "src/wgcna_worker.R"
+      ],
+      "wallSeconds": 468.028,
+      "timeToFirstEffectiveEditSeconds": 188.905,
+      "tokens": {
+        "input": 1065310,
+        "cachedInput": 958720,
+        "output": 19464,
+        "reasoningOutput": 10436,
+        "total": 1084774
+      },
+      "observable": {
+        "commentary": 8,
+        "repeatedPairs": 0,
+        "compactions": 0,
+        "reworkFingerprints": 0,
+        "scopeArtifactMentions": 0
+      },
+      "routes": {
+        "ao": 0,
+        "calibration": 1,
+        "calibrationReferenceLoads": 5,
+        "decisionCapsules": 1,
+        "advisorNativeRoles": 2,
+        "collaborationWaits": 4
+      },
+      "roleSessions": [
+        {
+          "role": "sol_advisor_routine",
+          "model": "gpt-5.6-sol",
+          "reasoningEffort": "max",
+          "sandboxPolicy": "workspace-write"
+        },
+        {
+          "role": "sol_advisor_advisor",
+          "model": "gpt-5.6-sol",
+          "reasoningEffort": "max",
+          "sandboxPolicy": "workspace-write"
+        }
+      ],
+      "protocolDeviations": [
+        "advisor_skill_truncated_then_read_explicitly",
+        "advisor_requested_read_only_but_host_broadened"
+      ],
+      "promptSha256": "72c46b6ad74857a8967b7c2fe39cf621ad74653636c4067206ec530bc84862f7",
+      "finalDiffSha256": "339abe1ae56b6fc45baeacd9fa081723b514154f415f7eb6c0c33e6fb30cc1ed"
+    },
+    {
+      "repetition": 1,
+      "runId": "20260813T090344Z-b7656858",
+      "orderIndex": 2,
+      "arm": "C1-A0",
+      "passed": true,
+      "criticalFailures": [],
+      "changedPaths": [
+        "src/wgcna_worker.R"
+      ],
+      "wallSeconds": 106.607,
+      "timeToFirstEffectiveEditSeconds": 73.718,
+      "tokens": {
+        "input": 184862,
+        "cachedInput": 140544,
+        "output": 3661,
+        "reasoningOutput": 1824,
+        "total": 188523
+      },
+      "observable": {
+        "commentary": 5,
+        "repeatedPairs": 0,
+        "compactions": 0,
+        "reworkFingerprints": 0,
+        "scopeArtifactMentions": 0
+      },
+      "routes": {
+        "ao": 0,
+        "calibration": 1,
+        "calibrationReferenceLoads": 2,
+        "decisionCapsules": 1,
+        "advisorNativeRoles": 0,
+        "collaborationWaits": 0
+      },
+      "roleSessions": [],
+      "protocolDeviations": [],
+      "promptSha256": "2331f104d5828ac67c9c57939fa1c8c8ead3d44da3b5c361e576ca0cf5a790af",
+      "finalDiffSha256": "f3d5b545c536675df2e4894f5612afafc97d455544721a411c14970eebc40943"
+    },
+    {
+      "repetition": 1,
+      "runId": "20260813T090344Z-b7656858",
+      "orderIndex": 3,
+      "arm": "C0-A1",
+      "passed": true,
+      "criticalFailures": [],
+      "changedPaths": [
+        "src/wgcna_worker.R"
+      ],
+      "wallSeconds": 435.831,
+      "timeToFirstEffectiveEditSeconds": 163.537,
+      "tokens": {
+        "input": 1036503,
+        "cachedInput": 908544,
+        "output": 13617,
+        "reasoningOutput": 6598,
+        "total": 1050120
+      },
+      "observable": {
+        "commentary": 8,
+        "repeatedPairs": 0,
+        "compactions": 0,
+        "reworkFingerprints": 0,
+        "scopeArtifactMentions": 0
+      },
+      "routes": {
+        "ao": 0,
+        "calibration": 0,
+        "calibrationReferenceLoads": 0,
+        "decisionCapsules": 0,
+        "advisorNativeRoles": 2,
+        "collaborationWaits": 3
+      },
+      "roleSessions": [
+        {
+          "role": "sol_advisor_routine",
+          "model": "gpt-5.6-sol",
+          "reasoningEffort": "max",
+          "sandboxPolicy": "workspace-write"
+        },
+        {
+          "role": "sol_advisor_advisor",
+          "model": "gpt-5.6-sol",
+          "reasoningEffort": "max",
+          "sandboxPolicy": "workspace-write"
+        }
+      ],
+      "protocolDeviations": [
+        "advisor_skill_truncated_then_read_explicitly",
+        "advisor_requested_read_only_but_host_broadened"
+      ],
+      "promptSha256": "810f08a7d2c0de2af4abd0c1694a97f01c7666407862e2f7a2efa7ed0f506884",
+      "finalDiffSha256": "e87a1317c76dab17687a8bde4232f1b19993bbcadbfe1340de6784ca47ca7630"
+    },
+    {
+      "repetition": 2,
+      "runId": "20260813T092435Z-3226a93e",
+      "orderIndex": 0,
+      "arm": "C1-A0",
+      "passed": true,
+      "criticalFailures": [],
+      "changedPaths": [
+        "src/wgcna_worker.R"
+      ],
+      "wallSeconds": 115.615,
+      "timeToFirstEffectiveEditSeconds": 81.974,
+      "tokens": {
+        "input": 211981,
+        "cachedInput": 175872,
+        "output": 3890,
+        "reasoningOutput": 1803,
+        "total": 215871
+      },
+      "observable": {
+        "commentary": 6,
+        "repeatedPairs": 0,
+        "compactions": 0,
+        "reworkFingerprints": 0,
+        "scopeArtifactMentions": 0
+      },
+      "routes": {
+        "ao": 0,
+        "calibration": 1,
+        "calibrationReferenceLoads": 4,
+        "decisionCapsules": 1,
+        "advisorNativeRoles": 0,
+        "collaborationWaits": 0
+      },
+      "roleSessions": [],
+      "protocolDeviations": [],
+      "promptSha256": "2331f104d5828ac67c9c57939fa1c8c8ead3d44da3b5c361e576ca0cf5a790af",
+      "finalDiffSha256": "81a232430f912918d0096b4262f5cfad5806624e54260eb0e3c45952b65d8205"
+    },
+    {
+      "repetition": 2,
+      "runId": "20260813T092435Z-3226a93e",
+      "orderIndex": 1,
+      "arm": "C0-A1",
+      "passed": true,
+      "criticalFailures": [],
+      "changedPaths": [
+        "src/wgcna_worker.R"
+      ],
+      "wallSeconds": 627.092,
+      "timeToFirstEffectiveEditSeconds": 207.769,
+      "tokens": {
+        "input": 1760934,
+        "cachedInput": 1627392,
+        "output": 20511,
+        "reasoningOutput": 10749,
+        "total": 1781445
+      },
+      "observable": {
+        "commentary": 14,
+        "repeatedPairs": 0,
+        "compactions": 0,
+        "reworkFingerprints": 0,
+        "scopeArtifactMentions": 0
+      },
+      "routes": {
+        "ao": 0,
+        "calibration": 0,
+        "calibrationReferenceLoads": 0,
+        "decisionCapsules": 0,
+        "advisorNativeRoles": 2,
+        "collaborationWaits": 13
+      },
+      "roleSessions": [
+        {
+          "role": "sol_advisor_high",
+          "model": "gpt-5.6-sol",
+          "reasoningEffort": "max",
+          "sandboxPolicy": "workspace-write"
+        },
+        {
+          "role": "sol_advisor_advisor",
+          "model": "gpt-5.6-sol",
+          "reasoningEffort": "max",
+          "sandboxPolicy": "workspace-write"
+        }
+      ],
+      "protocolDeviations": [
+        "advisor_skill_truncated_then_read_explicitly",
+        "advisor_requested_read_only_but_host_broadened"
+      ],
+      "promptSha256": "810f08a7d2c0de2af4abd0c1694a97f01c7666407862e2f7a2efa7ed0f506884",
+      "finalDiffSha256": "1e3e4112791c3c7a8f048325343d4db67d8e35fe32f7b404f9879e9e620af154"
+    },
+    {
+      "repetition": 2,
+      "runId": "20260813T092435Z-3226a93e",
+      "orderIndex": 2,
+      "arm": "C1-A1",
+      "passed": true,
+      "criticalFailures": [],
+      "changedPaths": [
+        "src/wgcna_worker.R"
+      ],
+      "wallSeconds": 678.137,
+      "timeToFirstEffectiveEditSeconds": 251.173,
+      "tokens": {
+        "input": 1496035,
+        "cachedInput": 1338624,
+        "output": 20411,
+        "reasoningOutput": 11271,
+        "total": 1516446
+      },
+      "observable": {
+        "commentary": 10,
+        "repeatedPairs": 0,
+        "compactions": 0,
+        "reworkFingerprints": 0,
+        "scopeArtifactMentions": 0
+      },
+      "routes": {
+        "ao": 0,
+        "calibration": 1,
+        "calibrationReferenceLoads": 5,
+        "decisionCapsules": 1,
+        "advisorNativeRoles": 2,
+        "collaborationWaits": 7
+      },
+      "roleSessions": [
+        {
+          "role": "sol_advisor_high",
+          "model": "gpt-5.6-sol",
+          "reasoningEffort": "max",
+          "sandboxPolicy": "workspace-write"
+        },
+        {
+          "role": "sol_advisor_advisor",
+          "model": "gpt-5.6-sol",
+          "reasoningEffort": "max",
+          "sandboxPolicy": "workspace-write"
+        }
+      ],
+      "protocolDeviations": [
+        "advisor_skill_truncated_then_read_explicitly",
+        "advisor_requested_read_only_but_host_broadened"
+      ],
+      "promptSha256": "72c46b6ad74857a8967b7c2fe39cf621ad74653636c4067206ec530bc84862f7",
+      "finalDiffSha256": "c3143a027684da7625e284f6e1d5c39e3a18005687ef51554b3728958d93ea74"
+    },
+    {
+      "repetition": 2,
+      "runId": "20260813T092435Z-3226a93e",
+      "orderIndex": 3,
+      "arm": "C0-A0",
+      "passed": true,
+      "criticalFailures": [],
+      "changedPaths": [
+        "src/wgcna_worker.R"
+      ],
+      "wallSeconds": 81.522,
+      "timeToFirstEffectiveEditSeconds": 48.802,
+      "tokens": {
+        "input": 124309,
+        "cachedInput": 80896,
+        "output": 2152,
+        "reasoningOutput": 915,
+        "total": 126461
+      },
+      "observable": {
+        "commentary": 4,
+        "repeatedPairs": 0,
+        "compactions": 0,
+        "reworkFingerprints": 0,
+        "scopeArtifactMentions": 0
+      },
+      "routes": {
+        "ao": 0,
+        "calibration": 0,
+        "calibrationReferenceLoads": 0,
+        "decisionCapsules": 0,
+        "advisorNativeRoles": 0,
+        "collaborationWaits": 0
+      },
+      "roleSessions": [],
+      "protocolDeviations": [],
+      "promptSha256": "dd121aa30814bea5ee3eb4709796eb443b81823114c16426e824d338b87aa2a7",
+      "finalDiffSha256": "893d00f72a293e9b5b0125c0d048510d2a33ae74ebbe7dd33f7d5fdf36905737"
+    },
+    {
+      "repetition": 3,
+      "runId": "20260813T095041Z-5f097bda",
+      "orderIndex": 0,
+      "arm": "C0-A1",
+      "passed": true,
+      "criticalFailures": [],
+      "changedPaths": [
+        "src/wgcna_worker.R"
+      ],
+      "wallSeconds": 478.219,
+      "timeToFirstEffectiveEditSeconds": 159.756,
+      "tokens": {
+        "input": 1114209,
+        "cachedInput": 980992,
+        "output": 13614,
+        "reasoningOutput": 5222,
+        "total": 1127823
+      },
+      "observable": {
+        "commentary": 8,
+        "repeatedPairs": 0,
+        "compactions": 0,
+        "reworkFingerprints": 0,
+        "scopeArtifactMentions": 0
+      },
+      "routes": {
+        "ao": 0,
+        "calibration": 0,
+        "calibrationReferenceLoads": 0,
+        "decisionCapsules": 0,
+        "advisorNativeRoles": 2,
+        "collaborationWaits": 5
+      },
+      "roleSessions": [
+        {
+          "role": "sol_advisor_routine",
+          "model": "gpt-5.6-sol",
+          "reasoningEffort": "max",
+          "sandboxPolicy": "workspace-write"
+        },
+        {
+          "role": "sol_advisor_advisor",
+          "model": "gpt-5.6-sol",
+          "reasoningEffort": "max",
+          "sandboxPolicy": "workspace-write"
+        }
+      ],
+      "protocolDeviations": [
+        "advisor_skill_truncated_then_read_explicitly",
+        "advisor_requested_read_only_but_host_broadened"
+      ],
+      "promptSha256": "810f08a7d2c0de2af4abd0c1694a97f01c7666407862e2f7a2efa7ed0f506884",
+      "finalDiffSha256": "bce33793ef8f88aa5e9787ccbc47d657f013d8912a0b06d303321ac81d205872"
+    },
+    {
+      "repetition": 3,
+      "runId": "20260813T095041Z-5f097bda",
+      "orderIndex": 1,
+      "arm": "C0-A0",
+      "passed": true,
+      "criticalFailures": [],
+      "changedPaths": [
+        "src/wgcna_worker.R"
+      ],
+      "wallSeconds": 75.624,
+      "timeToFirstEffectiveEditSeconds": 40.245,
+      "tokens": {
+        "input": 118242,
+        "cachedInput": 68608,
+        "output": 1793,
+        "reasoningOutput": 736,
+        "total": 120035
+      },
+      "observable": {
+        "commentary": 4,
+        "repeatedPairs": 0,
+        "compactions": 0,
+        "reworkFingerprints": 0,
+        "scopeArtifactMentions": 0
+      },
+      "routes": {
+        "ao": 0,
+        "calibration": 0,
+        "calibrationReferenceLoads": 0,
+        "decisionCapsules": 0,
+        "advisorNativeRoles": 0,
+        "collaborationWaits": 0
+      },
+      "roleSessions": [],
+      "protocolDeviations": [],
+      "promptSha256": "dd121aa30814bea5ee3eb4709796eb443b81823114c16426e824d338b87aa2a7",
+      "finalDiffSha256": "48cf806705e915c1305b63d13ba8eb14841b14eedefe76152b2be5eab5d5a309"
+    },
+    {
+      "repetition": 3,
+      "runId": "20260813T095041Z-5f097bda",
+      "orderIndex": 2,
+      "arm": "C1-A1",
+      "passed": true,
+      "criticalFailures": [],
+      "changedPaths": [
+        "src/wgcna_worker.R"
+      ],
+      "wallSeconds": 532.69,
+      "timeToFirstEffectiveEditSeconds": 245.337,
+      "tokens": {
+        "input": 1385915,
+        "cachedInput": 1236480,
+        "output": 17900,
+        "reasoningOutput": 8034,
+        "total": 1403815
+      },
+      "observable": {
+        "commentary": 9,
+        "repeatedPairs": 0,
+        "compactions": 0,
+        "reworkFingerprints": 0,
+        "scopeArtifactMentions": 0
+      },
+      "routes": {
+        "ao": 0,
+        "calibration": 1,
+        "calibrationReferenceLoads": 4,
+        "decisionCapsules": 1,
+        "advisorNativeRoles": 2,
+        "collaborationWaits": 5
+      },
+      "roleSessions": [
+        {
+          "role": "sol_advisor_high",
+          "model": "gpt-5.6-sol",
+          "reasoningEffort": "max",
+          "sandboxPolicy": "workspace-write"
+        },
+        {
+          "role": "sol_advisor_advisor",
+          "model": "gpt-5.6-sol",
+          "reasoningEffort": "max",
+          "sandboxPolicy": "workspace-write"
+        }
+      ],
+      "protocolDeviations": [
+        "advisor_skill_truncated_then_read_explicitly",
+        "advisor_requested_read_only_but_host_broadened"
+      ],
+      "promptSha256": "72c46b6ad74857a8967b7c2fe39cf621ad74653636c4067206ec530bc84862f7",
+      "finalDiffSha256": "2b487383633fbdafc7e64d735af24ceb9995d0b5c00a19168a5d15897b4d98b1"
+    },
+    {
+      "repetition": 3,
+      "runId": "20260813T095041Z-5f097bda",
+      "orderIndex": 3,
+      "arm": "C1-A0",
+      "passed": true,
+      "criticalFailures": [],
+      "changedPaths": [
+        "src/wgcna_worker.R"
+      ],
+      "wallSeconds": 124.652,
+      "timeToFirstEffectiveEditSeconds": 75.922,
+      "tokens": {
+        "input": 177469,
+        "cachedInput": 114176,
+        "output": 3295,
+        "reasoningOutput": 1351,
+        "total": 180764
+      },
+      "observable": {
+        "commentary": 5,
+        "repeatedPairs": 0,
+        "compactions": 0,
+        "reworkFingerprints": 0,
+        "scopeArtifactMentions": 0
+      },
+      "routes": {
+        "ao": 0,
+        "calibration": 1,
+        "calibrationReferenceLoads": 4,
+        "decisionCapsules": 1,
+        "advisorNativeRoles": 0,
+        "collaborationWaits": 0
+      },
+      "roleSessions": [],
+      "protocolDeviations": [],
+      "promptSha256": "2331f104d5828ac67c9c57939fa1c8c8ead3d44da3b5c361e576ca0cf5a790af",
+      "finalDiffSha256": "520ef090eea3c39330a928cffbba4f33f418365b439643d9ee71c3c90c047282"
+    }
+  ]
+}

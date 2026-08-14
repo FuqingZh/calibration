@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "registeredCalibrationCommit": "bcc6ad6e82096c015e2c3b39dae0ec5a32b86257",
+  "currentArmSourceSha256": "ea436b1ee74de4e0299a21da7bbdda89a8f9816082a7b4b8ea8142815da54faa",
+  "candidateArmSourceSha256": "c1d1b4016ebfbbd01019ac36ed70f5efa30c48c73731de20f7056cbd068c7ca1",
+  "calibrationSkillTree": "b5e2e4ff050c3fb51bd53253e01f03215d9d387c",
+  "fixtureSha256": "367f0681759671c8a017a5cb9b6077bde3ea7af6b42517b3bb450711825a3145",
+  "solAdvisor": {
+    "repository": "https://github.com/DannyMac180/sol-advisor",
+    "commit": "676d200733ebd57caf1270ba94d892c95e9f8aee",
+    "version": "0.5.0"
+  },
+  "codexCli": {
+    "version": "0.147.0",
+    "requestedModel": "gpt-5.6-sol",
+    "requestedReasoningEffort": "max"
+  },
+  "bun": {
+    "version": "1.3.13",
+    "linuxX64ZipSha256": "79c0771fa8b92c33aae41e15a0e0d307ea99d0e2f00317c71c6c53237a78e25a"
+  },
+  "smokeOrder": [
+    "C0-A0",
+    "C1-A1",
+    "C1-A0",
+    "C0-A1"
+  ],
+  "arms": {
+    "C0-A0": {
+      "calibration": "arms/C0-current.AGENTS.md",
+      "advisor": false
+    },
+    "C1-A0": {
+      "calibration": "arms/C1-cal-min.AGENTS.md",
+      "advisor": false
+    },
+    "C0-A1": {
+      "calibration": "arms/C0-current.AGENTS.md",
+      "advisor": true
+    },
+    "C1-A1": {
+      "calibration": "arms/C1-cal-min.AGENTS.md",
+      "advisor": true
+    }
+  }
+}

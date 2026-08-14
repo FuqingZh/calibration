@@ -16,7 +16,11 @@ claim general learning-outcome improvement.
 The bounded review-convergence routing v2.3 increment clarifies a portable
 contract only and makes no behavioral-improvement claim. The bounded CAL-1
 containment public contract is delivered without a behavioral-improvement
-claim. A future evaluation is not an active phase. Upstream systemd containment
+claim. The bounded Sol Advisor and Calibration ablation is complete: it rejects
+the tested mandatory CAL-MIN route and default Advisor use for a clear local
+repair without changing installed global routing. The compact diagnostic-
+suppression default is accepted from a bounded same-model W07 comparison; it
+adds no general correctness or efficiency claim. Upstream systemd containment
 remains a proposal rather than current AO behavior.
 
 ## Public Architecture
@@ -45,6 +49,8 @@ back to `$HOME/.config/calibration/AGENTS.md`.
 | Repository capability and delivery placement | `../references/engineering/discipline/harness.md` |
 | Completion and external-result evidence | `../references/engineering/discipline/verification.md` |
 | Agent and workflow comparison | `../references/engineering/discipline/evaluation.md` |
+| Sol Advisor and Calibration ablation | `../evaluations/sol-advisor-calibration-ablation/results.md` |
+| Diagnostic suppression policy | `decisions/2026-08-14-diagnostic-suppression-policy.md` |
 | Teach adaptation evidence | `decisions/2026-08-13-teach-adaptation-evaluation.md` |
 | Project docs architecture | `../references/engineering/docs/workflow/project_docs_architecture/20260805-v1.1-project-docs-architecture.md` |
 | Durable implementation-plan contract | `../references/engineering/docs/document-types/implementation-plan.md` |
@@ -127,8 +133,18 @@ upstream Desktop directly.
   plan contract.
 - Public AO guidance defines portable integration, but current-host operation
   requires rendered private authority and representative host readback.
-- Detailed debugging, verification, harness, and evaluation layers still need
-  representative ablation evidence before any consolidation.
+- One Proteomics WGCNA event-chain audit identifies repeated replanning,
+  post-compaction decision loss, and scope churn as the leading causes of a
+  slow turn; AO performed only one read-and-fallback route, and Calibration was
+  explicitly routed once. This is an actionable finding, not causal ablation.
+- The completed same-model ablation found no local-repair benefit from default
+  Sol Advisor use or the tested CAL-MIN bundle. It does not isolate a shorter
+  AO safety kernel from mandatory Calibration routing, establish Advisor value
+  for consequential work, or support a Sol-to-Luna quality claim.
+- The W07 comparison found no correctness difference between the old and new
+  diagnostic-suppression wording. Its lower candidate token and wall-time
+  medians are bounded efficiency evidence from one small Python fixture, not a
+  general model or multi-language result.
 
 ## Historical Records
 

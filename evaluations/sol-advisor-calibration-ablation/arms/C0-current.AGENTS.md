@@ -17,14 +17,6 @@ repository-local policy explicitly requires it. Prefer configured repository
 tools over a universal language checklist. If a required check cannot be found
 or run, report the exact gap and residual risk rather than silently skipping it.
 
-Do not silence or weaken required diagnostics for first-party code merely to
-pass a check; fix first-party code and interfaces. Contain external, generated,
-vendored, or checker gaps with a typed adapter, stub, wrapper, or
-repository-owned exclusion. Use a source-level suppression only when no such
-boundary can express a demonstrably valid contract, naming the exact diagnostic
-and evidence. Prohibit blanket and file-, module-, or project-wide weakening,
-and keep exceptions mechanically auditable.
-
 When a diagnosis depends on host state outside the current sandbox or process
 context, treat sandbox-visible absence or mismatch as a hypothesis, not a host
 fact. Verify the relevant path, service, process, credential, or configuration

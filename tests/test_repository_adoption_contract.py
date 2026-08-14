@@ -795,7 +795,8 @@ def test_docs_restore_stable_authority_and_historical_navigation() -> None:
     assert "stable maintenance mode" in docs
     assert "CAL-1 containment public contract is delivered" in docs
     assert "without a behavioral-improvement claim" in docs
-    assert "future evaluation is not an active phase" in docs
+    assert "Sol Advisor and Calibration ablation is complete" in docs
+    assert "rejects the tested mandatory CAL-MIN route" in docs
     assert "systemd containment remains a proposal" in docs
     assert "Five-phase convergence result" in docs
     assert "## Open Evidence Gaps" in docs

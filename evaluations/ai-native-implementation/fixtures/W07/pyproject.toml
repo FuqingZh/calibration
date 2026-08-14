@@ -1,0 +1,8 @@
+[tool.pyright]
+include = ["src", "tests"]
+extraPaths = ["vendor"]
+stubPath = "typings"
+pythonVersion = "3.13"
+typeCheckingMode = "strict"
+reportUnusedFunction = "none"
+reportUnnecessaryTypeIgnoreComment = "error"

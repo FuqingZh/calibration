@@ -532,6 +532,29 @@ def test_shared_ruff_guidance_preserves_local_authority_and_defines_fallback() -
     assert "`S`, `ANN`, `D`, `PL`, `ALL`, or preview rules" in harness
 
 
+def test_diagnostic_suppression_policy_preserves_first_party_contracts() -> None:
+    template = " ".join(
+        (REPOSITORY_ROOT / "codex/AGENTS.md.template")
+        .read_text(encoding="utf-8")
+        .split()
+    )
+    harness = " ".join(
+        (REPOSITORY_ROOT / "references/engineering/discipline/harness.md")
+        .read_text(encoding="utf-8")
+        .split()
+    )
+
+    assert "Do not silence or weaken required diagnostics for first-party code" in (
+        template
+    )
+    assert "typed adapter, stub, wrapper, or repository-owned exclusion" in template
+    assert "source-level suppression only when no such boundary" in template
+    assert "blanket and file-, module-, or project-wide weakening" in template
+    assert "Classify a diagnostic by the owner" in harness
+    assert "Do not hide a first-party failure on the same line" in harness
+    assert "prevent unexplained growth" in harness
+
+
 def test_delivery_loop_classifies_failures_before_harness_changes() -> None:
     harness = (
         REPOSITORY_ROOT / "references/engineering/discipline/harness.md"
@@ -560,6 +583,18 @@ def test_evaluation_reserves_broad_ab_for_important_claims() -> None:
 
     assert "## Evaluation Proportionality" in evaluation
     assert "Do not start a broad model-backed A/B" in evaluation
+
+
+def test_evaluation_separates_context_advisor_and_model_routing() -> None:
+    evaluation = (
+        REPOSITORY_ROOT / "references/engineering/discipline/evaluation.md"
+    ).read_text(encoding="utf-8")
+
+    assert "### Separate Context, Advisor, And Model Effects" in evaluation
+    assert "do not change always-loaded context and executor model" in evaluation
+    assert "Count Advisor, executor, and subagent latency and tokens" in evaluation
+    assert "time to first effective edit" in evaluation
+    assert "Never request or score hidden chain-of-thought" in evaluation
 
 
 def test_human_authority_boundary_is_not_repeated_as_a_tutorial() -> None:
