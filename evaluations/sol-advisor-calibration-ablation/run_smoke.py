@@ -140,8 +140,8 @@ def clean_environment(codex_home: Path, bun_bin: Path) -> dict[str, str]:
     ]
     values = {
         "HOME": str(Path.home()),
-        "USER": os.environ.get("USER", "fqzhang"),
-        "LOGNAME": os.environ.get("LOGNAME", os.environ.get("USER", "fqzhang")),
+        "USER": os.environ.get("USER", "user"),
+        "LOGNAME": os.environ.get("LOGNAME", os.environ.get("USER", "user")),
         "LANG": "C.UTF-8",
         "PATH": ":".join(dict.fromkeys(path_parts)),
         "CODEX_HOME": str(codex_home),
