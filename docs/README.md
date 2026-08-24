@@ -4,9 +4,12 @@ This directory records calibration decisions, evaluations, historical plans,
 and portable integration guidance. Reusable cross-project engineering guidance
 lives under `../references/engineering/`.
 
-Calibration is in stable maintenance mode. The proportional-validation plan is
-the current bounded validation slice and is layered on the ongoing project-docs
-architecture convergence; neither reopens the completed runtime or AO
+Calibration is in stable maintenance mode. The progressive-validation-selection
+v2.0 plan is the current planned validation slice. It follows the completed
+v1.0 proportional-wording increment and proposes a frozen behavioral
+evaluation, audited runtime protocol, and repository-by-repository migration;
+implementation has not started. It is layered on the ongoing project-docs
+architecture convergence and does not reopen the completed runtime or AO
 implementation phases. The completed bounded v2.4 closeout-skill increment
 adds an explicitly invoked first-party closeout contract and makes no
 comparative improvement claim.
@@ -55,7 +58,7 @@ back to `$HOME/.config/calibration/AGENTS.md`.
 | Project docs architecture | `../references/engineering/docs/workflow/project_docs_architecture/20260805-v1.1-project-docs-architecture.md` |
 | Durable implementation-plan contract | `../references/engineering/docs/document-types/implementation-plan.md` |
 | Project docs architecture convergence plan | `implementation-plans/20260805-v1.0-project-docs-architecture-convergence-implementation-plan.md` |
-| Proportional validation selection plan | `implementation-plans/20260807-v1.0-proportional-validation-selection-implementation-plan.md` |
+| Progressive validation selection plan | `implementation-plans/20260824-v2.0-progressive-validation-selection-implementation-plan.md` |
 | Portable AO integration | `runbooks/agent-orchestrator-review-continuation.md` |
 | Native AO delivery and auto-merge boundary | `decisions/2026-07-29-ao-native-delivery-convergence.md` |
 | Current AI-native direction | `decisions/2026-07-27-ai-native-calibration-review.md` |
@@ -168,6 +171,7 @@ evidence remains in its owning public decisions.
 - `decisions/2026-07-21-harness-successor-evaluation-closeout.md`
 - `decisions/2026-07-27-ai-native-calibration-evaluation-closeout.md`
 - `decisions/2026-07-27-ai-native-writable-implementation-evaluation-closeout.md`
+- `implementation-plans/20260807-v1.0-proportional-validation-selection-implementation-plan.md`
 
 ### Delivery And Orchestration
 
