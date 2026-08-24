@@ -104,8 +104,25 @@ The first recovery C01 did not meet that contract: under `network=false`, its
 AF_UNIX broker transport was denied before a broker event, despite Codex and
 workspace verification exiting zero. It correctly ended
 `blocked_by_sandbox_permission_error`; no smoke slot started and it supplies no
-candidate comparison result. The fresh smoke remains blocked until the FIFO
-recovery and a valid replacement C01 complete.
+candidate comparison result. That early invalid evidence is retained only as
+diagnostic history.
+
+The FIFO recovery controller commit
+`03830f7bf7a78dd730320109e348578c61c4db79` produced a valid replacement C01:
+`verified=true`, result SHA-256
+`23f9ac2b87d606f5313408e3b5d781e73e4533dc16565508f28b80e000132d0a`.
+It released the 28-slot smoke, which completed 28/28 slots with zero failed.
+`smoke-status` returned `reject` for deterministic critical failure; the public
+summary is `decision=reject`, `reason=deterministic critical failure`,
+`runs=28`. The candidate had 7 valid and 7 critical runs; the baseline had 4
+valid and 9 critical runs with `comparable_overvalidation=1`.
+
+Candidate improvements were P01, P02, P05, and P10; regressions were P03 and
+P04. Both arms were valid on P07, P09, and H04, and critical on P06, P08, H01,
+H02, and H03. Critical categories cover execution, workspace safety,
+required-check/proof coverage, and final-answer contract failures. Partial gains
+do not offset deterministic critical failures. STOP: no repeats, judges,
+activation, or migration are authorized.
 
 Run one smoke repetition for each of the 14 comparison cases only. Continue
 only if both arms preserve authority and workspace safety and satisfy

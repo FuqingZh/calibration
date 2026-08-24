@@ -9,12 +9,12 @@ v2.0 plan is the current validation slice. Its provenance, inert protocol,
 frozen evaluation baseline, and S4 activation candidate are implemented. Its
 first controlled-comparison smoke is invalid because a shared executor-sandbox
 failure prevented broker evidence; the first recovery C01 then failed closed on
-the canonical broker path, so no replacement smoke slot started. Neither result
-evaluates or rejects the candidate. The current recovery replaces the blocked
-AF_UNIX broker transport with runner-private dual FIFOs while retaining the
-`network=false` permission profile. That boundary is implemented and under its
-fresh exact-head gate; C01 and smoke remain pending, with no live-success claim.
-Downstream migration is also pending. It follows the completed v1.0
+the canonical broker path, so no replacement smoke slot started. Those two
+results remain invalid history, not candidate evidence. The FIFO recovery then
+passed live C01 and a 28/28 smoke, but `smoke-status` rejected the candidate for
+deterministic critical failures in both arms; partial targeted gains do not
+offset critical failures. Repeats, judges, activation, and downstream migration
+are stopped and unauthorized. It follows the completed v1.0
 proportional-wording increment and is layered on the ongoing project-docs
 architecture convergence and does not reopen the completed runtime or AO
 implementation phases. The completed bounded v2.4 closeout-skill increment

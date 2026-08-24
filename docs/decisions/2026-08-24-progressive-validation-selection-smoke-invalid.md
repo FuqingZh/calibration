@@ -1,7 +1,7 @@
-# Progressive Validation Selection First Smoke And First Recovery C01 Are Invalid
+# Progressive Validation Selection Early Invalid Evidence And Valid Smoke Rejection
 
 Date: 2026-08-24
-Status: invalid evidence; FIFO recovery required before comparison
+Status: reject; early invalid evidence retained
 
 ## Context
 
@@ -45,7 +45,7 @@ Under the exact outer `bwrap` and profile, a no-model probe instead completed a
 runner-private runtime read-only-bind request/response FIFO round trip with its
 lock, while `/output` and TCP remained denied.
 
-## Decision
+## Early Invalid Evidence And FIFO Recovery
 
 Preserve both batches as **invalid**, not as a candidate rejection. Do not run
 repeats, generate judge packets, or obtain blind judgments from either result.
@@ -87,6 +87,32 @@ named `network=false` profile, model hard timeouts, output isolation, and the
 inner networkless check sandbox. Recovery does not change prompts, skills,
 cases, fixtures, expected outcomes, or the candidate comparison contract.
 
+## Valid Smoke Result And Decision
+
+The FIFO recovery controller commit was
+`03830f7bf7a78dd730320109e348578c61c4db79`. Its C01 live canary is
+`verified=true`, with result SHA-256
+`23f9ac2b87d606f5313408e3b5d781e73e4533dc16565508f28b80e000132d0a`.
+It released a 28-slot smoke: all 28 completed, zero failed, and
+`smoke-status` returned `reject` for deterministic critical failure. The public
+summary decision is `reject`, reason `deterministic critical failure`, with
+`runs=28`.
+
+| Arm | Valid | Critical | Other comparable result |
+| --- | ---: | ---: | --- |
+| Candidate | 7 | 7 | — |
+| Baseline | 4 | 9 | `comparable_overvalidation=1` |
+
+The candidate improved P01, P02, P05, and P10, but regressed P03 and P04.
+Both arms were valid on P07, P09, and H04; both were critical on P06, P08,
+H01, H02, and H03. Critical outcomes include execution, workspace-safety,
+required-check/proof-coverage, and final-answer contract failures. Partial
+gains do not offset any deterministic critical failure.
+
+Therefore reject the candidate. STOP: do not run repeats or judges; do not
+activate, canary, roll out, or migrate the candidate. The two earlier batches
+remain invalid diagnostic evidence and are not reinterpreted as this rejection.
+
 ## Alternatives Considered
 
 - Treat the first 28 critical outcomes as a candidate rejection. Rejected
@@ -101,15 +127,8 @@ cases, fixtures, expected outcomes, or the candidate comparison contract.
   networkless `bwrap` remains required; only the incompatible socket transport
   is replaced.
 
-## Consequences And Recovery
+## Consequences
 
-No candidate activation, rollback, canary, or rollout decision follows from
-either invalid result. The first-batch ledger and C01 result remain retained as
-invalid diagnostic evidence only.
-
-Implement the FIFO boundary, create a new controller commit and fresh frozen
-run root, and run the temporary FIFO preflight plus real C01. Only a valid C01
-may release a fresh 28-run smoke; only a valid fresh smoke may enter the
-predeclared repeat and judge stages. If that recovery exposes another
-fail-closed boundary, record it as a further invalid recovery result and define
-the next narrow corrective boundary without reinterpreting prior invalid runs.
+The first-batch ledger and failed first-recovery C01 remain invalid diagnostic
+evidence only. The later valid smoke rejects the candidate; no repeat, judge,
+activation, real-repository canary, rollout, or migration is authorized.
