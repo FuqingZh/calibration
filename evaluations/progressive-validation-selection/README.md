@@ -21,26 +21,43 @@ prepared workspace is writable only at the case's pre-existing
 `allowed_changes` files; `.git` and every other original fixture file are
 read-only. The trusted Codex process receives a minimal root containing only
 system and pinned runtime files, its workspace, isolated `CODEX_HOME`, output
-directory, and a read-only runner broker endpoint. Model-generated commands use
-a fixed named permission profile that denies all reads below `/output` and
-disables network access; that named profile owns generic executor-command
-network denial. The shell wrapper preserves filesystem, environment, and
-read-only broker-endpoint isolation but does not add `bwrap --unshare-net`. A
-runner-owned no-model preflight directly probes named-profile denial, including
-for a direct executable, rather than assuming every command happens to use a
-shell. The source repository, evaluation cases, rubric, and user home are
-absent. There is no unconfined fallback: a missing boundary, a dirty input
-workspace, an output path inside the workspace, or a missing allowed target
-invalidates the run.
+directory, and a runner-private runtime read-only bind containing dual broker
+FIFOs. Model-generated commands use a fixed named permission profile with
+`network=false` that denies all reads below `/output`; that profile remains the
+generic executor-command network boundary. The shell wrapper preserves
+filesystem, environment, and FIFO isolation but does not add
+`bwrap --unshare-net`. A runner-owned no-model preflight directly probes
+named-profile denial, including for a direct executable, rather than assuming
+every command happens to use a shell. The source repository, evaluation cases,
+rubric, and user home are absent. There is no unconfined fallback: a missing
+boundary, a dirty input workspace, an output path inside the workspace, or a
+missing allowed target invalidates the run.
 
-PATH shims send an exact candidate command to a runner-owned broker. The broker
-does not trust a caller-supplied family, identity, working directory, or exit
-status. It selects the fixed case and workspace itself, executes a configured
-canonical command inside its own fresh `bwrap --unshare-net` check sandbox, and
-records the real exit in runner memory. A direct socket request can only trigger
-that real check. Every broker event must match exactly one runner-captured raw
-command, and every executed raw alias must match exactly one broker event;
-missing, extra, reordered, bypassed, or ambiguous evidence invalidates the run.
+PATH shims send an exact candidate command through a runner-owned dual-FIFO
+broker transport. The request FIFO is executor write-only and the response FIFO
+is executor read-only; an advisory transaction lock serializes cooperating shim
+pairs. Each single-write request is at most `PIPE_BUF`; every response carries
+`protocol_version` and `request_id` and is bounded by size and timeout limits.
+Because the response FIFO must be readable by the executor shim under the same
+UID, a malicious executor can steal a response and cause a request-ID mismatch
+or timeout; this fails closed as harness-invalid/DoS. Response writes remain
+denied by mode `0400` and the read-only bind. For every accepted response, the
+runner generates a random 64-hex receipt; only after fully validating that
+response does the shim emit the receipt. The oracle matches runner-memory
+receipts to actual aliases in order, without placing a token in the public
+result. A stolen response therefore lacks its receipt and is harness-invalid
+even if its error code collides with a legitimate nonzero exit. The broker does
+not trust a
+caller-supplied family, identity, working directory, or exit status. It selects
+the fixed case and workspace itself, executes at most the configured canonical
+command inside its own fresh `bwrap --unshare-net` check sandbox, and records
+the real exit in runner memory. An executor can bypass the advisory lock and
+directly write an exact canonical request, which can execute that real fixed
+check and create a runner event. It cannot forge a valid reconciled result or
+event: every runner-memory broker event must match exactly one runner-captured
+raw command, and every executed raw alias must match exactly one broker event;
+missing, extra, reordered, bypassed, ambiguous, or unmatched raw/event evidence
+invalidates the run.
 
 For shell compounds, the oracle retains operators and records only children
 that their `&&`, `||`, or `;` control flow actually executes. Broker events
@@ -61,11 +78,13 @@ scorecards, contamination records, and the bounded decision.
 
 The Codex controller process retains the authentication file needed to start a
 turn. Model-generated commands run only under the named permission profile
-`/output=deny` with network disabled. Their shell wrapper retains filesystem,
-environment, and broker isolation without an additional `bwrap --unshare-net`
+`/output=deny` with `network=false`. Their shell wrapper retains filesystem,
+environment, and FIFO isolation without an additional `bwrap --unshare-net`
 boundary. This does not claim the outer Codex process has no network access or
-cannot read its authentication material. C01 separately proves the actual
-Codex command-tool, shell-wrapper, and broker path; it does not replace the
+cannot read its authentication material. Before every slot, a temporary broker
+FIFO round trip must finish with zero retained events and zero errors, then its
+transport is closed and recreated fresh. C01 separately proves the actual Codex
+command-tool, shell-wrapper, FIFO, and broker path; it does not replace the
 runner's no-model direct-executable permission-profile preflight.
 
 ## Run protocol
@@ -75,11 +94,18 @@ and a fresh workspace and `CODEX_HOME` for both arms. Counterbalance arm order.
 Before the 14-case comparison begins, run the independent live canary C01 once
 from the separately frozen controller source. C01 is a real `codex exec` turn,
 not a no-model permission-profile probe: it must run its one broker-normalized
-shell check with exit zero, leave the fixture unchanged, and report
-`VERIFICATION_STATUS: verified_ready`. Its private ledger belongs under the run
-root's `canary/` directory. A missing or failed C01 proof blocks every smoke
-slot; C01 is not an arm, is not part of `case_ids`, and does not contribute to
-the 14x2 smoke or repeated-comparison metrics.
+shell check through the actual FIFO path with exit zero, leave the fixture
+unchanged, and report `VERIFICATION_STATUS: verified_ready`. Its private ledger
+belongs under the run root's `canary/` directory. A missing or failed C01 proof
+blocks every smoke slot; C01 is not an arm, is not part of `case_ids`, and does
+not contribute to the 14x2 smoke or repeated-comparison metrics.
+
+The first recovery C01 did not meet that contract: under `network=false`, its
+AF_UNIX broker transport was denied before a broker event, despite Codex and
+workspace verification exiting zero. It correctly ended
+`blocked_by_sandbox_permission_error`; no smoke slot started and it supplies no
+candidate comparison result. The fresh smoke remains blocked until the FIFO
+recovery and a valid replacement C01 complete.
 
 Run one smoke repetition for each of the 14 comparison cases only. Continue
 only if both arms preserve authority and workspace safety and satisfy

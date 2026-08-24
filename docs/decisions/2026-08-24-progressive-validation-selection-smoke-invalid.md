@@ -1,7 +1,7 @@
-# Progressive Validation Selection First Smoke Is Invalid
+# Progressive Validation Selection First Smoke And First Recovery C01 Are Invalid
 
 Date: 2026-08-24
-Status: invalid evidence; recovery required before comparison
+Status: invalid evidence; FIFO recovery required before comparison
 
 ## Context
 
@@ -17,65 +17,99 @@ zero failed. However, every public result projection has `valid=false`; each
 arm has 14 critical runs; every trajectory contains
 `bwrap: loopback: Failed to create NETLINK_ROUTE socket: Operation not
 permitted`; and every run has zero broker events. The aggregate elapsed time is
-`2280.179936625529` seconds.
+`2280.179936625529` seconds. The smoke status presentation as `reject` is
+therefore incorrect: the shared executor failure invalidates the evidence before
+it can evaluate either arm.
 
-The smoke status currently presents this as `reject`. That presentation is
-incorrect: the shared executor failure invalidates the public harness evidence
-before it can evaluate either arm.
+The first recovery used controller commit
+`5e2f1dc24acd47eb269257a88b3d60096bec372c` and a fresh frozen root. Its
+independent real C01 canary failed closed before any smoke slot started. Codex
+exited `0`, and its workspace verification command exited `0` with no workspace
+change, but the canonical check could not reach the broker: `/broker/bin/bash`
+received `EPERM` while connecting to an AF_UNIX endpoint under the Codex named
+profile with `network=false`. It emitted zero broker events, the oracle was
+invalid, and the final status was `blocked_by_sandbox_permission_error`. The
+private result's SHA-256 is
+`90a8cfc229382c8ef7b0722cebbb19190dcbc2df24c644f3c93986247ec59299`.
+
+This second result proves the C01 gate is effective: it prevented a smoke whose
+canonical command path had not executed. It still supplies no comparison,
+quality, safety, or activation evidence about the candidate.
+
+Version-frozen, no-model exact probes establish the recovery constraint. With
+`network=false`, the profile blocks AF_UNIX `connect`; enabling both
+`network_proxy` and its feature flag still blocks AF_UNIX socket creation, while
+TCP and `/output` remain denied. The current documented Unix-socket allowlist
+does not alter that observed local CLI behavior. Do not relax network controls.
+Under the exact outer `bwrap` and profile, a no-model probe instead completed a
+runner-private runtime read-only-bind request/response FIFO round trip with its
+lock, while `/output` and TCP remained denied.
 
 ## Decision
 
-Preserve the first-batch evidence, but classify it as **invalid**, not as a
-candidate rejection. Do not run repeats, generate judge packets, or obtain
-blind judgments from this batch. It makes no comparison, quality, safety, or
-activation conclusion about the candidate.
+Preserve both batches as **invalid**, not as a candidate rejection. Do not run
+repeats, generate judge packets, or obtain blind judgments from either result.
 
-The root cause is three nested network-isolation layers: the outer executor
-`bwrap`, the Codex named permission profile with `network=false`, and the
-executor shell wrapper's additional `bwrap --unshare-net`. The third layer's
-loopback setup attempts to create a `NETLINK_ROUTE` socket, which the enclosing
-permission sandbox denies. Consequently the command broker never executes and
-zero broker events cannot distinguish baseline from candidate behavior.
+Replace the broker transport with a runner-private dual-FIFO protocol. The
+runner-memory broker event is the sole execution truth. Each request is a
+single writer's record no larger than `PIPE_BUF`; each response carries
+`protocol_version` and `request_id` and is bounded by size and timeout limits.
+An advisory transaction lock serializes cooperating shim request/response
+pairs. The executor has write-only access to the request FIFO and read-only
+access to the response FIFO, both through the runtime read-only bind; it cannot
+supply an exit result. Because the response FIFO must be readable by the
+executor shim under the same UID, a malicious executor can steal a response and
+cause a request-ID mismatch or timeout: fail closed as harness-invalid/DoS.
+Response writes remain denied by mode `0400` and the read-only bind.
+For every accepted response, the runner generates a random 64-hex receipt; only
+after fully validating that response does the shim emit the receipt. The oracle
+matches runner-memory receipts to actual aliases in order, without placing a
+token in the public result. A stolen response therefore lacks its receipt and is
+harness-invalid even if its error code collides with a legitimate nonzero exit;
+the aggregate shell exit remains non-authoritative for child checks.
 
-The corrective boundary is deliberately narrow:
+The broker accepts only exact canonical argv, fixes the case and workspace,
+executes at most that one real fixed check through its inner
+`bwrap --unshare-net`, and records the resulting event in runner memory.
+Reconcile raw command capture and events one-to-one and in order. Missing,
+extra, reordered, bypassed, or ambiguous evidence invalidates the run. An
+executor can bypass the advisory lock and directly write an exact canonical
+request, which can execute the real fixed check and create a runner event; it
+still cannot forge a valid reconciled result or event, because an extra or
+unmatched raw/event pair invalidates the run. It cannot request an arbitrary
+command or invent an exit result.
 
-- Remove only the executor shell wrapper's nested `--unshare-net` boundary.
-- Retain CommandBroker's inner networkless `bwrap`, its output isolation, and
-  its environment and filesystem constraints.
-- Enforce model-command network denial through the already real-machine-tested,
-  version-frozen named permission profile instead of an independent generic
-  shell network namespace.
-- Before every model slot, run profile and shell preflight checks that fail
-  closed. Before a 28-run batch, execute one real Codex command as a live
-  canary.
-- Retain model hard timeouts. Recovery may reuse only a verified completed
-  prefix; it must not reinterpret or repair invalid runs.
-
-The correction must not change prompts, skills, cases, fixtures, expected
-outcomes, or the candidate comparison contract.
+Before every slot, preflight the exact transport with a temporary broker round
+trip that produces zero retained events and zero errors, then close and recreate
+it fresh. C01 must separately demonstrate the actual canonical Codex,
+shell-wrapper, FIFO, and broker path before any smoke slot can start. Retain the
+named `network=false` profile, model hard timeouts, output isolation, and the
+inner networkless check sandbox. Recovery does not change prompts, skills,
+cases, fixtures, expected outcomes, or the candidate comparison contract.
 
 ## Alternatives Considered
 
-- Treat the 28 critical outcomes as a candidate rejection. Rejected because
-  the common sandbox failure happened before broker evidence and invalidates
-  both arms equally.
-- Retry or judge the affected runs. Rejected because the batch is not eligible
-  for downstream comparison stages and retrying would conceal the harness
-  failure.
+- Treat the first 28 critical outcomes as a candidate rejection. Rejected
+  because the common sandbox failure happened before broker evidence and
+  invalidates both arms equally.
+- Treat C01's process exit or clean workspace as a canary success. Rejected
+  because zero broker events prove the canonical check did not execute.
+- Relax `network=false` or enable the network proxy for broker access. Rejected
+  because the exact local probes still deny AF_UNIX and because network denial
+  remains a required model-command boundary.
 - Remove all nested isolation. Rejected because the CommandBroker inner
-  boundary remains a required constraint; only the conflicting shell wrapper
-  network namespace is removed.
+  networkless `bwrap` remains required; only the incompatible socket transport
+  is replaced.
 
 ## Consequences And Recovery
 
 No candidate activation, rollback, canary, or rollout decision follows from
-this smoke. The first-batch ledger remains retained as invalid diagnostic
-evidence only.
+either invalid result. The first-batch ledger and C01 result remain retained as
+invalid diagnostic evidence only.
 
-After the narrow harness repair, create a new controller commit and freeze a
-new run root. Verify the per-slot profile and shell preflights, run the real
-Codex live canary, then start a fresh 28-run smoke. Only a valid fresh smoke may
-enter the predeclared repeat and judge stages.
-
-Reopen this decision only if the live canary or a fail-closed preflight exposes
-another boundary outside the stated shell-wrapper change.
+Implement the FIFO boundary, create a new controller commit and fresh frozen
+run root, and run the temporary FIFO preflight plus real C01. Only a valid C01
+may release a fresh 28-run smoke; only a valid fresh smoke may enter the
+predeclared repeat and judge stages. If that recovery exposes another
+fail-closed boundary, record it as a further invalid recovery result and define
+the next narrow corrective boundary without reinterpreting prior invalid runs.

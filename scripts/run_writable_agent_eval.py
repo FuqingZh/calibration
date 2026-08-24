@@ -7,15 +7,19 @@ import argparse
 import hashlib
 import json
 import os
+import secrets
+import select
 import shlex
 import shutil
+import signal
 import socket
+import stat
 import subprocess
 import sys
 import tempfile
 import threading
 import time
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
@@ -54,8 +58,17 @@ EXIT_STATES = frozenset({"zero", "nonzero", "any"})
 FINAL_STATUSES = frozenset(
     {"verified_ready", "conditionally_ready", "not_yet_verified"}
 )
+BROKER_PIPE_BUF_BYTES = 4096
 BROKER_FRAME_LIMIT_BYTES = 1_048_576
+# The broker retains at most this many bytes across stdout and stderr. Child
+# output uses bounded kernel pipes; the runner never materializes it on disk.
+BROKER_CAPTURE_LIMIT_BYTES = 262_144
+BROKER_MAX_REQUESTS = 64
+BROKER_MAX_EVENTS = 32
+BROKER_MAX_ERRORS = 32
+BROKER_PROCESS_POLL_SECONDS = 0.01
 BROKER_FRAME_TIMEOUT_SECONDS = 5.0
+BROKER_LOCK_TIMEOUT_SECONDS = 5.0
 BROKER_CHECK_TIMEOUT_SECONDS = 120.0
 BOUNDARY_PREFLIGHT_TIMEOUT_SECONDS = 30.0
 MODEL_EXECUTION_TIMEOUT_SECONDS = 900.0
@@ -68,6 +81,30 @@ EXECUTOR_PERMISSION_PROFILE_CONFIG = (
     'filesystem={"/output"="deny"},network={enabled=false}}}'
 )
 EXECUTOR_DEFAULT_PERMISSIONS_CONFIG = 'default_permissions="evaluation_runner"'
+
+
+def _valid_request_id(value: object) -> bool:
+    return (
+        isinstance(value, str)
+        and len(value) == 64
+        and all(character in "0123456789abcdef" for character in value)
+    )
+
+
+def _encode_broker_reply(reply: Mapping[str, object]) -> bytes:
+    """Serialize the exact newline-framed response used for FIFO delivery."""
+    return (json.dumps(reply, separators=(",", ":")) + "\n").encode("utf-8")
+
+
+def _delivery_receipt_line(token: str) -> str:
+    """Return the exact shim line that corroborates an accepted delivery."""
+    return f"CALIBRATION_BROKER_RECEIPT:{token}"
+
+
+def _delivery_receipt_lines(output: str) -> list[str]:
+    """Extract only structured delivery receipts from untrusted aggregate output."""
+    prefix = "CALIBRATION_BROKER_RECEIPT:"
+    return [line for line in output.splitlines() if line.startswith(prefix)]
 
 
 class _PayloadValidator(Protocol):
@@ -107,14 +144,13 @@ class BrokerEvent:
     exit_code: int
     stdout: str
     stderr: str
+    # Kept only in runner memory so the oracle can corroborate shim delivery.
+    # It is deliberately absent from result payloads and broker event mappings.
+    delivery_receipt: str | None = None
 
 
 class CommandBroker:
-    """Accept only canonical check argv and execute them in a fresh inner root.
-
-    The executor cannot write this broker's socket directory.  In particular,
-    callers do not get to supply a family, exit status, cwd, or run identity.
-    """
+    """Execute exact command aliases received through private runner FIFOs."""
 
     def __init__(
         self, case: CaseSpec, workspace: Path, runtime: Path, run_id: str
@@ -123,99 +159,263 @@ class CommandBroker:
         self.workspace = workspace
         self.runtime = runtime
         self.run_id = run_id
-        self.socket_path = runtime / "broker.sock"
+        self.request_path = runtime / "request.fifo"
+        self.response_path = runtime / "response.fifo"
+        self.lock_path = runtime / "broker.lock"
         self.events: list[BrokerEvent] = []
         self.errors: list[str] = []
         self._lock = threading.Lock()
-        self._server: socket.socket | None = None
+        self._request_fd: int | None = None
+        self._response_fd: int | None = None
+        self._request_count = 0
         self._thread: threading.Thread | None = None
         self._stopping = threading.Event()
+        self._process_lock = threading.Lock()
+        self._active_process: subprocess.Popen[bytes] | None = None
 
     def start(self) -> None:
         self._stopping.clear()
-        self._server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        self._server.bind(str(self.socket_path))
-        self._server.listen(8)
-        self._server.settimeout(0.2)
-        self._thread = threading.Thread(target=self._serve, daemon=True)
+        self._create_transport()
+        try:
+            request_fd = os.open(
+                self.request_path,
+                os.O_RDWR | os.O_NONBLOCK | getattr(os, "O_NOFOLLOW", 0),
+            )
+            response_fd = os.open(
+                self.response_path,
+                os.O_RDWR | os.O_NONBLOCK | getattr(os, "O_NOFOLLOW", 0),
+            )
+            pipe_buf = os.fpathconf(request_fd, "PC_PIPE_BUF")
+            if pipe_buf < BROKER_PIPE_BUF_BYTES:
+                raise EvaluationError("broker request FIFO PIPE_BUF is too small")
+            aliases = cast(
+                dict[str, list[list[str]]],
+                (self.case.command_contract or {}).get("aliases", {}),
+            )
+            for commands in aliases.values():
+                for argv in commands:
+                    request = json.dumps(
+                        {"protocol_version": 1, "request_id": "0" * 64, "argv": argv},
+                        separators=(",", ":"),
+                    ).encode("utf-8")
+                    if len(request) + 1 > pipe_buf:
+                        raise EvaluationError(
+                            "canonical broker request exceeds PIPE_BUF"
+                        )
+            self._request_fd = request_fd
+            self._response_fd = response_fd
+            os.chmod(self.request_path, 0o200)
+            os.chmod(self.response_path, 0o400)
+            os.chmod(self.lock_path, 0o400)
+        except (OSError, EvaluationError) as exc:
+            for descriptor in (locals().get("request_fd"), locals().get("response_fd")):
+                if isinstance(descriptor, int):
+                    with suppress(OSError):
+                        os.close(descriptor)
+            self._request_fd = None
+            self._response_fd = None
+            self._remove_transport()
+            raise EvaluationError(f"cannot open broker FIFO transport: {exc}") from exc
+        self._thread = threading.Thread(
+            target=self._serve, args=(request_fd,), daemon=True
+        )
         self._thread.start()
 
     def close(self) -> None:
         self._stopping.set()
-        if self._server is not None:
-            with suppress(OSError):
-                wake = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-                wake.connect(str(self.socket_path))
-                wake.close()
-            self._server.close()
-        if self._thread is not None:
-            self._thread.join(timeout=BROKER_FRAME_TIMEOUT_SECONDS + 1.0)
-            if self._thread.is_alive():
-                self.errors.append("broker server did not stop within deadline")
-        with suppress(FileNotFoundError):
-            self.socket_path.unlink()
+        failure: EvaluationError | None = None
+        try:
+            self._terminate_active_process()
+        except EvaluationError as exc:
+            failure = exc
+        finally:
+            if self._request_fd is not None:
+                with suppress(OSError):
+                    os.close(self._request_fd)
+                self._request_fd = None
+            if self._response_fd is not None:
+                with suppress(OSError):
+                    os.close(self._response_fd)
+                self._response_fd = None
+            if self._thread is not None:
+                self._thread.join(timeout=BROKER_FRAME_TIMEOUT_SECONDS + 1.0)
+                if self._thread.is_alive():
+                    self._record_error("broker server did not stop within deadline")
+                    failure = failure or EvaluationError(
+                        "broker server did not stop within deadline"
+                    )
+                else:
+                    self._thread = None
+            self._remove_transport()
+        if failure is not None:
+            raise failure
 
-    def _serve(self) -> None:
-        assert self._server is not None
+    def _terminate_active_process(self) -> None:
+        with self._process_lock:
+            process = self._active_process
+        if process is None or process.poll() is not None:
+            return
+        self._kill_process_tree(process)
+        try:
+            process.wait(timeout=BROKER_FRAME_TIMEOUT_SECONDS)
+        except subprocess.TimeoutExpired as exc:
+            self._record_error("broker check did not stop within deadline")
+            raise EvaluationError("broker check did not stop within deadline") from exc
+
+    @staticmethod
+    def _kill_process_tree(process: subprocess.Popen[bytes]) -> None:
+        with suppress(ProcessLookupError):
+            os.killpg(process.pid, signal.SIGKILL)
+
+    def _create_transport(self) -> None:
+        for path in (self.request_path, self.response_path, self.lock_path):
+            if path.exists() or path.is_symlink():
+                raise EvaluationError(f"broker transport path already exists: {path}")
+        try:
+            os.mkfifo(self.request_path, 0o600)
+            os.mkfifo(self.response_path, 0o600)
+            descriptor = os.open(
+                self.lock_path,
+                os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0),
+                0o600,
+            )
+            os.close(descriptor)
+            for path, kind in (
+                (self.request_path, stat.S_IFIFO),
+                (self.response_path, stat.S_IFIFO),
+                (self.lock_path, stat.S_IFREG),
+            ):
+                if stat.S_IFMT(os.lstat(path).st_mode) != kind:
+                    raise EvaluationError("broker transport has unsafe file type")
+        except (OSError, EvaluationError) as exc:
+            self._remove_transport()
+            raise EvaluationError(
+                f"cannot create broker FIFO transport: {exc}"
+            ) from exc
+
+    def _remove_transport(self) -> None:
+        for path in (self.request_path, self.response_path, self.lock_path):
+            with suppress(OSError):
+                path.unlink()
+
+    def _serve(self, request_fd: int) -> None:
+        pending = bytearray()
+        deadline: float | None = None
         while not self._stopping.is_set():
             try:
-                client, _ = self._server.accept()
-            except TimeoutError:
-                continue
-            except OSError:
+                readable, _, _ = select.select([request_fd], [], [], 0.2)
+            except (OSError, ValueError):
                 return
-            with client:
+            if not readable:
+                if deadline is not None and time.monotonic() >= deadline:
+                    self._record_error("broker request timed out")
+                    pending.clear()
+                    deadline = None
+                continue
+            try:
+                chunk = os.read(request_fd, BROKER_PIPE_BUF_BYTES)
+            except BlockingIOError:
+                continue
+            if not chunk:
+                continue
+            pending.extend(chunk)
+            deadline = deadline or time.monotonic() + BROKER_FRAME_TIMEOUT_SECONDS
+            if len(pending) > BROKER_PIPE_BUF_BYTES:
+                self._record_error("broker request is too large")
+                pending.clear()
+                deadline = None
+                continue
+            while b"\n" in pending:
+                raw, _, tail = pending.partition(b"\n")
+                pending = bytearray(tail)
+                deadline = (
+                    time.monotonic() + BROKER_FRAME_TIMEOUT_SECONDS if pending else None
+                )
+                self._handle_request(bytes(raw))
+
+    def _handle_request(self, raw: bytes) -> None:
+        request_id: str | None = None
+        try:
+            self._request_count += 1
+            if self._request_count > BROKER_MAX_REQUESTS:
+                self._stopping.set()
+                raise EvaluationError("broker request budget exceeded")
+            request = json.loads(raw.decode("utf-8"))
+            if not isinstance(request, dict):
+                raise ValueError("invalid broker request")
+            request = cast(dict[str, object], request)
+            if set(request) != {
+                "protocol_version",
+                "request_id",
+                "argv",
+            }:
+                raise ValueError("invalid broker request")
+            if request["protocol_version"] != 1:
+                raise ValueError("unsupported broker protocol")
+            if not _valid_request_id(request["request_id"]):
+                raise ValueError("invalid broker request id")
+            request_id = cast(str, request["request_id"])
+            if not isinstance(request["argv"], list):
+                raise ValueError("invalid broker argv")
+            values = cast(list[object], request["argv"])
+            if not values or not all(
+                isinstance(value, str) and value for value in values
+            ):
+                raise ValueError("invalid broker argv")
+            event = self.execute(
+                tuple(cast(str, value) for value in values), request_id
+            )
+            reply: dict[str, object] = {
+                "protocol_version": 1,
+                "request_id": request_id,
+                "accepted": event is not None,
+                "reason": "accepted" if event is not None else "unrecognized",
+            }
+            if event is not None:
+                reply.update(
+                    exit_code=event.exit_code,
+                    stdout=event.stdout,
+                    stderr=event.stderr,
+                    receipt_token=event.delivery_receipt,
+                )
+        except Exception as exc:
+            self._record_error(f"broker request failed: {exc}")
+            reply = {
+                "protocol_version": 1,
+                "request_id": request_id,
+                "accepted": False,
+                "reason": "broker_error",
+            }
+        self._write_reply(reply)
+
+    def _write_reply(self, reply: dict[str, object]) -> None:
+        raw = _encode_broker_reply(reply)
+        if len(raw) > BROKER_FRAME_LIMIT_BYTES:
+            self._record_error("broker response is too large")
+            return
+        if self._response_fd is None:
+            self._record_error("broker response FIFO is unavailable")
+            return
+        try:
+            offset = 0
+            deadline = time.monotonic() + BROKER_FRAME_TIMEOUT_SECONDS
+            while offset < len(raw):
+                if time.monotonic() >= deadline:
+                    raise TimeoutError("broker response timed out")
                 try:
-                    raw = bytearray()
-                    deadline = time.monotonic() + BROKER_FRAME_TIMEOUT_SECONDS
-                    while True:
-                        remaining = deadline - time.monotonic()
-                        if remaining <= 0:
-                            raise ValueError("broker request timed out")
-                        client.settimeout(remaining)
-                        chunk = client.recv(65536)
-                        if not chunk:
-                            break
-                        raw.extend(chunk)
-                        if len(raw) > BROKER_FRAME_LIMIT_BYTES:
-                            raise ValueError("broker request is too large")
-                        if raw.endswith(b"\n"):
-                            break
-                    if not raw:
-                        if self._stopping.is_set():
-                            return
-                        raise ValueError("empty broker request")
-                    request = json.loads(bytes(raw).decode("utf-8"))
-                    if not isinstance(request, dict):
-                        raise ValueError("invalid broker request")
-                    request = cast(dict[str, object], request)
-                    if not isinstance(request.get("argv"), list):
-                        raise ValueError("invalid broker request")
-                    if (
-                        request.get("execution_context", "executor_sandbox")
-                        != "executor_sandbox"
-                    ):
-                        raise ValueError("broker only accepts executor_sandbox")
-                    argv_values = cast(list[object], request["argv"])
-                    if not argv_values or not all(
-                        isinstance(value, str) and value for value in argv_values
-                    ):
-                        raise ValueError("invalid broker argv")
-                    argv = tuple(cast(str, value) for value in argv_values)
-                    event = self.execute(argv)
-                    reply: dict[str, object] = {
-                        "accepted": event is not None,
-                        "reason": "accepted" if event is not None else "unrecognized",
-                    }
-                    if event is not None:
-                        reply["exit_code"] = event.exit_code
-                        reply["stdout"] = event.stdout
-                        reply["stderr"] = event.stderr
-                except Exception as exc:
-                    self.errors.append(f"broker request failed: {exc}")
-                    reply = {"accepted": False, "reason": "broker_error"}
-                with suppress(OSError):
-                    client.sendall((json.dumps(reply) + "\n").encode("utf-8"))
+                    offset += os.write(self._response_fd, raw[offset:])
+                except BlockingIOError:
+                    time.sleep(0.01)
+        except TimeoutError as exc:
+            self._record_error(str(exc))
+        except OSError as exc:
+            self._record_error(f"broker reply failed: {exc}")
+
+    def _record_error(self, message: str) -> None:
+        if len(self.errors) < BROKER_MAX_ERRORS:
+            self.errors.append(message)
+        if len(self.errors) >= BROKER_MAX_ERRORS:
+            self._stopping.set()
 
     def _family(self, argv: tuple[str, ...]) -> str | None:
         if self.case.command_contract is None:
@@ -230,23 +430,53 @@ class CommandBroker:
         ]
         return matches[0] if len(matches) == 1 else None
 
-    def execute(self, argv: tuple[str, ...]) -> BrokerEvent | None:
+    def execute(
+        self, argv: tuple[str, ...], request_id: str = "0" * 64
+    ) -> BrokerEvent | None:
         """Run an exact configured alias; unknown requests are deliberately inert."""
         family = self._family(argv)
         if family is None:
             return None
         with self._lock:
+            if self._stopping.is_set():
+                raise EvaluationError("broker is stopping")
+            if len(self.events) >= BROKER_MAX_EVENTS:
+                self._stopping.set()
+                raise EvaluationError("broker event budget exceeded")
             execution_id = len(self.events) + 1
             try:
-                result = subprocess.run(
-                    self._inner_command(argv),
-                    cwd=self.workspace,
-                    env=_evaluation_env(),
-                    check=False,
-                    capture_output=True,
-                    text=True,
-                    timeout=BROKER_CHECK_TIMEOUT_SECONDS,
-                )
+                with self._process_lock:
+                    if self._stopping.is_set():
+                        raise EvaluationError("broker is stopping")
+                    process = subprocess.Popen(
+                        self._inner_command(argv),
+                        cwd=self.workspace,
+                        env=_evaluation_env(),
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        text=False,
+                        start_new_session=True,
+                    )
+                    self._active_process = process
+                try:
+                    captured_stdout, captured_stderr, exit_code = self._read_capture(
+                        process
+                    )
+                except EvaluationError:
+                    self._kill_process_tree(process)
+                    with suppress(subprocess.TimeoutExpired):
+                        process.wait(timeout=BROKER_FRAME_TIMEOUT_SECONDS)
+                    for pipe in (process.stdout, process.stderr):
+                        if pipe is not None:
+                            pipe.close()
+                    raise
+                finally:
+                    with self._process_lock:
+                        if self._active_process is process:
+                            self._active_process = None
+                for pipe in (process.stdout, process.stderr):
+                    if pipe is not None:
+                        pipe.close()
             except subprocess.TimeoutExpired as exc:
                 raise EvaluationError("broker check timed out") from exc
             event = BrokerEvent(
@@ -256,12 +486,85 @@ class CommandBroker:
                 argv_sha256=hashlib.sha256("\0".join(argv).encode()).hexdigest(),
                 cwd="/workspace",
                 execution_context="executor_sandbox",
-                exit_code=result.returncode,
-                stdout=result.stdout,
-                stderr=result.stderr,
+                exit_code=exit_code,
+                stdout=captured_stdout,
+                stderr=captured_stderr,
+                delivery_receipt=secrets.token_hex(32),
             )
+            if not self._accepted_reply_fits(event, request_id):
+                raise EvaluationError("broker response is too large")
             self.events.append(event)
             return event
+
+    @staticmethod
+    def _accepted_reply_fits(event: BrokerEvent, request_id: str) -> bool:
+        """Check the actual JSON response size before making an event observable."""
+        reply = {
+            "protocol_version": 1,
+            "request_id": request_id,
+            "accepted": True,
+            "reason": "accepted",
+            "exit_code": event.exit_code,
+            "stdout": event.stdout,
+            "stderr": event.stderr,
+            "receipt_token": event.delivery_receipt,
+        }
+        return len(_encode_broker_reply(reply)) <= BROKER_FRAME_LIMIT_BYTES
+
+    def _read_capture(self, process: subprocess.Popen[bytes]) -> tuple[str, str, int]:
+        """Bound the combined executor output while draining both kernel pipes."""
+        if process.stdout is None or process.stderr is None:
+            raise EvaluationError("broker check capture pipes are unavailable")
+        stdout_fd = process.stdout.fileno()
+        stderr_fd = process.stderr.fileno()
+        for descriptor in (stdout_fd, stderr_fd):
+            os.set_blocking(descriptor, False)
+        buffers = {stdout_fd: bytearray(), stderr_fd: bytearray()}
+        open_descriptors = set(buffers)
+        deadline = time.monotonic() + BROKER_CHECK_TIMEOUT_SECONDS
+        while open_descriptors:
+            if self._stopping.is_set():
+                raise EvaluationError("broker check was stopped")
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise EvaluationError("broker check timed out")
+            readable, _, _ = select.select(
+                list(open_descriptors),
+                [],
+                [],
+                min(remaining, BROKER_PROCESS_POLL_SECONDS),
+            )
+            for descriptor in readable:
+                try:
+                    captured = sum(len(buffer) for buffer in buffers.values())
+                    chunk = os.read(
+                        descriptor,
+                        min(65536, BROKER_CAPTURE_LIMIT_BYTES - captured + 1),
+                    )
+                except BlockingIOError:
+                    continue
+                if not chunk:
+                    open_descriptors.remove(descriptor)
+                    continue
+                if captured + len(chunk) > BROKER_CAPTURE_LIMIT_BYTES:
+                    raise EvaluationError("broker check output is too large")
+                buffers[descriptor].extend(chunk)
+            if process.poll() is not None and not readable:
+                continue
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise EvaluationError("broker check timed out")
+        try:
+            exit_code = process.wait(timeout=remaining)
+        except subprocess.TimeoutExpired as exc:
+            raise EvaluationError("broker check timed out") from exc
+        if self._stopping.is_set():
+            raise EvaluationError("broker check was stopped")
+        return (
+            buffers[stdout_fd].decode("utf-8", "replace"),
+            buffers[stderr_fd].decode("utf-8", "replace"),
+            exit_code,
+        )
 
     def _inner_command(self, argv: tuple[str, ...]) -> list[str]:
         if shutil.which("bwrap") is None:
@@ -849,7 +1152,12 @@ def command_oracle(
     del run_id
     contract = case.command_contract
     events, errors = _command_events(trajectory)
-    broker = [_broker_mapping(event) for event in broker_events or []]
+    broker_sources = list(broker_events or [])
+    broker = [_broker_mapping(event) for event in broker_sources]
+    delivery_receipts = [
+        event.delivery_receipt if isinstance(event, BrokerEvent) else None
+        for event in broker_sources
+    ]
     if broker_events is None:
         errors.append("missing runner-owned broker evidence")
     observations: list[dict[str, object]] = []
@@ -876,6 +1184,11 @@ def command_oracle(
         exit_code = authoritative.get("exit_code")
         if not isinstance(exit_code, int) or isinstance(exit_code, bool):
             errors.append("broker exit code is invalid")
+        receipt_token = delivery_receipts[expected_id - 1]
+        if isinstance(
+            broker_sources[expected_id - 1], BrokerEvent
+        ) and not _valid_request_id(receipt_token):
+            errors.append("broker delivery receipt is invalid")
     broker_position = 0
     for event in events:
         try:
@@ -887,6 +1200,8 @@ def command_oracle(
             continue
         previous_exit: object | None = None
         previous_kind: str | None = None
+        receipt_lines = _delivery_receipt_lines(cast(str, event["aggregate_output"]))
+        receipt_position = 0
         for index, tokens in enumerate(chunks):
             bypass_reported = False
             if index:
@@ -953,6 +1268,7 @@ def command_oracle(
                         f"missing broker event for {family} at line {event['line']}"
                     )
                 else:
+                    receipt_token = delivery_receipts[broker_position]
                     authoritative = broker[broker_position]
                     broker_position += 1
                     if (
@@ -969,6 +1285,33 @@ def command_oracle(
                             exit_code, bool
                         ):
                             errors.append(f"invalid broker exit for {family}")
+                        else:
+                            if receipt_token is not None:
+                                expected_receipt = _delivery_receipt_line(receipt_token)
+                                actual_receipt = (
+                                    receipt_lines[receipt_position]
+                                    if receipt_position < len(receipt_lines)
+                                    else None
+                                )
+                                receipt_position += 1
+                                if actual_receipt != expected_receipt:
+                                    errors.append(
+                                        "transport/delivery receipt mismatch for "
+                                        f"{family} at line {event['line']}"
+                                    )
+                            if len(chunks) == 1:
+                                # A direct shim invocation has exactly one
+                                # canonical command and no shell aggregation to
+                                # explain a different raw result. The broker
+                                # remains the child execution authority, while
+                                # the raw exit corroborates that the shim
+                                # delivered its reply.
+                                raw_exit = event["exit_code"]
+                                if raw_exit != exit_code:
+                                    errors.append(
+                                        "transport/delivery exit mismatch for "
+                                        f"{family} at line {event['line']}"
+                                    )
             previous_exit = exit_code
             observations.append(
                 {
@@ -985,6 +1328,8 @@ def command_oracle(
             elif kind == "unrecognized":
                 errors.append(f"line {event['line']}: unrecognized command")
             previous_kind = kind
+        if receipt_position != len(receipt_lines):
+            errors.append(f"line {event['line']}: unexpected delivery receipt")
     if broker_position != len(broker):
         errors.append("broker event has no raw command counterpart")
     for requirement in cast(list[dict[str, object]], contract["required"]):
@@ -1210,7 +1555,7 @@ def build_executor_boundary_preflight_command(
     probe = "\n".join(
         (
             "from pathlib import Path",
-            "import socket",
+            "import fcntl, json, os, secrets, select, socket, time",
             "try:",
             "    Path('/output/.executor-boundary-preflight-private').read_text()",
             "except OSError:",
@@ -1223,6 +1568,76 @@ def build_executor_boundary_preflight_command(
             "    pass",
             "else:",
             "    raise SystemExit('preflight network is enabled')",
+            "request_id = secrets.token_hex(32)",
+            "payload = {'protocol_version': 1, 'request_id': request_id,",
+            "           'argv': ['__preflight_unrecognized__']}",
+            "request = (json.dumps(payload, separators=(',', ':')) + '\\n').encode()",
+            f"if len(request) > {BROKER_PIPE_BUF_BYTES}:",
+            "    raise SystemExit('preflight request too large')",
+            "nofollow = getattr(os, 'O_NOFOLLOW', 0)",
+            "lock = os.open('/broker/broker.lock', os.O_RDONLY | nofollow)",
+            "response_fd = None",
+            "try:",
+            f"    lock_deadline = time.monotonic() + {BROKER_LOCK_TIMEOUT_SECONDS!r}",
+            "    while True:",
+            "        try: fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)",
+            "        except BlockingIOError:",
+            "            if time.monotonic() >= lock_deadline:",
+            "                raise SystemExit('preflight broker lock timeout')",
+            "            time.sleep(0.01)",
+            "        else: break",
+            "    response_flags = os.O_RDONLY | os.O_NONBLOCK | nofollow",
+            "    response_fd = os.open('/broker/response.fifo', response_flags)",
+            "    request_fd = os.open('/broker/request.fifo', os.O_WRONLY | nofollow)",
+            "    try:",
+            "        if os.write(request_fd, request) != len(request):",
+            "            raise SystemExit('preflight request not atomic')",
+            "    finally:",
+            "        os.close(request_fd)",
+            "    deadline = time.monotonic() + 5.0",
+            "    raw = bytearray()",
+            "    while b'\\n' not in raw:",
+            "        remaining = deadline - time.monotonic()",
+            "        if remaining <= 0:",
+            "            raise SystemExit('preflight broker timeout')",
+            "        if not select.select([response_fd], [], [], remaining)[0]:",
+            "            continue",
+            "        raw.extend(os.read(response_fd, 65536))",
+            "        if len(raw) > 1048576:",
+            "            raise SystemExit('preflight broker response too large')",
+            "finally:",
+            "    if response_fd is not None: os.close(response_fd)",
+            "    fcntl.flock(lock, fcntl.LOCK_UN)",
+            "    os.close(lock)",
+            "line, separator, tail = raw.partition(b'\\n')",
+            "if not separator or tail:",
+            "    raise SystemExit('preflight broker framing invalid')",
+            "reply = json.loads(line.decode())",
+            "expected = {'protocol_version': 1, 'request_id': request_id,",
+            "            'accepted': False, 'reason': 'unrecognized'}",
+            "if reply != expected:",
+            "    raise SystemExit('preflight broker reply invalid')",
+            "def denied(action, label):",
+            "    try: action()",
+            "    except OSError: return",
+            "    raise SystemExit('preflight broker allowed ' + label)",
+            "denied(lambda: os.open('/broker/request.fifo', os.O_RDONLY),",
+            "       'request read')",
+            "denied(lambda: os.open('/broker/request.fifo', os.O_RDWR),",
+            "       'request read-write')",
+            "denied(lambda: os.open('/broker/response.fifo', os.O_WRONLY),",
+            "       'response write')",
+            "denied(lambda: os.open('/broker/response.fifo', os.O_RDWR),",
+            "       'response read-write')",
+            "request_mode_fd = os.open('/broker/request.fifo', os.O_WRONLY)",
+            "try:",
+            "    denied(lambda: os.fchmod(request_mode_fd, 0o600), 'fchmod')",
+            "finally:",
+            "    os.close(request_mode_fd)",
+            "denied(lambda: os.chmod('/broker/request.fifo', 0o600), 'chmod')",
+            "denied(lambda: os.unlink('/broker/response.fifo'), 'unlink')",
+            "denied(lambda: os.rename('/broker/broker.lock', '/broker/moved'),",
+            "       'rename')",
             "print('executor-boundary-preflight-ok')",
         )
     )
@@ -1429,8 +1844,6 @@ def build_bwrap_command(
         value = os.environ.get(key)
         if value:
             command.append(f"{key}={value}")
-    if broker_runtime is not None:
-        command.extend(("CALIBRATION_EVAL_BROKER_SOCKET=/broker/broker.sock",))
     command.extend(
         build_codex_command(
             case,
@@ -1555,28 +1968,73 @@ def create_broker_shims(runtime: Path, case: CaseSpec | None = None) -> None:
     bin_dir = runtime / "bin"
     bin_dir.mkdir()
     template = """#!/runtime/python/bin/python3
-import json, os, socket, sys
+import fcntl, json, os, secrets, select, sys, time
 tool = {tool!r}
-request = (json.dumps({{"argv": [tool, *sys.argv[1:]]}}) + "\\n").encode("utf-8")
-sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+request_id = secrets.token_hex(32)
+payload = {{"protocol_version": 1, "request_id": request_id,
+           "argv": [tool, *sys.argv[1:]]}}
+request = (json.dumps(payload, separators=(",", ":")) + "\\n").encode("utf-8")
+if len(request) > {pipe_buf}:
+    raise SystemExit("runner-owned check broker request is too large")
+nofollow = getattr(os, "O_NOFOLLOW", 0)
+lock = os.open("/broker/broker.lock", os.O_RDONLY | nofollow)
+response_fd = None
 try:
-    sock.settimeout({frame_timeout!r})
-    sock.connect(os.environ["CALIBRATION_EVAL_BROKER_SOCKET"])
-    sock.sendall(request)
-    response_bytes = bytearray()
+    lock_deadline = time.monotonic() + {lock_timeout!r}
     while True:
-        chunk = sock.recv(65536)
-        if not chunk:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            if time.monotonic() >= lock_deadline:
+                raise RuntimeError("broker lock timed out")
+            time.sleep(0.01)
+        else:
             break
+    response_flags = os.O_RDONLY | os.O_NONBLOCK | nofollow
+    response_fd = os.open("/broker/response.fifo", response_flags)
+    request_fd = os.open("/broker/request.fifo", os.O_WRONLY | nofollow)
+    try:
+        if os.write(request_fd, request) != len(request):
+            raise RuntimeError("broker request was not written atomically")
+    finally:
+        os.close(request_fd)
+    response_bytes = bytearray()
+    deadline = time.monotonic() + {frame_timeout!r}
+    while True:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise RuntimeError("broker response timed out")
+        readable, _, _ = select.select([response_fd], [], [], remaining)
+        if not readable:
+            continue
+        chunk = os.read(response_fd, 65536)
+        if not chunk:
+            continue
         response_bytes.extend(chunk)
         if len(response_bytes) > {frame_limit}:
             raise RuntimeError("broker response is too large")
-        if response_bytes.endswith(b"\\n"):
+        if b"\\n" in response_bytes:
+            line, separator, tail = response_bytes.partition(b"\\n")
+            if tail or not separator:
+                raise RuntimeError("broker response framing is invalid")
+            response = json.loads(line.decode("utf-8"))
             break
-    response = json.loads(bytes(response_bytes).decode("utf-8"))
 finally:
-    sock.close()
+    if response_fd is not None:
+        os.close(response_fd)
+    fcntl.flock(lock, fcntl.LOCK_UN)
+    os.close(lock)
+if not isinstance(response, dict):
+    raise SystemExit("runner-owned check broker response mismatch")
+if response.get("protocol_version") != 1 or response.get("request_id") != request_id:
+    raise SystemExit("runner-owned check broker response mismatch")
 if response.get("accepted"):
+    receipt_token = response.get("receipt_token")
+    if (not isinstance(receipt_token, str) or len(receipt_token) != 64
+            or any(character not in "0123456789abcdef" for character in receipt_token)):
+        raise SystemExit("runner-owned check broker response mismatch")
+    sys.stderr.write("CALIBRATION_BROKER_RECEIPT:" + receipt_token + "\\n")
+    sys.stderr.flush()
     sys.stdout.write(response.get("stdout", ""))
     sys.stderr.write(response.get("stderr", ""))
     raise SystemExit(response["exit_code"])
@@ -1598,6 +2056,8 @@ raise SystemExit(125)
                 real=real,
                 frame_limit=BROKER_FRAME_LIMIT_BYTES,
                 frame_timeout=BROKER_FRAME_TIMEOUT_SECONDS,
+                lock_timeout=BROKER_LOCK_TIMEOUT_SECONDS,
+                pipe_buf=BROKER_PIPE_BUF_BYTES,
             ),
             encoding="utf-8",
         )
@@ -1669,7 +2129,6 @@ command.extend((
     "--chdir", "/workspace", "--", "/usr/bin/env", "-i",
     "PATH=/broker/bin:/runtime/python/bin:/usr/bin:/bin",
     "PYTHONDONTWRITEBYTECODE=1", "HOME=/tmp", "TMPDIR=/tmp",
-    "CALIBRATION_EVAL_BROKER_SOCKET=/broker/broker.sock",
     f"/usr/bin/{shell}", *sys.argv[1:],
 ))
 os.execv(command[0], command)
@@ -1713,8 +2172,17 @@ def run_case(
     with tempfile.TemporaryDirectory(prefix="calibration-eval-broker-") as raw_runtime:
         runtime = Path(raw_runtime)
         create_broker_shims(runtime, case)
+        preflight_broker = CommandBroker(case, workspace, runtime, output_dir.name)
+        preflight_broker.start()
+        try:
+            run_executor_boundary_preflight(case, workspace, executor_dir, runtime)
+        finally:
+            preflight_broker.close()
+        if preflight_broker.events or preflight_broker.errors:
+            raise EvaluationError(
+                "executor boundary preflight broker evidence is invalid"
+            )
         broker = CommandBroker(case, workspace, runtime, output_dir.name)
-        run_executor_boundary_preflight(case, workspace, executor_dir, runtime)
         broker.start()
         try:
             command = build_bwrap_command(

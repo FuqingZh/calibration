@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+import fcntl
 import hashlib
 import json
+import os
 import runpy
 import shlex
 import subprocess
+import threading
+import time
 from collections.abc import Callable
 from pathlib import Path
 from statistics import median
@@ -608,6 +612,7 @@ def test_build_bwrap_command_protects_fixture_files(
     evaluation.prepare_workspace(case, workspace)
     output = tmp_path / "output"
     output.mkdir()
+    (output / "codex-home").mkdir()
 
     original_which = evaluation.shutil.which
 
@@ -687,7 +692,7 @@ def test_bwrap_command_fails_closed_without_shell_runtime(
 def test_bwrap_executor_and_broker_enforce_writable_eval_boundary(
     tmp_path: Path, evaluation_root: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Exercise the real outer root, PATH shim, and runner-owned socket together."""
+    """Exercise the real outer root, PATH shim, and runner-owned FIFOs together."""
     if evaluation.shutil.which("bwrap") is None:
         pytest.skip("bwrap is required for executor boundary integration coverage")
 
@@ -710,41 +715,18 @@ def test_bwrap_executor_and_broker_enforce_writable_eval_boundary(
     evaluation.prepare_workspace(case, workspace)
     output = tmp_path / "output"
     output.mkdir()
+    (output / "codex-home").mkdir()
     runtime = tmp_path / "runtime"
     runtime.mkdir()
     evaluation.create_broker_shims(runtime, case)
     broker = evaluation.CommandBroker(case, workspace, runtime, "actual-run")
     broker.start()
 
-    forged_request = json.dumps(
-        {
-            "argv": canonical_argv,
-            "family": "forged-family",
-            "cwd": "/forged-cwd",
-            "exit_code": 77,
-            "run_id": "forged-run",
-            "execution_context": "executor_sandbox",
-        }
-    )
-    socket_client = (
-        "import json, socket\n"
-        f"request = {forged_request!r}.encode() + b'\\n'\n"
-        "client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)\n"
-        "client.connect('/broker/broker.sock')\n"
-        "client.sendall(request)\n"
-        "response = client.recv(65536)\n"
-        "client.close()\n"
-        "assert json.loads(response) == {'accepted': True, 'reason': 'accepted', "
-        "'exit_code': 0, "
-        "'stdout': 'canonical-check\\n', 'stderr': ''}\n"
-        "print('direct-socket-ok')\n"
-    )
     private_home_probe = "/ho" + "me/evaluation-user/.codex/memories"
     payload = "\n".join(
         (
             "set -eu",
             f"python -c {shlex.quote(canonical_program)}",
-            f"/runtime/python/bin/python3 -c {shlex.quote(socket_client)}",
             "printf changed > /workspace/value.txt",
             "! printf protected-write > /workspace/protected.txt",
             "! rm /workspace/protected.txt",
@@ -780,8 +762,8 @@ def test_bwrap_executor_and_broker_enforce_writable_eval_boundary(
     finally:
         broker.close()
 
-    assert result.returncode == 0, result.stderr
-    assert result.stdout == "canonical-check\ndirect-socket-ok\n"
+    assert result.returncode == 0, f"{result.stderr}\n{broker.errors}"
+    assert result.stdout == "canonical-check\n"
     assert workspace.joinpath("value.txt").read_text(encoding="utf-8") == "changed"
     assert protected.read_text(encoding="utf-8") == "protected\n"
     assert not (workspace / "renamed.txt").exists()
@@ -802,16 +784,6 @@ def test_bwrap_executor_and_broker_enforce_writable_eval_boundary(
     ] == [
         (
             1,
-            "focused_test",
-            canonical_argv,
-            "/workspace",
-            "executor_sandbox",
-            0,
-            "canonical-check\n",
-            "",
-        ),
-        (
-            2,
             "focused_test",
             canonical_argv,
             "/workspace",
@@ -995,7 +967,506 @@ def test_executor_boundary_preflight_reproduces_legacy_nested_net_failure(
     runtime = tmp_path / "runtime"
     runtime.mkdir()
     evaluation.create_broker_shims(runtime, case)
-    evaluation.run_executor_boundary_preflight(case, workspace, output, runtime)
+    broker = evaluation.CommandBroker(case, workspace, runtime, "preflight")
+    broker.start()
+    try:
+        evaluation.run_executor_boundary_preflight(case, workspace, output, runtime)
+    finally:
+        broker.close()
+    assert broker.events == []
+    assert broker.errors == []
+
+
+def test_named_profile_executor_fifo_canonical_check_records_runner_event(
+    tmp_path: Path, evaluation_root: Path
+) -> None:
+    if (
+        evaluation.shutil.which("bwrap") is None
+        or evaluation.shutil.which("codex") is None
+    ):
+        pytest.skip("bwrap and Codex are required for named-profile FIFO coverage")
+    argv = ["python", "-c", "print('canonical-profile-check')"]
+    case = evaluation.load_case(
+        write_case(
+            evaluation_root / "cases/profile-fifo.yaml",
+            command_contract={"families": {"focused_test": {"commands": [argv]}}},
+        )
+    )
+    workspace = tmp_path / "workspace"
+    evaluation.prepare_workspace(case, workspace)
+    output = tmp_path / "output"
+    output.mkdir()
+    (output / "codex-home").mkdir()
+    runtime = tmp_path / "runtime"
+    runtime.mkdir()
+    evaluation.create_broker_shims(runtime, case)
+    broker = evaluation.CommandBroker(case, workspace, runtime, "profile-fifo")
+    broker.start()
+    command = evaluation.build_bwrap_command(
+        case, workspace, output, "unused-model", "low", runtime
+    )
+    codex_tail = evaluation.build_codex_command(
+        case,
+        Path("/workspace"),
+        Path("/output/final-message.txt"),
+        "unused-model",
+        "low",
+        "/runtime/codex/bin/codex",
+    )
+    command[-len(codex_tail) :] = evaluation.build_permission_profile_sandbox_command(
+        "/runtime/codex/bin/codex",
+        Path("/workspace"),
+        ("/bin/bash", "-lc", "python -c \"print('canonical-profile-check')\""),
+    )
+    try:
+        result = evaluation._run(command, workspace, env=evaluation._evaluation_env())
+    finally:
+        broker.close()
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "canonical-profile-check\n"
+    assert broker.errors == []
+    assert [(event.argv, event.exit_code) for event in broker.events] == [
+        (tuple(argv), 0)
+    ]
+    receipt = broker.events[0].delivery_receipt
+    assert receipt is not None
+    assert result.stderr.splitlines()[0] == evaluation._delivery_receipt_line(receipt)
+
+
+def test_fifo_shim_fails_closed_on_stale_mismatched_response(
+    tmp_path: Path, evaluation_root: Path
+) -> None:
+    if evaluation.shutil.which("bwrap") is None:
+        pytest.skip("bwrap is required for FIFO response-mismatch coverage")
+    argv = ["python", "-c", "print('stale-response-check')"]
+    case = evaluation.load_case(
+        write_case(
+            evaluation_root / "cases/stale-response.yaml",
+            command_contract={"families": {"focused_test": {"commands": [argv]}}},
+        )
+    )
+    workspace = tmp_path / "workspace"
+    evaluation.prepare_workspace(case, workspace)
+    output = tmp_path / "output"
+    output.mkdir()
+    (output / "codex-home").mkdir()
+    runtime = tmp_path / "runtime"
+    runtime.mkdir()
+    evaluation.create_broker_shims(runtime, case)
+    broker = evaluation.CommandBroker(case, workspace, runtime, "stale")
+    broker.start()
+    assert broker._response_fd is not None
+    stale = (
+        json.dumps(
+            {
+                "protocol_version": 1,
+                "request_id": "0" * 64,
+                "accepted": False,
+                "reason": "unrecognized",
+            }
+        )
+        + "\n"
+    ).encode()
+    os.write(broker._response_fd, stale)
+    command = evaluation.build_bwrap_command(
+        case, workspace, output, "unused-model", "low", runtime
+    )
+    codex_tail = evaluation.build_codex_command(
+        case,
+        Path("/workspace"),
+        Path("/output/final-message.txt"),
+        "unused-model",
+        "low",
+        "/runtime/codex/bin/codex",
+    )
+    command[-len(codex_tail) :] = evaluation.build_permission_profile_sandbox_command(
+        "/runtime/codex/bin/codex",
+        Path("/workspace"),
+        ("/bin/bash", "-lc", "python -c \"print('stale-response-check')\""),
+    )
+    try:
+        result = evaluation._run(command, workspace, env=evaluation._evaluation_env())
+    finally:
+        broker.close()
+    assert result.returncode != 0
+    assert "response mismatch" in result.stderr
+    assert broker.events == []
+    assert any("was stopped" in error for error in broker.errors)
+
+
+@pytest.mark.parametrize("exit_code", (1, 125))
+def test_response_steal_is_dos_only_and_delivery_failure_invalidates_oracle(
+    tmp_path: Path, evaluation_root: Path, exit_code: int
+) -> None:
+    if evaluation.shutil.which("bwrap") is None:
+        pytest.skip("bwrap is required for FIFO response-steal coverage")
+    argv = ["python", "-c", f"import sys; sys.exit({exit_code})"]
+    case = evaluation.load_case(
+        write_case(
+            evaluation_root / "cases/steal.yaml",
+            command_contract={"families": {"focused_test": {"commands": [argv]}}},
+        )
+    )
+    workspace = tmp_path / "workspace"
+    evaluation.prepare_workspace(case, workspace)
+    runtime = tmp_path / "runtime"
+    runtime.mkdir()
+    broker = evaluation.CommandBroker(case, workspace, runtime, "steal")
+    broker.start()
+    victim = os.open(broker.response_path, os.O_RDONLY | os.O_NONBLOCK)
+    stolen: list[bytes] = []
+    thief_ready = threading.Event()
+    thief_done = threading.Event()
+
+    def steal_response() -> None:
+        descriptor = os.open(broker.response_path, os.O_RDONLY | os.O_NONBLOCK)
+        thief_ready.set()
+        deadline = time.monotonic() + 5.0
+        try:
+            while time.monotonic() < deadline:
+                try:
+                    chunk = os.read(descriptor, 65536)
+                except BlockingIOError:
+                    time.sleep(0.01)
+                    continue
+                if chunk:
+                    stolen.append(chunk)
+                    return
+        finally:
+            os.close(descriptor)
+            thief_done.set()
+
+    thief = threading.Thread(target=steal_response)
+    thief.start()
+    assert thief_ready.wait(timeout=1.0)
+    request = (
+        json.dumps(
+            {"protocol_version": 1, "request_id": "a" * 64, "argv": argv},
+            separators=(",", ":"),
+        )
+        + "\n"
+    ).encode()
+    try:
+        request_fd = os.open(broker.request_path, os.O_WRONLY)
+        try:
+            assert os.write(request_fd, request) == len(request)
+        finally:
+            os.close(request_fd)
+        assert thief_done.wait(timeout=5.0)
+        with pytest.raises(BlockingIOError):
+            os.read(victim, 65536)
+    finally:
+        os.close(victim)
+        thief.join(timeout=1.0)
+        broker.close()
+    assert stolen and b'"accepted":true' in stolen[0]
+    assert len(broker.events) == 1
+    assert broker.errors == []
+    oracle = evaluation.command_oracle(
+        case, command_event(shlex.join(argv), exit_code), "steal", broker.events
+    )
+    assert oracle["valid"] is False
+    assert any(
+        "transport/delivery receipt mismatch" in error
+        for error in cast(list[str], oracle["errors"])
+    )
+
+
+def test_command_oracle_requires_receipt_and_direct_delivery_exit_match(
+    tmp_path: Path, evaluation_root: Path
+) -> None:
+    def runner_event(
+        exit_code: int, token: str | None, execution_id: int = 1
+    ) -> evaluation.BrokerEvent:
+        return evaluation.BrokerEvent(
+            execution_id=execution_id,
+            family="focused_test",
+            argv=("pytest",),
+            argv_sha256=hashlib.sha256(b"pytest").hexdigest(),
+            cwd="/workspace",
+            execution_context="executor_sandbox",
+            exit_code=exit_code,
+            stdout="",
+            stderr="",
+            delivery_receipt=token,
+        )
+
+    case = evaluation.load_case(
+        write_case(
+            evaluation_root / "cases/delivery-match.yaml",
+            command_contract={
+                "families": {"focused_test": {"commands": [["pytest"]]}},
+            },
+        )
+    )
+    zero_token = "a" * 64
+    zero = evaluation.command_oracle(
+        case,
+        command_event("pytest", 0, evaluation._delivery_receipt_line(zero_token)),
+        "run",
+        [runner_event(0, zero_token)],
+    )
+    assert zero["valid"] is True
+    assert "delivery_receipt" not in cast(
+        dict[str, object], cast(list[object], zero["broker_events"])[0]
+    )
+    assert zero_token not in json.dumps(zero["broker_events"])
+
+    nonzero_token = "b" * 64
+    assert (
+        evaluation.command_oracle(
+            case,
+            command_event(
+                "pytest", 7, evaluation._delivery_receipt_line(nonzero_token)
+            ),
+            "run",
+            [runner_event(7, nonzero_token)],
+        )["valid"]
+        is True
+    )
+    missing = evaluation.command_oracle(
+        case, command_event("pytest", 0), "run", [runner_event(0, zero_token)]
+    )
+    wrong = evaluation.command_oracle(
+        case,
+        command_event("pytest", 0, evaluation._delivery_receipt_line("c" * 64)),
+        "run",
+        [runner_event(0, zero_token)],
+    )
+    for invalid in (missing, wrong):
+        assert invalid["valid"] is False
+        assert any(
+            "transport/delivery receipt mismatch" in error
+            for error in cast(list[str], invalid["errors"])
+        )
+    invalid_token = evaluation.command_oracle(
+        case,
+        command_event("pytest", 0, evaluation._delivery_receipt_line("not-a-token")),
+        "run",
+        [runner_event(0, "not-a-token")],
+    )
+    assert "broker delivery receipt is invalid" in cast(
+        list[str], invalid_token["errors"]
+    )
+    missing_runner_token = evaluation.command_oracle(
+        case, command_event("pytest", 0), "run", [runner_event(0, None)]
+    )
+    assert "broker delivery receipt is invalid" in cast(
+        list[str], missing_runner_token["errors"]
+    )
+
+    mismatched = evaluation.command_oracle(
+        case,
+        command_event("pytest", 0, evaluation._delivery_receipt_line(nonzero_token)),
+        "run",
+        [runner_event(7, nonzero_token)],
+    )
+    assert mismatched["valid"] is False
+    assert any(
+        "transport/delivery exit mismatch" in error
+        for error in cast(list[str], mismatched["errors"])
+    )
+    missing_exit = json.dumps(
+        {
+            "type": "item.completed",
+            "item": {
+                "type": "command_execution",
+                "command": "pytest",
+                "aggregated_output": evaluation._delivery_receipt_line(zero_token),
+            },
+        }
+    )
+    assert (
+        evaluation.command_oracle(
+            case, missing_exit, "run", [runner_event(0, zero_token)]
+        )["valid"]
+        is False
+    )
+
+    compound_case = evaluation.load_case(
+        write_case(
+            evaluation_root / "cases/delivery-compound.yaml",
+            command_contract={
+                "families": {
+                    "focused_test": {
+                        "commands": [["pytest", "first"], ["pytest", "second"]]
+                    }
+                }
+            },
+        )
+    )
+    first_token = "d" * 64
+    second_token = "e" * 64
+
+    def compound_event(
+        argv: tuple[str, ...], exit_code: int, token: str, execution_id: int
+    ) -> evaluation.BrokerEvent:
+        return evaluation.BrokerEvent(
+            execution_id=execution_id,
+            family="focused_test",
+            argv=argv,
+            argv_sha256=hashlib.sha256("\0".join(argv).encode()).hexdigest(),
+            cwd="/workspace",
+            execution_context="executor_sandbox",
+            exit_code=exit_code,
+            stdout="",
+            stderr="",
+            delivery_receipt=token,
+        )
+
+    compound_events = [
+        compound_event(("pytest", "first"), 1, first_token, 1),
+        compound_event(("pytest", "second"), 0, second_token, 2),
+    ]
+    compound_output = "\n".join(
+        (
+            evaluation._delivery_receipt_line(first_token),
+            evaluation._delivery_receipt_line(second_token),
+        )
+    )
+    assert (
+        evaluation.command_oracle(
+            compound_case,
+            command_event("pytest first || pytest second", 0, compound_output),
+            "run",
+            compound_events,
+        )["valid"]
+        is True
+    )
+    reordered = evaluation.command_oracle(
+        compound_case,
+        command_event(
+            "pytest first || pytest second",
+            0,
+            "\n".join(reversed(compound_output.splitlines())),
+        ),
+        "run",
+        compound_events,
+    )
+    assert reordered["valid"] is False
+    assert any(
+        "transport/delivery receipt mismatch" in error
+        for error in cast(list[str], reordered["errors"])
+    )
+
+    forged_bypass = evaluation.command_oracle(
+        case,
+        command_event("env pytest", 0, evaluation._delivery_receipt_line(zero_token)),
+        "run",
+        [runner_event(0, zero_token)],
+    )
+    assert forged_bypass["valid"] is False
+
+
+def test_named_profile_rejects_response_fifo_injection(
+    tmp_path: Path, evaluation_root: Path
+) -> None:
+    if (
+        evaluation.shutil.which("bwrap") is None
+        or evaluation.shutil.which("codex") is None
+    ):
+        pytest.skip("bwrap and Codex are required for FIFO injection coverage")
+    case = evaluation.load_case(write_case(evaluation_root / "cases/inject.yaml"))
+    workspace = tmp_path / "workspace"
+    evaluation.prepare_workspace(case, workspace)
+    output = tmp_path / "output"
+    output.mkdir()
+    (output / "codex-home").mkdir()
+    runtime = tmp_path / "runtime"
+    runtime.mkdir()
+    evaluation.create_broker_shims(runtime, case)
+    broker = evaluation.CommandBroker(case, workspace, runtime, "inject")
+    broker.start()
+    command = evaluation.build_bwrap_command(
+        case, workspace, output, "unused-model", "low", runtime
+    )
+    codex_tail = evaluation.build_codex_command(
+        case,
+        Path("/workspace"),
+        Path("/output/final-message.txt"),
+        "unused-model",
+        "low",
+        "/runtime/codex/bin/codex",
+    )
+    probe = "\n".join(
+        (
+            "import os",
+            "try:",
+            "    os.open('/broker/response.fifo', os.O_WRONLY)",
+            "except OSError:",
+            "    pass",
+            "else:",
+            "    raise SystemExit('response injection permitted')",
+        )
+    )
+    command[-len(codex_tail) :] = evaluation.build_permission_profile_sandbox_command(
+        "/runtime/codex/bin/codex",
+        Path("/workspace"),
+        ("/bin/bash", "-lc", f"/runtime/python/bin/python3 -c {shlex.quote(probe)}"),
+    )
+    try:
+        result = evaluation._run(command, workspace, env=evaluation._evaluation_env())
+    finally:
+        broker.close()
+    assert result.returncode == 0, result.stderr
+    assert broker.events == []
+    assert broker.errors == []
+
+
+def test_fifo_shim_lock_timeout_fails_closed_without_broker_event(
+    tmp_path: Path, evaluation_root: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    if (
+        evaluation.shutil.which("bwrap") is None
+        or evaluation.shutil.which("codex") is None
+    ):
+        pytest.skip("bwrap and Codex are required for FIFO lock-timeout coverage")
+    argv = ["python", "-c", "print('lock-timeout-check')"]
+    case = evaluation.load_case(
+        write_case(
+            evaluation_root / "cases/lock-timeout.yaml",
+            command_contract={"families": {"focused_test": {"commands": [argv]}}},
+        )
+    )
+    workspace = tmp_path / "workspace"
+    evaluation.prepare_workspace(case, workspace)
+    output = tmp_path / "output"
+    output.mkdir()
+    (output / "codex-home").mkdir()
+    runtime = tmp_path / "runtime"
+    runtime.mkdir()
+    monkeypatch.setattr(evaluation, "BROKER_LOCK_TIMEOUT_SECONDS", 0.1)
+    evaluation.create_broker_shims(runtime, case)
+    broker = evaluation.CommandBroker(case, workspace, runtime, "lock-timeout")
+    broker.start()
+    lock = os.open(broker.lock_path, os.O_RDONLY)
+    fcntl.flock(lock, fcntl.LOCK_EX)
+    command = evaluation.build_bwrap_command(
+        case, workspace, output, "unused-model", "low", runtime
+    )
+    codex_tail = evaluation.build_codex_command(
+        case,
+        Path("/workspace"),
+        Path("/output/final-message.txt"),
+        "unused-model",
+        "low",
+        "/runtime/codex/bin/codex",
+    )
+    command[-len(codex_tail) :] = evaluation.build_permission_profile_sandbox_command(
+        "/runtime/codex/bin/codex",
+        Path("/workspace"),
+        ("/bin/bash", "-lc", "python -c \"print('lock-timeout-check')\""),
+    )
+    try:
+        result = evaluation._run(command, workspace, env=evaluation._evaluation_env())
+    finally:
+        fcntl.flock(lock, fcntl.LOCK_UN)
+        os.close(lock)
+        broker.close()
+    assert result.returncode != 0
+    assert "broker lock timed out" in result.stderr
+    assert broker.events == []
+    assert broker.errors == []
 
 
 def test_install_arm_home_validates_inputs_and_installs(
@@ -1764,7 +2235,7 @@ def test_command_contract_defaults_and_validates_execution_context(
             )
 
 
-def test_command_oracle_rejects_socket_misattribution_and_tampered_broker(
+def test_command_oracle_rejects_transport_misattribution_and_tampered_broker(
     tmp_path: Path, evaluation_root: Path
 ) -> None:
     case = evaluation.load_case(
@@ -1775,7 +2246,7 @@ def test_command_oracle_rejects_socket_misattribution_and_tampered_broker(
     )
     event = broker_event("focused_test", ["pytest"], 0)
     trajectory = "\n".join(
-        (command_event("echo socket-client", 0), command_event("pytest", 0))
+        (command_event("echo transport-client", 0), command_event("pytest", 0))
     )
     assert evaluation.command_oracle(case, trajectory, "run", [event])["valid"] is False
     for field, value in (
@@ -1881,13 +2352,13 @@ def test_main_prepare_verify_run_and_error(
     assert json.loads(capsys.readouterr().out)["state"] == "failed"
 
 
-def test_broker_socket_rejects_malformed_requests_and_timeout(
-    tmp_path: Path, evaluation_root: Path, monkeypatch: pytest.MonkeyPatch
+def test_broker_fifo_rejects_malformed_requests_and_preserves_event_truth(
+    tmp_path: Path, evaluation_root: Path
 ) -> None:
-    """The socket protocol rejects caller-controlled metadata before execution."""
+    """Malformed FIFO frames fail closed and cannot synthesize runner events."""
     case = evaluation.load_case(
         write_case(
-            evaluation_root / "cases/socket.yaml",
+            evaluation_root / "cases/fifo.yaml",
             command_contract={"families": {"focused_test": {"commands": [["echo"]]}}},
         )
     )
@@ -1898,47 +2369,26 @@ def test_broker_socket_rejects_malformed_requests_and_timeout(
     broker = evaluation.CommandBroker(case, workspace, runtime, "run")
     broker.start()
 
-    def request(payload: bytes) -> dict[str, object]:
-        client = evaluation.socket.socket(
-            evaluation.socket.AF_UNIX, evaluation.socket.SOCK_STREAM
-        )
-        client.connect(str(broker.socket_path))
-        client.sendall(payload)
-        client.shutdown(evaluation.socket.SHUT_WR)
-        reply = json.loads(client.recv(65536).decode())
-        client.close()
-        return cast(dict[str, object], reply)
-
-    replies: list[dict[str, object]] = []
     try:
         for payload in (
             b"[]\n",
-            b'{"argv":"echo"}\n',
-            b'{"argv":["echo"],"execution_context":"host_authority"}\n',
-            b'{"argv":[""]}\n',
+            b'{"protocol_version":1,"request_id":"0"*64,"argv":"echo"}\n',
+            b'{"protocol_version":1,"request_id":"0"*64,"argv":["echo"],"exit_code":0}\n',
             b"not-json\n",
-            b'{"argv":["unknown"]}\n',
         ):
-            reply = request(payload)
-            replies.append(reply)
-            assert reply["accepted"] is False
-        monkeypatch.setattr(evaluation, "BROKER_FRAME_LIMIT_BYTES", 8)
-        oversized = request(b'{"argv":["echo"]}\n')
-        replies.append(oversized)
-        assert oversized == {"accepted": False, "reason": "broker_error"}
-        monkeypatch.setattr(evaluation, "BROKER_FRAME_LIMIT_BYTES", 1_048_576)
-        monkeypatch.setattr(evaluation, "BROKER_FRAME_TIMEOUT_SECONDS", 0)
-        timed_out = request(b'{"argv":["echo"]}\n')
-        replies.append(timed_out)
-        assert timed_out == {"accepted": False, "reason": "broker_error"}
+            descriptor = os.open(broker.request_path, os.O_WRONLY)
+            try:
+                assert os.write(descriptor, payload) == len(payload)
+            finally:
+                os.close(descriptor)
+        deadline = time.monotonic() + 1.0
+        while len(broker.errors) < 4 and time.monotonic() < deadline:
+            time.sleep(0.01)
     finally:
         broker.close()
     assert broker.events == []
-    assert len(replies) == 8
-    assert all(reply["accepted"] is False for reply in replies)
     assert any("invalid broker request" in error for error in broker.errors)
-    assert any("too large" in error for error in broker.errors)
-    assert any("timed out" in error for error in broker.errors)
+    assert all("exit_code" not in error for error in broker.errors)
 
 
 def test_broker_execute_timeout_and_unknown_alias(
@@ -1956,10 +2406,30 @@ def test_broker_execute_timeout_and_unknown_alias(
     runtime.mkdir()
     broker = evaluation.CommandBroker(case, workspace, runtime, "run")
 
-    def timed_out(*args: object, **kwargs: object) -> object:
-        raise evaluation.subprocess.TimeoutExpired("echo", 1)
+    class TimedOutProcess:
+        pid = 99_999_999
+        stdout = None
+        stderr = None
 
-    monkeypatch.setattr(evaluation.subprocess, "run", timed_out)
+        def wait(self, timeout: float | None = None) -> int:
+            if timeout is None:
+                return 1
+            raise evaluation.subprocess.TimeoutExpired("echo", timeout)
+
+        def kill(self) -> None:
+            return None
+
+    def timed_out_popen(*args: object, **kwargs: object) -> TimedOutProcess:
+        del args, kwargs
+        return TimedOutProcess()
+
+    monkeypatch.setattr(evaluation.subprocess, "Popen", timed_out_popen)
+
+    def timed_out_capture(*args: object) -> tuple[str, str, int]:
+        del args
+        raise EvaluationError("broker check timed out")
+
+    monkeypatch.setattr(broker, "_read_capture", timed_out_capture)
     with pytest.raises(EvaluationError, match="broker check timed out"):
         broker.execute(("echo",))
     assert broker.execute(("unknown",)) is None
@@ -2094,7 +2564,7 @@ def test_schema_private_files_boundary_and_installation_negative_paths(
         evaluation.install_arm_home(source, auth, tmp_path / "external-home")
 
 
-def test_broker_close_and_empty_socket_requests_cover_lifecycle_edges(
+def test_broker_fifo_lifecycle_rejects_unsafe_runtime_paths(
     tmp_path: Path, evaluation_root: Path
 ) -> None:
     case = evaluation.load_case(write_case(evaluation_root / "cases/lifecycle.yaml"))
@@ -2102,63 +2572,404 @@ def test_broker_close_and_empty_socket_requests_cover_lifecycle_edges(
     evaluation.prepare_workspace(case, workspace)
     runtime = tmp_path / "runtime"
     runtime.mkdir()
+    (runtime / "request.fifo").symlink_to(tmp_path / "outside")
     broker = evaluation.CommandBroker(case, workspace, runtime, "run")
+    with pytest.raises(EvaluationError, match="already exists"):
+        broker.start()
 
-    class AliveThread:
-        def join(self, timeout: float) -> None:
-            assert timeout == evaluation.BROKER_FRAME_TIMEOUT_SECONDS + 1.0
-
-        def is_alive(self) -> bool:
-            return True
-
-    broker._thread = cast(evaluation.threading.Thread, AliveThread())
-    broker.close()
-    assert broker.errors == ["broker server did not stop within deadline"]
-
-    class EmptyClient:
-        def __enter__(self) -> EmptyClient:
-            return self
-
-        def __exit__(self, *args: object) -> None:
-            return None
-
-        def settimeout(self, timeout: float) -> None:
-            assert timeout > 0
-
-        def recv(self, size: int) -> bytes:
-            assert size == 65536
-            broker._stopping.set()
-            return b""
-
-        def sendall(self, reply: bytes) -> None:
-            assert json.loads(reply) == {"accepted": False, "reason": "broker_error"}
-
-    class OneClientServer:
-        def accept(self) -> tuple[EmptyClient, object]:
-            return EmptyClient(), object()
-
-    broker._stopping.clear()
-    broker._server = cast(evaluation.socket.socket, OneClientServer())
-    broker._serve()
-
-    live_runtime = tmp_path / "live-runtime"
-    live_runtime.mkdir()
-    live_broker = evaluation.CommandBroker(case, workspace, live_runtime, "run")
+    clean_runtime = tmp_path / "clean-runtime"
+    clean_runtime.mkdir()
+    live_broker = evaluation.CommandBroker(case, workspace, clean_runtime, "run")
     live_broker.start()
-    client = evaluation.socket.socket(
-        evaluation.socket.AF_UNIX, evaluation.socket.SOCK_STREAM
-    )
+    started = time.monotonic()
+    live_broker.close()
+    assert time.monotonic() - started < evaluation.BROKER_FRAME_TIMEOUT_SECONDS + 1.0
+    assert not any(clean_runtime.iterdir())
+
+
+def test_broker_fifo_modes_and_partial_frames_fail_closed(
+    tmp_path: Path, evaluation_root: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    case = evaluation.load_case(write_case(evaluation_root / "cases/fifo-modes.yaml"))
+    workspace = tmp_path / "workspace"
+    evaluation.prepare_workspace(case, workspace)
+    runtime = tmp_path / "runtime"
+    runtime.mkdir()
+    broker = evaluation.CommandBroker(case, workspace, runtime, "run")
+    monkeypatch.setattr(evaluation, "BROKER_FRAME_TIMEOUT_SECONDS", 0.01)
+    broker.start()
     try:
-        client.connect(str(live_broker.socket_path))
-        client.shutdown(evaluation.socket.SHUT_WR)
-        assert json.loads(client.recv(65536).decode()) == {
-            "accepted": False,
-            "reason": "broker_error",
-        }
+        assert broker.request_path.stat().st_mode & 0o777 == 0o200
+        assert broker.response_path.stat().st_mode & 0o777 == 0o400
+        assert broker.lock_path.stat().st_mode & 0o777 == 0o400
+        with pytest.raises(PermissionError):
+            os.open(broker.response_path, os.O_WRONLY | os.O_NONBLOCK)
+        descriptor = os.open(broker.request_path, os.O_WRONLY)
+        try:
+            os.write(descriptor, b'{"protocol_version":1')
+        finally:
+            os.close(descriptor)
+        deadline = time.monotonic() + 1.0
+        while not broker.errors and time.monotonic() < deadline:
+            time.sleep(0.01)
     finally:
-        client.close()
-        live_broker.close()
-    assert any("empty broker request" in error for error in live_broker.errors)
+        broker.close()
+    assert broker.events == []
+    assert any("timed out" in error for error in broker.errors)
+
+
+def test_broker_start_failure_clears_open_descriptors(
+    tmp_path: Path, evaluation_root: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    case = evaluation.load_case(write_case(evaluation_root / "cases/start.yaml"))
+    workspace = tmp_path / "workspace"
+    evaluation.prepare_workspace(case, workspace)
+    runtime = tmp_path / "runtime"
+    runtime.mkdir()
+    broker = evaluation.CommandBroker(case, workspace, runtime, "start")
+
+    def denied_chmod(path: Path, mode: int) -> None:
+        del path, mode
+        raise PermissionError("synthetic")
+
+    monkeypatch.setattr(evaluation.os, "chmod", denied_chmod)
+    with pytest.raises(EvaluationError, match="cannot open broker FIFO transport"):
+        broker.start()
+    assert broker._request_fd is None
+    assert broker._response_fd is None
+    assert not any(runtime.iterdir())
+
+
+def test_broker_start_rejects_small_pipe_buffer_and_oversize_alias(
+    tmp_path: Path, evaluation_root: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    case = evaluation.load_case(write_case(evaluation_root / "cases/pipe.yaml"))
+    workspace = tmp_path / "workspace"
+    evaluation.prepare_workspace(case, workspace)
+    runtime = tmp_path / "runtime"
+    runtime.mkdir()
+    broker = evaluation.CommandBroker(case, workspace, runtime, "pipe")
+
+    def tiny_pipe_buffer(*args: object) -> int:
+        del args
+        return 1
+
+    monkeypatch.setattr(evaluation.os, "fpathconf", tiny_pipe_buffer)
+    with pytest.raises(EvaluationError, match="PIPE_BUF is too small"):
+        broker.start()
+
+    oversized = ["python", "-c", "x" * evaluation.BROKER_PIPE_BUF_BYTES]
+    alias_case = evaluation.load_case(
+        write_case(
+            evaluation_root / "cases/oversize.yaml",
+            command_contract={"families": {"focused_test": {"commands": [oversized]}}},
+        )
+    )
+    alias_workspace = tmp_path / "alias-workspace"
+    evaluation.prepare_workspace(alias_case, alias_workspace)
+    alias_runtime = tmp_path / "alias-runtime"
+    alias_runtime.mkdir()
+    alias_broker = evaluation.CommandBroker(
+        alias_case, alias_workspace, alias_runtime, "oversize"
+    )
+    monkeypatch.undo()
+    with pytest.raises(EvaluationError, match="exceeds PIPE_BUF"):
+        alias_broker.start()
+
+
+def test_broker_request_budget_stops_malformed_flood(
+    tmp_path: Path, evaluation_root: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    case = evaluation.load_case(write_case(evaluation_root / "cases/budget.yaml"))
+    workspace = tmp_path / "workspace"
+    evaluation.prepare_workspace(case, workspace)
+    runtime = tmp_path / "runtime"
+    runtime.mkdir()
+    broker = evaluation.CommandBroker(case, workspace, runtime, "budget")
+    broker.start()
+    monkeypatch.setattr(evaluation, "BROKER_MAX_REQUESTS", 1)
+    try:
+        broker._handle_request(b"not-json")
+        broker._handle_request(b"not-json")
+    finally:
+        broker.close()
+    assert broker.events == []
+    assert broker._stopping.is_set()
+    assert any("budget exceeded" in error for error in broker.errors)
+
+
+def test_broker_request_ids_and_reply_frames_use_exact_newline_encoding(
+    tmp_path: Path, evaluation_root: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    case = evaluation.load_case(write_case(evaluation_root / "cases/ids.yaml"))
+    workspace = tmp_path / "workspace"
+    evaluation.prepare_workspace(case, workspace)
+    runtime = tmp_path / "runtime"
+    runtime.mkdir()
+    broker = evaluation.CommandBroker(case, workspace, runtime, "ids")
+    broker.start()
+    invalid = json.dumps(
+        {
+            "protocol_version": 1,
+            "request_id": "g" * 64,
+            "argv": ["unknown"],
+        }
+    ).encode()
+    unicode_identifier = json.dumps(
+        {
+            "protocol_version": 1,
+            "request_id": "é" * 64,
+            "argv": ["unknown"],
+        }
+    ).encode()
+    try:
+        broker._handle_request(invalid)
+        broker._handle_request(unicode_identifier)
+    finally:
+        broker.close()
+    assert broker.events == []
+    assert sum("invalid broker request id" in error for error in broker.errors) == 2
+
+    event = evaluation.BrokerEvent(
+        execution_id=1,
+        family="focused_test",
+        argv=("python",),
+        argv_sha256="0",
+        cwd="/workspace",
+        execution_context="executor_sandbox",
+        exit_code=0,
+        stdout="frame-boundary",
+        stderr="",
+        delivery_receipt="b" * 64,
+    )
+    request_id = "a" * 64
+    reply = {
+        "protocol_version": 1,
+        "request_id": request_id,
+        "accepted": True,
+        "reason": "accepted",
+        "exit_code": 0,
+        "stdout": event.stdout,
+        "stderr": event.stderr,
+        "receipt_token": event.delivery_receipt,
+    }
+    encoded = evaluation._encode_broker_reply(reply)
+    assert encoded.endswith(b"\n")
+    monkeypatch.setattr(evaluation, "BROKER_FRAME_LIMIT_BYTES", len(encoded))
+    assert evaluation.CommandBroker._accepted_reply_fits(event, request_id)
+    monkeypatch.setattr(evaluation, "BROKER_FRAME_LIMIT_BYTES", len(encoded) - 1)
+    assert not evaluation.CommandBroker._accepted_reply_fits(event, request_id)
+
+
+def test_broker_capture_limit_kills_running_check_without_event(
+    tmp_path: Path, evaluation_root: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    if evaluation.shutil.which("bwrap") is None:
+        pytest.skip("bwrap is required for broker capture-limit coverage")
+    argv = ["python", "-c", "import sys; sys.stdout.write('x' * 1000000)"]
+    case = evaluation.load_case(
+        write_case(
+            evaluation_root / "cases/capture.yaml",
+            command_contract={"families": {"focused_test": {"commands": [argv]}}},
+        )
+    )
+    workspace = tmp_path / "workspace"
+    evaluation.prepare_workspace(case, workspace)
+    runtime = tmp_path / "runtime"
+    runtime.mkdir()
+    broker = evaluation.CommandBroker(case, workspace, runtime, "capture")
+    monkeypatch.setattr(evaluation, "BROKER_CAPTURE_LIMIT_BYTES", 1024)
+    started = time.monotonic()
+    with pytest.raises(EvaluationError, match="output is too large"):
+        broker.execute(tuple(argv))
+    assert time.monotonic() - started < 5.0
+    assert broker.events == []
+    assert broker._active_process is None
+    assert not list(tmp_path.glob("capture-*"))
+
+
+def test_broker_capture_total_budget_allows_exact_limit_and_rejects_overflow(
+    tmp_path: Path, evaluation_root: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    if evaluation.shutil.which("bwrap") is None:
+        pytest.skip("bwrap is required for broker capture-budget coverage")
+    exact = [
+        "python",
+        "-c",
+        "import sys; sys.stdout.write('o' * 512); sys.stderr.write('e' * 512)",
+    ]
+    overflow = [
+        "python",
+        "-c",
+        "import sys; sys.stdout.write('o' * 513); sys.stderr.write('e' * 512)",
+    ]
+    case = evaluation.load_case(
+        write_case(
+            evaluation_root / "cases/capture-total.yaml",
+            command_contract={
+                "families": {"focused_test": {"commands": [exact, overflow]}}
+            },
+        )
+    )
+    workspace = tmp_path / "workspace"
+    evaluation.prepare_workspace(case, workspace)
+    runtime = tmp_path / "runtime"
+    runtime.mkdir()
+    broker = evaluation.CommandBroker(case, workspace, runtime, "capture-total")
+    monkeypatch.setattr(evaluation, "BROKER_CAPTURE_LIMIT_BYTES", 1024)
+    event = broker.execute(tuple(exact))
+    assert event is not None
+    assert len(event.stdout) + len(event.stderr) == 1024
+    with pytest.raises(EvaluationError, match="output is too large"):
+        broker.execute(tuple(overflow))
+    assert len(broker.events) == 1
+
+
+def test_broker_capture_allows_check_to_exit_after_closing_pipes(
+    tmp_path: Path, evaluation_root: Path
+) -> None:
+    if evaluation.shutil.which("bwrap") is None:
+        pytest.skip("bwrap is required for broker pipe-close coverage")
+    argv = [
+        "python",
+        "-c",
+        "import os, time; os.close(1); os.close(2); time.sleep(.05)",
+    ]
+    case = evaluation.load_case(
+        write_case(
+            evaluation_root / "cases/pipe-close.yaml",
+            command_contract={"families": {"focused_test": {"commands": [argv]}}},
+        )
+    )
+    workspace = tmp_path / "workspace"
+    evaluation.prepare_workspace(case, workspace)
+    runtime = tmp_path / "runtime"
+    runtime.mkdir()
+    broker = evaluation.CommandBroker(case, workspace, runtime, "pipe-close")
+    event = broker.execute(tuple(argv))
+    assert event is not None
+    assert event.exit_code == 0
+
+
+def test_broker_rejects_json_expanding_capture_without_event(
+    tmp_path: Path, evaluation_root: Path
+) -> None:
+    if evaluation.shutil.which("bwrap") is None:
+        pytest.skip("bwrap is required for broker JSON-frame coverage")
+    argv = ["python", "-c", "import sys; sys.stdout.buffer.write(b'\\0' * 200000)"]
+    case = evaluation.load_case(
+        write_case(
+            evaluation_root / "cases/json-frame.yaml",
+            command_contract={"families": {"focused_test": {"commands": [argv]}}},
+        )
+    )
+    workspace = tmp_path / "workspace"
+    evaluation.prepare_workspace(case, workspace)
+    runtime = tmp_path / "runtime"
+    runtime.mkdir()
+    broker = evaluation.CommandBroker(case, workspace, runtime, "json-frame")
+    with pytest.raises(EvaluationError, match="response is too large"):
+        broker.execute(tuple(argv))
+    assert broker.events == []
+
+
+def test_broker_close_cleans_transport_when_termination_raises(
+    tmp_path: Path, evaluation_root: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    case = evaluation.load_case(write_case(evaluation_root / "cases/close-error.yaml"))
+    workspace = tmp_path / "workspace"
+    evaluation.prepare_workspace(case, workspace)
+    runtime = tmp_path / "runtime"
+    runtime.mkdir()
+    broker = evaluation.CommandBroker(case, workspace, runtime, "close-error")
+    broker.start()
+
+    def failed_termination() -> None:
+        raise EvaluationError("synthetic termination failure")
+
+    monkeypatch.setattr(broker, "_terminate_active_process", failed_termination)
+    with pytest.raises(EvaluationError, match="synthetic termination failure"):
+        broker.close()
+    assert broker._request_fd is None
+    assert broker._response_fd is None
+    assert broker._thread is None
+    assert not any(runtime.iterdir())
+
+
+def test_broker_capture_overflow_kills_descendant_pipe_writer(
+    tmp_path: Path, evaluation_root: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    if evaluation.shutil.which("bwrap") is None:
+        pytest.skip("bwrap is required for broker descendant coverage")
+    program = "\n".join(
+        (
+            "import os, sys, time",
+            "if os.fork() == 0:",
+            "    time.sleep(0.5)",
+            "    open('value.txt', 'w').write('descendant')",
+            "else:",
+            "    sys.stdout.write('x' * 1000000)",
+        )
+    )
+    argv = ["python", "-c", program]
+    case = evaluation.load_case(
+        write_case(
+            evaluation_root / "cases/descendant.yaml",
+            command_contract={"families": {"focused_test": {"commands": [argv]}}},
+        )
+    )
+    workspace = tmp_path / "workspace"
+    evaluation.prepare_workspace(case, workspace)
+    runtime = tmp_path / "runtime"
+    runtime.mkdir()
+    broker = evaluation.CommandBroker(case, workspace, runtime, "descendant")
+    monkeypatch.setattr(evaluation, "BROKER_CAPTURE_LIMIT_BYTES", 1024)
+    with pytest.raises(EvaluationError, match="output is too large"):
+        broker.execute(tuple(argv))
+    time.sleep(0.7)
+    assert (workspace / "value.txt").read_text(encoding="utf-8") == "before\n"
+    assert broker.events == []
+
+
+def test_broker_close_kills_active_check_and_blocks_new_execution(
+    tmp_path: Path, evaluation_root: Path
+) -> None:
+    if evaluation.shutil.which("bwrap") is None:
+        pytest.skip("bwrap is required for broker close coverage")
+    argv = ["python", "-c", "import time; time.sleep(30)"]
+    case = evaluation.load_case(
+        write_case(
+            evaluation_root / "cases/close.yaml",
+            command_contract={"families": {"focused_test": {"commands": [argv]}}},
+        )
+    )
+    workspace = tmp_path / "workspace"
+    evaluation.prepare_workspace(case, workspace)
+    runtime = tmp_path / "runtime"
+    runtime.mkdir()
+    broker = evaluation.CommandBroker(case, workspace, runtime, "close")
+    failures: list[BaseException] = []
+
+    def run_check() -> None:
+        try:
+            broker.execute(tuple(argv))
+        except BaseException as exc:
+            failures.append(exc)
+
+    thread = threading.Thread(target=run_check)
+    thread.start()
+    deadline = time.monotonic() + 5.0
+    while broker._active_process is None and time.monotonic() < deadline:
+        time.sleep(0.01)
+    assert broker._active_process is not None
+    broker.close()
+    thread.join(timeout=5.0)
+    assert not thread.is_alive()
+    assert broker.events == []
+    assert any(isinstance(exc, EvaluationError) for exc in failures)
+    with pytest.raises(EvaluationError, match="stopping"):
+        broker.execute(tuple(argv))
+    broker.close()
 
 
 def test_runner_branches_reject_invalid_runtime_and_preserve_broker_truth(
@@ -2260,9 +3071,14 @@ def test_install_file_link_and_run_case_broker_error_are_materialized(
     evaluation.prepare_workspace(case, workspace)
 
     class BrokerWithError:
+        instances = 0
+
         def __init__(self, *args: object) -> None:
+            type(self).instances += 1
             self.events: list[evaluation.BrokerEvent] = []
-            self.errors = ["broker lifecycle fault"]
+            self.errors = (
+                [] if type(self).instances == 1 else ["broker lifecycle fault"]
+            )
 
         def start(self) -> None:
             return None
