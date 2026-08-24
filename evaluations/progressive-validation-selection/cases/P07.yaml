@@ -1,0 +1,30 @@
+id: P07
+title: Explicit local complete-gate mandate
+fixture: P07
+prompt: |
+  Repair the conversion behavior. The fixture's local instructions explicitly
+  require its repository-owned validation command; obey that mandate and report
+  the evidence you obtained.
+verify:
+  - [python, scripts/verify_result.py]
+allowed_changes: [src/conversion.py]
+required_changes: [src/conversion.py]
+command_contract:
+  families:
+    focused_test:
+      commands:
+        - [python, scripts/check.py, focused_test]
+        - [python, -m, unittest, -q, tests.test_conversion]
+      wrapper_required: true
+      covered_seam: conversion-leaf
+    complete_gate:
+      commands:
+        - [python, scripts/check.py, complete_gate]
+        - [python, -m, unittest, -q]
+      wrapper_required: true
+      covered_seam: explicit-local-validation-mandate
+  required:
+    - {family: complete_gate, exit: zero}
+  forbidden: []
+  ordered:
+    - {family: complete_gate, exit: zero}

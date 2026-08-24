@@ -45,6 +45,21 @@ def test_excludes_exact_evaluation_artifacts_from_document_validation(
     assert validate_markdown_links(tmp_path) == []
 
 
+def test_excludes_only_progressive_validation_fixture_tree(tmp_path: Path) -> None:
+    fixture = (
+        tmp_path / "evaluations/progressive-validation-selection/fixtures/P01/README.md"
+    )
+    fixture.parent.mkdir(parents=True)
+    fixture.write_text("[intentionally broken](missing.md)\n", encoding="utf-8")
+    evaluation_readme = (
+        tmp_path / "evaluations/progressive-validation-selection/README.md"
+    )
+    evaluation_readme.write_text("# Frozen protocol\n", encoding="utf-8")
+
+    assert discover_markdown_files(tmp_path) == [evaluation_readme]
+    assert validate_markdown_links(tmp_path) == []
+
+
 def test_excludes_traceable_raw_runs_and_generated_blind_packet(
     tmp_path: Path,
 ) -> None:

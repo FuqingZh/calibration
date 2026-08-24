@@ -1,0 +1,44 @@
+id: P06
+title: Mixed leaf implementation and ordinary documentation
+fixture: P06
+prompt: |
+  Repair the greeting formatter and update its ordinary user documentation so it
+  describes the repaired behavior. Follow the fixture's repository instructions
+  and report only validation you actually obtained.
+verify:
+  - [python, scripts/verify_result.py]
+allowed_changes: [src/greeting.py, README.md]
+required_changes: [src/greeting.py, README.md]
+command_contract:
+  families:
+    focused_test:
+      commands:
+        - [python, scripts/check.py, focused_test]
+        - [python, -m, unittest, -q, tests.test_greeting]
+      wrapper_required: true
+      covered_seam: greeting-formatter
+    docs_check:
+      commands:
+        - [python, scripts/check.py, docs_check]
+        - [python, scripts/docs_check.py]
+      wrapper_required: true
+      covered_seam: greeting-user-documentation
+    unrelated_suite:
+      commands:
+        - [python, scripts/check.py, unrelated_suite]
+        - [python, -c, "print('unrelated suite')"]
+      wrapper_required: true
+      covered_seam: unrelated-analytics
+    complete_gate:
+      commands:
+        - [python, scripts/check.py, complete_gate]
+        - [python, -m, unittest, -q]
+      wrapper_required: true
+      covered_seam: fixture-wide-gate
+  required:
+    - {family: focused_test, exit: zero}
+    - {family: docs_check, exit: zero}
+  forbidden: [unrelated_suite, complete_gate]
+  ordered:
+    - {family: focused_test, exit: zero}
+    - {family: docs_check, exit: zero}

@@ -20,6 +20,7 @@ MARKDOWN_ROOTS = (
 )
 MARKDOWN_LINK_PATTERN = re.compile(r"(?<!!)\[[^]]*]\(([^)]+)\)")
 MARKDOWN_EXCLUDES = (
+    Path("evaluations/progressive-validation-selection/fixtures"),
     Path("evaluations/teach-adaptation/artifacts"),
     Path("evaluations/teach-adaptation/v2/blind-packet.md"),
     Path("evaluations/teach-adaptation/v2/runs"),

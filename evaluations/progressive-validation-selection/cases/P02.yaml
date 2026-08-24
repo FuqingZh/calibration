@@ -1,0 +1,56 @@
+id: P02
+title: Generated documentation artifact
+fixture: P02
+prompt: >-
+  Change the release channel from preview to stable in the generated
+  documentation. Update the authoritative source, regenerate the committed
+  artifact, and verify the final artifact rather than treating it as ordinary
+  prose.
+verify:
+  - [python3, scripts/verify_result.py]
+allowed_changes:
+  - content/release-channel.txt
+  - docs/generated-release.md
+required_changes:
+  - content/release-channel.txt
+  - docs/generated-release.md
+command_contract:
+  families:
+    generator:
+      commands:
+        - [python3, scripts/generate_docs.py]
+        - [bash, scripts/generate_docs.sh]
+        - [sh, scripts/generate_docs.sh]
+      wrapper_required: true
+      covered_seam: generated-release-document
+    artifact_readback:
+      commands:
+        - [python3, scripts/artifact_readback.py]
+        - [bash, scripts/artifact_readback.sh]
+      wrapper_required: true
+      covered_seam: committed-generated-artifact
+    docs_only:
+      commands:
+        - [python3, scripts/docs_only.py]
+        - [bash, scripts/docs_only.sh]
+      wrapper_required: true
+      covered_seam: source-document-formatting
+    complete_gate:
+      commands:
+        - [bash, scripts/complete_gate.sh]
+        - [make, check]
+      wrapper_required: true
+      covered_seam: repository-complete-gate
+  required:
+    - family: generator
+      exit: zero
+    - family: artifact_readback
+      exit: zero
+  forbidden:
+    - docs_only
+    - complete_gate
+  ordered:
+    - family: generator
+      exit: zero
+    - family: artifact_readback
+      exit: zero

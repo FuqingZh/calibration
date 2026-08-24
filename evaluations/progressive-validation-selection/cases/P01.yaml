@@ -1,0 +1,43 @@
+id: P01
+title: README wording and local link
+fixture: P01
+prompt: >-
+  Update the README wording to say that it introduces the reviewed
+  release-notes process and repair its local documentation link. Keep this as a
+  documentation-only change and verify the completed documentation contract.
+verify:
+  - [python3, scripts/verify_result.py]
+allowed_changes:
+  - README.md
+required_changes:
+  - README.md
+command_contract:
+  families:
+    docs_check:
+      commands:
+        - [bash, scripts/docs_check.sh]
+        - [sh, scripts/docs_check.sh]
+        - [python3, scripts/docs_check.py]
+      wrapper_required: true
+      covered_seam: readme-wording-and-local-link
+    runtime_test:
+      commands:
+        - [bash, scripts/runtime_test.sh]
+        - [python3, scripts/runtime_test.py]
+      wrapper_required: true
+      covered_seam: runtime-parser
+    complete_gate:
+      commands:
+        - [bash, scripts/complete_gate.sh]
+        - [make, check]
+      wrapper_required: true
+      covered_seam: repository-complete-gate
+  required:
+    - family: docs_check
+      exit: zero
+  forbidden:
+    - runtime_test
+    - complete_gate
+  ordered:
+    - family: docs_check
+      exit: zero

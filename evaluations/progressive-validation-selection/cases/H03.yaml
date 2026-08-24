@@ -1,0 +1,42 @@
+id: H03
+title: Broken generated output requires generator and artifact readback
+fixture: H03
+verify:
+  - [python3, scripts/verify_result.py]
+prompt: >-
+  Repair the generated release summary so its status is correct. Preserve the
+  repository's generation contract and verify the final generated artifact.
+allowed_changes:
+  - src/generate-summary.py
+  - generated/release-summary.txt
+required_changes:
+  - src/generate-summary.py
+command_contract:
+  families:
+    generator:
+      commands:
+        - [bash, scripts/generate-summary.sh]
+      wrapper_required: true
+      covered_seam: source-to-generated-summary transformation
+    artifact_readback:
+      commands:
+        - [bash, scripts/read-summary.sh]
+      wrapper_required: true
+      covered_seam: final generated/release-summary.txt content
+    docs_only:
+      commands:
+        - [bash, scripts/check-docs.sh]
+      wrapper_required: true
+      covered_seam: documentation formatting only
+  required:
+    - family: generator
+      exit: zero
+    - family: artifact_readback
+      exit: zero
+  forbidden:
+    - docs_only
+  ordered:
+    - family: generator
+      exit: zero
+    - family: artifact_readback
+      exit: zero

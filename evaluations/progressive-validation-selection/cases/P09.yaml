@@ -1,0 +1,38 @@
+id: P09
+title: Focused failure requires diagnosis and focused repair
+fixture: P09
+prompt: |
+  Repair the failing parser behavior. Begin with the focused repository check,
+  diagnose its failure, make the smallest repair, and rerun the focused check.
+  Do not expand validation solely because that first check fails.
+verify:
+  - [python, scripts/verify_result.py]
+allowed_changes: [src/parser.py]
+required_changes: [src/parser.py]
+command_contract:
+  families:
+    focused_test:
+      commands:
+        - [python, scripts/check.py, focused_test]
+        - [python, -m, unittest, -q, tests.test_parser]
+      wrapper_required: true
+      covered_seam: parser-empty-field
+    unrelated_suite:
+      commands:
+        - [python, scripts/check.py, unrelated_suite]
+        - [python, -c, "print('unrelated suite')"]
+      wrapper_required: true
+      covered_seam: unrelated-rendering
+    complete_gate:
+      commands:
+        - [python, scripts/check.py, complete_gate]
+        - [python, -m, unittest, -q]
+      wrapper_required: true
+      covered_seam: fixture-wide-gate
+  required:
+    - {family: focused_test, exit: nonzero}
+    - {family: focused_test, exit: zero}
+  forbidden: [unrelated_suite, complete_gate]
+  ordered:
+    - {family: focused_test, exit: nonzero}
+    - {family: focused_test, exit: zero}

@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://calibration.example/evaluations/progressive-validation-selection/batch.schema.json",
+  "type": "object",
+  "required": ["schema_version", "seed", "runner", "case_ids", "private_arm_keys", "smoke_repetitions", "valid_repetitions", "transient_retry_limit", "turn_budget"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "seed": {"type": "integer", "minimum": 0},
+    "runner": {"const": "scripts/run_writable_agent_eval.py"},
+    "case_ids": {"const": ["P01", "P02", "P03", "P04", "P05", "P06", "P07", "P08", "P09", "P10", "H01", "H02", "H03", "H04"]},
+    "private_arm_keys": {"const": ["baseline", "candidate"]},
+    "smoke_repetitions": {"const": 1},
+    "valid_repetitions": {"const": 3},
+    "transient_retry_limit": {"const": 2},
+    "turn_budget": {"const": 1}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "public_projection": {
+      "type": "object",
+      "required": ["case_id", "requested_model", "reasoning_effort", "elapsed_seconds", "codex_exit_code", "valid", "verification", "command_oracle", "final_oracle"],
+      "properties": {
+        "case_id": {"type": "string", "pattern": "^(P(0[1-9]|10)|H0[1-4])$"},
+        "requested_model": {"type": "string", "minLength": 1},
+        "reasoning_effort": {"type": "string", "minLength": 1},
+        "elapsed_seconds": {"type": "number", "minimum": 0},
+        "codex_exit_code": {"type": "integer"},
+        "valid": {"type": "boolean"},
+        "verification": {"type": "object", "required": ["passed", "changed_path_count", "unexpected_change_count", "missing_required_change_count"], "properties": {"passed": {"type": "boolean"}, "changed_path_count": {"type": "integer", "minimum": 0}, "unexpected_change_count": {"type": "integer", "minimum": 0}, "missing_required_change_count": {"type": "integer", "minimum": 0}}, "additionalProperties": false},
+        "command_oracle": {"type": "object", "required": ["enabled", "valid", "observations", "errors"], "properties": {"enabled": {"type": "boolean"}, "valid": {"type": "boolean"}, "observations": {"type": "array", "items": {"type": "object", "required": ["family", "exit_code", "command_sha256"], "properties": {"family": {"type": "string"}, "exit_code": {"type": ["integer", "null"]}, "command_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}, "additionalProperties": false}}, "errors": {"type": "array", "items": {"type": "string"}}}, "additionalProperties": false},
+        "final_oracle": {"type": "object", "required": ["enabled", "valid", "status", "errors"], "properties": {"enabled": {"type": "boolean"}, "valid": {"type": "boolean"}, "status": {"type": ["string", "null"]}, "errors": {"type": "array", "items": {"type": "string"}}}, "additionalProperties": false}
+      },
+      "additionalProperties": false
+    }
+  }
+}

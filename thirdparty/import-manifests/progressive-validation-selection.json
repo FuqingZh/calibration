@@ -1,0 +1,80 @@
+{
+  "schema_version": 1,
+  "checked_at": "2026-08-24T16:18:49+08:00",
+  "sources": [
+    {
+      "name": "coding-protocol",
+      "role": "Direct Runtime Base",
+      "source_repo": "https://github.com/lencx/skills",
+      "source_path": "skills/coding-protocol",
+      "source_ref": "b848e124111be50a795cc961558247e7751825e2",
+      "checked_ref": "b848e124111be50a795cc961558247e7751825e2",
+      "license_spdx": "MIT",
+      "license_source_path": "LICENSE",
+      "local_license_path": "thirdparty/skills/coding-protocol/LICENSE",
+      "local_treatment": "vendored+patched+shared",
+      "source_blob_sha256": "cb62f9878a21491202867663bf9dc442e061be698a8adb196f481a01f668ff7f",
+      "imported_files": [
+        {
+          "upstream_path": "skills/coding-protocol/SKILL.md",
+          "upstream_git_blob": "f57fb66cc3c8786da288c31113094831a4fbea8c",
+          "upstream_sha256": "cb62f9878a21491202867663bf9dc442e061be698a8adb196f481a01f668ff7f",
+          "local_path": "thirdparty/skills/coding-protocol/SKILL.md",
+          "local_sha256": "c464f64edc4c565cfc22489257d2647d6eadb7fcf61bf542208c0685d5a538f2"
+        },
+        {
+          "upstream_path": "skills/coding-protocol/references/rule-rationale.md",
+          "upstream_git_blob": "80e7dec71537e7d0215ebfff08ce3becf8dbb6b3",
+          "upstream_sha256": "0111cd50c22aad1f37806933944a018bba938ddef3b989e664e69d57e45fdd46",
+          "local_path": "thirdparty/skills/coding-protocol/references/rule-rationale.md",
+          "local_sha256": "f21f18a9c681d2ec2d2530e857f99906cef935c0a99841e54621d39bb3bf4e8a"
+        },
+        {
+          "upstream_path": "skills/coding-protocol/references/verification.md",
+          "upstream_git_blob": "1919f206a368bee8f294a521509367d8b00b33f9",
+          "upstream_sha256": "7c45752dc537a38b4165a98fc117391b5bc3bae35820a9f1beb882a070fa9918",
+          "local_path": "thirdparty/skills/coding-protocol/references/verification.md",
+          "local_sha256": "7c45752dc537a38b4165a98fc117391b5bc3bae35820a9f1beb882a070fa9918"
+        },
+        {
+          "upstream_path": "LICENSE",
+          "upstream_git_blob": "58d204319261d7bb6b58a88a60036c8f5041952f",
+          "upstream_sha256": "16e71e88dc4c8cc3d4d46d04bfa2e47c08b27d6d3a7893ddb262364399f84374",
+          "local_path": "thirdparty/skills/coding-protocol/LICENSE",
+          "local_sha256": "16e71e88dc4c8cc3d4d46d04bfa2e47c08b27d6d3a7893ddb262364399f84374"
+        }
+      ]
+    },
+    {
+      "name": "verification-before-completion",
+      "role": "Validation Algorithm",
+      "source_repo": "https://github.com/GonkaGate/hermes-agent-setup",
+      "source_path": ".agents/skills/verification-before-completion/SKILL.md",
+      "source_ref": "461578373f9c3a8eae3037504f659e0f3e0cc7cd",
+      "checked_ref": "461578373f9c3a8eae3037504f659e0f3e0cc7cd",
+      "license_spdx": "Apache-2.0",
+      "license_source_path": "LICENSE",
+      "local_license_path": "thirdparty/licenses/GonkaGate-Apache-2.0.txt",
+      "local_treatment": "method-adapted-not-vendored",
+      "source_blob_sha256": "67393a815e84bf225689fb27fd77621a8fb969662c86b14ca1fb738e2c70d993",
+      "source_notice_paths": [],
+      "local_derivative_path": "thirdparty/skills/coding-protocol/references/validation-selection.md",
+      "local_derivative_sha256": "54dd01f6a47acc9a14b456e9a939236d2b3c6aa3c2bcd7b9352d7b6a7b56188d"
+    },
+    {
+      "name": "designing-workflow-skills",
+      "role": "Progressive-Disclosure Structure",
+      "source_repo": "https://github.com/trailofbits/skills",
+      "source_path": "plugins/workflow-skill-design/skills/designing-workflow-skills/SKILL.md",
+      "source_ref": "09dfbd91537b888136c9203dca4ffdee5a595c69",
+      "checked_ref": "293fb74c3151cceda32a85a545fe8acd67f8f5c6",
+      "license_spdx": "CC-BY-SA-4.0",
+      "license_source_path": "LICENSE",
+      "local_license_path": null,
+      "local_treatment": "method-reference-not-vendored",
+      "source_blob_sha256": "11fe6909d9a9be26d8d2d652dac19945e635081d936220cb84e264faeccbc278",
+      "removal_ref": "1256982d4d925a0acfe11e26c2253c32052c6247",
+      "independent_expression_review": "Local structure is independently expressed; no Trail of Bits text or artifact is distributed."
+    }
+  ]
+}

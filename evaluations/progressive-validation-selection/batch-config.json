@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "seed": 42,
+  "runner": "scripts/run_writable_agent_eval.py",
+  "case_ids": ["P01", "P02", "P03", "P04", "P05", "P06", "P07", "P08", "P09", "P10", "H01", "H02", "H03", "H04"],
+  "private_arm_keys": ["baseline", "candidate"],
+  "smoke_repetitions": 1,
+  "valid_repetitions": 3,
+  "transient_retry_limit": 2,
+  "turn_budget": 1
+}
