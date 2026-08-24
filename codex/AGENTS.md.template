@@ -3,19 +3,19 @@
 Use `$calibration` before substantive changes that require cross-project
 engineering judgment, non-local architecture or refactoring, public or
 compatibility-sensitive contract decisions, unclear validation, repository
-harness changes, agent or workflow evaluation, or durable engineering
-documentation. For ordinary local implementation with clear repository rules
-and executable feedback, work directly from those sources without adding a
-calibration step. Load only the references routed for the current task.
+harness changes, or agent or workflow evaluation. Ordinary repository prose is
+not a calibration trigger; cross-boundary contract documentation remains one.
+For ordinary local implementation with clear repository rules and executable
+feedback, work directly from those sources without adding a calibration step.
+Load only the references routed for the current task.
 
-For repository changes, select validation proportionally to the affected
-behavior and contracts. Run the smallest relevant checks that can decide the
-changed surface, using the repository-owned validation entrypoint when it is
-relevant. Run the complete canonical gate when the change can affect runtime
-behavior, generated artifacts, executable workflows, or compatibility, or when
-repository-local policy explicitly requires it. Prefer configured repository
-tools over a universal language checklist. If a required check cannot be found
-or run, report the exact gap and residual risk rather than silently skipping it.
+For repository changes, select validation proportionally: state the completion
+claim and affected seam, then run the smallest relevant checks using a
+repository-owned validation entrypoint where it can falsify that claim. Broaden
+only when repository-local policy explicitly requires it or the narrower
+evidence leaves an obligation uncovered. Prefer configured repository tools
+over a universal language checklist. Report every unchecked boundary,
+unavailable required check, and residual risk rather than silently skipping it.
 
 Do not silence or weaken required diagnostics for first-party code merely to
 pass a check; fix first-party code and interfaces. Contain external, generated,

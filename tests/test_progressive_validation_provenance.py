@@ -231,10 +231,8 @@ def test_sources_tsv_matches_manifest_exact_policies() -> None:
     assert rows["designing-workflow-skills"]["upstream_ref_checked"] == (
         "293fb74c3151cceda32a85a545fe8acd67f8f5c6"
     )
-    assert "remains inert" in rows["coding-protocol"]["notes"]
-    assert (
-        "installer-managed nor implicitly invoked" in rows["coding-protocol"]["notes"]
-    )
+    assert "activated" in rows["coding-protocol"]["notes"]
+    assert "single pinned shared third-party skill" in rows["coding-protocol"]["notes"]
     assert "current local derivative" in rows["verification-before-completion"]["notes"]
     assert (
         "planned local derivative"
@@ -242,13 +240,13 @@ def test_sources_tsv_matches_manifest_exact_policies() -> None:
     )
 
 
-def test_inert_coding_protocol_is_explicit_only_and_not_installer_managed() -> None:
+def test_coding_protocol_is_shared_implicit_and_installer_managed() -> None:
     metadata = (
         REPOSITORY_ROOT / "thirdparty/skills/coding-protocol/agents/openai.yaml"
     ).read_text(encoding="utf-8")
-    assert "allow_implicit_invocation: false" in metadata
+    assert "allow_implicit_invocation: true" in metadata
 
     errors: list[str] = []
     active_skills = _installer_skills(REPOSITORY_ROOT, errors)
     assert errors == []
-    assert REPOSITORY_ROOT / "thirdparty/skills/coding-protocol" not in active_skills
+    assert REPOSITORY_ROOT / "thirdparty/skills/coding-protocol" in active_skills

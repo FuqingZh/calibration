@@ -1,7 +1,7 @@
 # Progressive Validation Selection Baseline
 
 Date: 2026-08-24
-Status: harness-ready; pending immutable baseline commit readback
+Status: frozen baseline
 
 The exact pre-behavior repository commit is
 `e6aa9d33c78ec0561d5c9042b4c363c78495bddd`. It contains the accepted v2.0
@@ -27,6 +27,10 @@ a circular mutation. S5 must record the resulting exact commit, fixture root
 hash, model, reasoning effort, and randomized arm map in its runner-owned arm
 manifest before any model call. The baseline becomes frozen only after that
 commit is created, read back, and passes the same exact-head gate.
+
+That readback is complete. The exact inert baseline is
+`0f21f880383859f060156db6ce69d08eff73ed44`; its clean exact-head repository
+gate and both installer-profile dry-runs passed.
 
 No behavioral conclusion has been drawn. Static checks and synthetic oracle
 controls establish harness readiness only; they do not show that the candidate

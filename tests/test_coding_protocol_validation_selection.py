@@ -72,11 +72,13 @@ def test_static_prompts_cover_selection_boundaries() -> None:
     )
 
 
-def test_protocol_remains_inert_and_trail_structure_is_independent() -> None:
+def test_protocol_is_implicitly_active_and_trail_structure_is_independent() -> None:
     metadata = (
         REPOSITORY_ROOT / "thirdparty/skills/coding-protocol/agents/openai.yaml"
     ).read_text(encoding="utf-8")
-    assert "allow_implicit_invocation: false" in metadata
+    assert "allow_implicit_invocation: true" in metadata
+    assert "Select honest repository evidence proportionally" in metadata
+    assert "only when explicitly requested" not in metadata
     reference_text = REFERENCE_PATH.read_text(encoding="utf-8")
     assert "Trail of Bits" not in reference_text
     assert "CC-BY-SA" not in reference_text

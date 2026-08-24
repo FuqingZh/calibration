@@ -14,6 +14,7 @@ MANAGED_THIRDPARTY_SKILLS = (
     "teach",
     "writing-great-skills",
 )
+MANAGED_SHARED_THIRDPARTY_SKILLS = ("coding-protocol",)
 
 
 def run_installer(
@@ -52,8 +53,18 @@ def assert_first_party_installed(repository_root: Path, codex_home: Path) -> str
     return agents
 
 
+def assert_shared_third_party_installed(
+    repository_root: Path, codex_home: Path
+) -> None:
+    for name in MANAGED_SHARED_THIRDPARTY_SKILLS:
+        assert (codex_home / "skills" / name).readlink() == (
+            repository_root / "thirdparty/skills" / name
+        )
+
+
 def assert_standard_installed(repository_root: Path, codex_home: Path) -> str:
     agents = assert_first_party_installed(repository_root, codex_home)
+    assert_shared_third_party_installed(repository_root, codex_home)
     for name in MANAGED_THIRDPARTY_SKILLS:
         assert (codex_home / "skills" / name).readlink() == (
             repository_root / "thirdparty/skills" / name
@@ -209,6 +220,7 @@ def test_ao_worker_uses_explicit_second_home_and_cli_precedence(
     assert result.returncode == 0, result.stderr
     assert not environment_home.exists()
     agents = assert_first_party_installed(REPOSITORY_ROOT, worker_home)
+    assert_shared_third_party_installed(REPOSITORY_ROOT, worker_home)
     assert str(xdg_root / "calibration/AGENTS.md") in agents
     for name in MANAGED_THIRDPARTY_SKILLS:
         assert not (worker_home / "skills" / name).exists()
@@ -401,6 +413,7 @@ def test_profiles_are_idempotent_and_convert_safely(tmp_path: Path) -> None:
         str(codex_home),
     )
     assert worker.returncode == second_worker.returncode == 0
+    assert_shared_third_party_installed(REPOSITORY_ROOT, codex_home)
     assert owned.is_symlink() and owned.readlink() == foreign_target
     for name in MANAGED_THIRDPARTY_SKILLS[1:]:
         assert not (codex_home / "skills" / name).exists()
@@ -433,6 +446,118 @@ def test_profiles_are_idempotent_and_convert_safely(tmp_path: Path) -> None:
     )
     assert standard_again.returncode == 0, standard_again.stderr
     assert_standard_installed(REPOSITORY_ROOT, codex_home)
+
+
+def test_shared_protocol_preserves_foreign_link_until_force(tmp_path: Path) -> None:
+    codex_home = tmp_path / "codex-home"
+    skills = codex_home / "skills"
+    skills.mkdir(parents=True)
+    foreign = tmp_path / "foreign-coding-protocol"
+    foreign.mkdir()
+    shared = skills / "coding-protocol"
+    shared.symlink_to(foreign, target_is_directory=True)
+
+    refused = run_installer(codex_home)
+
+    assert refused.returncode == 1
+    assert "without --force" in refused.stderr
+    assert shared.is_symlink() and shared.readlink() == foreign
+
+    forced = run_installer(codex_home, "--force")
+
+    assert forced.returncode == 0, forced.stderr
+    assert_shared_third_party_installed(REPOSITORY_ROOT, codex_home)
+
+
+@pytest.mark.parametrize("profile", ["standard", "ao-worker"])
+def test_retired_shared_protocol_removes_only_owned_links_idempotently(
+    tmp_path: Path, profile: str
+) -> None:
+    repository_root = tmp_path / "retired-shared-repository"
+    (repository_root / "codex").mkdir(parents=True)
+    (repository_root / "thirdparty").mkdir()
+    installer = (REPOSITORY_ROOT / "install.sh").read_text(encoding="utf-8")
+    installer = installer.replace(
+        "MANAGED_SHARED_THIRDPARTY_SKILLS=(\n  coding-protocol\n)",
+        "MANAGED_SHARED_THIRDPARTY_SKILLS=(\n)",
+    ).replace(
+        "RETIRED_SHARED_THIRDPARTY_SKILLS=(\n)",
+        "RETIRED_SHARED_THIRDPARTY_SKILLS=(\n  coding-protocol\n)",
+    )
+    (repository_root / "install.sh").write_text(installer, encoding="utf-8")
+    (repository_root / "codex/AGENTS.md.template").write_bytes(
+        (REPOSITORY_ROOT / "codex/AGENTS.md.template").read_bytes()
+    )
+    (repository_root / "skills").symlink_to(REPOSITORY_ROOT / "skills")
+    (repository_root / "thirdparty/skills").symlink_to(
+        REPOSITORY_ROOT / "thirdparty/skills"
+    )
+
+    codex_home = tmp_path / f"{profile}-home"
+    skills = codex_home / "skills"
+    skills.mkdir(parents=True)
+    if profile == "ao-worker":
+        codex_home.chmod(0o700)
+    owned = skills / "coding-protocol"
+    owned.symlink_to(repository_root / "thirdparty/skills/coding-protocol")
+    foreign_target = tmp_path / "foreign-shared-target"
+    foreign_target.mkdir()
+    arguments = ["--profile", profile]
+    if profile == "ao-worker":
+        arguments.extend(["--codex-home", str(codex_home)])
+
+    first = run_installer(
+        codex_home if profile == "standard" else None,
+        *arguments,
+        repository_root=repository_root,
+    )
+    assert first.returncode == 0, first.stderr
+    assert not owned.exists() and not owned.is_symlink()
+
+    owned.symlink_to(foreign_target, target_is_directory=True)
+    second = run_installer(
+        codex_home if profile == "standard" else None,
+        *arguments,
+        repository_root=repository_root,
+    )
+    third = run_installer(
+        codex_home if profile == "standard" else None,
+        *arguments,
+        repository_root=repository_root,
+    )
+
+    assert second.returncode == third.returncode == 0
+    assert owned.is_symlink() and owned.readlink() == foreign_target
+
+
+@pytest.mark.parametrize("profile", ["standard", "ao-worker"])
+def test_shared_preflight_fails_before_creating_either_profile_home(
+    tmp_path: Path, profile: str
+) -> None:
+    repository_root = tmp_path / "missing-shared-source"
+    (repository_root / "codex").mkdir(parents=True)
+    (repository_root / "skills").symlink_to(REPOSITORY_ROOT / "skills")
+    (repository_root / "thirdparty/skills").mkdir(parents=True)
+    (repository_root / "install.sh").write_bytes(
+        (REPOSITORY_ROOT / "install.sh").read_bytes()
+    )
+    (repository_root / "codex/AGENTS.md.template").write_bytes(
+        (REPOSITORY_ROOT / "codex/AGENTS.md.template").read_bytes()
+    )
+    codex_home = tmp_path / f"{profile}-home"
+    arguments = ["--profile", profile]
+    if profile == "ao-worker":
+        arguments.extend(["--codex-home", str(codex_home)])
+
+    result = run_installer(
+        codex_home if profile == "standard" else None,
+        *arguments,
+        repository_root=repository_root,
+    )
+
+    assert result.returncode == 1
+    assert "Missing required directory" in result.stderr
+    assert not codex_home.exists()
 
 
 def test_standard_preserves_foreign_teach_link_until_force(tmp_path: Path) -> None:

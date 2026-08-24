@@ -53,9 +53,11 @@ def skill_fixture(tmp_path: Path) -> SkillFixture:
     (tmp_path / "skills").mkdir()
     (tmp_path / "thirdparty/skills").mkdir(parents=True)
     (tmp_path / "install.sh").write_text(
-        "MANAGED_SKILLS=(\n  sample\n)\nMANAGED_THIRDPARTY_SKILLS=(\n)\n",
+        "MANAGED_SKILLS=(\n  sample\n)\nMANAGED_THIRDPARTY_SKILLS=(\n)\n"
+        "MANAGED_SHARED_THIRDPARTY_SKILLS=(\n  coding-protocol\n)\n",
         encoding="utf-8",
     )
+    write_skill(tmp_path, "thirdparty/skills", "coding-protocol")
     return SkillFixture(
         root=tmp_path,
         skill_dir=write_skill(tmp_path, "skills", "sample"),
@@ -165,6 +167,65 @@ def test_rejects_implicit_third_party_skill(skill_fixture: SkillFixture) -> None
     assert_has_error(
         skill_fixture.root,
         "requires this skill to disable implicit invocation",
+    )
+
+
+def test_allows_only_exact_shared_implicit_third_party_skill(
+    skill_fixture: SkillFixture,
+) -> None:
+    assert validate_repository(skill_fixture.root) == []
+
+    write_skill(skill_fixture.root, "thirdparty/skills", "second")
+    assert_has_error(
+        skill_fixture.root, "requires this skill to disable implicit invocation"
+    )
+
+    renamed = write_skill(skill_fixture.root, "thirdparty/skills", "renamed")
+    (renamed / "SKILL.md").write_text(
+        (renamed / "SKILL.md")
+        .read_text(encoding="utf-8")
+        .replace("name: renamed", "name: coding-protocol"),
+        encoding="utf-8",
+    )
+    (renamed / "agents/openai.yaml").write_text(
+        (renamed / "agents/openai.yaml")
+        .read_text(encoding="utf-8")
+        .replace("$renamed", "$coding-protocol"),
+        encoding="utf-8",
+    )
+    assert_has_error(
+        skill_fixture.root, "requires this skill to disable implicit invocation"
+    )
+    assert_has_error(skill_fixture.root, "must match directory 'renamed'")
+
+
+def test_shared_registry_is_exact_and_disjoint_from_standard_only(
+    skill_fixture: SkillFixture,
+) -> None:
+    installer = skill_fixture.root / "install.sh"
+    original = installer.read_text(encoding="utf-8")
+    installer.write_text(
+        original.replace(
+            "MANAGED_SHARED_THIRDPARTY_SKILLS=(\n  coding-protocol\n)",
+            "MANAGED_SHARED_THIRDPARTY_SKILLS=(\n  coding-protocol\n  sample\n)",
+        ),
+        encoding="utf-8",
+    )
+    assert_has_error(
+        skill_fixture.root,
+        "MANAGED_SHARED_THIRDPARTY_SKILLS must be exactly ['coding-protocol']",
+    )
+
+    installer.write_text(
+        original.replace(
+            "MANAGED_THIRDPARTY_SKILLS=(\n)",
+            "MANAGED_THIRDPARTY_SKILLS=(\n  coding-protocol\n)",
+        ),
+        encoding="utf-8",
+    )
+    assert_has_error(
+        skill_fixture.root,
+        "shared and standard-only third-party arrays overlap: ['coding-protocol']",
     )
 
 
@@ -421,7 +482,7 @@ def test_main_reports_success_and_failure(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     assert main(["--root", str(skill_fixture.root)]) == 0
-    assert "Validated 1 skills." in capsys.readouterr().out
+    assert "Validated 2 skills." in capsys.readouterr().out
 
     (skill_fixture.skill_dir / "SKILL.md").write_text("invalid\n", encoding="utf-8")
     assert main(["--root", str(skill_fixture.root)]) == 1

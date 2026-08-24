@@ -23,8 +23,8 @@ The progressive-validation-selection provenance uses three more specific
 states:
 
 - `vendored+patched+shared`: an imported runtime tree with a documented local
-  patch and a planned shared-installation role; until activation, its presence
-  alone does not make it installer-managed.
+  patch, installed by the shared registry in both profiles. It is a singular
+  audited exception, not a general third-party installation or invocation rule.
 - `method-adapted-not-vendored`: an upstream method source for a separately
   attributed local derivative; no upstream skill tree is distributed.
 - `method-reference-not-vendored`: a source used only to inform independently

@@ -483,11 +483,14 @@ def test_w07_paired_results_preserve_controls_and_bounded_claim() -> None:
     )
 
     arms = cast(dict[str, dict[str, object]], payload["arms"])
-    template = Path(__file__).resolve().parents[1] / "codex/AGENTS.md.template"
     assert (
         arms["candidate"]["agents_template_sha256"]
-        == hashlib.sha256(template.read_bytes()).hexdigest()
+        == "d71053d50e0835912d84b85ad6492744db376ca80cac723688a9a20a27a216e2"
     )
+    current_template = (
+        Path(__file__).resolve().parents[1] / "codex/AGENTS.md.template"
+    ).read_text(encoding="utf-8")
+    assert "Do not silence or weaken required diagnostics" in current_template
     assert (
         cast(int, arms["candidate"]["agents_template_words"])
         - cast(int, arms["baseline"]["agents_template_words"])
@@ -1957,6 +1960,7 @@ def test_broker_close_and_empty_socket_requests_cover_lifecycle_edges(
 
         def recv(self, size: int) -> bytes:
             assert size == 65536
+            broker._stopping.set()
             return b""
 
         def sendall(self, reply: bytes) -> None:
@@ -1966,8 +1970,8 @@ def test_broker_close_and_empty_socket_requests_cover_lifecycle_edges(
         def accept(self) -> tuple[EmptyClient, object]:
             return EmptyClient(), object()
 
+    broker._stopping.clear()
     broker._server = cast(evaluation.socket.socket, OneClientServer())
-    broker._stopping.set()
     broker._serve()
 
     live_runtime = tmp_path / "live-runtime"
