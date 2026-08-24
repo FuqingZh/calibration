@@ -1,8 +1,9 @@
 {
   "canonicalization": "UTF-8 bytes; lexical POSIX-relative path order; root_tree_sha256 is SHA-256 of path, NUL, digest, newline records",
   "files": {
-    "batch-config.json": "d58c5e616383760c171c6de7c62440e97302e53cb7a4627589dccc9b23be2d56",
-    "batch.schema.json": "3e8dcf617808909a10ccaedb5d18a2f90ea62cd9b1670a8dd00502c3550fa90f",
+    "batch-config.json": "681a8b68b4c18e0ea68a1e430d9b91d83382dfc2c9b72f4f6f19a90bdde6f489",
+    "batch.schema.json": "8b75051f61a92ac268c63619f484ab2e6d8b1e3a2f86efa51f9704fe417b0aca",
+    "cases/C01.yaml": "56219088a8c43c57aea17c98c51ff138374e1833ccae30a140b56a5f8f5dfc47",
     "cases/H01.yaml": "f420380fd8df6d09d223c450f38ab0eb5549235d1eac3b64588c1c4a8c898731",
     "cases/H02.yaml": "875499230ce31d36a7c3a8cf1c98de1aa1101642427d07ede3a4e78a9718c1eb",
     "cases/H03.yaml": "875929d224e4849f4a1ae2ab710641b7c7a565039f04f57a3f72ccaadfc93c83",
@@ -17,6 +18,10 @@
     "cases/P08.yaml": "a0349cd34e41df62d2702336bdb8a9febac37e4f9513a78b3a0af06973dae73a",
     "cases/P09.yaml": "32229e5b14dc42a99d3da8980d52e64779c964c7f2019feb064190c0e826af50",
     "cases/P10.yaml": "d3dd44a3b725544030d5107f2ef466ffd64d46755cbc8fdc85a2f8b1894da5b7",
+    "fixtures/C01/AGENTS.md": "da8e09eba3063fb47a46c68a46e2ce10522f3f9a247361c2a2131ea1ab9fbb50",
+    "fixtures/C01/live-canary-contract.txt": "7e025f8245cedd1792e43f90d086d3ded041a4e6f0ddc6ee7adc0b85a8240b8e",
+    "fixtures/C01/scripts/check-live-canary.sh": "9752809a11b3eb384c64e6b955d6c51c709853167a7c031c27345260358bbbdc",
+    "fixtures/C01/scripts/verify_result.py": "470a9a0c6e9e86a4cdf57afb01dbe88a6edad5b95c149d7f1ff890f81bb4f5ba",
     "fixtures/H01/AGENTS.md": "fab0fbd1fe341d141ccd486f69195a043c8ac82fe87c95528f5ec79fdbbc660c",
     "fixtures/H01/README.md": "7f072ca75b01c8037fb6ccdc912c85c6fce8669e222e64ea99a69e405da54895",
     "fixtures/H01/scripts/check-docs.sh": "ba96ea78126448ad6e7b5948802cf31a26c939073d3aac8e70e92939a1ba9206",
@@ -147,10 +152,10 @@
     "fixtures/P10/tests/test_selector.py": "b732055cc46a71a4e840504b47aae2e39f5e5539edf4b244b02546b86f022bea",
     "fixtures/P10/validation/selector.py": "884ce2797abb585d0644ae7e183e93ccbd95101f908c2ae98a79ee6173d30c7e",
     "judge-prompt.md": "ee1443024dd318e4f121bd9de7808d56c62dfdfb994e81187bf131448ff59773",
-    "result.schema.json": "99d09f0cdde166f028cfe1a705788c8071e21b9cce5d947e990ab8cca5d85363",
+    "result.schema.json": "e8cb265039940e6886567e0981a9b672cad81f76fc67b010dc5526c58e33d876",
     "rubric.yaml": "5fc67b68d0bbbae65eef6f357466f4444efacf677738f33b050f25d4c48cffe2"
   },
   "hash_algorithm": "sha256",
-  "root_tree_sha256": "4f160f424d3a717b661c3ed92e418cff59322f1c110d438ce7f23d2812b36c91",
+  "root_tree_sha256": "eff68a91f5f46cee5cb01628353bc51bc79f434d7c0664880db147526527f47b",
   "schema_version": 1
 }

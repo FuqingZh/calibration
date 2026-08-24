@@ -6,10 +6,12 @@ lives under `../references/engineering/`.
 
 Calibration is in stable maintenance mode. The progressive-validation-selection
 v2.0 plan is the current validation slice. Its provenance, inert protocol,
-frozen evaluation baseline, and S4 activation candidate are implemented; the
-controlled model comparison and downstream migration have not completed. It
-follows the completed v1.0 proportional-wording increment and is layered on the
-ongoing project-docs
+frozen evaluation baseline, and S4 activation candidate are implemented. Its
+first controlled-comparison smoke is invalid because a shared executor-sandbox
+failure prevented broker evidence; the candidate has not been rejected. The
+narrow harness recovery, fresh freeze, live canary, and fresh smoke remain
+pending, as does downstream migration. It follows the completed v1.0
+proportional-wording increment and is layered on the ongoing project-docs
 architecture convergence and does not reopen the completed runtime or AO
 implementation phases. The completed bounded v2.4 closeout-skill increment
 adds an explicitly invoked first-party closeout contract and makes no
@@ -62,6 +64,7 @@ back to `$HOME/.config/calibration/AGENTS.md`.
 | Progressive validation selection plan | `implementation-plans/20260824-v2.0-progressive-validation-selection-implementation-plan.md` |
 | Progressive validation frozen baseline | `decisions/2026-08-24-progressive-validation-selection-baseline.md` |
 | Progressive validation activation candidate | `decisions/2026-08-24-progressive-validation-selection-candidate.md` |
+| Progressive validation invalid first smoke | `decisions/2026-08-24-progressive-validation-selection-smoke-invalid.md` |
 | Portable AO integration | `runbooks/agent-orchestrator-review-continuation.md` |
 | Native AO delivery and auto-merge boundary | `decisions/2026-07-29-ao-native-delivery-convergence.md` |
 | Current AI-native direction | `decisions/2026-07-27-ai-native-calibration-review.md` |

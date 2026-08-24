@@ -21,6 +21,7 @@ import subprocess
 import sys
 import tarfile
 from collections.abc import Iterable, Mapping, Sequence
+from contextlib import suppress
 from pathlib import Path
 from typing import Any, Protocol, cast
 
@@ -159,6 +160,172 @@ def _private_manifest(private_root: Path) -> dict[str, object]:
     return manifest
 
 
+def _open_directory(path: Path, description: str) -> int:
+    """Open one trusted directory without accepting a symlink leaf."""
+    flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        return os.open(path, flags)
+    except OSError as exc:
+        raise BatchError(f"cannot safely open {description}: {exc}") from exc
+
+
+def _open_directory_at(descriptor: int, name: str, description: str) -> int:
+    """Open a descendant directory without following a replacement symlink."""
+    flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        return os.open(name, flags, dir_fd=descriptor)
+    except OSError as exc:
+        raise BatchError(f"cannot safely open {description}: {exc}") from exc
+
+
+def _open_slot_directory(root: Path, slot_id: str) -> int | None:
+    """Open a ledger slot through no-follow directory descriptors.
+
+    A missing ``slots`` directory or slot is normal before execution.  Every
+    other failure is an unsafe private-ledger boundary rather than a reason to
+    inspect a path through a possible symlink.
+    """
+    root_descriptor = _open_directory(root, "private run root")
+    try:
+        try:
+            slots_descriptor = _open_directory_at(
+                root_descriptor, "slots", "private slot ledger"
+            )
+        except BatchError as exc:
+            if isinstance(exc.__cause__, FileNotFoundError):
+                return None
+            raise
+        try:
+            try:
+                return _open_directory_at(
+                    slots_descriptor, slot_id, f"frozen slot directory: {slot_id}"
+                )
+            except BatchError as exc:
+                if isinstance(exc.__cause__, FileNotFoundError):
+                    return None
+                raise
+        finally:
+            os.close(slots_descriptor)
+    finally:
+        os.close(root_descriptor)
+
+
+def _slot_ledger_entry_names(root: Path) -> list[str]:
+    """List only real slot directories below the private ledger root."""
+    root_descriptor = _open_directory(root, "private run root")
+    try:
+        try:
+            slots_descriptor = _open_directory_at(
+                root_descriptor, "slots", "private slot ledger"
+            )
+        except BatchError as exc:
+            if isinstance(exc.__cause__, FileNotFoundError):
+                return []
+            raise
+        try:
+            names = os.listdir(slots_descriptor)
+            for name in names:
+                child = _open_directory_at(
+                    slots_descriptor, name, "private slot ledger entry"
+                )
+                os.close(child)
+            return names
+        finally:
+            os.close(slots_descriptor)
+    finally:
+        os.close(root_descriptor)
+
+
+def _slot_regular_file_exists(descriptor: int, name: str, slot_id: str) -> bool:
+    """Check a direct ledger leaf without following a symlink."""
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        leaf = os.open(name, flags, dir_fd=descriptor)
+    except FileNotFoundError:
+        return False
+    except OSError as exc:
+        raise BatchError(f"cannot safely read frozen slot ledger: {slot_id}") from exc
+    try:
+        if not stat.S_ISREG(os.fstat(leaf).st_mode):
+            raise BatchError(f"frozen slot ledger leaf is not regular: {slot_id}")
+        return True
+    finally:
+        os.close(leaf)
+
+
+def _slot_json_with_sha256(
+    descriptor: int, slot_id: str, *parts: str
+) -> tuple[dict[str, object], str]:
+    """Read a private slot JSON file and its exact bytes through safe descriptors."""
+    if not parts:
+        raise BatchError("private slot JSON path is empty")
+    current = os.dup(descriptor)
+    try:
+        for part in parts[:-1]:
+            next_descriptor = _open_directory_at(
+                current, part, f"frozen slot directory: {slot_id}"
+            )
+            os.close(current)
+            current = next_descriptor
+        flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+        try:
+            leaf = os.open(parts[-1], flags, dir_fd=current)
+        except OSError as exc:
+            raise BatchError(
+                f"cannot safely read frozen slot result: {slot_id}"
+            ) from exc
+        try:
+            if not stat.S_ISREG(os.fstat(leaf).st_mode):
+                raise BatchError(f"frozen slot result is not regular: {slot_id}")
+            chunks: list[bytes] = []
+            while chunk := os.read(leaf, 65536):
+                chunks.append(chunk)
+            raw = b"".join(chunks)
+        finally:
+            os.close(leaf)
+    finally:
+        os.close(current)
+    try:
+        value = json.loads(raw.decode("utf-8"))
+    except (UnicodeError, json.JSONDecodeError) as exc:
+        raise BatchError(f"frozen slot JSON is invalid: {slot_id}") from exc
+    if not isinstance(value, dict):
+        raise BatchError(f"frozen slot JSON object required: {slot_id}")
+    return cast(dict[str, object], value), _sha256_bytes(raw)
+
+
+def _slot_json(descriptor: int, slot_id: str, *parts: str) -> dict[str, object]:
+    """Read one private slot JSON object through no-follow ancestor descriptors."""
+    value, _digest = _slot_json_with_sha256(descriptor, slot_id, *parts)
+    return value
+
+
+def _validate_started_ledger(
+    descriptor: int, slot_id: str, case_id: str, arm_key: str
+) -> None:
+    """Validate the immutable start identity before accepting later evidence."""
+    started = _slot_json(descriptor, slot_id, "started.json")
+    expected: dict[str, object] = {
+        "slot_id": slot_id,
+        "case_id": case_id,
+        "arm_key": arm_key,
+    }
+    if started != expected:
+        raise BatchError(f"frozen slot start ledger mismatch: {slot_id}")
+
+
+def _validate_failed_ledger(descriptor: int, slot_id: str) -> None:
+    """Reject malformed failure records rather than downgrading them to absence."""
+    failed = _slot_json(descriptor, slot_id, "failed.json")
+    if (
+        failed.get("slot_id") != slot_id
+        or not isinstance(failed.get("error_type"), str)
+        or not failed["error_type"]
+        or not isinstance(failed.get("error"), str)
+    ):
+        raise BatchError(f"frozen slot failure ledger mismatch: {slot_id}")
+
+
 def load_batch_config(config_path: Path = CONFIG_PATH) -> dict[str, object]:
     """Load and strictly validate the public, path-free batch configuration."""
     config = _json(config_path)
@@ -219,21 +386,162 @@ def _exclusive_json(path: Path, payload: Mapping[str, object]) -> None:
         handle.write("\n")
 
 
-def _archive_commit(commit: str, destination: Path) -> str:
-    if destination.exists():
-        raise BatchError(f"refusing to overwrite source archive: {destination}")
-    destination.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
-    with destination.open("xb") as output:
-        result = subprocess.run(
-            ["git", "archive", "--format=tar", commit],
-            cwd=REPOSITORY_ROOT,
-            stdout=output,
-            stderr=subprocess.PIPE,
+def _exclusive_json_at(
+    descriptor: int, name: str, payload: Mapping[str, object]
+) -> None:
+    """Write one append-only private JSON leaf below an open directory."""
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    try:
+        leaf = os.open(name, flags, 0o600, dir_fd=descriptor)
+    except FileExistsError as exc:
+        raise BatchError(f"refusing to overwrite private artifact: {name}") from exc
+    except OSError as exc:
+        raise BatchError(f"cannot safely write private artifact: {name}") from exc
+    with os.fdopen(leaf, "w", encoding="utf-8") as handle:
+        json.dump(payload, handle, indent=2, sort_keys=True)
+        handle.write("\n")
+
+
+def _create_slot_directory(root: Path, slot_id: str) -> int:
+    """Create one new slot below real private-ledger directories only."""
+    root_descriptor = _open_directory(root, "private run root")
+    try:
+        with suppress(FileExistsError):
+            os.mkdir("slots", 0o700, dir_fd=root_descriptor)
+        slots_descriptor = _open_directory_at(
+            root_descriptor, "slots", "private slot ledger"
         )
-    if result.returncode:
-        destination.unlink(missing_ok=True)
-        raise BatchError(result.stderr.decode("utf-8", "replace").strip())
-    return _sha256_path(destination)
+        try:
+            try:
+                os.mkdir(slot_id, 0o700, dir_fd=slots_descriptor)
+            except FileExistsError as exc:
+                existing = _open_directory_at(
+                    slots_descriptor, slot_id, f"frozen slot directory: {slot_id}"
+                )
+                os.close(existing)
+                raise BatchError(
+                    f"refusing to reuse frozen slot directory: {slot_id}"
+                ) from exc
+            return _open_directory_at(
+                slots_descriptor, slot_id, f"frozen slot directory: {slot_id}"
+            )
+        finally:
+            os.close(slots_descriptor)
+    finally:
+        os.close(root_descriptor)
+
+
+def _open_run_child_directory(root: Path, name: str, description: str) -> int | None:
+    """Open one optional run-root child through a no-follow descriptor chain."""
+    root_descriptor = _open_directory(root, "private run root")
+    try:
+        try:
+            return _open_directory_at(root_descriptor, name, description)
+        except BatchError as exc:
+            if isinstance(exc.__cause__, FileNotFoundError):
+                return None
+            raise
+    finally:
+        os.close(root_descriptor)
+
+
+def _create_run_child_directory(root: Path, name: str, description: str) -> int:
+    """Create one exclusive run-root child without following a replacement link."""
+    root_descriptor = _open_directory(root, "private run root")
+    try:
+        try:
+            os.mkdir(name, 0o700, dir_fd=root_descriptor)
+        except FileExistsError as exc:
+            existing = _open_directory_at(root_descriptor, name, description)
+            os.close(existing)
+            raise BatchError(f"refusing to reuse {description}") from exc
+        return _open_directory_at(root_descriptor, name, description)
+    finally:
+        os.close(root_descriptor)
+
+
+def _sha256_descriptor(descriptor: int) -> str:
+    """Hash the exact bytes of one already-open private artifact."""
+    os.lseek(descriptor, 0, os.SEEK_SET)
+    digest = hashlib.sha256()
+    while chunk := os.read(descriptor, 65536):
+        digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _archive_commit_at(commit: str, descriptor: int, name: str) -> str:
+    """Archive one commit to an exclusive no-follow file below an open directory."""
+    flags = os.O_RDWR | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        archive = os.open(name, flags, 0o600, dir_fd=descriptor)
+    except FileExistsError as exc:
+        raise BatchError(f"refusing to overwrite source archive: {name}") from exc
+    except OSError as exc:
+        raise BatchError(f"cannot safely create source archive: {name}") from exc
+    try:
+        with os.fdopen(archive, "wb", closefd=False) as output:
+            result = subprocess.run(
+                ["git", "archive", "--format=tar", commit],
+                cwd=REPOSITORY_ROOT,
+                stdout=output,
+                stderr=subprocess.PIPE,
+            )
+        if result.returncode:
+            os.unlink(name, dir_fd=descriptor)
+            raise BatchError(result.stderr.decode("utf-8", "replace").strip())
+        return _sha256_descriptor(archive)
+    finally:
+        os.close(archive)
+
+
+def _create_frozen_run_root(private_root: Path) -> tuple[Path, int, int]:
+    """Create the immutable run and source roots without following prior paths."""
+    private_root = _private_root(private_root)
+    descriptor = os.open("/", os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
+    try:
+        for component in private_root.parts[1:]:
+            with suppress(FileExistsError):
+                os.mkdir(component, 0o700, dir_fd=descriptor)
+            next_descriptor = _open_directory_at(descriptor, component, "private root")
+            os.close(descriptor)
+            descriptor = next_descriptor
+        private_descriptor = descriptor
+    except Exception:
+        os.close(descriptor)
+        raise
+    run_name = "progressive-validation-selection"
+    try:
+        try:
+            os.mkdir(run_name, 0o700, dir_fd=private_descriptor)
+        except FileExistsError as exc:
+            existing = _open_directory_at(
+                private_descriptor, run_name, "private frozen run root"
+            )
+            os.close(existing)
+            raise BatchError("refusing to reuse private frozen run root") from exc
+        run_descriptor = _open_directory_at(
+            private_descriptor, run_name, "private frozen run root"
+        )
+    finally:
+        os.close(private_descriptor)
+    try:
+        try:
+            os.mkdir("sources", 0o700, dir_fd=run_descriptor)
+        except FileExistsError as exc:
+            existing = _open_directory_at(
+                run_descriptor, "sources", "private frozen sources"
+            )
+            os.close(existing)
+            raise BatchError("refusing to reuse private frozen sources") from exc
+        sources_descriptor = _open_directory_at(
+            run_descriptor, "sources", "private frozen sources"
+        )
+        return private_root / run_name, run_descriptor, sources_descriptor
+    except Exception:
+        os.close(run_descriptor)
+        raise
 
 
 def _tree_hash(commit: str) -> str:
@@ -291,43 +599,65 @@ def freeze_batch(
     candidate = _exact_commit(candidate_commit)
     if baseline == candidate:
         raise BatchError("baseline and candidate commits must differ")
-    run_root = private_root / "progressive-validation-selection"
     if not model or not reasoning_effort:
         raise BatchError("model and reasoning effort must be non-empty")
+    _, run_descriptor, sources_descriptor = _create_frozen_run_root(private_root)
     arm_map: dict[str, dict[str, str]] = {
         "baseline": {"commit": baseline, "archive": f"sources/{baseline}.tar"},
         "candidate": {"commit": candidate, "archive": f"sources/{candidate}.tar"},
     }
-    for details in arm_map.values():
-        archive = run_root / details["archive"]
-        details["archive_sha256"] = _archive_commit(details["commit"], archive)
-        details["git_tree_oid"] = _tree_hash(details["commit"])
-    schedule = _schedule(config)
-    manifest: dict[str, object] = {
-        "schema_version": 1,
-        "config_sha256": _sha256_path(config_path),
-        "case_manifest_sha256": _sha256_path(EVALUATION_ROOT / "fixture-manifest.json"),
-        "runner_sha256": _sha256_path(
-            REPOSITORY_ROOT / "scripts/run_writable_agent_eval.py"
-        ),
-        "controller_commit": _git(["rev-parse", "--verify", "HEAD^{commit}"]),
-        "controller_files_sha256": _controller_file_hashes(),
-        "codex_cli_version": _codex_version(),
-        "requested_model": model,
-        "requested_reasoning_effort": reasoning_effort,
-        "turn_budget": config["turn_budget"],
-        "seed": config["seed"],
-        "arm_map": arm_map,
-        "schedule": schedule,
-        "transient_retry_limit": config["transient_retry_limit"],
-        "status": "frozen",
-    }
-    _exclusive_json(run_root / "manifest.json", manifest)
-    manifest_bytes = json.dumps(manifest, indent=2, sort_keys=True).encode() + b"\n"
-    _exclusive_json(
-        run_root / "manifest.sha256", {"sha256": _sha256_bytes(manifest_bytes)}
-    )
-    return manifest
+    try:
+        for details in arm_map.values():
+            archive_name = Path(details["archive"]).name
+            details["archive_sha256"] = _archive_commit_at(
+                details["commit"], sources_descriptor, archive_name
+            )
+            details["git_tree_oid"] = _tree_hash(details["commit"])
+        controller_commit = _git(["rev-parse", "--verify", "HEAD^{commit}"])
+        canary_case_id = config.get("live_canary_case_id")
+        if not isinstance(canary_case_id, str) or not canary_case_id:
+            raise BatchError("live canary case is invalid")
+        canary_source: dict[str, str] = {
+            "commit": controller_commit,
+            "archive": f"sources/canary-{controller_commit}.tar",
+        }
+        canary_source["archive_sha256"] = _archive_commit_at(
+            controller_commit, sources_descriptor, Path(canary_source["archive"]).name
+        )
+        canary_source["git_tree_oid"] = _tree_hash(controller_commit)
+        schedule = _schedule(config)
+        manifest: dict[str, object] = {
+            "schema_version": 1,
+            "config_sha256": _sha256_path(config_path),
+            "case_manifest_sha256": _sha256_path(
+                EVALUATION_ROOT / "fixture-manifest.json"
+            ),
+            "runner_sha256": _sha256_path(
+                REPOSITORY_ROOT / "scripts/run_writable_agent_eval.py"
+            ),
+            "controller_commit": controller_commit,
+            "controller_files_sha256": _controller_file_hashes(),
+            "codex_cli_version": _codex_version(),
+            "requested_model": model,
+            "requested_reasoning_effort": reasoning_effort,
+            "turn_budget": config["turn_budget"],
+            "seed": config["seed"],
+            "arm_map": arm_map,
+            "live_canary_case_id": canary_case_id,
+            "canary_source": canary_source,
+            "schedule": schedule,
+            "transient_retry_limit": config["transient_retry_limit"],
+            "status": "frozen",
+        }
+        _exclusive_json_at(run_descriptor, "manifest.json", manifest)
+        manifest_bytes = json.dumps(manifest, indent=2, sort_keys=True).encode() + b"\n"
+        _exclusive_json_at(
+            run_descriptor, "manifest.sha256", {"sha256": _sha256_bytes(manifest_bytes)}
+        )
+        return manifest
+    finally:
+        os.close(sources_descriptor)
+        os.close(run_descriptor)
 
 
 def _codex_version() -> str:
@@ -377,6 +707,22 @@ def verify_freeze(private_root: Path) -> dict[str, object]:
         checks[f"tree:{archive.name}"] = isinstance(commit, str) and details.get(
             "git_tree_oid"
         ) == _tree_hash(commit)
+    canary_source = manifest.get("canary_source")
+    if not isinstance(canary_source, dict):
+        raise BatchError("private canary source is invalid")
+    canary_details = cast(dict[str, object], canary_source)
+    canary_archive_name = canary_details.get("archive")
+    canary_commit = canary_details.get("commit")
+    if not isinstance(canary_archive_name, str) or not isinstance(canary_commit, str):
+        raise BatchError("private canary source is invalid")
+    canary_archive = root / canary_archive_name
+    checks[f"archive:{canary_archive.name}"] = (
+        canary_archive.is_file()
+        and canary_details.get("archive_sha256") == _sha256_path(canary_archive)
+    )
+    checks[f"tree:{canary_archive.name}"] = canary_details.get(
+        "git_tree_oid"
+    ) == _tree_hash(canary_commit)
     return {"valid": all(checks.values()), "checks": checks}
 
 
@@ -753,6 +1099,190 @@ def _classification(arm_key: str, result: Mapping[str, object]) -> str:
     return "critical"
 
 
+def _canary_fields(
+    manifest: Mapping[str, object],
+) -> tuple[str, str, str, dict[str, object]]:
+    """Return frozen canary identity and source details without live defaults."""
+    case_id = manifest.get("live_canary_case_id")
+    model = manifest.get("requested_model")
+    effort = manifest.get("requested_reasoning_effort")
+    source = manifest.get("canary_source")
+    if (
+        not isinstance(case_id, str)
+        or not case_id
+        or not isinstance(model, str)
+        or not model
+        or not isinstance(effort, str)
+        or not effort
+        or not isinstance(source, dict)
+    ):
+        raise BatchError("frozen live canary fields are invalid")
+    details = cast(dict[str, object], source)
+    if not all(
+        isinstance(details.get(field), str) and details[field]
+        for field in ("commit", "archive", "archive_sha256", "git_tree_oid")
+    ):
+        raise BatchError("frozen live canary source is invalid")
+    return case_id, model, effort, details
+
+
+def _canary_start_record(
+    case_id: str, model: str, effort: str, source: Mapping[str, object]
+) -> dict[str, object]:
+    return {
+        "case_id": case_id,
+        "requested_model": model,
+        "requested_reasoning_effort": effort,
+        "canary_source_sha256": source["archive_sha256"],
+    }
+
+
+def _canary_result_is_valid(
+    result: Mapping[str, object], case_id: str, model: str, effort: str
+) -> bool:
+    verification = result.get("verification")
+    oracle = result.get("command_oracle")
+    final = result.get("final_oracle")
+    if not isinstance(verification, dict) or not isinstance(oracle, dict):
+        return False
+    if not isinstance(final, dict):
+        return False
+    verification_data = cast(dict[str, object], verification)
+    oracle_data = cast(dict[str, object], oracle)
+    final_data = cast(dict[str, object], final)
+    broker_events = oracle_data.get("broker_events")
+    return (
+        result.get("case_id") == case_id
+        and result.get("model") == model
+        and result.get("reasoning_effort") == effort
+        and result.get("codex_exit_code") == 0
+        and verification_data.get("passed") is True
+        and verification_data.get("unexpected_changes") == []
+        and verification_data.get("missing_required_changes") == []
+        and oracle_data.get("valid") is True
+        and isinstance(broker_events, list)
+        and len(cast(list[object], broker_events)) > 0
+        and final_data.get("valid") is True
+    )
+
+
+def _validate_canary_completion(root: Path, manifest: Mapping[str, object]) -> None:
+    """Validate the independent canary ledger before comparison evidence exists."""
+    case_id, model, effort, source = _canary_fields(manifest)
+    descriptor = _open_run_child_directory(root, "canary", "private live canary")
+    if descriptor is None:
+        raise BatchError("live canary is not completed")
+    try:
+        if _slot_regular_file_exists(descriptor, "failed.json", "canary"):
+            failed = _slot_json(descriptor, "canary", "failed.json")
+            if (
+                failed.get("case_id") != case_id
+                or not isinstance(failed.get("error_type"), str)
+                or not failed["error_type"]
+                or not isinstance(failed.get("error"), str)
+            ):
+                raise BatchError("live canary failure ledger is invalid")
+            raise BatchError("live canary is invalid")
+        if not all(
+            _slot_regular_file_exists(descriptor, name, "canary")
+            for name in ("started.json", "completed.json")
+        ):
+            raise BatchError("live canary is not completed")
+        started = _slot_json(descriptor, "canary", "started.json")
+        if started != _canary_start_record(case_id, model, effort, source):
+            raise BatchError("live canary start ledger mismatch")
+        result, digest = _slot_json_with_sha256(
+            descriptor, "canary", "output", "result.json"
+        )
+        completed = _slot_json(descriptor, "canary", "completed.json")
+    finally:
+        os.close(descriptor)
+    expected_completed: dict[str, object] = {
+        **_canary_start_record(case_id, model, effort, source),
+        "result_sha256": digest,
+        "verified": _canary_result_is_valid(result, case_id, model, effort),
+    }
+    if completed != expected_completed:
+        raise BatchError("live canary completion ledger mismatch")
+    if completed["verified"] is not True:
+        raise BatchError("live canary is invalid")
+
+
+def canary_status(private_root: Path) -> dict[str, object]:
+    """Report whether the independent live canary permits comparison execution."""
+    root = _run_root(private_root)
+    manifest = _private_manifest(private_root)
+    verification = verify_freeze(private_root)
+    if verification.get("valid") is not True:
+        raise BatchError("freeze verification failed")
+    descriptor = _open_run_child_directory(root, "canary", "private live canary")
+    if descriptor is None:
+        return {"state": "not_yet_verified"}
+    os.close(descriptor)
+    _validate_canary_completion(root, manifest)
+    return {"state": "verified"}
+
+
+def _require_verified_canary(private_root: Path) -> None:
+    if canary_status(private_root).get("state") != "verified":
+        raise BatchError("live canary is not completed")
+
+
+def run_canary(private_root: Path, auth_file: Path) -> dict[str, object]:
+    """Run the one frozen live canary outside the comparison-slot schedule."""
+    root = _run_root(private_root)
+    verification = verify_freeze(private_root)
+    if verification.get("valid") is not True:
+        raise BatchError("freeze verification failed")
+    manifest = _private_manifest(private_root)
+    case_id, model, effort, source = _canary_fields(manifest)
+    canary_root = root / "canary"
+    descriptor = _create_run_child_directory(root, "canary", "private live canary")
+    started = _canary_start_record(case_id, model, effort, source)
+    try:
+        _exclusive_json_at(descriptor, "started.json", started)
+        try:
+            result = run_archived_slot(
+                root / cast(str, source["archive"]),
+                canary_root / "source",
+                EVALUATION_ROOT / "cases" / f"{case_id}.yaml",
+                canary_root / "workspace",
+                auth_file,
+                canary_root / "output",
+                model,
+                effort,
+            )
+            persisted, digest = _slot_json_with_sha256(
+                descriptor, "canary", "output", "result.json"
+            )
+            if persisted != result:
+                raise BatchError("live canary result readback mismatch")
+        except Exception as exc:
+            _exclusive_json_at(
+                descriptor,
+                "failed.json",
+                {
+                    "case_id": case_id,
+                    "error_type": type(exc).__name__,
+                    "error": str(exc),
+                },
+            )
+            if isinstance(exc, BatchError):
+                raise
+            raise BatchError("live canary execution failed") from exc
+        completed: dict[str, object] = {
+            **started,
+            "result_sha256": digest,
+            "verified": _canary_result_is_valid(result, case_id, model, effort),
+        }
+        _exclusive_json_at(descriptor, "completed.json", completed)
+        if completed["verified"] is not True:
+            raise BatchError("live canary is invalid")
+        return completed
+    finally:
+        os.close(descriptor)
+
+
 def _smoke_slots(manifest: Mapping[str, object]) -> list[dict[str, object]]:
     schedule = manifest.get("schedule")
     if not isinstance(schedule, list):
@@ -803,29 +1333,24 @@ def _validate_completed_slot(
     arm_key = cast(str, arm_key)
     model = cast(str, model)
     effort = cast(str, effort)
-    slot_root = root / "slots" / slot_id
-    started_path = slot_root / "started.json"
-    completed_path = slot_root / "completed.json"
-    failed_path = slot_root / "failed.json"
-    if any(path.is_symlink() for path in (started_path, completed_path, failed_path)):
-        raise BatchError(f"frozen slot ledger contains a symlink: {slot_id}")
-    if failed_path.exists():
-        raise BatchError(f"frozen slot recorded an execution failure: {slot_id}")
-    if not started_path.is_file() or not completed_path.is_file():
+    slot_descriptor = _open_slot_directory(root, slot_id)
+    if slot_descriptor is None:
         raise BatchError(f"frozen slot is incomplete: {slot_id}")
-    started = _json(started_path)
-    completed = _json(completed_path)
-    expected_started: dict[str, object] = {
-        "slot_id": slot_id,
-        "case_id": case_id,
-        "arm_key": arm_key,
-    }
-    if started != expected_started:
-        raise BatchError(f"frozen slot start ledger mismatch: {slot_id}")
-    result_path = slot_root / "output/result.json"
-    if result_path.is_symlink() or not result_path.is_file():
-        raise BatchError(f"frozen slot result is missing: {slot_id}")
-    result = _json(result_path)
+    try:
+        if _slot_regular_file_exists(slot_descriptor, "failed.json", slot_id):
+            raise BatchError(f"frozen slot recorded an execution failure: {slot_id}")
+        if not all(
+            _slot_regular_file_exists(slot_descriptor, filename, slot_id)
+            for filename in ("started.json", "completed.json")
+        ):
+            raise BatchError(f"frozen slot is incomplete: {slot_id}")
+        _validate_started_ledger(slot_descriptor, slot_id, case_id, arm_key)
+        completed = _slot_json(slot_descriptor, slot_id, "completed.json")
+        result, result_sha256 = _slot_json_with_sha256(
+            slot_descriptor, slot_id, "output", "result.json"
+        )
+    finally:
+        os.close(slot_descriptor)
     classification = _classification(arm_key, result)
     expected_completed: dict[str, object] = {
         "slot_id": slot_id,
@@ -833,7 +1358,7 @@ def _validate_completed_slot(
         "arm_key": arm_key,
         "requested_model": model,
         "requested_reasoning_effort": effort,
-        "result_sha256": _sha256_path(result_path),
+        "result_sha256": result_sha256,
         "classification": classification,
     }
     if completed != expected_completed:
@@ -855,6 +1380,7 @@ def run_manifest_slot(
     verification = verify_freeze(private_root)
     if verification.get("valid") is not True:
         raise BatchError("freeze verification failed")
+    _require_verified_canary(private_root)
     manifest = _private_manifest(private_root)
     position, slot = _slot_from_manifest(manifest, slot_id)
     for previous in _smoke_slots(manifest)[:position]:
@@ -884,65 +1410,125 @@ def run_manifest_slot(
     model = cast(str, model)
     effort = cast(str, effort)
     slot_root = root / "slots" / slot_id
-    if slot_root.exists() or slot_root.is_symlink():
-        raise BatchError(f"refusing to reuse frozen slot directory: {slot_id}")
-    _exclusive_json(
-        slot_root / "started.json",
-        {"slot_id": slot_id, "case_id": case_id, "arm_key": arm_key},
-    )
+    slot_descriptor = _create_slot_directory(root, slot_id)
     try:
-        result = run_archived_slot(
-            root / archive_name,
-            slot_root / "source",
-            EVALUATION_ROOT / "cases" / f"{case_id}.yaml",
-            slot_root / "workspace",
-            auth_file,
-            slot_root / "output",
-            model,
-            effort,
+        _exclusive_json_at(
+            slot_descriptor,
+            "started.json",
+            {"slot_id": slot_id, "case_id": case_id, "arm_key": arm_key},
         )
-        result_path = slot_root / "output/result.json"
-        if result_path.is_symlink() or not result_path.is_file():
-            raise BatchError(f"single-run result is missing or unsafe: {slot_id}")
-        persisted = _json(result_path)
-        if persisted != result:
-            raise BatchError(f"single-run result readback mismatch: {slot_id}")
-    except Exception as exc:
-        _exclusive_json(
-            slot_root / "failed.json",
-            {
-                "slot_id": slot_id,
-                "error_type": type(exc).__name__,
-                "error": str(exc),
-            },
-        )
-        if isinstance(exc, BatchError):
-            raise
-        raise BatchError(f"frozen slot execution failed: {slot_id}") from exc
-    completed: dict[str, object] = {
-        "slot_id": slot_id,
-        "case_id": case_id,
-        "arm_key": arm_key,
-        "requested_model": model,
-        "requested_reasoning_effort": effort,
-        "result_sha256": _sha256_path(result_path),
-        "classification": _classification(arm_key, result),
+        try:
+            result = run_archived_slot(
+                root / archive_name,
+                slot_root / "source",
+                EVALUATION_ROOT / "cases" / f"{case_id}.yaml",
+                slot_root / "workspace",
+                auth_file,
+                slot_root / "output",
+                model,
+                effort,
+            )
+            try:
+                persisted, result_sha256 = _slot_json_with_sha256(
+                    slot_descriptor, slot_id, "output", "result.json"
+                )
+            except BatchError as exc:
+                raise BatchError(
+                    f"single-run result is missing or unsafe: {slot_id}"
+                ) from exc
+            if persisted != result:
+                raise BatchError(f"single-run result readback mismatch: {slot_id}")
+        except Exception as exc:
+            _exclusive_json_at(
+                slot_descriptor,
+                "failed.json",
+                {
+                    "slot_id": slot_id,
+                    "error_type": type(exc).__name__,
+                    "error": str(exc),
+                },
+            )
+            if isinstance(exc, BatchError):
+                raise
+            raise BatchError(f"frozen slot execution failed: {slot_id}") from exc
+        completed: dict[str, object] = {
+            "slot_id": slot_id,
+            "case_id": case_id,
+            "arm_key": arm_key,
+            "requested_model": model,
+            "requested_reasoning_effort": effort,
+            "result_sha256": result_sha256,
+            "classification": _classification(arm_key, result),
+        }
+        _exclusive_json_at(slot_descriptor, "completed.json", completed)
+        return completed
+    finally:
+        os.close(slot_descriptor)
+
+
+def _completed_smoke_prefix(
+    root: Path,
+    manifest: Mapping[str, object],
+    smoke: Sequence[Mapping[str, object]],
+) -> list[dict[str, object]]:
+    """Return the validated contiguous completed prefix, or fail closed.
+
+    A frozen slot is append-only.  Recovery may therefore reuse only slots
+    whose complete ledgers still prove the original execution.  Any started,
+    failed, malformed, or out-of-order slot is evidence of an interrupted or
+    invalid run, not authority to delete or replace its artifacts.
+    """
+    completed: list[dict[str, object]] = []
+    expected_ids = {
+        cast(str, slot["slot_id"])
+        for slot in smoke
+        if isinstance(slot.get("slot_id"), str)
     }
-    _exclusive_json(slot_root / "completed.json", completed)
+    if any(name not in expected_ids for name in _slot_ledger_entry_names(root)):
+        raise BatchError("private slot ledger is not safely resumable")
+    saw_absent_slot = False
+    for slot in smoke:
+        slot_id = slot.get("slot_id")
+        if not isinstance(slot_id, str) or not slot_id:
+            raise BatchError("frozen smoke slot is invalid")
+        slot_descriptor = _open_slot_directory(root, slot_id)
+        if slot_descriptor is None:
+            saw_absent_slot = True
+            continue
+        try:
+            if saw_absent_slot:
+                raise BatchError(
+                    "frozen smoke ledger is not a contiguous completed prefix: "
+                    f"{slot_id}"
+                )
+            if not _slot_regular_file_exists(
+                slot_descriptor, "completed.json", slot_id
+            ):
+                raise BatchError(
+                    f"frozen smoke slot is not safely resumable: {slot_id}"
+                )
+            _validate_completed_slot(root, manifest, slot)
+            completed.append(_slot_json(slot_descriptor, slot_id, "completed.json"))
+        finally:
+            os.close(slot_descriptor)
     return completed
 
 
 def run_smoke(private_root: Path, auth_file: Path) -> list[dict[str, object]]:
-    """Execute only the immutable first repetition, stopping on boundary failures."""
+    """Execute unstarted smoke slots after a validated append-only prefix."""
     verification = verify_freeze(private_root)
     if not verification["valid"]:
         raise BatchError("freeze verification failed")
+    _require_verified_canary(private_root)
     manifest = _private_manifest(private_root)
     smoke = _smoke_slots(manifest)
-    completed = [
+    root = _run_root(private_root)
+    completed = _completed_smoke_prefix(root, manifest, smoke)
+    remaining = smoke[len(completed) :]
+    completed.extend(
         run_manifest_slot(private_root, auth_file, cast(str, slot["slot_id"]))
-        for slot in smoke
-    ]
+        for slot in remaining
+    )
     return completed
 
 
@@ -955,35 +1541,46 @@ def smoke_status(private_root: Path) -> dict[str, object]:
         raise BatchError("freeze verification failed")
     expected = _smoke_slots(manifest)
     expected_ids = {cast(str, slot["slot_id"]) for slot in expected}
-    slots_root = root / "slots"
-    if slots_root.exists():
-        actual_ids = {
-            child.name
-            for child in slots_root.iterdir()
-            if child.is_dir() and not child.is_symlink()
-        }
-        if any(
-            not child.is_dir() or child.is_symlink() for child in slots_root.iterdir()
-        ):
-            raise BatchError("private slot ledger contains an invalid entry")
-        if not actual_ids <= expected_ids:
-            raise BatchError("private slot ledger contains an unexpected slot")
+    actual_ids = set(_slot_ledger_entry_names(root))
+    if not actual_ids <= expected_ids:
+        raise BatchError("private slot ledger contains an unexpected slot")
     classifications: list[tuple[str, str]] = []
     missing = 0
     failed = 0
     for slot in expected:
         slot_id = cast(str, slot["slot_id"])
-        slot_root = root / "slots" / slot_id
-        completed_path = slot_root / "completed.json"
-        if (slot_root / "failed.json").is_file():
-            failed += 1
-            continue
-        if not completed_path.is_file():
+        case_id = cast(str, slot["case_id"])
+        arm_key = cast(str, slot["arm_key"])
+        slot_descriptor = _open_slot_directory(root, slot_id)
+        if slot_descriptor is None:
             missing += 1
             continue
-        classifications.append(
-            (cast(str, slot["arm_key"]), _validate_completed_slot(root, manifest, slot))
-        )
+        try:
+            started = _slot_regular_file_exists(
+                slot_descriptor, "started.json", slot_id
+            )
+            completed = _slot_regular_file_exists(
+                slot_descriptor, "completed.json", slot_id
+            )
+            failure = _slot_regular_file_exists(slot_descriptor, "failed.json", slot_id)
+            if failure:
+                if completed:
+                    raise BatchError(
+                        f"frozen slot has both completion and failure: {slot_id}"
+                    )
+                _validate_failed_ledger(slot_descriptor, slot_id)
+                failed += 1
+            elif completed:
+                classifications.append(
+                    (arm_key, _validate_completed_slot(root, manifest, slot))
+                )
+            elif started:
+                _validate_started_ledger(slot_descriptor, slot_id, case_id, arm_key)
+                missing += 1
+            else:
+                raise BatchError(f"frozen slot ledger is malformed: {slot_id}")
+        finally:
+            os.close(slot_descriptor)
     candidate_critical = any(
         arm == "candidate" and classification == "critical"
         for arm, classification in classifications
@@ -1049,12 +1646,17 @@ def _parser() -> argparse.ArgumentParser:
     smoke = children.add_parser("run-smoke")
     smoke.add_argument("--private-root", type=Path, required=True)
     smoke.add_argument("--auth-file", type=Path, required=True)
+    canary = children.add_parser("run-canary")
+    canary.add_argument("--private-root", type=Path, required=True)
+    canary.add_argument("--auth-file", type=Path, required=True)
     run_one = children.add_parser("run-one")
     run_one.add_argument("--private-root", type=Path, required=True)
     run_one.add_argument("--auth-file", type=Path, required=True)
     run_one.add_argument("--slot-id", required=True)
     smoke_status_parser = children.add_parser("smoke-status")
     smoke_status_parser.add_argument("--private-root", type=Path, required=True)
+    canary_status_parser = children.add_parser("canary-status")
+    canary_status_parser.add_argument("--private-root", type=Path, required=True)
     project = children.add_parser("project")
     project.add_argument("--private-result", type=Path, required=True)
     project.add_argument("--public-path", type=Path, required=True)
@@ -1078,10 +1680,14 @@ def main(argv: list[str] | None = None) -> int:
             payload = verify_freeze(args.private_root)
         elif args.command == "run-smoke":
             payload = {"completed": run_smoke(args.private_root, args.auth_file)}
+        elif args.command == "run-canary":
+            payload = run_canary(args.private_root, args.auth_file)
         elif args.command == "run-one":
             payload = run_manifest_slot(args.private_root, args.auth_file, args.slot_id)
         elif args.command == "smoke-status":
             payload = smoke_status(args.private_root)
+        elif args.command == "canary-status":
+            payload = canary_status(args.private_root)
         elif args.command == "project":
             payload = project_public(args.private_result, args.public_path)
         else:

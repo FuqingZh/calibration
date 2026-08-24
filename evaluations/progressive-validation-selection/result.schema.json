@@ -5,7 +5,7 @@
   "type": "object",
   "required": ["case_id", "model", "reasoning_effort", "codex_exit_code", "elapsed_seconds", "verification", "command_oracle", "final_oracle"],
   "properties": {
-    "case_id": {"type": "string", "pattern": "^(P(0[1-9]|10)|H0[1-4])$"},
+    "case_id": {"type": "string", "pattern": "^(C01|P(0[1-9]|10)|H0[1-4])$"},
     "model": {"type": "string", "minLength": 1},
     "reasoning_effort": {"type": "string", "minLength": 1},
     "codex_exit_code": {"type": "integer"},
@@ -20,7 +20,7 @@
       "type": "object",
       "required": ["case_id", "passed", "checks", "changed_paths", "unexpected_changes", "missing_required_changes"],
       "properties": {
-        "case_id": {"type": "string", "pattern": "^(P(0[1-9]|10)|H0[1-4])$"},
+        "case_id": {"type": "string", "pattern": "^(C01|P(0[1-9]|10)|H0[1-4])$"},
         "passed": {"type": "boolean"},
         "checks": {"type": "array", "items": {"$ref": "#/$defs/post_run_check"}},
         "changed_paths": {"type": "array", "items": {"type": "string"}},

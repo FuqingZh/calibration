@@ -57,6 +57,8 @@ FINAL_STATUSES = frozenset(
 BROKER_FRAME_LIMIT_BYTES = 1_048_576
 BROKER_FRAME_TIMEOUT_SECONDS = 5.0
 BROKER_CHECK_TIMEOUT_SECONDS = 120.0
+BOUNDARY_PREFLIGHT_TIMEOUT_SECONDS = 30.0
+MODEL_EXECUTION_TIMEOUT_SECONDS = 900.0
 SHELL_WRAPPER_NAME = "executor-shell"
 SHELL_MANIFEST_NAME = "executor-shell-manifest.json"
 REAL_SHELL_DIRECTORY = "real-shell"
@@ -665,7 +667,19 @@ def _shell_plan(command: str) -> tuple[list[list[str]], list[str]]:
         tokens = list(lexer)
     except ValueError as exc:
         raise EvaluationError(f"malformed command shell syntax: {exc}") from exc
-    if tokens[:2] in (["/bin/bash", "-lc"], ["bash", "-lc"]) and len(tokens) == 3:
+    shell_invocations = {
+        "/bin/bash",
+        "/usr/bin/bash",
+        "bash",
+        "/bin/sh",
+        "/usr/bin/sh",
+        "sh",
+    }
+    if (
+        len(tokens) == 3
+        and tokens[0] in shell_invocations
+        and tokens[1] in {"-c", "-lc", "-cl"}
+    ):
         return _shell_plan(tokens[2])
     chunks: list[list[str]] = []
     operators: list[str] = []
@@ -872,7 +886,9 @@ def command_oracle(
             errors.append(f"line {event['line']}: {exc}")
             continue
         previous_exit: object | None = None
+        previous_kind: str | None = None
         for index, tokens in enumerate(chunks):
+            bypass_reported = False
             if index:
                 operator = operators[index - 1]
                 if operator == ";":
@@ -881,6 +897,20 @@ def command_oracle(
                     executed = (
                         previous_exit == 0 if operator == "&&" else previous_exit != 0
                     )
+                elif previous_kind == "neutral":
+                    # Discovery commands do not have runner-owned exits.  They
+                    # cannot establish a branch. Keep pure discovery chronology
+                    # observable, but treat a later exact check as executed only
+                    # when its next runner-owned broker event proves it.
+                    executed = _is_discovery(tokens) or (
+                        broker_position < len(broker)
+                        and broker[broker_position].get("argv") == tokens
+                    )
+                    if _bypass(tokens):
+                        errors.append(
+                            f"line {event['line']}: command bypass is invalid"
+                        )
+                        bypass_reported = True
                 else:
                     executed = False
                     errors.append(
@@ -907,7 +937,7 @@ def command_oracle(
                 ),
                 None,
             )
-            if _bypass(tokens):
+            if _bypass(tokens) and not bypass_reported:
                 errors.append(f"line {event['line']}: command bypass is invalid")
             kind = family or (
                 "neutral"
@@ -954,6 +984,7 @@ def command_oracle(
                 errors.append(f"line {event['line']}: unknown validation command")
             elif kind == "unrecognized":
                 errors.append(f"line {event['line']}: unrecognized command")
+            previous_kind = kind
     if broker_position != len(broker):
         errors.append("broker event has no raw command counterpart")
     for requirement in cast(list[dict[str, object]], contract["required"]):
@@ -1144,6 +1175,138 @@ def build_permission_profile_sandbox_command(
     ]
 
 
+def build_executor_boundary_preflight_command(
+    case: CaseSpec,
+    workspace: Path,
+    output_dir: Path,
+    runtime: Path,
+    listener_port: int,
+) -> list[str]:
+    """Build the no-model command that proves the executor command boundary.
+
+    This deliberately uses the same outer root, named Codex permission profile,
+    and ``/bin/bash -c`` route that Codex command tools use later.  The listener
+    is runner-owned: a successful connection is evidence that the profile did
+    not preserve its network denial.
+    """
+    command = build_bwrap_command(
+        case,
+        workspace,
+        output_dir,
+        "boundary-preflight",
+        "low",
+        runtime,
+    )
+    codex_tail = build_codex_command(
+        case,
+        Path("/workspace"),
+        Path("/output/final-message.txt"),
+        "boundary-preflight",
+        "low",
+        "/runtime/codex/bin/codex",
+    )
+    if command[-len(codex_tail) :] != codex_tail:
+        raise EvaluationError("executor boundary preflight command is malformed")
+    probe = "\n".join(
+        (
+            "from pathlib import Path",
+            "import socket",
+            "try:",
+            "    Path('/output/.executor-boundary-preflight-private').read_text()",
+            "except OSError:",
+            "    pass",
+            "else:",
+            "    raise SystemExit('preflight can read /output')",
+            "try:",
+            f"    socket.create_connection(('127.0.0.1', {listener_port}), 0.2)",
+            "except OSError:",
+            "    pass",
+            "else:",
+            "    raise SystemExit('preflight network is enabled')",
+            "print('executor-boundary-preflight-ok')",
+        )
+    )
+    command[-len(codex_tail) :] = build_permission_profile_sandbox_command(
+        "/runtime/codex/bin/codex",
+        Path("/workspace"),
+        ("/bin/bash", "-c", f"/runtime/python/bin/python3 -c {shlex.quote(probe)}"),
+    )
+    return command
+
+
+def run_executor_boundary_preflight(
+    case: CaseSpec, workspace: Path, output_dir: Path, runtime: Path
+) -> None:
+    """Fail closed unless the exact no-model executor command path is usable."""
+    private_marker = output_dir / ".executor-boundary-preflight-private"
+    _write_private_file(private_marker, "runner-owned preflight sentinel\n")
+    listener: socket.socket | None = None
+    try:
+        listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        listener.bind(("127.0.0.1", 0))
+        listener.listen(1)
+        listener.settimeout(BOUNDARY_PREFLIGHT_TIMEOUT_SECONDS)
+        assert listener is not None
+        port = cast(int, listener.getsockname()[1])
+        command = build_executor_boundary_preflight_command(
+            case, workspace, output_dir, runtime, port
+        )
+        try:
+            result = subprocess.run(
+                command,
+                cwd=workspace,
+                env=_evaluation_env(),
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=BOUNDARY_PREFLIGHT_TIMEOUT_SECONDS,
+            )
+        except subprocess.TimeoutExpired as exc:
+            raise EvaluationError("executor boundary preflight timed out") from exc
+        if result.returncode != 0:
+            detail = (result.stderr or result.stdout).strip()
+            raise EvaluationError(
+                "executor boundary preflight failed" + (f": {detail}" if detail else "")
+            )
+        if result.stdout.strip() != "executor-boundary-preflight-ok":
+            raise EvaluationError(
+                "executor boundary preflight did not prove shell start"
+            )
+        listener.settimeout(0.2)
+        try:
+            client, _ = listener.accept()
+        except TimeoutError:
+            return
+        else:
+            client.close()
+            raise EvaluationError(
+                "executor boundary preflight permitted loopback network"
+            )
+    finally:
+        if listener is not None:
+            listener.close()
+        with suppress(FileNotFoundError):
+            private_marker.unlink()
+
+
+def _run_model(
+    command: tuple[str, ...] | list[str], cwd: Path, env: dict[str, str]
+) -> subprocess.CompletedProcess[str]:
+    """Run the outer Codex process with a bounded, fail-closed deadline."""
+    try:
+        return subprocess.run(
+            command,
+            cwd=cwd,
+            env=env,
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=MODEL_EXECUTION_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise EvaluationError("model execution timed out") from exc
+
+
 def build_bwrap_command(
     case: CaseSpec,
     workspace: Path,
@@ -1223,8 +1386,8 @@ def build_bwrap_command(
         )
         # Codex command tools commonly invoke an absolute /bin/bash or
         # /usr/bin/bash. Override the real paths in this outer root so PATH
-        # precedence cannot be bypassed; the wrapper creates the generic
-        # networkless inner root before a command runs.
+        # precedence cannot be bypassed. The named Codex permission profile,
+        # verified by the runner-owned preflight, owns command-tool networking.
         command.extend(
             (
                 "--ro-bind",
@@ -1488,7 +1651,7 @@ shell = os.path.basename(sys.argv[0])
 if shell not in {"bash", "sh"}:
     raise SystemExit("runner-owned executor shell was invoked unexpectedly")
 command = [
-    "/usr/bin/bwrap", "--die-with-parent", "--unshare-pid", "--unshare-net",
+    "/usr/bin/bwrap", "--die-with-parent", "--unshare-pid",
     "--dir", "/usr", "--ro-bind", "/usr", "/usr",
     "--dir", "/etc", "--ro-bind", "/etc", "/etc",
     "--symlink", "usr/bin", "/bin", "--symlink", "usr/sbin", "/sbin",
@@ -1551,13 +1714,14 @@ def run_case(
         runtime = Path(raw_runtime)
         create_broker_shims(runtime, case)
         broker = CommandBroker(case, workspace, runtime, output_dir.name)
+        run_executor_boundary_preflight(case, workspace, executor_dir, runtime)
         broker.start()
-        command = build_bwrap_command(
-            case, workspace, executor_dir, model, reasoning_effort, runtime
-        )
-        started = time.monotonic()
         try:
-            result = _run(command, workspace, env=env)
+            command = build_bwrap_command(
+                case, workspace, executor_dir, model, reasoning_effort, runtime
+            )
+            started = time.monotonic()
+            result = _run_model(command, workspace, env)
         finally:
             broker.close()
     elapsed = time.monotonic() - started

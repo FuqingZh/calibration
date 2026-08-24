@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import json
+import os
 import tarfile
 from collections.abc import Iterator, Sequence
 from pathlib import Path
@@ -81,8 +82,14 @@ def test_git_and_commit_boundaries_preserve_exact_source_identity(
 def test_git_archive_and_codex_success_paths_preserve_reported_identity(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    archive = tmp_path / "source.tar"
-    digest = batch._archive_commit("HEAD", archive)
+    archive_root = tmp_path / "archives"
+    archive_root.mkdir()
+    descriptor = os.open(archive_root, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        digest = batch._archive_commit_at("HEAD", descriptor, "source.tar")
+    finally:
+        os.close(descriptor)
+    archive = archive_root / "source.tar"
     assert archive.is_file()
     assert digest == batch._sha256_path(archive)
 
@@ -108,20 +115,29 @@ def test_private_ledger_and_archives_are_exclusive_and_clean_up_failed_exports(
     with pytest.raises(batch.BatchError, match="refusing to overwrite"):
         batch._exclusive_json(ledger, {})
 
-    existing = tmp_path / "existing.tar"
-    existing.write_bytes(b"archive")
-    with pytest.raises(batch.BatchError, match="refusing to overwrite source archive"):
-        batch._archive_commit("a" * 40, existing)
+    archive_root = tmp_path / "archives"
+    archive_root.mkdir()
+    descriptor = os.open(archive_root, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        (archive_root / "existing.tar").write_bytes(b"archive")
+        with pytest.raises(
+            batch.BatchError, match="refusing to overwrite source archive"
+        ):
+            batch._archive_commit_at("a" * 40, descriptor, "existing.tar")
 
-    failed = tmp_path / "failed.tar"
+        failed = archive_root / "failed.tar"
 
-    def archive_failure(*_args: object, **_kwargs: object) -> CompletedProcess[bytes]:
-        return CompletedProcess(["git", "archive"], 1, b"", b"bad archive")
+        def archive_failure(
+            *_args: object, **_kwargs: object
+        ) -> CompletedProcess[bytes]:
+            return CompletedProcess(["git", "archive"], 1, b"", b"bad archive")
 
-    monkeypatch.setattr(batch.subprocess, "run", archive_failure)
-    with pytest.raises(batch.BatchError, match="bad archive"):
-        batch._archive_commit("a" * 40, failed)
-    assert not failed.exists()
+        monkeypatch.setattr(batch.subprocess, "run", archive_failure)
+        with pytest.raises(batch.BatchError, match="bad archive"):
+            batch._archive_commit_at("a" * 40, descriptor, "failed.tar")
+        assert not failed.exists()
+    finally:
+        os.close(descriptor)
 
 
 def test_freeze_rejects_equal_revisions_and_empty_execution_controls(
@@ -204,6 +220,8 @@ def test_verify_freeze_recomputes_archives_and_tree_identity(
     archive = root / "sources/base.tar"
     archive.parent.mkdir(parents=True)
     archive.write_bytes(b"archive")
+    canary_archive = root / "sources/canary-head.tar"
+    canary_archive.write_bytes(b"canary")
     _write_private_manifest(
         root,
         {
@@ -220,6 +238,12 @@ def test_verify_freeze_recomputes_archives_and_tree_identity(
                     "commit": "a" * 40,
                     "git_tree_oid": "tree",
                 }
+            },
+            "canary_source": {
+                "archive": "sources/canary-head.tar",
+                "archive_sha256": "hash",
+                "commit": "c" * 40,
+                "git_tree_oid": "tree",
             },
         },
     )
@@ -251,6 +275,8 @@ def test_verify_freeze_recomputes_archives_and_tree_identity(
             "controller_clean": True,
             "archive:base.tar": True,
             "tree:base.tar": True,
+            "archive:canary-head.tar": True,
+            "tree:canary-head.tar": True,
         },
     }
 

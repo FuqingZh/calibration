@@ -88,6 +88,16 @@ def broker_event(family: str, argv: list[str], exit_code: int) -> dict[str, obje
     }
 
 
+def no_install_arm_home(source_root: Path, auth_file: Path, codex_home: Path) -> None:
+    del source_root, auth_file, codex_home
+
+
+def bypass_executor_boundary_preflight(
+    case: CaseSpec, workspace: Path, output_dir: Path, runtime: Path
+) -> None:
+    del case, workspace, output_dir, runtime
+
+
 @pytest.fixture
 def evaluation_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     root = tmp_path / "evaluation"
@@ -746,8 +756,6 @@ def test_bwrap_executor_and_broker_enforce_writable_eval_boundary(
             "test ! -e /output/codex-home/auth.json",
             "test ! -e /output/trajectory.jsonl",
             "test ! -e /output/result.json",
-            "test $(awk 'NR > 1 { count++ } END { print count + 0 }' "
-            "/proc/net/route) = 0",
         )
     )
     command = evaluation.build_bwrap_command(
@@ -763,7 +771,9 @@ def test_bwrap_executor_and_broker_enforce_writable_eval_boundary(
     )
     assert command[-len(codex_tail) :] == codex_tail
     # The absolute path is the command-tool bypass route that PATH shims alone
-    # cannot contain; it must still enter the runner-owned nested root.
+    # cannot contain; it must still enter the runner-owned wrapper. Networking
+    # is asserted through the named-profile preflight, not this direct-shell
+    # boundary probe.
     command[-len(codex_tail) :] = ["/usr/bin/bash", "-c", payload]
     try:
         result = evaluation._run(command, workspace, env=evaluation._evaluation_env())
@@ -931,6 +941,63 @@ def test_codex_permission_profile_enforces_outer_executor_boundary(
     assert not workspace.joinpath("new.txt").exists()
 
 
+def test_executor_boundary_preflight_reproduces_legacy_nested_net_failure(
+    tmp_path: Path, evaluation_root: Path
+) -> None:
+    """The old nested network namespace fails; the profile-owned path passes."""
+    if (
+        evaluation.shutil.which("bwrap") is None
+        or evaluation.shutil.which("codex") is None
+    ):
+        pytest.skip("bwrap and Codex are required for boundary preflight coverage")
+    case = evaluation.load_case(write_case(evaluation_root / "cases/preflight.yaml"))
+    workspace = tmp_path / "workspace"
+    evaluation.prepare_workspace(case, workspace)
+    output = tmp_path / "output"
+    output.mkdir()
+    (output / "codex-home").mkdir()
+
+    legacy_runtime = tmp_path / "legacy-runtime"
+    legacy_runtime.mkdir()
+    evaluation.create_broker_shims(legacy_runtime, case)
+    legacy_wrapper = legacy_runtime / evaluation.SHELL_WRAPPER_NAME
+    legacy_wrapper.chmod(0o755)
+    legacy_wrapper.write_text(
+        "#!/runtime/python/bin/python3\n"
+        "import os\n"
+        "os.execv('/usr/bin/bwrap', ['bwrap', '--unshare-net', '--', "
+        "'/usr/bin/true'])\n",
+        encoding="utf-8",
+    )
+    legacy_wrapper.chmod(0o555)
+    legacy_command = evaluation.build_bwrap_command(
+        case, workspace, output, "unused-model", "low", legacy_runtime
+    )
+    codex_tail = evaluation.build_codex_command(
+        case,
+        Path("/workspace"),
+        Path("/output/final-message.txt"),
+        "unused-model",
+        "low",
+        "/runtime/codex/bin/codex",
+    )
+    legacy_command[-len(codex_tail) :] = (
+        evaluation.build_permission_profile_sandbox_command(
+            "/runtime/codex/bin/codex", Path("/workspace"), ("/bin/bash", "-c", "true")
+        )
+    )
+    legacy_result = evaluation._run(
+        legacy_command, workspace, env=evaluation._evaluation_env()
+    )
+    assert legacy_result.returncode != 0
+    assert "NETLINK_ROUTE" in legacy_result.stderr
+
+    runtime = tmp_path / "runtime"
+    runtime.mkdir()
+    evaluation.create_broker_shims(runtime, case)
+    evaluation.run_executor_boundary_preflight(case, workspace, output, runtime)
+
+
 def test_install_arm_home_validates_inputs_and_installs(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -1024,22 +1091,23 @@ def test_run_case_writes_private_evidence_and_result(
         return None
 
     monkeypatch.setattr(evaluation, "install_arm_home", no_install)
-    original_run = evaluation._run
+    monkeypatch.setattr(
+        evaluation,
+        "run_executor_boundary_preflight",
+        bypass_executor_boundary_preflight,
+    )
 
     def fake_codex(
         command: tuple[str, ...] | list[str],
         cwd: Path,
-        *,
-        env: dict[str, str] | None = None,
+        env: dict[str, str],
     ) -> subprocess.CompletedProcess[str]:
-        if any(str(part).endswith("/codex") for part in command):
-            (workspace / "value.txt").write_text("after\n", encoding="utf-8")
-            return subprocess.CompletedProcess(
-                args=command, returncode=0, stdout='{"type":"done"}\n', stderr=""
-            )
-        return original_run(command, cwd, env=env)
+        (workspace / "value.txt").write_text("after\n", encoding="utf-8")
+        return subprocess.CompletedProcess(
+            args=command, returncode=0, stdout='{"type":"done"}\n', stderr=""
+        )
 
-    monkeypatch.setattr(evaluation, "_run", fake_codex)
+    monkeypatch.setattr(evaluation, "_run_model", fake_codex)
     result = evaluation.run_case(
         case, workspace, source, auth, output, "model", "medium"
     )
@@ -1088,20 +1156,21 @@ def test_run_case_requires_successful_codex_exit(
         return None
 
     monkeypatch.setattr(evaluation, "install_arm_home", no_install)
-    original_run = evaluation._run
+    monkeypatch.setattr(
+        evaluation,
+        "run_executor_boundary_preflight",
+        bypass_executor_boundary_preflight,
+    )
 
     def failed_codex(
         command: tuple[str, ...] | list[str],
         cwd: Path,
-        *,
-        env: dict[str, str] | None = None,
+        env: dict[str, str],
     ) -> subprocess.CompletedProcess[str]:
-        if "codex" in command:
-            (workspace / "value.txt").write_text("after\n", encoding="utf-8")
-            return subprocess.CompletedProcess(command, 1, '{"type":"done"}\n', "")
-        return original_run(command, cwd, env=env)
+        (workspace / "value.txt").write_text("after\n", encoding="utf-8")
+        return subprocess.CompletedProcess(command, 1, '{"type":"done"}\n', "")
 
-    monkeypatch.setattr(evaluation, "_run", failed_codex)
+    monkeypatch.setattr(evaluation, "_run_model", failed_codex)
     result = evaluation.run_case(
         case,
         workspace,
@@ -1112,6 +1181,45 @@ def test_run_case_requires_successful_codex_exit(
         "medium",
     )
     assert cast(dict[str, object], result["verification"])["passed"] is False
+
+
+def test_run_case_fails_closed_before_model_when_boundary_preflight_fails(
+    tmp_path: Path,
+    evaluation_root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    case = evaluation.load_case(
+        write_case(evaluation_root / "cases/preflight-fail.yaml")
+    )
+    workspace = tmp_path / "workspace"
+    evaluation.prepare_workspace(case, workspace)
+    output = tmp_path / "output"
+    model_called = False
+
+    monkeypatch.setattr(evaluation, "install_arm_home", no_install_arm_home)
+
+    def fail_preflight(*args: object) -> None:
+        raise EvaluationError("executor boundary preflight failed: synthetic")
+
+    def model_must_not_run(*args: object) -> subprocess.CompletedProcess[str]:
+        nonlocal model_called
+        model_called = True
+        raise AssertionError("model execution must not start after failed preflight")
+
+    monkeypatch.setattr(evaluation, "run_executor_boundary_preflight", fail_preflight)
+    monkeypatch.setattr(evaluation, "_run_model", model_must_not_run)
+    with pytest.raises(EvaluationError, match="boundary preflight failed"):
+        evaluation.run_case(
+            case,
+            workspace,
+            tmp_path / "source",
+            tmp_path / "auth",
+            output,
+            "model",
+            "medium",
+        )
+    assert model_called is False
+    assert not (output / "result.json").exists()
 
 
 def test_case_relative_fixture_roots_do_not_bleed(tmp_path: Path) -> None:
@@ -1361,6 +1469,10 @@ def test_command_normalization_and_capture_negative_controls() -> None:
         ["command", "-v", "pytest"],
     ]
     assert evaluation._shell_commands("bash -lc 'pytest -q'") == [["pytest", "-q"]]
+    assert evaluation._shell_commands("/bin/bash -c 'pytest -q'") == [["pytest", "-q"]]
+    assert evaluation._shell_commands("/usr/bin/sh -lc 'pytest -q'") == [
+        ["pytest", "-q"]
+    ]
     assert evaluation._is_discovery([]) is False
     assert evaluation._is_discovery(["git", "diff"]) is True
     assert evaluation._is_discovery(["echo", "x"]) is False
@@ -1518,6 +1630,61 @@ def test_command_oracle_models_compound_execution_from_wrapper_exits(
     assert fail_or_pass["valid"] is True
     fail_then_pass = observe("test fail ; echo diagnosis ; test pass", [1, 0])
     assert fail_then_pass["valid"] is False
+
+
+def test_command_oracle_accepts_discovery_compound_with_broker_proof(
+    tmp_path: Path, evaluation_root: Path
+) -> None:
+    case = evaluation.load_case(
+        write_case(
+            evaluation_root / "cases/discovery-compound.yaml",
+            command_contract={
+                "families": {
+                    "focused_test": {
+                        "commands": [["pytest", "-q"]],
+                        "wrapper_required": True,
+                        "covered_seam": "unit",
+                    }
+                },
+                "required": [{"family": "focused_test", "exit": "zero"}],
+            },
+        )
+    )
+    oracle = evaluation.command_oracle(
+        case,
+        command_event("git status --short && pytest -q", 0),
+        "run",
+        [broker_event("focused_test", ["pytest", "-q"], 0)],
+    )
+    assert oracle["valid"] is True
+
+    forbidden_case = evaluation.load_case(
+        write_case(
+            evaluation_root / "cases/discovery-forbidden.yaml",
+            command_contract={
+                "families": {"complete_gate": {"commands": [["make", "check"]]}},
+                "forbidden": ["complete_gate"],
+            },
+        )
+    )
+    unproven = evaluation.command_oracle(
+        forbidden_case,
+        command_event("command -v pytest || make check", 0),
+        "run",
+        [],
+    )
+    assert unproven["valid"] is True
+
+
+def test_model_execution_timeout_fails_closed(monkeypatch: pytest.MonkeyPatch) -> None:
+    def timed_out(*args: object, **kwargs: object) -> object:
+        raise subprocess.TimeoutExpired(
+            "codex", evaluation.MODEL_EXECUTION_TIMEOUT_SECONDS
+        )
+
+    monkeypatch.setattr(evaluation.subprocess, "run", timed_out)
+    with pytest.raises(EvaluationError, match="model execution timed out"):
+        evaluation._run_model(["codex"], Path.cwd(), {})
 
 
 def test_command_oracle_rejects_surplus_wrapper_for_other_family(
@@ -2106,22 +2273,22 @@ def test_install_file_link_and_run_case_broker_error_are_materialized(
     def no_install(*args: object) -> None:
         return None
 
-    original_run = evaluation._run
-
     def successful_codex(
         command: tuple[str, ...] | list[str],
         cwd: Path,
-        *,
-        env: dict[str, str] | None = None,
+        env: dict[str, str],
     ) -> subprocess.CompletedProcess[str]:
-        if any(str(part).endswith("/codex") for part in command):
-            (workspace / "value.txt").write_text("after\n", encoding="utf-8")
-            return subprocess.CompletedProcess(command, 0, "{}\n", "")
-        return original_run(command, cwd, env=env)
+        (workspace / "value.txt").write_text("after\n", encoding="utf-8")
+        return subprocess.CompletedProcess(command, 0, "{}\n", "")
 
     monkeypatch.setattr(evaluation, "CommandBroker", BrokerWithError)
     monkeypatch.setattr(evaluation, "install_arm_home", no_install)
-    monkeypatch.setattr(evaluation, "_run", successful_codex)
+    monkeypatch.setattr(
+        evaluation,
+        "run_executor_boundary_preflight",
+        bypass_executor_boundary_preflight,
+    )
+    monkeypatch.setattr(evaluation, "_run_model", successful_codex)
     result = evaluation.run_case(
         case, workspace, source, auth, tmp_path / "run-output", "model", "low"
     )

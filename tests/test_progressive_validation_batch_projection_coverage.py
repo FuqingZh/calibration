@@ -249,10 +249,10 @@ def test_completed_slot_rejects_invalid_ledger_identity_hash_and_symlink(
     failed_path.unlink()
 
     result_path.unlink()
-    with pytest.raises(batch.BatchError, match="result is missing"):
+    with pytest.raises(batch.BatchError, match="cannot safely read frozen slot result"):
         batch._validate_completed_slot(root, manifest, slot)
 
     started_path.unlink()
     started_path.symlink_to("elsewhere.json")
-    with pytest.raises(batch.BatchError, match="ledger contains a symlink"):
+    with pytest.raises(batch.BatchError, match="cannot safely read frozen slot ledger"):
         batch._validate_completed_slot(root, manifest, slot)

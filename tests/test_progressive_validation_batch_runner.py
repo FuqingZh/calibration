@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import subprocess
 from pathlib import Path
 from typing import cast
@@ -9,6 +10,18 @@ from typing import cast
 import pytest
 
 from scripts import run_progressive_validation_selection_eval as batch
+
+
+@pytest.fixture(autouse=True)
+def _permit_canary_for_slot_contract_tests(  # pyright: ignore[reportUnusedFunction]
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Exercise slot invariants independently of the separately tested canary gate."""
+
+    def permit(_root: Path) -> None:
+        return None
+
+    monkeypatch.setattr(batch, "_require_verified_canary", permit)
 
 
 def _private_manifest(tmp_path: Path) -> tuple[Path, dict[str, object]]:
@@ -20,6 +33,13 @@ def _private_manifest(tmp_path: Path) -> tuple[Path, dict[str, object]]:
         "arm_map": {
             "baseline": {"archive": "sources/baseline.tar"},
             "candidate": {"archive": "sources/candidate.tar"},
+        },
+        "live_canary_case_id": "C01",
+        "canary_source": {
+            "commit": "c" * 40,
+            "archive": "sources/canary.tar",
+            "archive_sha256": "d" * 64,
+            "git_tree_oid": "tree",
         },
         "schedule": batch._schedule(batch.load_batch_config()),
     }
@@ -132,13 +152,18 @@ def test_freeze_requires_clean_exact_commits_and_archives(
             return "c" * 40
         return args[2].replace("^{commit}", "").replace("^{tree}", "tree")
 
-    def fake_archive(commit: str, destination: Path) -> str:
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        destination.write_bytes(commit.encode())
+    def fake_archive(commit: str, descriptor: int, _name: str) -> str:
+        archive = os.open(
+            _name, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600, dir_fd=descriptor
+        )
+        try:
+            os.write(archive, commit.encode())
+        finally:
+            os.close(archive)
         return hashlib.sha256(commit.encode()).hexdigest()
 
     monkeypatch.setattr(batch, "_git", fake_git)
-    monkeypatch.setattr(batch, "_archive_commit", fake_archive)
+    monkeypatch.setattr(batch, "_archive_commit_at", fake_archive)
     monkeypatch.setattr(batch, "_codex_version", lambda: "codex 1.2.3")
     manifest = batch.freeze_batch(
         tmp_path, commit_a, commit_b, model="test-model", reasoning_effort="high"
@@ -151,7 +176,7 @@ def test_freeze_requires_clean_exact_commits_and_archives(
     assert saved["arm_map"]["baseline"]["commit"] == commit_a
     assert saved["requested_model"] == "test-model"
     assert saved["turn_budget"] == 1
-    with pytest.raises(batch.BatchError, match="overwrite"):
+    with pytest.raises(batch.BatchError, match="private frozen run root"):
         batch.freeze_batch(
             tmp_path, commit_a, commit_b, model="test-model", reasoning_effort="high"
         )
@@ -295,6 +320,143 @@ def test_manifest_slot_derives_every_execution_field_and_is_exclusive(
         batch.run_manifest_slot(tmp_path, tmp_path / "auth.json", slot_id)
 
 
+def test_comparison_slot_requires_verified_live_canary(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    _root, manifest = _private_manifest(tmp_path)
+    first = cast(list[dict[str, object]], manifest["schedule"])[0]
+    monkeypatch.setattr(batch, "verify_freeze", _valid_freeze)
+
+    def missing_canary(_root: Path) -> None:
+        raise batch.BatchError("live canary is not completed")
+
+    monkeypatch.setattr(batch, "_require_verified_canary", missing_canary)
+    with pytest.raises(batch.BatchError, match="live canary is not completed"):
+        batch.run_manifest_slot(
+            tmp_path, tmp_path / "auth.json", cast(str, first["slot_id"])
+        )
+
+
+def test_live_canary_is_independent_append_only_evidence(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    root, _manifest = _private_manifest(tmp_path)
+    monkeypatch.setattr(batch, "verify_freeze", _valid_freeze)
+
+    def fake_canary_run(*args: object) -> dict[str, object]:
+        assert cast(Path, args[2]).name == "C01.yaml"
+        output = cast(Path, args[5])
+        output.mkdir(parents=True)
+        result: dict[str, object] = {
+            "case_id": "C01",
+            "model": "frozen-model",
+            "reasoning_effort": "medium",
+            "codex_exit_code": 0,
+            "verification": {
+                "passed": True,
+                "unexpected_changes": [],
+                "missing_required_changes": [],
+            },
+            "command_oracle": {
+                "valid": True,
+                "broker_events": [{"execution_id": 1}],
+            },
+            "final_oracle": {"valid": True},
+        }
+        (output / "result.json").write_text(json.dumps(result), encoding="utf-8")
+        return result
+
+    monkeypatch.setattr(batch, "run_archived_slot", fake_canary_run)
+    assert batch.canary_status(tmp_path)["state"] == "not_yet_verified"
+    completed = batch.run_canary(tmp_path, tmp_path / "auth.json")
+    assert completed["verified"] is True
+    assert batch.canary_status(tmp_path) == {"state": "verified"}
+    assert not (root / "slots").exists()
+    with pytest.raises(batch.BatchError, match="refusing to reuse private live canary"):
+        batch.run_canary(tmp_path, tmp_path / "auth.json")
+
+
+def test_live_canary_refuses_preexisting_symlink_without_external_write(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    root, _manifest = _private_manifest(tmp_path)
+    external = tmp_path / "external-canary"
+    external.mkdir()
+    (root / "canary").symlink_to(external, target_is_directory=True)
+    monkeypatch.setattr(batch, "verify_freeze", _valid_freeze)
+
+    with pytest.raises(
+        batch.BatchError, match="cannot safely open private live canary"
+    ):
+        batch.run_canary(tmp_path, tmp_path / "auth.json")
+    assert list(external.iterdir()) == []
+
+
+@pytest.mark.parametrize("record_name", ["started.json", "failed.json"])
+def test_live_canary_started_or_failed_ledger_cannot_be_reused(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, record_name: str
+) -> None:
+    root, _manifest = _private_manifest(tmp_path)
+    canary = root / "canary"
+    canary.mkdir()
+    record: dict[str, object] = (
+        {
+            "case_id": "C01",
+            "requested_model": "frozen-model",
+            "requested_reasoning_effort": "medium",
+            "canary_source_sha256": "d" * 64,
+        }
+        if record_name == "started.json"
+        else {
+            "case_id": "C01",
+            "error_type": "BatchError",
+            "error": "boundary preflight failed",
+        }
+    )
+    (canary / record_name).write_text(json.dumps(record), encoding="utf-8")
+    monkeypatch.setattr(batch, "verify_freeze", _valid_freeze)
+
+    expected = "not completed" if record_name == "started.json" else "is invalid"
+    with pytest.raises(batch.BatchError, match=expected):
+        batch.canary_status(tmp_path)
+    with pytest.raises(batch.BatchError, match="refusing to reuse private live canary"):
+        batch.run_canary(tmp_path, tmp_path / "auth.json")
+
+
+def test_invalid_live_canary_is_retained_and_blocks_reuse(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    _root, _manifest = _private_manifest(tmp_path)
+    monkeypatch.setattr(batch, "verify_freeze", _valid_freeze)
+
+    def invalid_canary_run(*args: object) -> dict[str, object]:
+        output = cast(Path, args[5])
+        output.mkdir(parents=True)
+        result: dict[str, object] = {
+            "case_id": "C01",
+            "model": "frozen-model",
+            "reasoning_effort": "medium",
+            "codex_exit_code": 0,
+            "verification": {
+                "passed": True,
+                "unexpected_changes": [],
+                "missing_required_changes": [],
+            },
+            "command_oracle": {"valid": True, "broker_events": []},
+            "final_oracle": {"valid": True},
+        }
+        (output / "result.json").write_text(json.dumps(result), encoding="utf-8")
+        return result
+
+    monkeypatch.setattr(batch, "run_archived_slot", invalid_canary_run)
+    with pytest.raises(batch.BatchError, match="live canary is invalid"):
+        batch.run_canary(tmp_path, tmp_path / "auth.json")
+    with pytest.raises(batch.BatchError, match="live canary is invalid"):
+        batch.canary_status(tmp_path)
+    with pytest.raises(batch.BatchError, match="refusing to reuse private live canary"):
+        batch.run_canary(tmp_path, tmp_path / "auth.json")
+
+
 def test_manifest_slot_requires_frozen_order_and_records_failure(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -323,6 +485,58 @@ def test_manifest_slot_requires_frozen_order_and_records_failure(
         batch.run_manifest_slot(tmp_path, tmp_path / "auth.json", first_id)
 
 
+def test_manifest_slot_refuses_symlinked_slots_root_without_external_write(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    root, manifest = _private_manifest(tmp_path)
+    first = cast(list[dict[str, object]], manifest["schedule"])[0]
+    external = tmp_path / "external-slots"
+    external.mkdir()
+    (root / "slots").symlink_to(external, target_is_directory=True)
+    monkeypatch.setattr(batch, "verify_freeze", _valid_freeze)
+
+    def must_not_run(*_args: object, **_kwargs: object) -> dict[str, object]:
+        raise AssertionError("unsafe slots root reached the runner")
+
+    monkeypatch.setattr(batch, "run_archived_slot", must_not_run)
+    with pytest.raises(
+        batch.BatchError, match="cannot safely open private slot ledger"
+    ):
+        batch.run_manifest_slot(
+            tmp_path, tmp_path / "auth.json", cast(str, first["slot_id"])
+        )
+    assert list(external.iterdir()) == []
+
+
+def test_runner_preflight_failure_is_recorded_as_invalid_and_cannot_reuse_slot(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """The controller trusts the runner exception, never model stderr text."""
+    root, manifest = _private_manifest(tmp_path)
+    first = cast(list[dict[str, object]], manifest["schedule"])[0]
+    slot_id = cast(str, first["slot_id"])
+    runner_invoked = False
+
+    def preflight_failure(*_args: object, **_kwargs: object) -> dict[str, object]:
+        nonlocal runner_invoked
+        runner_invoked = True
+        raise batch.BatchError("runner execution boundary preflight failed")
+
+    monkeypatch.setattr(batch, "verify_freeze", _valid_freeze)
+    monkeypatch.setattr(batch, "run_archived_slot", preflight_failure)
+    with pytest.raises(batch.BatchError, match="boundary preflight failed"):
+        batch.run_manifest_slot(tmp_path, tmp_path / "auth.json", slot_id)
+
+    slot_root = root / "slots" / slot_id
+    assert runner_invoked is True
+    assert not (slot_root / "output/result.json").exists()
+    failure = json.loads((slot_root / "failed.json").read_text(encoding="utf-8"))
+    assert failure["error_type"] == "BatchError"
+    assert batch.smoke_status(tmp_path)["state"] == "invalid"
+    with pytest.raises(batch.BatchError, match="refusing to reuse"):
+        batch.run_manifest_slot(tmp_path, tmp_path / "auth.json", slot_id)
+
+
 def test_result_classification_never_hides_non_selection_failure() -> None:
     forbidden = ["forbidden family observed: complete_gate"]
     assert (
@@ -348,18 +562,24 @@ def test_result_classification_never_hides_non_selection_failure() -> None:
     )
 
 
+SMOKE_STATUS_CASES: list[tuple[frozenset[str], str]] = [
+    (frozenset(), "eligible_for_repeats"),
+    (frozenset({"baseline"}), "incomparable"),
+    (frozenset({"candidate"}), "reject"),
+    # Both arms completed a real deterministic semantic failure.  This is not
+    # a runner-boundary failure and remains candidate rejection.
+    (frozenset({"baseline", "candidate"}), "reject"),
+]
+
+
 @pytest.mark.parametrize(
-    ("critical_arm", "expected_state"),
-    [
-        (None, "eligible_for_repeats"),
-        ("baseline", "incomparable"),
-        ("candidate", "reject"),
-    ],
+    ("critical_arms", "expected_state"),
+    SMOKE_STATUS_CASES,
 )
 def test_smoke_status_recomputes_complete_ledger(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
-    critical_arm: str | None,
+    critical_arms: frozenset[str],
     expected_state: str,
 ) -> None:
     root, manifest = _private_manifest(tmp_path)
@@ -380,7 +600,7 @@ def test_smoke_status_recomputes_complete_ledger(
             case_id,
             oracle_errors=(
                 ["missing required docs_check (zero)"]
-                if critical_arm == arm_key
+                if arm_key in critical_arms
                 else None
             ),
         )
@@ -414,7 +634,16 @@ def test_smoke_status_is_fail_closed_for_missing_failed_and_tampered_ledgers(
     first = cast(list[dict[str, object]], manifest["schedule"])[0]
     slot_root = root / "slots" / cast(str, first["slot_id"])
     slot_root.mkdir(parents=True)
-    (slot_root / "failed.json").write_text("{}", encoding="utf-8")
+    (slot_root / "failed.json").write_text(
+        json.dumps(
+            {
+                "slot_id": first["slot_id"],
+                "error_type": "BatchError",
+                "error": "synthetic boundary failure",
+            }
+        ),
+        encoding="utf-8",
+    )
     status = batch.smoke_status(tmp_path)
     assert status["state"] == "invalid"
     assert status["failed_slots"] == 1

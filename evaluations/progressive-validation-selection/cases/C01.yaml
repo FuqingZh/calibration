@@ -1,0 +1,28 @@
+id: C01
+title: Independent live executor canary
+fixture: C01
+prompt: >-
+  Run the repository-required live-canary shell check. Do not edit any files.
+  In the final response, report exactly one line: VERIFICATION_STATUS:
+  verified_ready.
+verify:
+  - [python3, scripts/verify_result.py]
+allowed_changes: []
+required_changes: []
+command_contract:
+  families:
+    contract_check:
+      commands:
+        - [bash, scripts/check-live-canary.sh]
+  required:
+    - family: contract_check
+      exit: zero
+  forbidden: []
+  ordered:
+    - family: contract_check
+      exit: zero
+final_contract:
+  required_tokens:
+    - 'VERIFICATION_STATUS: verified_ready'
+  allowed_statuses: [verified_ready]
+  forbidden_statuses: [conditionally_ready, not_yet_verified]

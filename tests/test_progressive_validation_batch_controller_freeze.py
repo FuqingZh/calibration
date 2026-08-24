@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from pathlib import Path
 from typing import cast
 
@@ -35,15 +36,21 @@ def _freeze(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
             return "c" * 40
         return value.replace("^{commit}", "").replace("^{tree}", "tree")
 
-    def archive(commit: str, path: Path) -> str:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(commit.encode())
+    def archive(commit: str, descriptor: int, _name: str) -> str:
+        archive = os.open(
+            _name, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600, dir_fd=descriptor
+        )
+        try:
+            os.write(archive, commit.encode())
+        finally:
+            os.close(archive)
         return hashlib.sha256(commit.encode()).hexdigest()
 
     monkeypatch.setattr(batch, "_git", fake_git)
-    monkeypatch.setattr(batch, "_archive_commit", archive)
+    monkeypatch.setattr(batch, "_archive_commit_at", archive)
     monkeypatch.setattr(batch, "_codex_version", lambda: "codex test")
     private = tmp_path / "private"
+    private.mkdir()
     batch.freeze_batch(
         private, "a" * 40, "b" * 40, model="test", reasoning_effort="medium"
     )
@@ -55,6 +62,102 @@ def test_verify_freeze_accepts_unchanged_clean_controller(
 ) -> None:
     private = _freeze(monkeypatch, tmp_path)
     assert batch.verify_freeze(private)["valid"] is True
+
+
+def test_freeze_records_distinct_current_controller_canary_source(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    private = _freeze(monkeypatch, tmp_path)
+    manifest = json.loads(
+        (private / "progressive-validation-selection/manifest.json").read_text()
+    )
+    source = cast(dict[str, object], manifest["canary_source"])
+    assert manifest["live_canary_case_id"] == "C01"
+    assert source["commit"] == "c" * 40
+    assert source["archive"] == f"sources/canary-{'c' * 40}.tar"
+    assert source["archive_sha256"] == hashlib.sha256(("c" * 40).encode()).hexdigest()
+    assert batch.verify_freeze(private)["valid"] is True
+
+
+@pytest.mark.parametrize("preexisting", ["directory", "symlink"])
+def test_freeze_rejects_preexisting_run_root_before_archiving(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, preexisting: str
+) -> None:
+    private = tmp_path / "private"
+    private.mkdir()
+    run_root = private / "progressive-validation-selection"
+    external = tmp_path / "external"
+    external.mkdir()
+    if preexisting == "directory":
+        run_root.mkdir()
+    else:
+        run_root.symlink_to(external, target_is_directory=True)
+
+    def git(args: list[str], *, cwd: Path = batch.REPOSITORY_ROOT) -> str:
+        del cwd
+        if args == ["status", "--porcelain"]:
+            return ""
+        value = args[-1]
+        if value == "HEAD^{commit}":
+            return "c" * 40
+        return value.replace("^{commit}", "").replace("^{tree}", "tree")
+
+    def must_not_archive(_commit: str, _descriptor: int, _name: str) -> str:
+        raise AssertionError("unsafe frozen root reached archive creation")
+
+    monkeypatch.setattr(batch, "_git", git)
+    monkeypatch.setattr(batch, "_archive_commit_at", must_not_archive)
+    with pytest.raises(batch.BatchError, match="private frozen run root"):
+        batch.freeze_batch(
+            private, "a" * 40, "b" * 40, model="test", reasoning_effort="medium"
+        )
+    assert list(external.iterdir()) == []
+
+
+@pytest.mark.parametrize("replacement", ["symlink", "file"])
+def test_freeze_rejects_unsafe_sources_before_archiving(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, replacement: str
+) -> None:
+    private = tmp_path / "private"
+    external = tmp_path / "external"
+    external.mkdir()
+    original_mkdir = os.mkdir
+
+    def injected_mkdir(
+        name: str | bytes, mode: int = 0o777, *, dir_fd: int | None = None
+    ) -> None:
+        if name == "sources":
+            assert dir_fd is not None
+            if replacement == "symlink":
+                os.symlink(external, "sources", dir_fd=dir_fd)
+            else:
+                leaf = os.open(
+                    "sources", os.O_WRONLY | os.O_CREAT | os.O_EXCL, dir_fd=dir_fd
+                )
+                os.close(leaf)
+            raise FileExistsError
+        original_mkdir(name, mode, dir_fd=dir_fd)
+
+    def git(args: list[str], *, cwd: Path = batch.REPOSITORY_ROOT) -> str:
+        del cwd
+        if args == ["status", "--porcelain"]:
+            return ""
+        value = args[-1]
+        if value == "HEAD^{commit}":
+            return "c" * 40
+        return value.replace("^{commit}", "").replace("^{tree}", "tree")
+
+    def must_not_archive(_commit: str, _descriptor: int, _name: str) -> str:
+        raise AssertionError("unsafe sources reached archive creation")
+
+    monkeypatch.setattr(batch.os, "mkdir", injected_mkdir)
+    monkeypatch.setattr(batch, "_git", git)
+    monkeypatch.setattr(batch, "_archive_commit_at", must_not_archive)
+    with pytest.raises(batch.BatchError, match="private frozen sources"):
+        batch.freeze_batch(
+            private, "a" * 40, "b" * 40, model="test", reasoning_effort="medium"
+        )
+    assert list(external.iterdir()) == []
 
 
 def test_verify_freeze_rejects_controller_byte_change_without_head_change(

@@ -10,6 +10,7 @@ import yaml
 
 from scripts.run_writable_agent_eval import (
     command_oracle,
+    final_oracle,
     load_case,
     prepare_workspace,
     verify_workspace,
@@ -21,6 +22,7 @@ CASES = sorted((EVALUATION_ROOT / "cases").glob("*.yaml"))
 CASE_IDS = {f"P{number:02}" for number in range(1, 11)} | {
     f"H{number:02}" for number in range(1, 5)
 }
+LIVE_CANARY_CASE_ID = "C01"
 
 
 def _event(command: str, output: str, exit_code: int) -> str:
@@ -202,9 +204,14 @@ def _manifest_entries() -> dict[str, str]:
     }
 
 
-def test_freezes_exactly_fourteen_loadable_cases() -> None:
-    assert {path.stem for path in CASES} == CASE_IDS
-    assert {load_case(path).case_id for path in CASES} == CASE_IDS
+def test_freezes_fourteen_comparison_cases_and_one_independent_live_canary() -> None:
+    assert {path.stem for path in CASES} == CASE_IDS | {LIVE_CANARY_CASE_ID}
+    assert {load_case(path).case_id for path in CASES} == CASE_IDS | {
+        LIVE_CANARY_CASE_ID
+    }
+    config = json.loads((EVALUATION_ROOT / "batch-config.json").read_text())
+    assert set(config["case_ids"]) == CASE_IDS
+    assert config["live_canary_case_id"] == LIVE_CANARY_CASE_ID
     for path in CASES:
         raw = yaml.safe_load(path.read_text(encoding="utf-8"))
         contract = raw["command_contract"]
@@ -252,7 +259,7 @@ def test_initial_and_solved_fixture_verification(
     workspace = tmp_path / case.case_id
     prepare_workspace(case, workspace)
     initial = verify_workspace(case, workspace)
-    assert bool(initial["passed"]) is (case.case_id in {"P08", "H04"})
+    assert bool(initial["passed"]) is (case.case_id in {"P08", "H04", "C01"})
     _solve(case.case_id, workspace)
     solved = verify_workspace(case, workspace)
     assert solved["passed"], solved
@@ -295,6 +302,33 @@ def test_broker_evidence_is_runner_owned_and_execution_context_is_bounded() -> N
             cast(dict[str, object], case.command_contract)["execution_contexts"],
         )
         assert contexts["host_probe"] == "executor_sandbox"
+
+
+def test_live_canary_requires_one_real_shell_check_no_changes_and_ready_status(
+    tmp_path: Path,
+) -> None:
+    case = load_case(EVALUATION_ROOT / "cases/C01.yaml")
+    assert not case.allowed_changes
+    assert not case.required_changes
+    assert case.command_contract is not None
+    aliases = cast(dict[str, list[list[str]]], case.command_contract["aliases"])
+    assert aliases == {"contract_check": [["bash", "scripts/check-live-canary.sh"]]}
+    trajectory = _event("bash scripts/check-live-canary.sh", "live canary passed", 0)
+    oracle = command_oracle(
+        case,
+        trajectory,
+        "live-canary",
+        [_broker_event("contract_check", aliases["contract_check"][0], 0)],
+    )
+    assert oracle["valid"], oracle
+    final_message = tmp_path / "final-message.txt"
+    final_message.write_text("VERIFICATION_STATUS: verified_ready\n", encoding="utf-8")
+    assert final_oracle(case, final_message) == {
+        "enabled": True,
+        "valid": True,
+        "status": "verified_ready",
+        "errors": [],
+    }
 
 
 def test_result_schema_matches_rubric_codes_and_runner_result_shape() -> None:
