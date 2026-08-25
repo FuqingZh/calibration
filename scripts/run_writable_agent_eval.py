@@ -1066,7 +1066,36 @@ def _is_discovery(tokens: list[str]) -> bool:
 
 
 def _unknown_validation(tokens: list[str]) -> bool:
-    text = " ".join(tokens).lower()
+    executable = tokens[0].lower()
+    candidates = [executable]
+    if executable in {"bash", "sh", "python", "python3"} and len(tokens) > 1:
+        position = 1
+        if tokens[position] == "-m" and len(tokens) > position + 1:
+            position += 1
+        if position < len(tokens) and not tokens[position].startswith("-"):
+            candidates.append(tokens[position].lower())
+    elif executable in {"pdm", "uv"} and tokens[1:2] == ["run"]:
+        if len(tokens) > 2:
+            candidates.append(tokens[2].lower())
+    elif executable in {"make", "npm", "pnpm", "yarn", "cargo", "go"}:
+        candidates.extend(token.lower() for token in tokens[1:3])
+    elif executable not in {
+        "cat",
+        "command",
+        "echo",
+        "find",
+        "git",
+        "grep",
+        "head",
+        "ls",
+        "printf",
+        "pwd",
+        "rg",
+        "sed",
+        "tail",
+    }:
+        candidates.extend(token.lower() for token in tokens[1:2])
+    text = " ".join(candidates)
     return any(
         word in text
         for word in (

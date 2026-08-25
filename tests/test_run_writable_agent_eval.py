@@ -1472,6 +1472,13 @@ def test_task_selection_and_evidence_are_independent_layers(
         [],
     )
     assert evaluation.evidence_integrity(unlisted_forbidden)["valid"] is False
+    discovery = evaluation.command_oracle(
+        case,
+        command_event("sed -n 1,20p scripts/complete_gate.py", 0),
+        "run",
+        [],
+    )
+    assert evaluation.evidence_integrity(discovery)["valid"] is True
     assert evaluation.evidence_integrity(
         {
             "valid": False,
@@ -2166,6 +2173,14 @@ def test_command_normalization_and_capture_negative_controls() -> None:
     assert evaluation._is_discovery(["command", "-v", "python"])
     assert not evaluation._bypass(["command", "-v", "python"])
     assert evaluation._unknown_validation(["tool", "lint"]) is True
+    assert evaluation._unknown_validation(["python3", "-m", "pytest"]) is True
+    assert evaluation._unknown_validation(["python3", "-c", "print('check')"]) is False
+    assert evaluation._unknown_validation(["pdm", "run", "ruff"]) is True
+    assert evaluation._unknown_validation(["pdm", "run"]) is False
+    assert evaluation._unknown_validation(["make", "check"]) is True
+    assert (
+        evaluation._unknown_validation(["sed", "-n", "1p", "complete_gate.py"]) is False
+    )
     assert evaluation._unknown_validation(["echo", "x"]) is False
     for command in ("'", "&& pytest", "pytest &&"):
         with pytest.raises(EvaluationError, match="malformed"):
