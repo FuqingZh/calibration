@@ -1,7 +1,7 @@
 # Progressive Validation Selection Early Invalid Evidence And Valid Smoke Rejection
 
 Date: 2026-08-24
-Status: reject; early invalid evidence retained
+Status: historical v2.0 rejection; early invalid evidence retained
 
 ## Context
 
@@ -132,3 +132,8 @@ remain invalid diagnostic evidence and are not reinterpreted as this rejection.
 The first-batch ledger and failed first-recovery C01 remain invalid diagnostic
 evidence only. The later valid smoke rejects the candidate; no repeat, judge,
 activation, real-repository canary, rollout, or migration is authorized.
+
+That consequence is retained for the v2.0 protocol only. The later corrected
+[v2.2 relative comparison](2026-08-25-progressive-validation-relative-replacement-acceptance.md)
+separates task outcome from evidence parsing and supersedes this rejection for
+current progressive-validation authority.

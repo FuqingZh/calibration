@@ -1,7 +1,7 @@
 # Progressive Validation Selection Candidate
 
 Date: 2026-08-24
-Status: gate-ready; pending immutable candidate readback and smoke
+Status: accepted by the bounded v2.2 relative comparison
 
 The comparison baseline is
 `0f21f880383859f060156db6ce69d08eff73ed44`. The candidate changes only the
@@ -30,4 +30,11 @@ the exclusion of standard-only optional third-party skills.
 
 Static and synthetic checks can establish only candidate integrity. They do not
 show that the candidate selects smaller checks without losing required proof;
-that conclusion remains pending the predeclared model comparison.
+that conclusion required the predeclared model comparison.
+
+The corrected v2.2 comparison is now complete. It accepted the candidate with
+two candidate-winning cases, zero baseline-winning cases, one tie, equal 7/7
+task and evidence validity, equal required coverage/order totals, and five
+fewer forbidden full-gate events. See the
+[acceptance decision](2026-08-25-progressive-validation-relative-replacement-acceptance.md)
+for the bounded result and limitations.

@@ -105,6 +105,13 @@ artifacts. The private result separates `task_outcome`, runner-owned
 commands and may contain only their hashes, normalized family/exit summaries,
 the three redacted outcome layers, and the bounded decision.
 
+The detailed command oracle may retain line-scoped heuristic normalization
+warnings for unrecognized commands, unknown validation commands, or malformed
+compound commands. Such a warning does not alone invalidate
+`evidence_integrity` when each executed validation alias still has exact,
+ordered broker and delivery-receipt corroboration. Concrete missing, extra,
+reordered, bypassed, malformed-event, or receipt mismatches remain invalid.
+
 The Codex controller process retains the authentication file needed to start a
 turn. Model-generated commands run only under the named permission profile
 `/output=deny` with `network=false`. Their shell wrapper retains filesystem,
@@ -174,6 +181,24 @@ task-noninferiority, required-coverage/order, and fewer-forbidden-check rule.
 Raw/broker reconciliation failure makes selection evidence inconclusive but
 cannot rewrite a successful deterministic repository outcome as a task
 failure.
+
+## Corrected v2.2 result
+
+The final controller commit
+`e3d771fa0d89cc8f098997b20c60158b6f4d192b` passed C01 and completed all 12
+initial slots plus the P05 tiebreak pair. Both arms were 7/7 task-valid and 7/7
+evidence-valid, with zero missing required checks and two ordering misses each.
+The candidate produced zero forbidden events versus five for the baseline.
+P02 and P05 were candidate wins; P03 tied; no case favored the baseline.
+`relative-status` returned `complete/accept`.
+
+This is bounded evidence that the candidate selects validation more precisely
+without losing tested task correctness or proof coverage. It is not evidence
+of faster execution: candidate mean elapsed time was 74.89 seconds versus
+70.72 seconds for the baseline. Approval activity was not collected. The
+private ledgers and raw trajectories remain outside the repository; see the
+[acceptance decision](../../docs/decisions/2026-08-25-progressive-validation-relative-replacement-acceptance.md)
+for the immutable digests and interpretation.
 
 The third repetition is a conflict breaker, not a default. A run is invalid,
 rather than replaced silently, when its capture, events, source hashes, or

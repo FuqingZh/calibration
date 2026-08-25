@@ -1,7 +1,7 @@
 # Progressive Validation Selection Baseline
 
 Date: 2026-08-24
-Status: frozen baseline
+Status: frozen comparison baseline; superseded as current authority
 
 The exact pre-behavior repository commit is
 `e6aa9d33c78ec0561d5c9042b4c363c78495bddd`. It contains the accepted v2.0
@@ -35,3 +35,8 @@ gate and both installer-profile dry-runs passed.
 No behavioral conclusion has been drawn. Static checks and synthetic oracle
 controls establish harness readiness only; they do not show that the candidate
 selects smaller or more accurate validation in model runs.
+
+That statement records the baseline-freeze stage. The later corrected v2.2
+[acceptance decision](2026-08-25-progressive-validation-relative-replacement-acceptance.md)
+retains this commit as the immutable comparison baseline but supersedes it as
+the current progressive-validation authority.
