@@ -33,14 +33,6 @@ jobs:
       - name: Install locked validation environment
         run: pdm sync --clean
 
-      - name: Install writable evaluation runtime
-        run: |
-          sudo apt-get update
-          sudo apt-get install --yes bubblewrap
-          npm install --global @openai/codex@0.148.0
-          bwrap --version
-          codex --version
-
       - name: Run repository quality gate
         run: pdm run check
 

@@ -102,6 +102,23 @@ def bypass_executor_boundary_preflight(
     del case, workspace, output_dir, runtime
 
 
+def patch_runtime_discovery(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Provide only the runtime layout needed by command-construction tests."""
+    codex = tmp_path / "codex-runtime/bin/codex"
+    codex.parent.mkdir(parents=True)
+    codex.write_text("", encoding="utf-8")
+    original_which = evaluation.shutil.which
+
+    def runtime_path(name: str) -> str | None:
+        if name == "bwrap":
+            return "/usr/bin/bwrap"
+        if name == "codex":
+            return str(codex)
+        return original_which(name)
+
+    monkeypatch.setattr(evaluation.shutil, "which", runtime_path)
+
+
 @pytest.fixture
 def evaluation_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     root = tmp_path / "evaluation"
@@ -615,12 +632,7 @@ def test_build_bwrap_command_protects_fixture_files(
     output.mkdir()
     (output / "codex-home").mkdir()
 
-    original_which = evaluation.shutil.which
-
-    def bwrap_path(name: str) -> str | None:
-        return "/usr/bin/bwrap" if name == "bwrap" else original_which(name)
-
-    monkeypatch.setattr(evaluation.shutil, "which", bwrap_path)
+    patch_runtime_discovery(monkeypatch, tmp_path)
     command = evaluation.build_bwrap_command(case, workspace, output, "model", "high")
     assert command[:2] == ["bwrap", "--die-with-parent"]
     assert ["--ro-bind", str(workspace), "/workspace"] in [
@@ -660,8 +672,11 @@ def test_boundary_rejects_symlinked_allowed_target(
 
 
 def test_bwrap_command_fails_closed_without_shell_runtime(
-    tmp_path: Path, evaluation_root: Path
+    tmp_path: Path,
+    evaluation_root: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    patch_runtime_discovery(monkeypatch, tmp_path)
     case = evaluation.load_case(write_case(evaluation_root / "cases/case.yaml"))
     workspace = tmp_path / "workspace"
     evaluation.prepare_workspace(case, workspace)
@@ -1699,6 +1714,7 @@ def test_run_case_writes_private_evidence_and_result(
     evaluation_root: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    patch_runtime_discovery(monkeypatch, tmp_path)
     case = evaluation.load_case(
         write_case(
             evaluation_root / "cases/case.yaml",
@@ -1774,6 +1790,7 @@ def test_run_case_requires_successful_codex_exit(
     evaluation_root: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    patch_runtime_discovery(monkeypatch, tmp_path)
     case = evaluation.load_case(write_case(evaluation_root / "cases/case.yaml"))
     workspace = tmp_path / "workspace"
     evaluation.prepare_workspace(case, workspace)
@@ -2580,6 +2597,12 @@ def test_broker_execute_timeout_and_unknown_alias(
     runtime.mkdir()
     broker = evaluation.CommandBroker(case, workspace, runtime, "run")
 
+    def inner_command(argv: tuple[str, ...]) -> list[str]:
+        del argv
+        return ["synthetic-check"]
+
+    monkeypatch.setattr(broker, "_inner_command", inner_command)
+
     class TimedOutProcess:
         pid = 99_999_999
         stdout = None
@@ -3222,6 +3245,7 @@ def test_runner_branches_reject_invalid_runtime_and_preserve_broker_truth(
 def test_install_file_link_and_run_case_broker_error_are_materialized(
     tmp_path: Path, evaluation_root: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    patch_runtime_discovery(monkeypatch, tmp_path)
     source = tmp_path / "source"
     source.mkdir()
     target = source / "single-skill.txt"

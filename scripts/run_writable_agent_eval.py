@@ -1868,7 +1868,7 @@ def build_bwrap_command(
         raise EvaluationError("Codex executable is required for writable evaluation")
     codex_root = Path(codex).resolve().parents[1]
     if (
-        not (python_root / "bin/python3.13").is_file()
+        not (python_root / "bin/python3").is_file()
         or not (codex_root / "bin/codex").is_file()
     ):
         raise EvaluationError("resolved runtime layout is invalid")
