@@ -13,6 +13,13 @@ error-message prose. `Approve for me` remains enabled identically in both arms;
 the comparison uses 24 initial runs and no more than 36 runs. See the
 [`outcome-only scope decision`](../../docs/decisions/2026-08-25-progressive-validation-outcome-only-approval-scope.md).
 
+The fresh execution completed 32 runs under controller `6c689933...`: 24
+initial slots plus third pairs for P01, P02, P03, and P04. C01 and all slot
+ledgers completed without harness failure. Candidate strict-valid runs were
+5/16 versus 4/16, while valid-or-comparable task completion tied 7/16 and all
+six collapsed cases tied. The result is
+[`inconclusive`](../../docs/decisions/2026-08-25-progressive-validation-relative-replacement-outcome.md): retain the baseline; do not activate or migrate.
+
 This frozen evaluation compares validation-selection behavior without treating
 command count as a quality signal. Deterministic command reconciliation decides
 whether each declared proof obligation was covered; blinded judges assess only

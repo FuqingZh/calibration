@@ -1652,7 +1652,6 @@ def run_tiebreaks(private_root: Path, auth_file: Path) -> list[dict[str, object]
     _require_verified_canary(private_root)
     manifest = _private_manifest(private_root)
     root = _run_root(private_root)
-    _completed_smoke_prefix(root, manifest, _smoke_slots(manifest))
     conflicts = set(_conflicting_case_ids(root, manifest))
     selected = [
         slot for slot in _tiebreak_slots(manifest) if slot.get("case_id") in conflicts

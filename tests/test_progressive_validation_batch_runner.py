@@ -587,6 +587,7 @@ def test_relative_pairing_and_tiebreak_execution_are_symmetric(
         return manifest
 
     prefix_allowances: list[int] = []
+    resume_complete = [False]
 
     def completed_prefix(
         _root: Path,
@@ -596,6 +597,8 @@ def test_relative_pairing_and_tiebreak_execution_are_symmetric(
         allowed_existing_ids: frozenset[str] = frozenset(),
     ) -> list[dict[str, object]]:
         prefix_allowances.append(len(allowed_existing_ids))
+        if resume_complete[0]:
+            return [{"slot_id": slot["slot_id"]} for slot in _slots]
         return []
 
     def conflicting_cases(_root: Path, _manifest: dict[str, object]) -> list[str]:
@@ -619,7 +622,13 @@ def test_relative_pairing_and_tiebreak_execution_are_symmetric(
     ]
     assert calls == expected
     assert [item["slot_id"] for item in completed] == expected
-    assert prefix_allowances == [0, 24]
+    assert prefix_allowances == [24]
+    calls.clear()
+    resume_complete[0] = True
+    resumed = batch.run_tiebreaks(tmp_path, tmp_path / "auth.json")
+    assert calls == []
+    assert [item["slot_id"] for item in resumed] == expected
+    assert prefix_allowances == [24, 24]
 
 
 def test_initial_outcome_validation_and_tiebreak_authorization_fail_closed(

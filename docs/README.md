@@ -5,13 +5,16 @@ and portable integration guidance. Reusable cross-project engineering guidance
 lives under `../references/engineering/`.
 
 Calibration is in stable maintenance mode. The v2.1 relative-replacement test
-plan is the current progressive-validation authority. G0 at
+plan has completed with an inconclusive outcome, so the baseline remains the
+current progressive-validation authority. G0 at
 `ff16714999465ad1acbd130dbb9711725584544f` with Codex 0.148.0 found that
 `codex exec --json` lacks structured, correlated approval events; its error
 items are not a reliable replacement. Approval statistics were subsequently
 removed from the decision scope, so the outcome-only comparison is authorized
 without parsing that prose. `Approve for me` remains a symmetric runtime safety
-control. The v2.0 plan and its 2026-08-24 smoke/recovery results remain
+control. The fresh 32-run comparison produced 5 versus 4 strict-valid runs but
+a 7 versus 7 task-completion tie and six tied case outcomes; no rollout or
+migration is authorized. The v2.0 plan and its 2026-08-24 smoke/recovery results remain
 historical background only. This follows the completed v1.0
 proportional-wording increment and is layered on the ongoing project-docs
 architecture convergence and does not reopen the completed runtime or AO
