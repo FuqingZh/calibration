@@ -1437,9 +1437,47 @@ def test_task_selection_and_evidence_are_independent_layers(
         ],
     }
     integrity = evaluation.evidence_integrity(
-        {"valid": False, "errors": ["line 1: unrecognized command"]}
+        {
+            "valid": False,
+            "errors": [
+                "line 8: unknown validation command",
+                "line 10: malformed compound command",
+                "line 13: unrecognized command",
+            ],
+        }
     )
-    assert integrity["valid"] is False
+    assert integrity == {"valid": True, "errors": []}
+    assert evaluation.evidence_integrity(
+        {
+            "valid": False,
+            "errors": ["line 13: transport/delivery receipt mismatch"],
+        }
+    ) == {
+        "valid": False,
+        "errors": ["line 13: transport/delivery receipt mismatch"],
+    }
+    assert evaluation.evidence_integrity(
+        {
+            "valid": False,
+            "errors": [
+                "line 10: malformed compound command",
+                "broker event 1 has no raw command counterpart",
+            ],
+        }
+    ) == {
+        "valid": False,
+        "errors": ["broker event 1 has no raw command counterpart"],
+    }
+    assert evaluation.evidence_integrity(
+        {"valid": False, "errors": ["unrecognized command"]}
+    ) == {"valid": False, "errors": ["unrecognized command"]}
+    assert evaluation.evidence_integrity(
+        {"valid": False, "errors": ["line bad: unrecognized command"]}
+    ) == {"valid": False, "errors": ["line bad: unrecognized command"]}
+    assert evaluation.evidence_integrity({"valid": False, "errors": [1]}) == {
+        "valid": False,
+        "errors": ["command evidence errors are malformed"],
+    }
     assert evaluation.task_outcome(0, verification, final)["valid"] is True
 
 

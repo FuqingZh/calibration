@@ -1476,14 +1476,29 @@ def task_outcome(
 def evidence_integrity(executor_oracle: Mapping[str, object]) -> dict[str, object]:
     """Expose conservative raw-to-runner corroboration as its own layer."""
     raw_errors = executor_oracle.get("errors")
-    errors = (
+    oracle_errors = (
         [cast(str, item) for item in cast(list[object], raw_errors)]
         if isinstance(raw_errors, list)
         and all(isinstance(item, str) for item in cast(list[object], raw_errors))
         else ["command evidence errors are malformed"]
     )
-    valid = executor_oracle.get("valid") is True and not errors
-    return {"valid": valid, "errors": errors}
+    normalization_warnings = {
+        "malformed compound command",
+        "unknown validation command",
+        "unrecognized command",
+    }
+    integrity_errors: list[str] = []
+    for error in oracle_errors:
+        line, separator, detail = error.partition(": ")
+        if (
+            separator
+            and line.startswith("line ")
+            and line.removeprefix("line ").isdigit()
+            and detail in normalization_warnings
+        ):
+            continue
+        integrity_errors.append(error)
+    return {"valid": not integrity_errors, "errors": integrity_errors}
 
 
 def final_oracle(case: CaseSpec, final_message: Path) -> dict[str, object]:

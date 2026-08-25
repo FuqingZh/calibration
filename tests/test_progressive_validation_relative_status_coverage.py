@@ -118,6 +118,29 @@ def test_assessment_and_pairing_fail_closed_branches() -> None:
     }
     assert batch._assessment(misordered)["selection_outcome"] == "misordered"
 
+    heuristic_warning: dict[str, object] = {
+        **malformed,
+        "validation_selection": {
+            "required_missing": [],
+            "ordered_missing": [],
+            "forbidden_event_count": 0,
+        },
+        "command_oracle": {
+            "valid": False,
+            "errors": ["line 8: unrecognized command"],
+        },
+    }
+    assert batch._assessment(heuristic_warning)["evidence_integrity"] == "valid"
+
+    evidence_failure: dict[str, object] = {
+        **heuristic_warning,
+        "evidence_integrity": {
+            "valid": False,
+            "errors": ["broker event 1 has no raw command counterpart"],
+        },
+    }
+    assert batch._assessment(evidence_failure)["evidence_integrity"] == "invalid"
+
     invalid_task = {**_assessment(), "task_outcome": "unknown"}
     with pytest.raises(batch.BatchError, match="task assessment"):
         batch._paired_outcome(invalid_task, _assessment())

@@ -1136,7 +1136,6 @@ def _assessment(result: Mapping[str, object]) -> dict[str, object]:
     integrity_data = cast(dict[str, object], integrity)
     verification_data = cast(dict[str, object], verification)
     final_data = cast(dict[str, object], final)
-    oracle_data = cast(dict[str, object], oracle)
     required_missing = selection_data.get("required_missing")
     ordered_missing = selection_data.get("ordered_missing")
     forbidden_count = selection_data.get("forbidden_event_count")
@@ -1174,9 +1173,7 @@ def _assessment(result: Mapping[str, object]) -> dict[str, object]:
         ),
         "selection_outcome": selection_outcome,
         "evidence_integrity": (
-            "valid"
-            if integrity_data.get("valid") is True and oracle_data.get("valid") is True
-            else "invalid"
+            "valid" if integrity_data.get("valid") is True else "invalid"
         ),
         "required_missing_count": len(cast(list[object], required_missing)),
         "ordered_missing_count": len(cast(list[object], ordered_missing)),
