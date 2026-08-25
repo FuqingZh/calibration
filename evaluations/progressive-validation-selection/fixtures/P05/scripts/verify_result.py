@@ -10,7 +10,15 @@ from consumers.summary import summarize
 
 profile = {"id": "p1", "email": "ada@example.test", "display_name": "Ada"}
 schema = json.loads(Path("schema/profile.schema.json").read_text())
-if schema["properties"].get("display_name") != {"type": "string"} or "display_name" not in schema["required"]:
+if schema["properties"].get("display_name") != {"type": "string"} or not {
+    "id",
+    "email",
+    "display_name",
+}.issubset(schema["required"]):
     raise SystemExit("public schema does not require display_name")
-if summarize(profile) != "Ada" or export_row(profile) != ["p1", "Ada", "ada@example.test"]:
+if summarize(profile) != "Ada" or export_row(profile) != [
+    "p1",
+    "Ada",
+    "ada@example.test",
+]:
     raise SystemExit("bounded consumers do not implement display_name")

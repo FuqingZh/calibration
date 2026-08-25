@@ -1074,6 +1074,7 @@ def _unknown_validation(tokens: list[str]) -> bool:
             "check",
             "lint",
             "build",
+            "gate",
             "verify",
             "pytest",
             "ruff",
@@ -1488,7 +1489,6 @@ def evidence_integrity(executor_oracle: Mapping[str, object]) -> dict[str, objec
     )
     normalization_warnings = {
         "malformed compound command",
-        "unknown validation command",
         "unrecognized command",
     }
     integrity_errors: list[str] = []

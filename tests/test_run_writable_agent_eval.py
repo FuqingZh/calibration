@@ -1461,7 +1461,17 @@ def test_task_selection_and_evidence_are_independent_layers(
             ],
         }
     )
-    assert integrity == {"valid": True, "errors": []}
+    assert integrity == {
+        "valid": False,
+        "errors": ["line 8: unknown validation command"],
+    }
+    unlisted_forbidden = evaluation.command_oracle(
+        case,
+        command_event("python3 scripts/complete_gate.py", 0),
+        "run",
+        [],
+    )
+    assert evaluation.evidence_integrity(unlisted_forbidden)["valid"] is False
     assert evaluation.evidence_integrity(
         {
             "valid": False,

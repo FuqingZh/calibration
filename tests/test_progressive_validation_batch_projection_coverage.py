@@ -79,6 +79,7 @@ def _write_completed_slot(
 
 def test_project_public_filters_observations_hashes_errors_and_rejects_leaks(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     private = tmp_path / "private.json"
     public = tmp_path / "public.json"
@@ -144,8 +145,19 @@ def test_project_public_filters_observations_hashes_errors_and_rejects_leaks(
     leaking = _result()
     leaking["model"] = "arm"
     private.write_text(json.dumps(leaking), encoding="utf-8")
+    model_projection = batch.project_public(private, tmp_path / "model.json")
+    assert model_projection["requested_model"] == "arm"
+    assert batch._contains_private_projection_key({"nested": {"auth": "secret"}})
+    assert not batch._contains_private_projection_key(
+        {"requested_model": "auth-arm-candidate"}
+    )
+
+    def reports_private_key(_value: object) -> bool:
+        return True
+
+    monkeypatch.setattr(batch, "_contains_private_projection_key", reports_private_key)
     with pytest.raises(batch.BatchError, match="private control field"):
-        batch.project_public(private, tmp_path / "leaking.json")
+        batch.project_public(private, tmp_path / "forced-private-key.json")
 
 
 def test_project_public_fails_closed_when_projection_breaks_public_schema(

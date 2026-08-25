@@ -839,9 +839,10 @@ def test_manifest_slot_accepts_only_an_eligible_tiebreak(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     root, manifest = _private_manifest(tmp_path)
-    tiebreak = next(
+    p03_tiebreaks = [
         slot for slot in batch._tiebreak_slots(manifest) if slot["case_id"] == "P03"
-    )
+    ]
+    tiebreak = p03_tiebreaks[1]
 
     def no_initial(_manifest: object) -> list[dict[str, object]]:
         return []
@@ -850,7 +851,15 @@ def test_manifest_slot_accepts_only_an_eligible_tiebreak(
         return ["P03"]
 
     def tiebreaks(_manifest: object) -> list[dict[str, object]]:
-        return [tiebreak]
+        return p03_tiebreaks
+
+    validated: list[str] = []
+
+    def validate_previous(
+        _root: Path, _manifest: object, slot: dict[str, object]
+    ) -> dict[str, object]:
+        validated.append(cast(str, slot["slot_id"]))
+        return batch._assessment(_result(cast(str, slot["case_id"])))
 
     def successful_run(
         _archive: Path,
@@ -871,11 +880,13 @@ def test_manifest_slot_accepts_only_an_eligible_tiebreak(
     monkeypatch.setattr(batch, "_smoke_slots", no_initial)
     monkeypatch.setattr(batch, "_conflicting_case_ids", conflicts)
     monkeypatch.setattr(batch, "_tiebreak_slots", tiebreaks)
+    monkeypatch.setattr(batch, "_validate_completed_slot", validate_previous)
     monkeypatch.setattr(batch, "run_archived_slot", successful_run)
     completed = batch.run_manifest_slot(
         tmp_path, tmp_path / "auth.json", cast(str, tiebreak["slot_id"])
     )
     assert completed["classification"] == "precise"
+    assert validated == [cast(str, p03_tiebreaks[0]["slot_id"])]
 
     with pytest.raises(batch.BatchError, match="not authorized"):
         batch.run_manifest_slot(tmp_path, tmp_path / "auth.json", "r3-P04-1")

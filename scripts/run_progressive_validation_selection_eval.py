@@ -16,6 +16,7 @@ import os
 import random
 import re
 import shutil
+import signal
 import stat
 import subprocess
 import sys
@@ -73,6 +74,7 @@ PUBLIC_FAMILIES = frozenset(
 PUBLIC_FINAL_STATUSES = frozenset(
     {"verified_ready", "conditionally_ready", "not_yet_verified"}
 )
+SLOT_EXECUTION_TIMEOUT_SECONDS = 960.0
 
 
 class BatchError(RuntimeError):
@@ -863,7 +865,7 @@ def run_slot(
     )
     if prepare.returncode:
         raise BatchError("single-run preparation failed")
-    result = subprocess.run(
+    result = _run_slot_process(
         [
             sys.executable,
             str(runner),
@@ -882,10 +884,7 @@ def run_slot(
             model,
             "--reasoning-effort",
             reasoning_effort,
-        ],
-        check=False,
-        capture_output=True,
-        text=True,
+        ]
     )
     if result.returncode:
         raise BatchError(
@@ -898,6 +897,27 @@ def run_slot(
     if not isinstance(payload, dict):
         raise BatchError("single-run JSON payload must be an object")
     return cast(dict[str, object], payload)
+
+
+def _run_slot_process(command: list[str]) -> subprocess.CompletedProcess[str]:
+    """Run the delegated slot under one deadline and reap its process group."""
+    process = subprocess.Popen(
+        command,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        start_new_session=True,
+    )
+    try:
+        stdout, stderr = process.communicate(timeout=SLOT_EXECUTION_TIMEOUT_SECONDS)
+    except subprocess.TimeoutExpired as exc:
+        with suppress(ProcessLookupError):
+            os.killpg(process.pid, signal.SIGKILL)
+        process.communicate()
+        raise BatchError(
+            "single-run execution timed out; original private artifacts are retained"
+        ) from exc
+    return subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
 
 
 def run_archived_slot(
@@ -939,6 +959,21 @@ def _redact(value: object) -> object:
             continue
         result[key] = _redact(item)
     return result
+
+
+def _contains_private_projection_key(value: object) -> bool:
+    if isinstance(value, list):
+        return any(
+            _contains_private_projection_key(item) for item in cast(list[object], value)
+        )
+    if not isinstance(value, dict):
+        return False
+    mapping = cast(dict[str, object], value)
+    return any(
+        key.lower() in PRIVATE_FORBIDDEN_FIELDS
+        or _contains_private_projection_key(item)
+        for key, item in mapping.items()
+    )
 
 
 def _path_count(value: object) -> int:
@@ -1083,8 +1118,7 @@ def project_public(private_result: Path, public_path: Path) -> dict[str, object]
         and selection.get("contract_satisfied") is True
         and integrity.get("valid") is True
     )
-    encoded = json.dumps(projection, sort_keys=True)
-    if any(token in encoded.lower() for token in PRIVATE_FORBIDDEN_FIELDS):
+    if _contains_private_projection_key(projection):
         raise BatchError("public projection still contains a private control field")
     schema = _json(SCHEMA_PATH)
     definitions = schema.get("$defs")
@@ -1624,16 +1658,22 @@ def run_manifest_slot(
             _validate_completed_slot(root, manifest, previous)
     else:
         conflicts = set(_conflicting_case_ids(root, manifest))
-        matching_tiebreak = [
+        authorized_tiebreaks = [
             slot
             for slot in _tiebreak_slots(manifest)
-            if slot.get("slot_id") == slot_id and slot.get("case_id") in conflicts
+            if slot.get("case_id") in conflicts
+        ]
+        matching_tiebreak = [
+            slot for slot in authorized_tiebreaks if slot.get("slot_id") == slot_id
         ]
         if len(matching_tiebreak) != 1:
             raise BatchError(
                 f"slot is not authorized by the frozen schedule: {slot_id}"
             )
         slot = matching_tiebreak[0]
+        position = authorized_tiebreaks.index(slot)
+        for previous in authorized_tiebreaks[:position]:
+            _validate_completed_slot(root, manifest, previous)
     frozen_slot_id = slot.get("slot_id")
     case_id = slot.get("case_id")
     arm_key = slot.get("arm_key")

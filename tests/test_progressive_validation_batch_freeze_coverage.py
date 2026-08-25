@@ -458,7 +458,11 @@ def test_run_slot_delegates_only_from_unpacked_source_and_rejects_bad_runner_out
     def runner_reply(*_args: object, **_kwargs: object) -> CompletedProcess[str]:
         return replies.pop(0)
 
+    def slot_reply(_command: list[str]) -> CompletedProcess[str]:
+        return replies.pop(0)
+
     monkeypatch.setattr(batch.subprocess, "run", runner_reply)
+    monkeypatch.setattr(batch, "_run_slot_process", slot_reply)
     with pytest.raises(batch.BatchError, match="preparation failed"):
         batch.run_slot(
             tmp_path / "case.yaml",
@@ -566,3 +570,57 @@ def test_run_slot_delegates_only_from_unpacked_source_and_rejects_bad_runner_out
         "low",
     ) == {"case_id": "P01"}
     assert calls == [(tmp_path / "archive.tar", source)]
+
+
+def test_delegated_slot_process_is_bounded_and_reaped(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    killed: list[tuple[int, int]] = []
+
+    class Process:
+        pid = 4321
+        returncode = 0
+        calls = 0
+
+        def communicate(self, timeout: float | None = None) -> tuple[str, str]:
+            self.calls += 1
+            if self.calls == 1:
+                assert timeout is not None
+                raise batch.subprocess.TimeoutExpired(["runner"], timeout)
+            return ("partial", "timed out")
+
+    def popen(*_args: object, **_kwargs: object) -> Process:
+        return Process()
+
+    def killpg(pid: int, sig: int) -> None:
+        killed.append((pid, sig))
+
+    monkeypatch.setattr(batch.subprocess, "Popen", popen)
+    monkeypatch.setattr(batch.os, "killpg", killpg)
+
+    with pytest.raises(batch.BatchError, match="execution timed out"):
+        batch._run_slot_process(["runner"])
+    assert killed == [(4321, batch.signal.SIGKILL)]
+
+
+def test_delegated_slot_process_returns_captured_result(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class Process:
+        pid = 4321
+        returncode = 7
+
+        def communicate(self, timeout: float | None = None) -> tuple[str, str]:
+            assert timeout == batch.SLOT_EXECUTION_TIMEOUT_SECONDS
+            return ("result", "diagnostic")
+
+    def popen(*_args: object, **_kwargs: object) -> Process:
+        return Process()
+
+    monkeypatch.setattr(batch.subprocess, "Popen", popen)
+    result = batch._run_slot_process(["runner"])
+    assert (result.returncode, result.stdout, result.stderr) == (
+        7,
+        "result",
+        "diagnostic",
+    )

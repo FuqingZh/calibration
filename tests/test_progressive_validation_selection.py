@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import subprocess
 from pathlib import Path
 from typing import cast
 
@@ -91,15 +92,16 @@ def _solve(case_id: str, workspace: Path) -> None:
         "P02": {
             "content/release-channel.txt": "stable\n",
             "docs/generated-release.md": (
-                "# Release channel\\n\\nCurrent channel: stable\\n"
+                "# Release channel\n\nCurrent channel: stable\n"
             ),
         },
         "P03": {
             "AGENTS.md": _text(
                 "# Repository Instructions",
                 "",
-                "Review conclusions must record the affected seam "
-                "and validation evidence.",
+                "Review conclusions must use these fields:",
+                "Affected seam: name the affected contract.",
+                "Validation evidence: name the focused proof.",
             )
         },
         "P04": {
@@ -239,6 +241,45 @@ def test_freezes_fourteen_comparison_cases_and_one_independent_live_canary() -> 
         normalized = load_case(path).command_contract
         assert normalized is not None
         assert normalized["required"] and normalized["ordered_required"], path
+
+
+def test_corrected_fixtures_reject_the_reviewed_false_positives(
+    tmp_path: Path,
+) -> None:
+    p02 = load_case(EVALUATION_ROOT / "cases/P02.yaml")
+    p02_workspace = tmp_path / "P02"
+    prepare_workspace(p02, p02_workspace)
+    _solve("P02", p02_workspace)
+    assert (p02_workspace / "docs/generated-release.md").read_text() == (
+        "# Release channel\n\nCurrent channel: stable\n"
+    )
+    assert verify_workspace(p02, p02_workspace)["passed"] is True
+
+    p03 = load_case(EVALUATION_ROOT / "cases/P03.yaml")
+    p03_workspace = tmp_path / "P03"
+    prepare_workspace(p03, p03_workspace)
+    (p03_workspace / "AGENTS.md").write_text(
+        "Review conclusions mention affected seam and validation evidence.\n",
+        encoding="utf-8",
+    )
+    behavior = subprocess.run(
+        ["python3", "scripts/behavior_sample.py"],
+        cwd=p03_workspace,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert behavior.returncode != 0
+
+    p05 = load_case(EVALUATION_ROOT / "cases/P05.yaml")
+    p05_workspace = tmp_path / "P05"
+    prepare_workspace(p05, p05_workspace)
+    _solve("P05", p05_workspace)
+    schema_path = p05_workspace / "schema/profile.schema.json"
+    schema = json.loads(schema_path.read_text())
+    schema["required"].remove("id")
+    schema_path.write_text(json.dumps(schema), encoding="utf-8")
+    assert verify_workspace(p05, p05_workspace)["passed"] is False
 
 
 def test_prompts_and_fixtures_do_not_leak_oracle_metadata() -> None:

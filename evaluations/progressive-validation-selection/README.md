@@ -106,11 +106,12 @@ commands and may contain only their hashes, normalized family/exit summaries,
 the three redacted outcome layers, and the bounded decision.
 
 The detailed command oracle may retain line-scoped heuristic normalization
-warnings for unrecognized commands, unknown validation commands, or malformed
-compound commands. Such a warning does not alone invalidate
-`evidence_integrity` when each executed validation alias still has exact,
-ordered broker and delivery-receipt corroboration. Concrete missing, extra,
-reordered, bypassed, malformed-event, or receipt mismatches remain invalid.
+warnings. Unknown validation-like commands invalidate `evidence_integrity`, so
+an executable but unlisted spelling cannot hide a forbidden gate. Ordinary
+unrecognized discovery commands and malformed compound parsing remain warnings
+only when every executed validation alias still has exact, ordered broker and
+delivery-receipt corroboration. Concrete missing, extra, reordered, bypassed,
+malformed-event, or receipt mismatches remain invalid.
 
 The Codex controller process retains the authentication file needed to start a
 turn. Model-generated commands run only under the named permission profile
