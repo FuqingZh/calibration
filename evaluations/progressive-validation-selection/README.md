@@ -186,19 +186,20 @@ failure.
 ## Corrected v2.2 result
 
 The final controller commit
-`e3d771fa0d89cc8f098997b20c60158b6f4d192b` passed C01 and completed all 12
-initial slots plus the P05 tiebreak pair. Both arms were 7/7 task-valid and 7/7
+`6265d90f9851ff8c9278b297dde542ff51eab1b2` passed C01 and completed all 12
+initial slots plus the P03 tiebreak pair. Both arms were 7/7 task-valid and 7/7
 evidence-valid, with zero missing required checks and two ordering misses each.
-The candidate produced zero forbidden events versus five for the baseline.
-P02 and P05 were candidate wins; P03 tied; no case favored the baseline.
-`relative-status` returned `complete/accept`.
+The candidate produced three forbidden events versus five for the baseline.
+P02 tied, P03 favored the baseline, and P05 favored the candidate.
+`relative-status` returned `complete/inconclusive`.
 
-This is bounded evidence that the candidate selects validation more precisely
-without losing tested task correctness or proof coverage. It is not evidence
-of faster execution: candidate mean elapsed time was 74.89 seconds versus
-70.72 seconds for the baseline. Approval activity was not collected. The
-private ledgers and raw trajectories remain outside the repository; see the
-[acceptance decision](../../docs/decisions/2026-08-25-progressive-validation-relative-replacement-acceptance.md)
+The candidate reduced forbidden checks without losing aggregate task success
+or proof coverage, but it did not prove a net improvement because the case
+wins were balanced. It was also slightly slower: candidate mean elapsed time
+was 64.00 seconds versus 62.80 seconds for the baseline. Approval activity was
+not collected. The private ledgers and raw trajectories remain outside the
+repository; see the
+[relative-replacement decision](../../docs/decisions/2026-08-25-progressive-validation-relative-replacement-acceptance.md)
 for the immutable digests and interpretation.
 
 The third repetition is a conflict breaker, not a default. A run is invalid,

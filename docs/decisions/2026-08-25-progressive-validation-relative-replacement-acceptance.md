@@ -1,87 +1,84 @@
-# Progressive Validation Relative-Replacement Acceptance
+# Progressive Validation Relative-Replacement Decision
 
 Date: 2026-08-25
-Status: accepted for the bounded repository comparison
+Status: inconclusive; replacement not accepted
 
 ## Decision
 
-Accept candidate `5a94f5826c99f6e748a2d712851874b604471a23` over frozen baseline
-`0f21f880383859f060156db6ce69d08eff73ed44` as the repository's current
-progressive-validation authority for the tested scope. The candidate preserved
-all observed task success, evidence integrity, required checks, and ordering
-totals while eliminating five forbidden complete-gate invocations. It won two
-cases, lost none, and tied one.
+Retain frozen baseline `0f21f880383859f060156db6ce69d08eff73ed44` as
+the current progressive-validation authority. Candidate
+`5a94f5826c99f6e748a2d712851874b604471a23` did not prove a net improvement
+under the corrected relative rule: P05 favored the candidate, P03 favored the
+baseline, and P02 tied.
 
-This decision does not claim that the candidate is universally better, more
-correct, or faster. It is bounded to Codex CLI 0.148.0, `gpt-5.6-sol` at medium
-reasoning, the frozen permission/sandbox configuration, and P02, P03, and P05.
+This decision supersedes the earlier acceptance interpretation. Audit found
+that the earlier fixtures credited a literal `\\n` artifact in P02, used a
+phrase-only behavior sample in P03, and failed to require preservation of all
+consumer fields in P05. Those defects changed the compared behavior and made
+the earlier result unsuitable for replacement.
 
 ## Immutable evidence
 
-The clean controller commit was
-`e3d771fa0d89cc8f098997b20c60158b6f4d192b`. The frozen local private root is
-`/tmp/calibration-progressive-v22d.A87QAk`; it is retained as append-only local
-evidence and is not committed. Freeze verification and post-run readback both
-passed. C01 was `verified`, with result SHA-256
-`6310a39be25e5bc4097f91d7e864f4d04b709dceb431171aec6a68d2d0cba021`.
+The final clean controller commit was
+`6265d90f9851ff8c9278b297dde542ff51eab1b2`. The immutable local evidence root
+is `/tmp/calibration-progressive-v22-conclusive.PglcjF`; it remains private,
+append-only evidence and is not committed. Freeze verification and post-run
+readback passed. C01 was `verified`, with result SHA-256
+`eead4f3377978778b769414fdd26949875876593973d73dc3456fe4e0564971d`.
 
-The batch completed 12 initial slots. P05 alone had conflicting first-two
-paired outcomes, so only its frozen third pair ran. All 14 slots completed and
-none failed.
+All 12 initial slots completed. P03 alone had conflicting first-two paired
+outcomes, so only its frozen third pair ran. All 14 slots completed and none
+failed.
 
-| Arm | Task valid | Evidence valid | Required missing | Ordered missing | Forbidden events | Elapsed total |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Baseline | 7/7 | 7/7 | 0 | 2 | 5 | 495.06 s |
-| Candidate | 7/7 | 7/7 | 0 | 2 | 0 | 524.22 s |
+| Arm | Runs | Task valid | Evidence valid | Required missing | Ordered missing | Forbidden events | Elapsed total | Mean |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Baseline | 7 | 7 | 7 | 0 | 2 | 5 | 439.60 s | 62.80 s |
+| Candidate | 7 | 7 | 7 | 0 | 2 | 3 | 448.03 s | 64.00 s |
 
-| Case | Paired result | Reason |
+| Case | Paired result | Interpretation |
 | --- | --- | --- |
-| P02 | Candidate win, 2:0 | Both tasks succeeded; candidate omitted the forbidden complete gate in both repetitions. |
-| P03 | Tie, both pairs tied | Both arms preserved required structural and behavior-sample proof without forbidden checks. |
-| P05 | Candidate win, 2:1 | The third pair resolved the conflict; candidate avoided the complete gate and was precise in the deciding run. |
+| P02 | Tie | Both arms satisfied the corrected generated-artifact contract. |
+| P03 | Baseline win | The baseline selected the required behavior proof more precisely across the deciding repetitions. |
+| P05 | Candidate win | The candidate preserved the full consumer contract while avoiding unnecessary validation. |
 
-The controller returned `state=complete`, `decision=accept`, two candidate
-wins, zero baseline wins, and one tie. Independent aggregation reproduced the
-same task, evidence, ordering, forbidden-event, and elapsed totals.
+The controller returned `state=complete`, `decision=inconclusive`, one
+candidate win, one baseline win, and one tie. Independent readback reproduced
+the same totals.
 
 ## Interpretation
 
-The test establishes a validation-selection gain, not a task-correctness gain:
-both arms completed every task. It also does not establish an elapsed-time
-gain. Candidate mean time was 74.89 seconds versus 70.72 seconds for baseline,
-about 5.9% slower. Time is secondary under the frozen rule and cannot erase the
-earlier-dimensional improvement, but it remains a real limitation.
+The candidate showed a real reduction in forbidden checks, from five to three,
+without losing aggregate task success or required-check totals. That narrower
+gain is offset by the baseline win on P03 under the frozen rule. Candidate mean
+elapsed time was also slightly higher, but elapsed time was a secondary
+diagnostic and did not decide the result.
 
-One run per arm retained heuristic command-normalization warnings in the
-detailed oracle. Their broker events and delivery receipts reconciled exactly,
-so both evidence layers remained valid. This confirms the corrected boundary:
-parser uncertainty stays auditable without being mistaken for task failure or
-forged evidence.
+The result therefore says neither implementation is uniformly better on the
+tested behaviors. It does not justify replacing the baseline, activating the
+candidate globally, or migrating downstream repositories.
 
 ## Invalid diagnostic attempts
 
-Three fresh roots preceded the valid batch. They remain immutable and are not
-pooled:
+Two corrected-run roots remain immutable diagnostics and are not pooled with
+the result:
 
-- controller `4983906f…`: one completed slot, then selection-contract errors
-  were found to contaminate evidence integrity;
-- controller `824303cd…`: three completed slots, then a valid read-only
-  `find -exec` command exposed parser noise; and
-- controller `8bb4c00d…`: two completed slots, then shell control syntax
-  exposed the remaining heuristic-warning boundary.
+- `/tmp/calibration-progressive-v22-review.sLEU6u` used controller
+  `331990e…` and stopped after an over-broad `gate` substring heuristic
+  misclassified evidence; and
+- `/tmp/calibration-progressive-v22-final.uV2MXa` used controller
+  `a24ced9…` and stopped after multiline shell syntax exposed a remaining
+  parser boundary.
 
-Each stopped with one started-only slot. Every correction passed focused and
-complete gates and used a newly frozen root. No result, ledger, or slot was
-rewritten or reused.
+Each correction was committed and validated before a fresh root was frozen.
+No result, ledger, or slot was rewritten or reused.
 
 ## Consequences
 
-The candidate implementation is already present in the repository history, so
-no additional behavior patch is required. The historical v2.0 rejection and
-v2.1 inconclusive run remain diagnostic background but no longer own current
-authority. Approval telemetry remains out of scope.
+The candidate branch and evaluation artifacts remain reviewable evidence, but
+the candidate must not be merged as the replacement. The remote default branch
+continues to represent the baseline. Harness and fixture corrections may be
+adopted separately only under a change that does not activate the rejected
+candidate behavior.
 
-This evaluation did not run the installer against the user's active Codex home
-and did not modify downstream repository rules. Any cross-repository pilot or
-local-rule cleanup remains a separate, reversible rollout with its own
-repository authority and readback.
+Approval telemetry remains out of scope. No active user installation or
+downstream repository was changed by the formal comparison.
