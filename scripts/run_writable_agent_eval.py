@@ -81,6 +81,7 @@ EXECUTOR_PERMISSION_PROFILE_CONFIG = (
     'filesystem={"/output"="deny"},network={enabled=false}}}'
 )
 EXECUTOR_DEFAULT_PERMISSIONS_CONFIG = 'default_permissions="evaluation_runner"'
+FIND_EXEC_TERMINATOR = "__calibration_find_exec_terminator__"
 
 
 def _valid_request_id(value: object) -> bool:
@@ -965,7 +966,8 @@ def verify_workspace(case: CaseSpec, workspace: Path) -> dict[str, object]:
 def _shell_plan(command: str) -> tuple[list[list[str]], list[str]]:
     """Return command chunks and their preceding shell operators."""
     try:
-        lexer = shlex.shlex(command, posix=True, punctuation_chars=";&|")
+        protected = command.replace(r"\;", FIND_EXEC_TERMINATOR)
+        lexer = shlex.shlex(protected, posix=True, punctuation_chars=";&|")
         lexer.whitespace_split = True
         tokens = list(lexer)
     except ValueError as exc:
@@ -1015,7 +1017,6 @@ def _is_discovery(tokens: list[str]) -> bool:
     if tokens[0] == "find":
         executing_actions = {
             "-delete",
-            "-exec",
             "-execdir",
             "-fls",
             "-fprint",
@@ -1023,7 +1024,25 @@ def _is_discovery(tokens: list[str]) -> bool:
             "-ok",
             "-okdir",
         }
-        return not any(token in executing_actions for token in tokens[1:])
+        if any(token in executing_actions for token in tokens[1:]):
+            return False
+        positions = [index for index, token in enumerate(tokens) if token == "-exec"]
+        if not positions:
+            return True
+        for position in positions:
+            try:
+                terminator = tokens.index(FIND_EXEC_TERMINATOR, position + 1)
+            except ValueError:
+                return False
+            command = tokens[position + 1 : terminator]
+            if (
+                len(command) != 4
+                or command[0:2] != ["sed", "-n"]
+                or command[3] != "{}"
+                or not command[2].removesuffix("p").replace(",", "").isdigit()
+            ):
+                return False
+        return True
     if tokens[0] == "rg":
         return not any(
             token == "--pre" or token.startswith("--pre=") for token in tokens

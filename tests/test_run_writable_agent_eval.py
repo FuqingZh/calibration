@@ -2068,6 +2068,26 @@ def test_command_normalization_and_capture_negative_controls() -> None:
     assert evaluation._is_discovery(["git", "diff"]) is True
     assert evaluation._is_discovery(["echo", "x"]) is False
     assert evaluation._is_discovery(["find", ".", "-maxdepth", "2"])
+    assert not evaluation._is_discovery(["find", ".", "-delete"])
+    safe_find = (
+        '/bin/bash -lc "find consumers -maxdepth 2 -type f -print '
+        "-exec sed -n '1,240p' {} \\;\""
+    )
+    safe_find_chunks = evaluation._shell_commands(safe_find)
+    assert len(safe_find_chunks) == 1
+    assert evaluation._is_discovery(safe_find_chunks[0]) is True
+    assert not evaluation._is_discovery(
+        [
+            "find",
+            ".",
+            "-exec",
+            "sed",
+            "-i",
+            "1d",
+            "{}",
+            evaluation.FIND_EXEC_TERMINATOR,
+        ]
+    )
     assert not evaluation._is_discovery(
         ["find", ".", "-exec", "python", "socket-client", ";"]
     )
