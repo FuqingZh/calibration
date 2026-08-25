@@ -4,17 +4,15 @@ This directory records calibration decisions, evaluations, historical plans,
 and portable integration guidance. Reusable cross-project engineering guidance
 lives under `../references/engineering/`.
 
-Calibration is in stable maintenance mode. The progressive-validation-selection
-v2.0 plan is the current validation slice. Its provenance, inert protocol,
-frozen evaluation baseline, and S4 activation candidate are implemented. Its
-first controlled-comparison smoke is invalid because a shared executor-sandbox
-failure prevented broker evidence; the first recovery C01 then failed closed on
-the canonical broker path, so no replacement smoke slot started. Those two
-results remain invalid history, not candidate evidence. The FIFO recovery then
-passed live C01 and a 28/28 smoke, but `smoke-status` rejected the candidate for
-deterministic critical failures in both arms; partial targeted gains do not
-offset critical failures. Repeats, judges, activation, and downstream migration
-are stopped and unauthorized. It follows the completed v1.0
+Calibration is in stable maintenance mode. The v2.1 relative-replacement test
+plan is the current progressive-validation authority. G0 at
+`ff16714999465ad1acbd130dbb9711725584544f` with Codex 0.148.0 found that
+`codex exec --json` lacks structured, correlated approval events; its error
+items are not a reliable replacement, so the evaluation is
+`blocked_by_approval_observability`: zero
+model runs, no candidate acceptance or rejection, and no controller or config
+change. The v2.0 plan and its 2026-08-24 smoke/recovery results remain
+historical background only. This follows the completed v1.0
 proportional-wording increment and is layered on the ongoing project-docs
 architecture convergence and does not reopen the completed runtime or AO
 implementation phases. The completed bounded v2.4 closeout-skill increment
@@ -65,7 +63,9 @@ back to `$HOME/.config/calibration/AGENTS.md`.
 | Project docs architecture | `../references/engineering/docs/workflow/project_docs_architecture/20260805-v1.1-project-docs-architecture.md` |
 | Durable implementation-plan contract | `../references/engineering/docs/document-types/implementation-plan.md` |
 | Project docs architecture convergence plan | `implementation-plans/20260805-v1.0-project-docs-architecture-convergence-implementation-plan.md` |
-| Progressive validation selection plan | `implementation-plans/20260824-v2.0-progressive-validation-selection-implementation-plan.md` |
+| Progressive validation relative-replacement test plan | `testing/20260825-v2.1-progressive-validation-relative-replacement-test-plan.md` |
+| Progressive validation v2.0 historical implementation plan | `implementation-plans/20260824-v2.0-progressive-validation-selection-implementation-plan.md` |
+| Progressive validation approval-observability preflight | `decisions/2026-08-25-progressive-validation-relative-replacement-preflight.md` |
 | Progressive validation frozen baseline | `decisions/2026-08-24-progressive-validation-selection-baseline.md` |
 | Progressive validation activation candidate | `decisions/2026-08-24-progressive-validation-selection-candidate.md` |
 | Progressive validation invalid smoke and C01 recovery | `decisions/2026-08-24-progressive-validation-selection-smoke-invalid.md` |

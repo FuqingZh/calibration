@@ -1,5 +1,18 @@
 # Progressive validation selection evaluation
 
+## Current evaluation authority
+
+The frozen 14-pair protocol below is historical background. Do not use it to
+accept, reject, tune, or migrate the candidate. The current formal authority is
+[`docs/testing/20260825-v2.1-progressive-validation-relative-replacement-test-plan.md`](../../docs/testing/20260825-v2.1-progressive-validation-relative-replacement-test-plan.md): it compares relative net improvement against the current effective baseline while preserving repository-owned mandates, uses fresh approval-aware P01/P02/P03/P04/P05/P10 runs, and treats common failure as inherited debt.
+
+Its G0 preflight at `ff16714999465ad1acbd130dbb9711725584544f`, Codex 0.148.0,
+is `blocked_by_approval_observability`: `codex exec --json` has no structured,
+correlated approval event, and parsing its error-message prose would not supply
+the missing evidence. Therefore there are zero model runs, no candidate
+decision, and no authorized controller or configuration change. See the companion
+[`2026-08-25 preflight decision`](../../docs/decisions/2026-08-25-progressive-validation-relative-replacement-preflight.md).
+
 This frozen evaluation compares validation-selection behavior without treating
 command count as a quality signal. Deterministic command reconciliation decides
 whether each declared proof obligation was covered; blinded judges assess only
