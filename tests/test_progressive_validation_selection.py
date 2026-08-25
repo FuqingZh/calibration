@@ -463,7 +463,8 @@ def test_oracle_negative_controls_cover_wrapper_compound_completion_and_order() 
         0,
     )
     compound_errors = cast(list[str], command_oracle(case, compound, "run")["errors"])
-    assert "cannot determine compound branch at line 1" in compound_errors
+    assert "missing runner-owned broker evidence" in compound_errors
+    assert "cannot determine compound branch at line 1" not in compound_errors
     missing_completion = _event(
         "python scripts/check.py focused_test",
         "CALIBRATION_CHECK_EVENT "

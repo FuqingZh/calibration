@@ -1437,6 +1437,21 @@ def test_task_selection_and_evidence_are_independent_layers(
     executor_oracle = evaluation.command_oracle(case, trajectory, "run", events)
     assert executor_oracle["valid"] is True
     assert evaluation.evidence_integrity(executor_oracle)["valid"] is True
+    newline_events = [
+        event(1, "generator", ("generate",)),
+        event(2, "artifact_readback", ("readback",)),
+    ]
+    newline_output = "\n".join(
+        evaluation._delivery_receipt_line(cast(str, item.delivery_receipt))
+        for item in newline_events
+    )
+    newline_oracle = evaluation.command_oracle(
+        case,
+        command_event("generate\nreadback", 0, newline_output),
+        "run",
+        newline_events,
+    )
+    assert newline_oracle["valid"] is True
 
     verification = {"passed": True}
     final = {"valid": True}
@@ -2135,6 +2150,19 @@ def test_command_normalization_and_capture_negative_controls() -> None:
     assert evaluation._shell_commands("/bin/bash -c 'pytest -q'") == [["pytest", "-q"]]
     assert evaluation._shell_commands("/usr/bin/sh -lc 'pytest -q'") == [
         ["pytest", "-q"]
+    ]
+    assert evaluation._shell_commands("pytest -q\nruff check") == [
+        ["pytest", "-q"],
+        ["ruff", "check"],
+    ]
+    assert evaluation._shell_commands("pytest -q\n\nruff check") == [
+        ["pytest", "-q"],
+        ["ruff", "check"],
+    ]
+    assert evaluation._shell_commands("\npytest -q") == [["pytest", "-q"]]
+    assert evaluation._shell_commands("printf 'a\nb'\npytest -q") == [
+        ["printf", "a\nb"],
+        ["pytest", "-q"],
     ]
     assert evaluation._is_discovery([]) is False
     assert evaluation._is_discovery(["git", "diff"]) is True
@@ -3237,10 +3265,11 @@ def test_runner_branches_reject_invalid_runtime_and_preserve_broker_truth(
         "run",
         [broker_event("focused_test", ["pytest"], 0)],
     )
-    assert any(
+    assert not any(
         "compound chronology inconsistent" in error
         for error in cast(list[str], inconsistent["errors"])
     )
+    assert "line 1: unrecognized command" in cast(list[str], inconsistent["errors"])
 
     original_which = evaluation.shutil.which
 

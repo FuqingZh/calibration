@@ -971,7 +971,8 @@ def _shell_plan(command: str) -> tuple[list[list[str]], list[str]]:
     """Return command chunks and their preceding shell operators."""
     try:
         protected = command.replace(r"\;", FIND_EXEC_TERMINATOR)
-        lexer = shlex.shlex(protected, posix=True, punctuation_chars=";&|")
+        lexer = shlex.shlex(protected, posix=True, punctuation_chars=";&|\n")
+        lexer.whitespace = " \t\r"
         lexer.whitespace_split = True
         tokens = list(lexer)
     except ValueError as exc:
@@ -994,11 +995,16 @@ def _shell_plan(command: str) -> tuple[list[list[str]], list[str]]:
     operators: list[str] = []
     current: list[str] = []
     for token in tokens:
-        if token in {"&&", "||", ";"}:
+        operator = token.rstrip("\n") if token.endswith("\n") else token
+        if token and not operator:
+            operator = ";"
+        if operator in {"&&", "||", ";"}:
             if not current:
+                if operator == ";":
+                    continue
                 raise EvaluationError("malformed compound command")
             chunks.append(current)
-            operators.append(token)
+            operators.append(operator)
             current = []
         else:
             current.append(token)
@@ -1263,6 +1269,14 @@ def command_oracle(
         receipt_position = 0
         for index, tokens in enumerate(chunks):
             bypass_reported = False
+            family = next(
+                (
+                    name
+                    for name, prefixes in aliases.items()
+                    if any(tokens == prefix for prefix in prefixes)
+                ),
+                None,
+            )
             if index:
                 operator = operators[index - 1]
                 if operator == ";":
@@ -1286,31 +1300,17 @@ def command_oracle(
                         )
                         bypass_reported = True
                 else:
-                    executed = False
-                    errors.append(
-                        f"cannot determine compound branch at line {event['line']}"
-                    )
-                if not executed:
-                    # Raw parent-shell status is never truth.  A matching next
-                    # broker event proves execution and exposes the inconsistency.
-                    if (
+                    broker_matches = (
                         broker_position < len(broker)
                         and broker[broker_position].get("argv") == tokens
-                    ):
-                        errors.append(
-                            f"compound chronology inconsistent at line {event['line']}"
-                        )
-                        executed = True
-                    else:
-                        continue
-            family = next(
-                (
-                    name
-                    for name, prefixes in aliases.items()
-                    if any(tokens == prefix for prefix in prefixes)
-                ),
-                None,
-            )
+                    )
+                    # Exact aliases can execute only through the broker shim;
+                    # its next event decides the branch. Unknown executables
+                    # remain observable below so validation-like spellings fail
+                    # closed instead of hiding in shell control syntax.
+                    executed = family is None or broker_matches
+                if not executed:
+                    continue
             if _bypass(tokens) and not bypass_reported:
                 errors.append(f"line {event['line']}: command bypass is invalid")
             kind = family or (
