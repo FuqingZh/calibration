@@ -140,7 +140,9 @@ def test_fifo_broker_fails_closed_when_transport_cannot_deliver(
     assert "one error too many" not in broker.errors
 
 
-@pytest.mark.parametrize("mode", ["empty", "blocked", "oversized", "unavailable"])
+@pytest.mark.parametrize(
+    "mode", ["empty", "blocked", "oversized", "unavailable", "read-unavailable"]
+)
 def test_fifo_broker_drops_incomplete_or_oversized_request_frames(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, mode: str
 ) -> None:
@@ -159,6 +161,9 @@ def test_fifo_broker_drops_incomplete_or_oversized_request_frames(
         return ([], [], [])
 
     def read_frame(_descriptor: int, _size: int) -> bytes:
+        if mode == "read-unavailable":
+            broker._stopping.set()
+            raise OSError("request FIFO closed")
         if mode == "blocked":
             raise BlockingIOError
         if mode == "oversized":
@@ -174,6 +179,24 @@ def test_fifo_broker_drops_incomplete_or_oversized_request_frames(
         assert broker.errors == ["broker request is too large"]
     else:
         assert broker.errors == []
+
+
+def test_fifo_broker_surfaces_unexpected_request_read_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    broker = _broker(tmp_path)
+
+    def readable(*_args: object) -> tuple[list[int], list[int], list[int]]:
+        return ([7], [], [])
+
+    def broken_read(_descriptor: int, _size: int) -> bytes:
+        raise OSError("unexpected FIFO failure")
+
+    monkeypatch.setattr(evaluation.select, "select", readable)
+    monkeypatch.setattr(evaluation.os, "read", broken_read)
+
+    with pytest.raises(OSError, match="unexpected FIFO failure"):
+        broker._serve(7)
 
 
 def test_fifo_broker_detects_unsafe_transport_and_shutdown_failures(
@@ -265,6 +288,141 @@ def test_fifo_broker_refuses_checks_after_shutdown_crosses_lock_boundary(
     with pytest.raises(EvaluationError, match="broker is stopping"):
         broker.execute(("check",))
     assert broker.events == []
+
+
+def test_fifo_broker_refuses_checks_when_already_stopping(tmp_path: Path) -> None:
+    broker = _broker(tmp_path)
+    broker._stopping.set()
+
+    with pytest.raises(EvaluationError, match="broker is stopping"):
+        broker.execute(("check",))
+
+
+def test_fifo_broker_executes_with_mocked_process_runtime(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Process lifecycle logic is covered without requiring host bubblewrap."""
+    broker = _broker(tmp_path)
+
+    class Pipe:
+        closed = False
+
+        def close(self) -> None:
+            self.closed = True
+
+    class Process:
+        stdout = Pipe()
+        stderr = Pipe()
+
+    process = Process()
+
+    def command(_argv: tuple[str, ...]) -> list[str]:
+        return ["synthetic-check"]
+
+    def popen(*_args: object, **_kwargs: object) -> Process:
+        return process
+
+    def capture(_process: subprocess.Popen[bytes]) -> tuple[str, str, int]:
+        return ("stdout", "stderr", 7)
+
+    monkeypatch.setattr(broker, "_inner_command", command)
+    monkeypatch.setattr(evaluation.subprocess, "Popen", popen)
+    monkeypatch.setattr(broker, "_read_capture", capture)
+
+    event = broker.execute(("check",), "a" * 64)
+
+    assert event is not None
+    assert event.exit_code == 7
+    assert event.stdout == "stdout"
+    assert event.stderr == "stderr"
+    assert process.stdout.closed is True
+    assert process.stderr.closed is True
+
+    oversized_root = tmp_path / "oversized"
+    oversized_root.mkdir()
+    oversized = _broker(oversized_root)
+    oversized_process = Process()
+
+    def oversized_popen(*_args: object, **_kwargs: object) -> Process:
+        return oversized_process
+
+    def reply_does_not_fit(_event: BrokerEvent, _request_id: str) -> bool:
+        return False
+
+    monkeypatch.setattr(oversized, "_inner_command", command)
+    monkeypatch.setattr(evaluation.subprocess, "Popen", oversized_popen)
+    monkeypatch.setattr(oversized, "_read_capture", capture)
+    monkeypatch.setattr(oversized, "_accepted_reply_fits", reply_does_not_fit)
+    with pytest.raises(EvaluationError, match="broker response is too large"):
+        oversized.execute(("check",))
+
+
+def test_fifo_broker_closes_mocked_pipes_after_capture_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    broker = _broker(tmp_path)
+
+    class Pipe:
+        closed = False
+
+        def close(self) -> None:
+            self.closed = True
+
+    class Process:
+        pid = 99_999_999
+        stdout = Pipe()
+        stderr = Pipe()
+
+        def wait(self, timeout: float | None = None) -> int:
+            del timeout
+            return 1
+
+    process = Process()
+
+    def command(_argv: tuple[str, ...]) -> list[str]:
+        return ["synthetic-check"]
+
+    def popen(*_args: object, **_kwargs: object) -> Process:
+        return process
+
+    def capture(_process: subprocess.Popen[bytes]) -> tuple[str, str, int]:
+        raise EvaluationError("capture failed")
+
+    def no_kill(_process: subprocess.Popen[bytes]) -> None:
+        return None
+
+    monkeypatch.setattr(broker, "_inner_command", command)
+    monkeypatch.setattr(evaluation.subprocess, "Popen", popen)
+    monkeypatch.setattr(broker, "_read_capture", capture)
+    monkeypatch.setattr(broker, "_kill_process_tree", no_kill)
+
+    with pytest.raises(EvaluationError, match="capture failed"):
+        broker.execute(("check",))
+    assert process.stdout.closed is True
+    assert process.stderr.closed is True
+
+
+def test_fifo_broker_builds_inner_boundary_without_host_execution(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    broker = _broker(tmp_path)
+
+    def bwrap_path(name: str) -> str | None:
+        return "/usr/bin/bwrap" if name == "bwrap" else None
+
+    monkeypatch.setattr(evaluation.shutil, "which", bwrap_path)
+    command = broker._inner_command(("check",))
+
+    assert command[:3] == ["bwrap", "--die-with-parent", "--unshare-pid"]
+    assert "--unshare-net" in command
+    assert command[-1] == "check"
+
+    def unavailable(_name: str) -> None:
+        return None
+
+    monkeypatch.setattr(evaluation.shutil, "which", unavailable)
+    with pytest.raises(EvaluationError, match="bwrap is required"):
+        broker._inner_command(("check",))
 
 
 def test_fifo_broker_converts_process_wait_timeout_to_failed_event(
@@ -429,6 +587,105 @@ def test_fifo_broker_capture_ignores_spurious_readability_before_shutdown(
         broker._read_capture(cast(subprocess.Popen[bytes], Process()))
 
 
+def test_fifo_broker_capture_rejects_combined_overflow(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    broker = _broker(tmp_path)
+
+    class Pipe:
+        def __init__(self, descriptor: int) -> None:
+            self.descriptor = descriptor
+
+        def fileno(self) -> int:
+            return self.descriptor
+
+    class Process:
+        stdout = Pipe(81)
+        stderr = Pipe(82)
+
+        @staticmethod
+        def poll() -> None:
+            return None
+
+    def readable(
+        _descriptors: list[int],
+        _write: list[object],
+        _error: list[object],
+        _timeout: float,
+    ) -> tuple[list[int], list[int], list[int]]:
+        return ([81], [], [])
+
+    def oversized(_descriptor: int, _size: int) -> bytes:
+        return b"xx"
+
+    def no_set_blocking(_fd: int, _enabled: bool) -> None:
+        return None
+
+    monkeypatch.setattr(evaluation, "BROKER_CAPTURE_LIMIT_BYTES", 1)
+    monkeypatch.setattr(evaluation.os, "set_blocking", no_set_blocking)
+    monkeypatch.setattr(evaluation.select, "select", readable)
+    monkeypatch.setattr(evaluation.os, "read", oversized)
+
+    with pytest.raises(EvaluationError, match="output is too large"):
+        broker._read_capture(cast(subprocess.Popen[bytes], Process()))
+
+
+def test_fifo_broker_capture_waits_for_eof_after_process_exit(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    broker = _broker(tmp_path)
+
+    class Pipe:
+        def __init__(self, descriptor: int) -> None:
+            self.descriptor = descriptor
+
+        def fileno(self) -> int:
+            return self.descriptor
+
+    class Process:
+        stdout = Pipe(91)
+        stderr = Pipe(92)
+
+        @staticmethod
+        def poll() -> int:
+            return 0
+
+        @staticmethod
+        def wait(*, timeout: float) -> int:
+            assert timeout > 0
+            return 0
+
+    calls = 0
+
+    def readable(
+        descriptors: list[int],
+        _write: list[object],
+        _error: list[object],
+        _timeout: float,
+    ) -> tuple[list[int], list[int], list[int]]:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return ([], [], [])
+        return ([descriptors[0]], [], [])
+
+    def eof(_descriptor: int, _size: int) -> bytes:
+        return b""
+
+    def no_set_blocking(_fd: int, _enabled: bool) -> None:
+        return None
+
+    monkeypatch.setattr(evaluation.os, "set_blocking", no_set_blocking)
+    monkeypatch.setattr(evaluation.select, "select", readable)
+    monkeypatch.setattr(evaluation.os, "read", eof)
+
+    assert broker._read_capture(cast(subprocess.Popen[bytes], Process())) == (
+        "",
+        "",
+        0,
+    )
+
+
 def test_fifo_broker_capture_rechecks_deadline_after_both_pipes_close(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -582,6 +839,30 @@ def test_executor_boundary_preflight_rejects_command_tail_mismatch(
         )
 
 
+def test_executor_boundary_preflight_builds_exact_sandbox_probe(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Probe construction is portable and does not execute a host sandbox."""
+
+    def codex_command(*_args: object) -> list[str]:
+        return ["codex-tail"]
+
+    def outer_command(*_args: object) -> list[str]:
+        return ["outer", "codex-tail"]
+
+    monkeypatch.setattr(evaluation, "build_codex_command", codex_command)
+    monkeypatch.setattr(evaluation, "build_bwrap_command", outer_command)
+
+    command = evaluation.build_executor_boundary_preflight_command(
+        _case(), tmp_path / "workspace", tmp_path / "output", tmp_path / "runtime", 7
+    )
+
+    assert command[0] == "outer"
+    probe = command[-1]
+    assert "executor-boundary-preflight-ok" in probe
+    assert "127.0.0.1" in probe
+
+
 @pytest.mark.parametrize(
     ("kind", "message"),
     [
@@ -655,6 +936,57 @@ def test_executor_boundary_preflight_fails_closed_on_probe_failure(
     assert not (output / ".executor-boundary-preflight-private").exists()
     if kind == "loopback":
         assert client.closed
+
+
+def test_executor_boundary_preflight_accepts_denied_loopback(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    workspace = tmp_path / "workspace"
+    output = tmp_path / "output"
+    runtime = tmp_path / "runtime"
+    workspace.mkdir()
+    output.mkdir()
+    runtime.mkdir()
+
+    class Listener:
+        def bind(self, _address: tuple[str, int]) -> None:
+            return None
+
+        def listen(self, _backlog: int) -> None:
+            return None
+
+        def settimeout(self, _timeout: float) -> None:
+            return None
+
+        def getsockname(self) -> tuple[str, int]:
+            return ("127.0.0.1", 2345)
+
+        def accept(self) -> tuple[object, tuple[str, int]]:
+            raise TimeoutError
+
+        def close(self) -> None:
+            return None
+
+    def listener_socket(*_args: object) -> Listener:
+        return Listener()
+
+    def command(*_args: object) -> list[str]:
+        return ["probe"]
+
+    def run(*_args: object, **_kwargs: object) -> subprocess.CompletedProcess[str]:
+        return subprocess.CompletedProcess(
+            ["probe"], 0, "executor-boundary-preflight-ok\n", ""
+        )
+
+    monkeypatch.setattr(evaluation.socket, "socket", listener_socket)
+    monkeypatch.setattr(
+        evaluation, "build_executor_boundary_preflight_command", command
+    )
+    monkeypatch.setattr(evaluation.subprocess, "run", run)
+
+    evaluation.run_executor_boundary_preflight(_case(), workspace, output, runtime)
+
+    assert not (output / ".executor-boundary-preflight-private").exists()
 
 
 def test_run_case_uses_runner_issued_identity_not_workspace_input(

@@ -317,6 +317,10 @@ class CommandBroker:
                 chunk = os.read(request_fd, BROKER_PIPE_BUF_BYTES)
             except BlockingIOError:
                 continue
+            except OSError:
+                if self._stopping.is_set():
+                    return
+                raise
             if not chunk:
                 continue
             pending.extend(chunk)
