@@ -30,6 +30,7 @@ from scripts import run_progressive_validation_selection_eval as batch
         ("run-tiebreaks", ["--auth-file", "auth"], "run_tiebreaks"),
         ("run-one", ["--auth-file", "auth", "--slot-id", "slot"], "run_manifest_slot"),
         ("smoke-status", [], "smoke_status"),
+        ("relative-status", [], "relative_status"),
         (
             "project",
             ["--private-result", "private", "--public-path", "public"],
@@ -65,6 +66,7 @@ def test_main_routes_each_declared_cli_command(
         "run-tiebreaks",
         "run-one",
         "smoke-status",
+        "relative-status",
     }:
         argv.extend(("--private-root", "/private"))
     argv.extend(arguments)

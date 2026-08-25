@@ -36,7 +36,7 @@ def _manifest_root(
             "candidate": {"archive": "sources/candidate.tar"},
         },
         "schedule": batch._schedule(batch.load_batch_config()),
-        "case_ids": ["P01", "P02", "P03", "P04", "P05", "P10"],
+        "case_ids": ["P02", "P03", "P05"],
         "initial_repetitions": 2,
     }
     _write_manifest(root, manifest)
@@ -59,6 +59,19 @@ def _result(case_id: str, *, model: str = "frozen-model") -> dict[str, object]:
         "reasoning_effort": "medium",
         "codex_exit_code": 0,
         "verification": {"passed": True},
+        "task_outcome": {"valid": True, "errors": []},
+        "validation_selection": {
+            "enabled": True,
+            "contract_satisfied": True,
+            "required_covered": True,
+            "ordered_covered": True,
+            "required_missing": [],
+            "ordered_missing": [],
+            "forbidden_families": [],
+            "forbidden_event_count": 0,
+            "observations": [],
+        },
+        "evidence_integrity": {"valid": True, "errors": []},
         "command_oracle": {"valid": True, "errors": []},
     }
 

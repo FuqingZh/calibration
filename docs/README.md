@@ -4,18 +4,21 @@ This directory records calibration decisions, evaluations, historical plans,
 and portable integration guidance. Reusable cross-project engineering guidance
 lives under `../references/engineering/`.
 
-Calibration is in stable maintenance mode. The v2.1 relative-replacement test
-plan has completed with an inconclusive outcome, so the baseline remains the
-current progressive-validation authority. G0 at
+Calibration is in stable maintenance mode. The v2.1 relative-replacement run
+is now diagnostic history: audit showed that its raw-command evidence oracle
+had been collapsed into task completion even though every repository verifier
+passed. The baseline remains the current progressive-validation authority
+while the frozen v2.2 corrected comparison is implemented and rerun. G0 at
 `ff16714999465ad1acbd130dbb9711725584544f` with Codex 0.148.0 found that
 `codex exec --json` lacks structured, correlated approval events; its error
 items are not a reliable replacement. Approval statistics were subsequently
 removed from the decision scope, so the outcome-only comparison is authorized
 without parsing that prose. `Approve for me` remains a symmetric runtime safety
-control. The fresh 32-run comparison produced 5 versus 4 strict-valid runs but
-a 7 versus 7 task-completion tie and six tied case outcomes; no rollout or
-migration is authorized. The v2.0 plan and its 2026-08-24 smoke/recovery results remain
-historical background only. This follows the completed v1.0
+control. The v2.2 contract separates task outcome, runner-owned validation
+selection, and evidence integrity and targets P02, P03, and P05 with 12 initial
+runs and at most 18 total. No rollout or migration is authorized before its
+fresh immutable readback. The v2.0 plan and its 2026-08-24 smoke/recovery
+results remain historical background only. This follows the completed v1.0
 proportional-wording increment and is layered on the ongoing project-docs
 architecture convergence and does not reopen the completed runtime or AO
 implementation phases. The completed bounded v2.4 closeout-skill increment
@@ -67,6 +70,7 @@ back to `$HOME/.config/calibration/AGENTS.md`.
 | Durable implementation-plan contract | `../references/engineering/docs/document-types/implementation-plan.md` |
 | Project docs architecture convergence plan | `implementation-plans/20260805-v1.0-project-docs-architecture-convergence-implementation-plan.md` |
 | Progressive validation relative-replacement test plan | `testing/20260825-v2.1-progressive-validation-relative-replacement-test-plan.md` |
+| Progressive validation corrected relative-replacement plan | `testing/20260825-v2.2-progressive-validation-relative-replacement-correction-plan.md` |
 | Progressive validation v2.0 historical implementation plan | `implementation-plans/20260824-v2.0-progressive-validation-selection-implementation-plan.md` |
 | Progressive validation approval-observability preflight | `decisions/2026-08-25-progressive-validation-relative-replacement-preflight.md` |
 | Progressive validation frozen baseline | `decisions/2026-08-24-progressive-validation-selection-baseline.md` |

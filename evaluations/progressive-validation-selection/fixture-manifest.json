@@ -1,8 +1,8 @@
 {
   "canonicalization": "UTF-8 bytes; lexical POSIX-relative path order; root_tree_sha256 is SHA-256 of path, NUL, digest, newline records",
   "files": {
-    "batch-config.json": "daac6f33559beb8d9d863b9a25eeba5bc0d5b25cc56c6372b7d54cc81f3dc5a9",
-    "batch.schema.json": "bf3455c1a3299e233a91dde514be2b755281bf45162474147ed11084edc10f80",
+    "batch-config.json": "ca9b115ef5d87c66e493cf6dfaada26850e50dc362f18c774ed08558c27094b2",
+    "batch.schema.json": "52cee231593610a51c1afb3b2ef7c39ce3bb2887f44c2ed2ebd9d361c08bf826",
     "cases/C01.yaml": "56219088a8c43c57aea17c98c51ff138374e1833ccae30a140b56a5f8f5dfc47",
     "cases/H01.yaml": "f420380fd8df6d09d223c450f38ab0eb5549235d1eac3b64588c1c4a8c898731",
     "cases/H02.yaml": "875499230ce31d36a7c3a8cf1c98de1aa1101642427d07ede3a4e78a9718c1eb",
@@ -152,10 +152,10 @@
     "fixtures/P10/tests/test_selector.py": "b732055cc46a71a4e840504b47aae2e39f5e5539edf4b244b02546b86f022bea",
     "fixtures/P10/validation/selector.py": "884ce2797abb585d0644ae7e183e93ccbd95101f908c2ae98a79ee6173d30c7e",
     "judge-prompt.md": "ee1443024dd318e4f121bd9de7808d56c62dfdfb994e81187bf131448ff59773",
-    "result.schema.json": "e8cb265039940e6886567e0981a9b672cad81f76fc67b010dc5526c58e33d876",
+    "result.schema.json": "ef7c0db810cabef9eaf52f91208591daadaf88f609dc569583342c8378a9e337",
     "rubric.yaml": "5fc67b68d0bbbae65eef6f357466f4444efacf677738f33b050f25d4c48cffe2"
   },
   "hash_algorithm": "sha256",
-  "root_tree_sha256": "f2ec344ad178fdcea3fd4c00898da18b4b8d285d0464f6b4e3024f056450329f",
+  "root_tree_sha256": "48cc6c42bf6365cf74d2bf9ef16f84556b02e4996269fd6f40f9dd44ea401649",
   "schema_version": 1
 }

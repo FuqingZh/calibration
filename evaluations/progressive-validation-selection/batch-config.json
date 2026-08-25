@@ -3,7 +3,7 @@
   "seed": 42,
   "runner": "scripts/run_writable_agent_eval.py",
   "live_canary_case_id": "C01",
-  "case_ids": ["P01", "P02", "P03", "P04", "P05", "P10"],
+  "case_ids": ["P02", "P03", "P05"],
   "private_arm_keys": ["baseline", "candidate"],
   "smoke_repetitions": 2,
   "valid_repetitions": 3,

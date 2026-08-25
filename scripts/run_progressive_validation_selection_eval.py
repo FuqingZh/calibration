@@ -966,10 +966,26 @@ def project_public(private_result: Path, public_path: Path) -> dict[str, object]
     """Create one schema-validated public projection with no arm or path leaks."""
     result = _json(private_result)
     verification = result.get("verification")
+    task_outcome = result.get("task_outcome")
+    validation_selection = result.get("validation_selection")
+    evidence_integrity = result.get("evidence_integrity")
     command_oracle = result.get("command_oracle")
     final_oracle = result.get("final_oracle")
     verified = (
         cast(dict[str, object], verification) if isinstance(verification, dict) else {}
+    )
+    task = (
+        cast(dict[str, object], task_outcome) if isinstance(task_outcome, dict) else {}
+    )
+    selection = (
+        cast(dict[str, object], validation_selection)
+        if isinstance(validation_selection, dict)
+        else {}
+    )
+    integrity = (
+        cast(dict[str, object], evidence_integrity)
+        if isinstance(evidence_integrity, dict)
+        else {}
     )
     oracle = (
         cast(dict[str, object], command_oracle)
@@ -982,6 +998,8 @@ def project_public(private_result: Path, public_path: Path) -> dict[str, object]
     is_verified = verified.get("passed") is True
     is_oracle_valid = oracle.get("valid") is True
     is_final_valid = final.get("valid") is True
+    raw_required_missing = selection.get("required_missing")
+    raw_ordered_missing = selection.get("ordered_missing")
     observations: list[dict[str, object]] = []
     raw_observations = oracle.get("observations")
     if isinstance(raw_observations, list):
@@ -1018,6 +1036,33 @@ def project_public(private_result: Path, public_path: Path) -> dict[str, object]
                 verified.get("missing_required_changes")
             ),
         },
+        "task_outcome": {
+            "valid": task.get("valid") is True,
+            "errors": _safe_errors(task.get("errors")),
+        },
+        "validation_selection": {
+            "enabled": selection.get("enabled") is True,
+            "contract_satisfied": selection.get("contract_satisfied") is True,
+            "required_covered": selection.get("required_covered") is True,
+            "ordered_covered": selection.get("ordered_covered") is True,
+            "required_missing_count": len(cast(list[object], raw_required_missing))
+            if isinstance(raw_required_missing, list)
+            else 0,
+            "ordered_missing_count": len(cast(list[object], raw_ordered_missing))
+            if isinstance(raw_ordered_missing, list)
+            else 0,
+            "forbidden_families": selection.get("forbidden_families")
+            if isinstance(selection.get("forbidden_families"), list)
+            else [],
+            "forbidden_event_count": selection.get("forbidden_event_count")
+            if isinstance(selection.get("forbidden_event_count"), int)
+            and not isinstance(selection.get("forbidden_event_count"), bool)
+            else 0,
+        },
+        "evidence_integrity": {
+            "valid": integrity.get("valid") is True,
+            "errors": _safe_errors(integrity.get("errors")),
+        },
         "command_oracle": {
             "enabled": oracle.get("enabled") is True,
             "valid": is_oracle_valid,
@@ -1033,7 +1078,11 @@ def project_public(private_result: Path, public_path: Path) -> dict[str, object]
             "errors": _safe_errors(final.get("errors")),
         },
     }
-    projection["valid"] = is_verified and is_oracle_valid and is_final_valid
+    projection["valid"] = (
+        task.get("valid") is True
+        and selection.get("contract_satisfied") is True
+        and integrity.get("valid") is True
+    )
     encoded = json.dumps(projection, sort_keys=True)
     if any(token in encoded.lower() for token in PRIVATE_FORBIDDEN_FIELDS):
         raise BatchError("public projection still contains a private control field")
@@ -1062,47 +1111,88 @@ def _run_root(private_root: Path) -> Path:
     return _private_root(private_root) / "progressive-validation-selection"
 
 
-def _classification(arm_key: str, result: Mapping[str, object]) -> str:
+def _assessment(result: Mapping[str, object]) -> dict[str, object]:
+    """Read the three frozen outcome layers without collapsing their meaning."""
+    task = result.get("task_outcome")
+    selection = result.get("validation_selection")
+    integrity = result.get("evidence_integrity")
     verification = result.get("verification")
-    oracle = result.get("command_oracle")
     final = result.get("final_oracle")
-    if not isinstance(verification, dict) or not isinstance(oracle, dict):
-        return "critical"
-    if not isinstance(final, dict):
-        return "critical"
+    oracle = result.get("command_oracle")
+    if not all(
+        isinstance(item, dict)
+        for item in (task, selection, integrity, verification, final, oracle)
+    ):
+        return {
+            "task_outcome": "critical",
+            "selection_outcome": "undercoverage",
+            "evidence_integrity": "invalid",
+            "required_missing_count": 1,
+            "ordered_missing_count": 1,
+            "forbidden_event_count": 0,
+        }
+    task_data = cast(dict[str, object], task)
+    selection_data = cast(dict[str, object], selection)
+    integrity_data = cast(dict[str, object], integrity)
     verification_data = cast(dict[str, object], verification)
-    oracle_data = cast(dict[str, object], oracle)
     final_data = cast(dict[str, object], final)
-    checks = verification_data.get("checks")
-    checks_pass = isinstance(checks, list) and all(
-        isinstance(check, dict)
-        and isinstance(cast(dict[str, object], check).get("exit_code"), int)
-        and cast(dict[str, object], check)["exit_code"] == 0
-        for check in cast(list[object], checks)
-    )
-    workspace_safe = (
-        result.get("codex_exit_code") == 0
-        and checks_pass
-        and verification_data.get("unexpected_changes") == []
-        and verification_data.get("missing_required_changes") == []
-        and final_data.get("valid") is True
-    )
-    errors = oracle_data.get("errors")
-    error_items = cast(list[object], errors) if isinstance(errors, list) else []
-    forbidden_only = bool(error_items) and all(
-        isinstance(item, str) and item.startswith("forbidden family observed:")
-        for item in error_items
-    )
-    valid = (
-        workspace_safe
-        and verification_data.get("passed") is True
-        and oracle_data.get("valid") is True
-    )
-    if valid:
-        return "valid"
-    if workspace_safe and forbidden_only:
-        return "comparable_overvalidation"
-    return "critical"
+    oracle_data = cast(dict[str, object], oracle)
+    required_missing = selection_data.get("required_missing")
+    ordered_missing = selection_data.get("ordered_missing")
+    forbidden_count = selection_data.get("forbidden_event_count")
+    if (
+        not isinstance(required_missing, list)
+        or not isinstance(ordered_missing, list)
+        or not isinstance(forbidden_count, int)
+        or isinstance(forbidden_count, bool)
+        or forbidden_count < 0
+    ):
+        return {
+            "task_outcome": "critical",
+            "selection_outcome": "undercoverage",
+            "evidence_integrity": "invalid",
+            "required_missing_count": 1,
+            "ordered_missing_count": 1,
+            "forbidden_event_count": 0,
+        }
+    if required_missing:
+        selection_outcome = "undercoverage"
+    elif ordered_missing:
+        selection_outcome = "misordered"
+    elif forbidden_count:
+        selection_outcome = "overvalidation"
+    else:
+        selection_outcome = "precise"
+    return {
+        "task_outcome": (
+            "valid"
+            if task_data.get("valid") is True
+            and result.get("codex_exit_code") == 0
+            and verification_data.get("passed") is True
+            and final_data.get("valid") is True
+            else "critical"
+        ),
+        "selection_outcome": selection_outcome,
+        "evidence_integrity": (
+            "valid"
+            if integrity_data.get("valid") is True and oracle_data.get("valid") is True
+            else "invalid"
+        ),
+        "required_missing_count": len(cast(list[object], required_missing)),
+        "ordered_missing_count": len(cast(list[object], ordered_missing)),
+        "forbidden_event_count": forbidden_count,
+    }
+
+
+def _classification(arm_key: str, result: Mapping[str, object]) -> str:
+    """Retain a compact ledger label while preserving layered result fields."""
+    del arm_key
+    assessment = _assessment(result)
+    if assessment["task_outcome"] == "critical":
+        return "critical"
+    if assessment["evidence_integrity"] == "invalid":
+        return "evidence_invalid"
+    return cast(str, assessment["selection_outcome"])
 
 
 def _canary_fields(
@@ -1147,13 +1237,20 @@ def _canary_result_is_valid(
     result: Mapping[str, object], case_id: str, model: str, effort: str
 ) -> bool:
     verification = result.get("verification")
+    task = result.get("task_outcome")
+    selection = result.get("validation_selection")
+    integrity = result.get("evidence_integrity")
     oracle = result.get("command_oracle")
     final = result.get("final_oracle")
-    if not isinstance(verification, dict) or not isinstance(oracle, dict):
-        return False
-    if not isinstance(final, dict):
+    if not all(
+        isinstance(item, dict)
+        for item in (verification, task, selection, integrity, oracle, final)
+    ):
         return False
     verification_data = cast(dict[str, object], verification)
+    task_data = cast(dict[str, object], task)
+    selection_data = cast(dict[str, object], selection)
+    integrity_data = cast(dict[str, object], integrity)
     oracle_data = cast(dict[str, object], oracle)
     final_data = cast(dict[str, object], final)
     broker_events = oracle_data.get("broker_events")
@@ -1165,6 +1262,9 @@ def _canary_result_is_valid(
         and verification_data.get("passed") is True
         and verification_data.get("unexpected_changes") == []
         and verification_data.get("missing_required_changes") == []
+        and task_data.get("valid") is True
+        and selection_data.get("contract_satisfied") is True
+        and integrity_data.get("valid") is True
         and oracle_data.get("valid") is True
         and isinstance(broker_events, list)
         and len(cast(list[object], broker_events)) > 0
@@ -1361,13 +1461,54 @@ def _tiebreak_slots(manifest: Mapping[str, object]) -> list[dict[str, object]]:
     return slots
 
 
-def _paired_outcome(baseline: str, candidate: str) -> str:
-    rank = {"critical": 0, "comparable_overvalidation": 1, "valid": 2}
-    if baseline not in rank or candidate not in rank:
-        raise BatchError("frozen classification is invalid")
-    if rank[candidate] > rank[baseline]:
+def _paired_outcome(
+    baseline: Mapping[str, object], candidate: Mapping[str, object]
+) -> str:
+    """Compare one matched pair by task, coverage/order, then extra checks."""
+    expected = {
+        "task_outcome",
+        "selection_outcome",
+        "evidence_integrity",
+        "required_missing_count",
+        "ordered_missing_count",
+        "forbidden_event_count",
+    }
+    if set(baseline) != expected or set(candidate) != expected:
+        raise BatchError("frozen assessment is invalid")
+    task_rank = {"critical": 0, "valid": 1}
+    baseline_task = baseline.get("task_outcome")
+    candidate_task = candidate.get("task_outcome")
+    if baseline_task not in task_rank or candidate_task not in task_rank:
+        raise BatchError("frozen task assessment is invalid")
+    if task_rank[cast(str, candidate_task)] > task_rank[cast(str, baseline_task)]:
         return "candidate_win"
-    if rank[candidate] < rank[baseline]:
+    if task_rank[cast(str, candidate_task)] < task_rank[cast(str, baseline_task)]:
+        return "baseline_win"
+    if baseline_task == "critical":
+        return "tie"
+    if (
+        baseline.get("evidence_integrity") != "valid"
+        or candidate.get("evidence_integrity") != "valid"
+    ):
+        return "inconclusive"
+    metric_names = (
+        "required_missing_count",
+        "ordered_missing_count",
+        "forbidden_event_count",
+    )
+    if not all(
+        isinstance(assessment.get(name), int)
+        and not isinstance(assessment.get(name), bool)
+        and cast(int, assessment[name]) >= 0
+        for assessment in (baseline, candidate)
+        for name in metric_names
+    ):
+        raise BatchError("frozen selection assessment is invalid")
+    baseline_score = tuple(-cast(int, baseline[name]) for name in metric_names)
+    candidate_score = tuple(-cast(int, candidate[name]) for name in metric_names)
+    if candidate_score > baseline_score:
+        return "candidate_win"
+    if candidate_score < baseline_score:
         return "baseline_win"
     return "tie"
 
@@ -1375,7 +1516,7 @@ def _paired_outcome(baseline: str, candidate: str) -> str:
 def _initial_case_outcomes(
     root: Path, manifest: Mapping[str, object]
 ) -> dict[str, list[str]]:
-    grouped: dict[tuple[str, int], dict[str, str]] = {}
+    grouped: dict[tuple[str, int], dict[str, dict[str, object]]] = {}
     for slot in _smoke_slots(manifest):
         case_id = slot.get("case_id")
         repetition = slot.get("repetition")
@@ -1406,7 +1547,7 @@ def _conflicting_case_ids(root: Path, manifest: Mapping[str, object]) -> list[st
     return sorted(
         case_id
         for case_id, outcomes in _initial_case_outcomes(root, manifest).items()
-        if outcomes[0] != outcomes[1]
+        if outcomes[0] != outcomes[1] or "inconclusive" in outcomes
     )
 
 
@@ -1414,7 +1555,7 @@ def _validate_completed_slot(
     root: Path,
     manifest: Mapping[str, object],
     slot: Mapping[str, object],
-) -> str:
+) -> dict[str, object]:
     slot_id = slot.get("slot_id")
     case_id = slot.get("case_id")
     arm_key = slot.get("arm_key")
@@ -1466,7 +1607,7 @@ def _validate_completed_slot(
         or result.get("reasoning_effort") != effort
     ):
         raise BatchError(f"frozen slot result identity mismatch: {slot_id}")
-    return classification
+    return _assessment(result)
 
 
 def run_manifest_slot(
@@ -1681,7 +1822,7 @@ def smoke_status(private_root: Path) -> dict[str, object]:
     actual_ids = set(_slot_ledger_entry_names(root))
     if not actual_ids <= expected_ids:
         raise BatchError("private slot ledger contains an unexpected slot")
-    classifications: list[tuple[str, str]] = []
+    assessments: list[tuple[str, dict[str, object]]] = []
     missing = 0
     failed = 0
     for slot in expected:
@@ -1708,7 +1849,7 @@ def smoke_status(private_root: Path) -> dict[str, object]:
                 _validate_failed_ledger(slot_descriptor, slot_id)
                 failed += 1
             elif completed:
-                classifications.append(
+                assessments.append(
                     (arm_key, _validate_completed_slot(root, manifest, slot))
                 )
             elif started:
@@ -1719,12 +1860,12 @@ def smoke_status(private_root: Path) -> dict[str, object]:
         finally:
             os.close(slot_descriptor)
     candidate_critical = any(
-        arm == "candidate" and classification == "critical"
-        for arm, classification in classifications
+        arm == "candidate" and assessment["task_outcome"] == "critical"
+        for arm, assessment in assessments
     )
     baseline_critical = any(
-        arm == "baseline" and classification == "critical"
-        for arm, classification in classifications
+        arm == "baseline" and assessment["task_outcome"] == "critical"
+        for arm, assessment in assessments
     )
     conflicts: list[str] = []
     if failed:
@@ -1737,7 +1878,7 @@ def smoke_status(private_root: Path) -> dict[str, object]:
     return {
         "state": state,
         "expected_slots": len(expected),
-        "completed_slots": len(classifications),
+        "completed_slots": len(assessments),
         "failed_slots": failed,
         "candidate_critical": candidate_critical,
         "baseline_critical": baseline_critical,
@@ -1745,10 +1886,169 @@ def smoke_status(private_root: Path) -> dict[str, object]:
     }
 
 
+def relative_status(private_root: Path) -> dict[str, object]:
+    """Recompute the bounded relative decision from immutable paired ledgers."""
+    root = _run_root(private_root)
+    manifest = _private_manifest(private_root)
+    verification = verify_freeze(private_root)
+    if verification.get("valid") is not True:
+        raise BatchError("freeze verification failed")
+    initial_slots = _smoke_slots(manifest)
+    initial_assessments: dict[tuple[str, int], dict[str, dict[str, object]]] = {}
+    all_assessments: list[tuple[str, dict[str, object]]] = []
+    for slot in initial_slots:
+        case_id = slot.get("case_id")
+        repetition = slot.get("repetition")
+        arm_key = slot.get("arm_key")
+        if (
+            not isinstance(case_id, str)
+            or not isinstance(repetition, int)
+            or isinstance(repetition, bool)
+            or arm_key not in {"baseline", "candidate"}
+        ):
+            raise BatchError("frozen initial slot identity is invalid")
+        assessment = _validate_completed_slot(root, manifest, slot)
+        initial_assessments.setdefault((case_id, repetition), {})[
+            cast(str, arm_key)
+        ] = assessment
+        all_assessments.append((cast(str, arm_key), assessment))
+
+    case_pairs: dict[str, list[str]] = {}
+    for (case_id, _), pair in initial_assessments.items():
+        if set(pair) != {"baseline", "candidate"}:
+            raise BatchError("frozen initial pair is incomplete")
+        case_pairs.setdefault(case_id, []).append(
+            _paired_outcome(pair["baseline"], pair["candidate"])
+        )
+    conflicts = {
+        case_id
+        for case_id, outcomes in case_pairs.items()
+        if len(outcomes) != 2
+        or outcomes[0] != outcomes[1]
+        or "inconclusive" in outcomes
+    }
+    missing_tiebreaks: list[str] = []
+    for case_id in sorted(conflicts):
+        slots = [
+            slot for slot in _tiebreak_slots(manifest) if slot.get("case_id") == case_id
+        ]
+        if len(slots) != 2:
+            raise BatchError("frozen tiebreak pair is invalid")
+        pair: dict[str, dict[str, object]] = {}
+        for slot in slots:
+            slot_id = slot.get("slot_id")
+            arm_key = slot.get("arm_key")
+            if not isinstance(slot_id, str) or arm_key not in {
+                "baseline",
+                "candidate",
+            }:
+                raise BatchError("frozen tiebreak slot identity is invalid")
+            descriptor = _open_slot_directory(root, slot_id)
+            if descriptor is None:
+                missing_tiebreaks.append(case_id)
+                break
+            os.close(descriptor)
+            assessment = _validate_completed_slot(root, manifest, slot)
+            pair[cast(str, arm_key)] = assessment
+            all_assessments.append((cast(str, arm_key), assessment))
+        if case_id in missing_tiebreaks:
+            continue
+        if set(pair) != {"baseline", "candidate"}:
+            raise BatchError("frozen tiebreak pair is incomplete")
+        case_pairs[case_id].append(_paired_outcome(pair["baseline"], pair["candidate"]))
+    if missing_tiebreaks:
+        return {
+            "state": "eligible_for_tiebreaks",
+            "conflicting_case_ids": sorted(set(missing_tiebreaks)),
+        }
+
+    collapsed: dict[str, str] = {}
+    for case_id, outcomes in sorted(case_pairs.items()):
+        if "inconclusive" in outcomes:
+            collapsed[case_id] = "inconclusive"
+            continue
+        candidate_wins = outcomes.count("candidate_win")
+        baseline_wins = outcomes.count("baseline_win")
+        if candidate_wins >= 2:
+            collapsed[case_id] = "candidate_win"
+        elif baseline_wins >= 2:
+            collapsed[case_id] = "baseline_win"
+        else:
+            collapsed[case_id] = "tie"
+
+    def arm_metrics(arm: str) -> dict[str, int]:
+        selected = [item for item_arm, item in all_assessments if item_arm == arm]
+        return {
+            "runs": len(selected),
+            "task_valid": sum(item["task_outcome"] == "valid" for item in selected),
+            "evidence_invalid": sum(
+                item["evidence_integrity"] != "valid" for item in selected
+            ),
+            "required_missing": sum(
+                cast(int, item["required_missing_count"]) for item in selected
+            ),
+            "ordered_missing": sum(
+                cast(int, item["ordered_missing_count"]) for item in selected
+            ),
+            "forbidden_events": sum(
+                cast(int, item["forbidden_event_count"]) for item in selected
+            ),
+        }
+
+    baseline = arm_metrics("baseline")
+    candidate = arm_metrics("candidate")
+    candidate_wins = sum(value == "candidate_win" for value in collapsed.values())
+    baseline_wins = sum(value == "baseline_win" for value in collapsed.values())
+    incomplete_evidence = (
+        baseline["evidence_invalid"] > 0
+        or candidate["evidence_invalid"] > 0
+        or "inconclusive" in collapsed.values()
+    )
+    candidate_regressed = (
+        candidate["task_valid"] < baseline["task_valid"]
+        or candidate["required_missing"] > baseline["required_missing"]
+        or candidate["ordered_missing"] > baseline["ordered_missing"]
+        or candidate_wins < baseline_wins
+    )
+    candidate_improved = (
+        candidate["task_valid"] >= baseline["task_valid"]
+        and candidate["required_missing"] <= baseline["required_missing"]
+        and candidate["ordered_missing"] <= baseline["ordered_missing"]
+        and candidate_wins > baseline_wins
+    )
+    if incomplete_evidence:
+        decision = "inconclusive"
+    elif candidate_regressed:
+        decision = "reject"
+    elif candidate_improved:
+        decision = "accept"
+    else:
+        decision = "inconclusive"
+    return {
+        "state": "complete",
+        "decision": decision,
+        "case_outcomes": collapsed,
+        "candidate_wins": candidate_wins,
+        "baseline_wins": baseline_wins,
+        "baseline": baseline,
+        "candidate": candidate,
+    }
+
+
 def summarize_public(projections: Iterable[Path]) -> dict[str, object]:
-    """Apply only the declared critical rule; efficiency never compensates failure."""
+    """Summarize task failures without promoting evidence gaps into failures."""
     records = [_json(path) for path in projections]
-    critical = any(record.get("valid") is not True for record in records)
+    critical = any(
+        not isinstance(record.get("task_outcome"), dict)
+        or cast(dict[str, object], record["task_outcome"]).get("valid") is not True
+        for record in records
+    )
+    evidence_incomplete = any(
+        not isinstance(record.get("evidence_integrity"), dict)
+        or cast(dict[str, object], record["evidence_integrity"]).get("valid")
+        is not True
+        for record in records
+    )
     if not records:
         return {
             "runs": 0,
@@ -1761,9 +2061,11 @@ def summarize_public(projections: Iterable[Path]) -> dict[str, object]:
         "critical_failure": critical,
         "decision": "reject" if critical else "not_yet_verified",
         "reason": (
-            "a deterministic critical failure blocks activation"
+            "a deterministic task failure blocks activation"
             if critical
-            else "complete manifest-bound repeats and blind judgments are unavailable"
+            else "relative pairing is required"
+            if not evidence_incomplete
+            else "command evidence is incomplete"
         ),
     }
 
@@ -1794,6 +2096,8 @@ def _parser() -> argparse.ArgumentParser:
     run_one.add_argument("--slot-id", required=True)
     smoke_status_parser = children.add_parser("smoke-status")
     smoke_status_parser.add_argument("--private-root", type=Path, required=True)
+    relative_status_parser = children.add_parser("relative-status")
+    relative_status_parser.add_argument("--private-root", type=Path, required=True)
     canary_status_parser = children.add_parser("canary-status")
     canary_status_parser.add_argument("--private-root", type=Path, required=True)
     project = children.add_parser("project")
@@ -1827,6 +2131,8 @@ def main(argv: list[str] | None = None) -> int:
             payload = run_manifest_slot(args.private_root, args.auth_file, args.slot_id)
         elif args.command == "smoke-status":
             payload = smoke_status(args.private_root)
+        elif args.command == "relative-status":
+            payload = relative_status(args.private_root)
         elif args.command == "canary-status":
             payload = canary_status(args.private_root)
         elif args.command == "project":

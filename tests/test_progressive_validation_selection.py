@@ -210,7 +210,7 @@ def test_freezes_fourteen_comparison_cases_and_one_independent_live_canary() -> 
         LIVE_CANARY_CASE_ID
     }
     config = json.loads((EVALUATION_ROOT / "batch-config.json").read_text())
-    assert config["case_ids"] == ["P01", "P02", "P03", "P04", "P05", "P10"]
+    assert config["case_ids"] == ["P02", "P03", "P05"]
     assert config["live_canary_case_id"] == LIVE_CANARY_CASE_ID
     for path in CASES:
         raw = yaml.safe_load(path.read_text(encoding="utf-8"))
@@ -371,9 +371,20 @@ def test_result_schema_matches_rubric_codes_and_runner_result_shape() -> None:
         "codex_exit_code",
         "elapsed_seconds",
         "verification",
+        "task_outcome",
+        "validation_selection",
+        "evidence_integrity",
         "command_oracle",
         "final_oracle",
     }
+    selection = schema["$defs"]["validation_selection"]
+    assert selection["additionalProperties"] is False
+    assert {
+        "required_missing",
+        "ordered_missing",
+        "forbidden_families",
+        "forbidden_event_count",
+    } <= set(selection["required"])
 
 
 def test_oracle_negative_controls_cover_wrapper_compound_completion_and_order() -> None:

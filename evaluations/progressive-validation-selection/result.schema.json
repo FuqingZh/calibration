@@ -3,7 +3,7 @@
   "$id": "https://calibration.example/evaluations/progressive-validation-selection/result.schema.json",
   "title": "Progressive validation selection result",
   "type": "object",
-  "required": ["case_id", "model", "reasoning_effort", "codex_exit_code", "elapsed_seconds", "verification", "command_oracle", "final_oracle"],
+  "required": ["case_id", "model", "reasoning_effort", "codex_exit_code", "elapsed_seconds", "verification", "task_outcome", "validation_selection", "evidence_integrity", "command_oracle", "final_oracle"],
   "properties": {
     "case_id": {"type": "string", "pattern": "^(C01|P(0[1-9]|10)|H0[1-4])$"},
     "model": {"type": "string", "minLength": 1},
@@ -11,6 +11,9 @@
     "codex_exit_code": {"type": "integer"},
     "elapsed_seconds": {"type": "number", "minimum": 0},
     "verification": {"$ref": "#/$defs/verification"},
+    "task_outcome": {"$ref": "#/$defs/task_outcome"},
+    "validation_selection": {"$ref": "#/$defs/validation_selection"},
+    "evidence_integrity": {"$ref": "#/$defs/evidence_integrity"},
     "command_oracle": {"$ref": "#/$defs/command_oracle"},
     "final_oracle": {"$ref": "#/$defs/final_oracle"}
   },
@@ -38,6 +41,59 @@
         "exit_code": {"type": "integer"},
         "stdout": {"type": "string"},
         "stderr": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "task_outcome": {
+      "type": "object",
+      "required": ["valid", "errors"],
+      "properties": {
+        "valid": {"type": "boolean"},
+        "errors": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": false
+    },
+    "validation_selection": {
+      "type": "object",
+      "required": ["enabled", "contract_satisfied", "required_covered", "ordered_covered", "required_missing", "ordered_missing", "forbidden_families", "forbidden_event_count", "observations"],
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "contract_satisfied": {"type": "boolean"},
+        "required_covered": {"type": "boolean"},
+        "ordered_covered": {"type": "boolean"},
+        "required_missing": {"type": "array", "items": {"$ref": "#/$defs/selection_requirement"}},
+        "ordered_missing": {"type": "array", "items": {"$ref": "#/$defs/selection_requirement"}},
+        "forbidden_families": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+        "forbidden_event_count": {"type": "integer", "minimum": 0},
+        "observations": {"type": "array", "items": {"$ref": "#/$defs/selection_observation"}}
+      },
+      "additionalProperties": false
+    },
+    "selection_requirement": {
+      "type": "object",
+      "required": ["family", "exit"],
+      "properties": {
+        "family": {"type": "string", "minLength": 1},
+        "exit": {"enum": ["zero", "nonzero", "any"]}
+      },
+      "additionalProperties": false
+    },
+    "selection_observation": {
+      "type": "object",
+      "required": ["execution_id", "family", "exit_code"],
+      "properties": {
+        "execution_id": {"type": "integer", "minimum": 1},
+        "family": {"type": "string", "minLength": 1},
+        "exit_code": {"type": "integer"}
+      },
+      "additionalProperties": false
+    },
+    "evidence_integrity": {
+      "type": "object",
+      "required": ["valid", "errors"],
+      "properties": {
+        "valid": {"type": "boolean"},
+        "errors": {"type": "array", "items": {"type": "string"}}
       },
       "additionalProperties": false
     },

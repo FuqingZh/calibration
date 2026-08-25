@@ -1148,7 +1148,13 @@ def command_oracle(
 ) -> dict[str, object]:
     """Corroborate raw chronology with runner-owned broker execution evidence."""
     if case.command_contract is None:
-        return {"enabled": False, "valid": True, "observations": [], "errors": []}
+        return {
+            "enabled": False,
+            "valid": True,
+            "observations": [],
+            "broker_events": [],
+            "errors": [],
+        }
     del run_id
     contract = case.command_contract
     events, errors = _command_events(trajectory)
@@ -1371,6 +1377,126 @@ def command_oracle(
         "broker_events": broker,
         "errors": errors,
     }
+
+
+def validation_selection(
+    case: CaseSpec, broker_events: Sequence[BrokerEvent]
+) -> dict[str, object]:
+    """Score the declared check contract from runner-owned execution events.
+
+    This layer answers which checks actually ran and whether they covered the
+    declared obligations. Raw command parsing and shim-delivery corroboration
+    remain separate evidence-integrity concerns in ``command_oracle``.
+    """
+    if case.command_contract is None:
+        return {
+            "enabled": False,
+            "contract_satisfied": True,
+            "required_covered": True,
+            "ordered_covered": True,
+            "required_missing": [],
+            "ordered_missing": [],
+            "forbidden_families": [],
+            "forbidden_event_count": 0,
+            "observations": [],
+        }
+    contract = case.command_contract
+    observations = [
+        {
+            "execution_id": event.execution_id,
+            "family": event.family,
+            "exit_code": event.exit_code,
+        }
+        for event in broker_events
+    ]
+    required_missing: list[dict[str, object]] = []
+    used: set[int] = set()
+    for requirement in cast(list[dict[str, object]], contract["required"]):
+        found = next(
+            (
+                index
+                for index, observation in enumerate(observations)
+                if index not in used
+                and observation["family"] == requirement["family"]
+                and _exit_matches(observation["exit_code"], requirement["exit"])
+            ),
+            None,
+        )
+        if found is None:
+            required_missing.append(dict(requirement))
+        else:
+            used.add(found)
+
+    ordered_missing: list[dict[str, object]] = []
+    position = 0
+    for requirement in cast(list[dict[str, object]], contract["ordered_required"]):
+        found = next(
+            (
+                index
+                for index in range(position, len(observations))
+                if observations[index]["family"] == requirement["family"]
+                and _exit_matches(observations[index]["exit_code"], requirement["exit"])
+            ),
+            None,
+        )
+        if found is None:
+            ordered_missing.append(dict(requirement))
+            break
+        position = found + 1
+
+    forbidden_names = {
+        cast(str, requirement["family"])
+        for requirement in cast(list[dict[str, object]], contract["forbidden"])
+    }
+    forbidden_events = [
+        observation["family"]
+        for observation in observations
+        if observation["family"] in forbidden_names
+    ]
+    required_covered = not required_missing
+    ordered_covered = not ordered_missing
+    return {
+        "enabled": True,
+        "contract_satisfied": (
+            required_covered and ordered_covered and not forbidden_events
+        ),
+        "required_covered": required_covered,
+        "ordered_covered": ordered_covered,
+        "required_missing": required_missing,
+        "ordered_missing": ordered_missing,
+        "forbidden_families": sorted(set(forbidden_events)),
+        "forbidden_event_count": len(forbidden_events),
+        "observations": observations,
+    }
+
+
+def task_outcome(
+    codex_exit_code: int,
+    verification: Mapping[str, object],
+    final_answer_oracle: Mapping[str, object],
+) -> dict[str, object]:
+    """Classify task completion without importing command-evidence failures."""
+    errors: list[str] = []
+    if codex_exit_code != 0:
+        errors.append("model execution failed")
+    if verification.get("passed") is not True:
+        errors.append("workspace verification failed")
+    if final_answer_oracle.get("valid") is not True:
+        errors.append("final answer contract failed")
+    return {"valid": not errors, "errors": errors}
+
+
+def evidence_integrity(executor_oracle: Mapping[str, object]) -> dict[str, object]:
+    """Expose conservative raw-to-runner corroboration as its own layer."""
+    raw_errors = executor_oracle.get("errors")
+    errors = (
+        [cast(str, item) for item in cast(list[object], raw_errors)]
+        if isinstance(raw_errors, list)
+        and all(isinstance(item, str) for item in cast(list[object], raw_errors))
+        else ["command evidence errors are malformed"]
+    )
+    valid = executor_oracle.get("valid") is True and not errors
+    return {"valid": valid, "errors": errors}
 
 
 def final_oracle(case: CaseSpec, final_message: Path) -> dict[str, object]:
@@ -2205,12 +2331,9 @@ def run_case(
         )
         executor_oracle["valid"] = False
     final_answer_oracle = final_oracle(case, final_message)
-    verification["passed"] = (
-        result.returncode == 0
-        and bool(verification["passed"])
-        and bool(executor_oracle["valid"])
-        and bool(final_answer_oracle["valid"])
-    )
+    outcome = task_outcome(result.returncode, verification, final_answer_oracle)
+    selection = validation_selection(case, broker.events)
+    integrity = evidence_integrity(executor_oracle)
     payload: dict[str, object] = {
         "case_id": case.case_id,
         "model": model,
@@ -2218,6 +2341,9 @@ def run_case(
         "codex_exit_code": result.returncode,
         "elapsed_seconds": elapsed,
         "verification": verification,
+        "task_outcome": outcome,
+        "validation_selection": selection,
+        "evidence_integrity": integrity,
         "command_oracle": executor_oracle,
         "final_oracle": final_answer_oracle,
     }

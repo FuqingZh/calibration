@@ -1359,6 +1359,113 @@ def test_command_oracle_requires_receipt_and_direct_delivery_exit_match(
     assert forged_bypass["valid"] is False
 
 
+def test_task_selection_and_evidence_are_independent_layers(
+    tmp_path: Path, evaluation_root: Path
+) -> None:
+    case = evaluation.load_case(
+        write_case(
+            evaluation_root / "cases/layers.yaml",
+            command_contract={
+                "families": {
+                    "generator": {"commands": [["generate"]]},
+                    "artifact_readback": {"commands": [["readback"]]},
+                    "complete_gate": {"commands": [["full-gate"]]},
+                },
+                "required": [
+                    {"family": "generator", "exit": "zero"},
+                    {"family": "artifact_readback", "exit": "zero"},
+                ],
+                "ordered": [
+                    {"family": "generator", "exit": "zero"},
+                    {"family": "artifact_readback", "exit": "zero"},
+                ],
+                "forbidden": ["complete_gate"],
+            },
+        )
+    )
+
+    def event(
+        execution_id: int, family: str, argv: tuple[str, ...], exit_code: int = 0
+    ) -> evaluation.BrokerEvent:
+        return evaluation.BrokerEvent(
+            execution_id=execution_id,
+            family=family,
+            argv=argv,
+            argv_sha256=hashlib.sha256("\0".join(argv).encode()).hexdigest(),
+            cwd="/workspace",
+            execution_context="executor_sandbox",
+            exit_code=exit_code,
+            stdout="",
+            stderr="",
+            delivery_receipt="a" * 64,
+        )
+
+    selection = evaluation.validation_selection(
+        case,
+        [
+            event(1, "artifact_readback", ("readback",)),
+            event(2, "generator", ("generate",)),
+            event(3, "complete_gate", ("full-gate",)),
+        ],
+    )
+    assert selection["required_covered"] is True
+    assert selection["ordered_covered"] is False
+    assert selection["forbidden_families"] == ["complete_gate"]
+    assert selection["forbidden_event_count"] == 1
+    assert selection["contract_satisfied"] is False
+
+    verification = {"passed": True}
+    final = {"valid": True}
+    assert evaluation.task_outcome(0, verification, final) == {
+        "valid": True,
+        "errors": [],
+    }
+    assert evaluation.task_outcome(0, {"passed": False}, {"valid": False}) == {
+        "valid": False,
+        "errors": [
+            "workspace verification failed",
+            "final answer contract failed",
+        ],
+    }
+    integrity = evaluation.evidence_integrity(
+        {"valid": False, "errors": ["line 1: unrecognized command"]}
+    )
+    assert integrity["valid"] is False
+    assert evaluation.task_outcome(0, verification, final)["valid"] is True
+
+
+def test_validation_selection_requires_distinct_required_events(
+    tmp_path: Path, evaluation_root: Path
+) -> None:
+    case = evaluation.load_case(
+        write_case(
+            evaluation_root / "cases/repeated-selection.yaml",
+            command_contract={
+                "families": {"focused_test": {"commands": [["focused"]]}},
+                "required": [
+                    {"family": "focused_test", "exit": "zero"},
+                    {"family": "focused_test", "exit": "zero"},
+                ],
+            },
+        )
+    )
+    event = evaluation.BrokerEvent(
+        execution_id=1,
+        family="focused_test",
+        argv=("focused",),
+        argv_sha256=hashlib.sha256(b"focused").hexdigest(),
+        cwd="/workspace",
+        execution_context="executor_sandbox",
+        exit_code=0,
+        stdout="",
+        stderr="",
+        delivery_receipt="b" * 64,
+    )
+    selection = evaluation.validation_selection(case, [event])
+    assert selection["required_covered"] is False
+    assert selection["required_missing"] == [{"family": "focused_test", "exit": "zero"}]
+
+
 def test_named_profile_rejects_response_fifo_injection(
     tmp_path: Path, evaluation_root: Path
 ) -> None:
@@ -1652,7 +1759,8 @@ def test_run_case_requires_successful_codex_exit(
         "model",
         "medium",
     )
-    assert cast(dict[str, object], result["verification"])["passed"] is False
+    assert cast(dict[str, object], result["verification"])["passed"] is True
+    assert cast(dict[str, object], result["task_outcome"])["valid"] is False
 
 
 def test_run_case_fails_closed_before_model_when_boundary_preflight_fails(
@@ -3112,6 +3220,9 @@ def test_install_file_link_and_run_case_broker_error_are_materialized(
     oracle = cast(dict[str, object], result["command_oracle"])
     assert oracle["valid"] is False
     assert "broker lifecycle fault" in cast(list[str], oracle["errors"])
+    assert cast(dict[str, object], result["verification"])["passed"] is True
+    assert cast(dict[str, object], result["task_outcome"])["valid"] is True
+    assert cast(dict[str, object], result["evidence_integrity"])["valid"] is False
 
 
 def test_shell_runtime_rejects_malformed_manifest_and_missing_real_shell(

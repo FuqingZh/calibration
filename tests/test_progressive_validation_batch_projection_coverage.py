@@ -23,6 +23,19 @@ def _result(case_id: str = "P01") -> dict[str, object]:
             "unexpected_changes": [],
             "missing_required_changes": [],
         },
+        "task_outcome": {"valid": True, "errors": []},
+        "validation_selection": {
+            "enabled": True,
+            "contract_satisfied": True,
+            "required_covered": True,
+            "ordered_covered": True,
+            "required_missing": [],
+            "ordered_missing": [],
+            "forbidden_families": [],
+            "forbidden_event_count": 0,
+            "observations": [],
+        },
+        "evidence_integrity": {"valid": True, "errors": []},
         "command_oracle": {"valid": True, "errors": []},
         "final_oracle": {"valid": True},
     }
@@ -33,7 +46,7 @@ def _smoke_manifest() -> dict[str, object]:
     return {
         "requested_model": "frozen-model",
         "requested_reasoning_effort": "medium",
-        "case_ids": ["P01", "P02", "P03", "P04", "P05", "P10"],
+        "case_ids": ["P02", "P03", "P05"],
         "initial_repetitions": 2,
         "schedule": schedule,
     }
@@ -58,7 +71,7 @@ def _write_completed_slot(
         "requested_model": manifest["requested_model"],
         "requested_reasoning_effort": manifest["requested_reasoning_effort"],
         "result_sha256": hashlib.sha256(result_path.read_bytes()).hexdigest(),
-        "classification": "valid",
+        "classification": "precise",
     }
     (slot_root / "completed.json").write_text(json.dumps(completed), encoding="utf-8")
     return slot_root, completed
@@ -86,6 +99,11 @@ def test_project_public_filters_observations_hashes_errors_and_rejects_leaks(
             {"raw_command": "wrong-exit", "family": "focused_test", "exit_code": "0"},
             "not-an-observation",
         ],
+    }
+    payload["task_outcome"] = {"valid": False, "errors": ["final answer failed"]}
+    payload["evidence_integrity"] = {
+        "valid": False,
+        "errors": ["private error"],
     }
     payload["final_oracle"] = {
         "enabled": True,
@@ -183,21 +201,21 @@ def test_classification_and_smoke_slot_boundaries_are_fail_closed() -> None:
                 "schedule": [{"repetition": 1, "slot_id": "", "phase": "smoke"}],
             }
         )
-    with pytest.raises(batch.BatchError, match="24 unique slots"):
+    with pytest.raises(batch.BatchError, match="12 unique slots"):
         batch._smoke_slots(
             {
-                "case_ids": ["P01", "P02", "P03", "P04", "P05", "P10"],
+                "case_ids": ["P02", "P03", "P05"],
                 "initial_repetitions": 2,
                 "schedule": [
                     {"repetition": 1, "slot_id": "duplicate", "phase": "smoke"}
                 ]
-                * 24,
+                * 12,
             }
         )
 
     manifest = _smoke_manifest()
     smoke_slots = batch._smoke_slots(manifest)
-    assert len(smoke_slots) == 24
+    assert len(smoke_slots) == 12
     first_slot = smoke_slots[0]
     position, selected = batch._slot_from_manifest(
         manifest, cast(str, first_slot["slot_id"])
@@ -207,7 +225,7 @@ def test_classification_and_smoke_slot_boundaries_are_fail_closed() -> None:
         batch._slot_from_manifest(manifest, "missing-slot")
     with pytest.raises(batch.BatchError, match="tiebreak schedule metadata"):
         batch._tiebreak_slots({"schedule": "invalid", "case_ids": []})
-    with pytest.raises(batch.BatchError, match="12 unique slots"):
+    with pytest.raises(batch.BatchError, match="6 unique slots"):
         batch._tiebreak_slots({"schedule": [], "case_ids": manifest["case_ids"]})
 
 
@@ -218,7 +236,9 @@ def test_completed_slot_rejects_invalid_ledger_identity_hash_and_symlink(
     slot = batch._smoke_slots(manifest)[0]
     root = tmp_path / "batch"
     slot_root, completed = _write_completed_slot(root, manifest, slot)
-    assert batch._validate_completed_slot(root, manifest, slot) == "valid"
+    assert batch._validate_completed_slot(root, manifest, slot) == batch._assessment(
+        _result(cast(str, slot["case_id"]))
+    )
 
     invalid_manifest = {**manifest, "requested_reasoning_effort": ""}
     with pytest.raises(batch.BatchError, match="execution fields are invalid"):

@@ -42,7 +42,7 @@ def _private_manifest(tmp_path: Path) -> tuple[Path, dict[str, object]]:
             "git_tree_oid": "tree",
         },
         "schedule": batch._schedule(batch.load_batch_config()),
-        "case_ids": ["P01", "P02", "P03", "P04", "P05", "P10"],
+        "case_ids": ["P02", "P03", "P05"],
         "initial_repetitions": 2,
     }
     canonical = json.dumps(manifest, indent=2, sort_keys=True) + "\n"
@@ -67,6 +67,9 @@ def _result(
     oracle_errors: list[str] | None = None,
     codex_exit_code: int = 0,
     final_valid: bool = True,
+    required_missing: int = 0,
+    ordered_missing: int = 0,
+    forbidden_events: int = 0,
 ) -> dict[str, object]:
     errors = oracle_errors or []
     oracle_valid = not errors
@@ -77,11 +80,35 @@ def _result(
         "codex_exit_code": codex_exit_code,
         "elapsed_seconds": 1.0,
         "verification": {
-            "passed": codex_exit_code == 0 and oracle_valid and final_valid,
+            "passed": True,
             "checks": [{"exit_code": 0}],
             "unexpected_changes": [],
             "missing_required_changes": [],
         },
+        "task_outcome": {
+            "valid": codex_exit_code == 0 and final_valid,
+            "errors": [],
+        },
+        "validation_selection": {
+            "enabled": True,
+            "contract_satisfied": not (
+                required_missing or ordered_missing or forbidden_events
+            ),
+            "required_covered": required_missing == 0,
+            "ordered_covered": ordered_missing == 0,
+            "required_missing": [
+                {"family": "focused_test", "exit": "zero"}
+                for _ in range(required_missing)
+            ],
+            "ordered_missing": [
+                {"family": "focused_test", "exit": "zero"}
+                for _ in range(ordered_missing)
+            ],
+            "forbidden_families": ["complete_gate"] if forbidden_events else [],
+            "forbidden_event_count": forbidden_events,
+            "observations": [],
+        },
+        "evidence_integrity": {"valid": oracle_valid, "errors": errors},
         "command_oracle": {"valid": oracle_valid, "errors": errors},
         "final_oracle": {"valid": final_valid},
     }
@@ -94,8 +121,8 @@ def _valid_freeze(_private_root: Path) -> dict[str, object]:
 def test_config_is_strict_and_schedule_counterbalances_all_slots() -> None:
     config = batch.load_batch_config()
     schedule = batch._schedule(config)
-    assert len(schedule) == 6 * 2 * 3
-    assert sum(slot["phase"] == "smoke" for slot in schedule) == 6 * 2 * 2
+    assert len(schedule) == 3 * 2 * 3
+    assert sum(slot["phase"] == "smoke" for slot in schedule) == 3 * 2 * 2
     assert schedule == batch._schedule(config)
     for repetition in range(1, 4):
         first_arms = [
@@ -104,8 +131,7 @@ def test_config_is_strict_and_schedule_counterbalances_all_slots() -> None:
             if slot["repetition"] == repetition
             and cast(str, slot["slot_id"]).endswith("-1")
         ]
-        assert first_arms.count("baseline") == 3
-        assert first_arms.count("candidate") == 3
+        assert abs(first_arms.count("baseline") - first_arms.count("candidate")) == 1
     for case_id in cast(list[str], config["case_ids"]):
         for repetition in range(1, 4):
             pair = [
@@ -171,7 +197,7 @@ def test_freeze_requires_clean_exact_commits_and_archives(
         tmp_path, commit_a, commit_b, model="test-model", reasoning_effort="high"
     )
     assert manifest["status"] == "frozen"
-    assert len(cast(list[object], manifest["schedule"])) == 36
+    assert len(cast(list[object], manifest["schedule"])) == 18
     saved = json.loads(
         (tmp_path / "progressive-validation-selection/manifest.json").read_text()
     )
@@ -235,6 +261,19 @@ def test_public_projection_hashes_raw_commands_and_removes_private_fields(
                         {"command": ["make", "secret"], "stdout": "/srv/private"}
                     ],
                 },
+                "task_outcome": {"valid": True, "errors": []},
+                "validation_selection": {
+                    "enabled": True,
+                    "contract_satisfied": True,
+                    "required_covered": True,
+                    "ordered_covered": True,
+                    "required_missing": [],
+                    "ordered_missing": [],
+                    "forbidden_families": [],
+                    "forbidden_event_count": 0,
+                    "observations": [],
+                },
+                "evidence_integrity": {"valid": True, "errors": []},
                 "command_oracle": {
                     "valid": True,
                     "observations": [
@@ -265,8 +304,14 @@ def test_public_projection_hashes_raw_commands_and_removes_private_fields(
 def test_summary_never_offsets_critical_failure_with_efficiency(tmp_path: Path) -> None:
     valid = tmp_path / "valid.json"
     failed = tmp_path / "failed.json"
-    valid.write_text('{"valid": true, "elapsed_seconds": 0.1}')
-    failed.write_text('{"valid": false, "elapsed_seconds": 0.01}')
+    valid.write_text(
+        '{"valid": true, "task_outcome": {"valid": true}, '
+        '"evidence_integrity": {"valid": true}, "elapsed_seconds": 0.1}'
+    )
+    failed.write_text(
+        '{"valid": false, "task_outcome": {"valid": false}, '
+        '"evidence_integrity": {"valid": true}, "elapsed_seconds": 0.01}'
+    )
     summary = batch.summarize_public([valid, failed])
     assert summary["decision"] == "reject"
     assert batch.summarize_public([])["decision"] == "not_yet_verified"
@@ -317,7 +362,7 @@ def test_manifest_slot_derives_every_execution_field_and_is_exclusive(
     assert cast(Path, captured["case_path"]).name == f"{first['case_id']}.yaml"
     assert captured["model"] == "frozen-model"
     assert captured["effort"] == "medium"
-    assert completed["classification"] == "valid"
+    assert completed["classification"] == "precise"
     with pytest.raises(batch.BatchError, match="refusing to reuse"):
         batch.run_manifest_slot(tmp_path, tmp_path / "auth.json", slot_id)
 
@@ -359,6 +404,19 @@ def test_live_canary_is_independent_append_only_evidence(
                 "unexpected_changes": [],
                 "missing_required_changes": [],
             },
+            "task_outcome": {"valid": True, "errors": []},
+            "validation_selection": {
+                "enabled": True,
+                "contract_satisfied": True,
+                "required_covered": True,
+                "ordered_covered": True,
+                "required_missing": [],
+                "ordered_missing": [],
+                "forbidden_families": [],
+                "forbidden_event_count": 0,
+                "observations": [],
+            },
+            "evidence_integrity": {"valid": True, "errors": []},
             "command_oracle": {
                 "valid": True,
                 "broker_events": [{"execution_id": 1}],
@@ -444,6 +502,19 @@ def test_invalid_live_canary_is_retained_and_blocks_reuse(
                 "unexpected_changes": [],
                 "missing_required_changes": [],
             },
+            "task_outcome": {"valid": True, "errors": []},
+            "validation_selection": {
+                "enabled": True,
+                "contract_satisfied": True,
+                "required_covered": True,
+                "ordered_covered": True,
+                "required_missing": [],
+                "ordered_missing": [],
+                "forbidden_families": [],
+                "forbidden_event_count": 0,
+                "observations": [],
+            },
+            "evidence_integrity": {"valid": True, "errors": []},
             "command_oracle": {"valid": True, "broker_events": []},
             "final_oracle": {"valid": True},
         }
@@ -540,25 +611,27 @@ def test_runner_preflight_failure_is_recorded_as_invalid_and_cannot_reuse_slot(
 
 
 def test_result_classification_never_hides_non_selection_failure() -> None:
-    forbidden = ["forbidden family observed: complete_gate"]
     assert (
-        batch._classification("baseline", _result("P01", oracle_errors=forbidden))
-        == "comparable_overvalidation"
+        batch._classification("baseline", _result("P01", forbidden_events=1))
+        == "overvalidation"
     )
     assert (
-        batch._classification("candidate", _result("P01", oracle_errors=forbidden))
-        == "comparable_overvalidation"
+        batch._classification(
+            "candidate",
+            _result("P01", oracle_errors=["line 1: unrecognized command"]),
+        )
+        == "evidence_invalid"
     )
     assert (
         batch._classification(
             "baseline",
-            _result("P01", oracle_errors=forbidden, codex_exit_code=1),
+            _result("P01", forbidden_events=1, codex_exit_code=1),
         )
         == "critical"
     )
     assert (
         batch._classification(
-            "baseline", _result("P01", oracle_errors=forbidden, final_valid=False)
+            "baseline", _result("P01", forbidden_events=1, final_valid=False)
         )
         == "critical"
     )
@@ -567,17 +640,22 @@ def test_result_classification_never_hides_non_selection_failure() -> None:
 def test_relative_pairing_and_tiebreak_execution_are_symmetric(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    assert batch._paired_outcome("critical", "valid") == "candidate_win"
-    assert batch._paired_outcome("valid", "critical") == "baseline_win"
-    assert (
-        batch._paired_outcome("comparable_overvalidation", "comparable_overvalidation")
-        == "tie"
+    critical = batch._assessment(_result("P01", codex_exit_code=1))
+    precise = batch._assessment(_result("P01"))
+    overvalidation = batch._assessment(_result("P01", forbidden_events=1))
+    invalid = batch._assessment(
+        _result("P01", oracle_errors=["line 1: unrecognized command"])
     )
-    with pytest.raises(batch.BatchError, match="classification is invalid"):
-        batch._paired_outcome("unknown", "valid")
+    assert batch._paired_outcome(critical, precise) == "candidate_win"
+    assert batch._paired_outcome(precise, critical) == "baseline_win"
+    assert batch._paired_outcome(overvalidation, overvalidation) == "tie"
+    assert batch._paired_outcome(precise, invalid) == "inconclusive"
+    assert batch._paired_outcome(overvalidation, precise) == "candidate_win"
+    with pytest.raises(batch.BatchError, match="assessment is invalid"):
+        batch._paired_outcome({}, precise)
 
     manifest: dict[str, object] = {
-        "case_ids": ["P01", "P02", "P03", "P04", "P05", "P10"],
+        "case_ids": ["P02", "P03", "P05"],
         "initial_repetitions": 2,
         "schedule": batch._schedule(batch.load_batch_config()),
     }
@@ -622,13 +700,80 @@ def test_relative_pairing_and_tiebreak_execution_are_symmetric(
     ]
     assert calls == expected
     assert [item["slot_id"] for item in completed] == expected
-    assert prefix_allowances == [24]
+    assert prefix_allowances == [12]
     calls.clear()
     resume_complete[0] = True
     resumed = batch.run_tiebreaks(tmp_path, tmp_path / "auth.json")
     assert calls == []
     assert [item["slot_id"] for item in resumed] == expected
-    assert prefix_allowances == [24, 24]
+    assert prefix_allowances == [12, 12]
+
+
+def test_relative_status_accepts_noninferior_tasks_with_fewer_extra_checks(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    manifest: dict[str, object] = {
+        "case_ids": ["P02", "P03", "P05"],
+        "initial_repetitions": 2,
+        "schedule": batch._schedule(batch.load_batch_config()),
+    }
+    monkeypatch.setattr(batch, "verify_freeze", _valid_freeze)
+
+    def private_manifest(_root: Path) -> dict[str, object]:
+        return manifest
+
+    monkeypatch.setattr(batch, "_private_manifest", private_manifest)
+
+    def assessment(
+        _root: Path,
+        _manifest: dict[str, object],
+        slot: dict[str, object],
+    ) -> dict[str, object]:
+        if slot["arm_key"] == "baseline":
+            return batch._assessment(_result("P02", forbidden_events=1))
+        return batch._assessment(_result("P02"))
+
+    monkeypatch.setattr(batch, "_validate_completed_slot", assessment)
+    status = batch.relative_status(tmp_path)
+    assert status["state"] == "complete"
+    assert status["decision"] == "accept"
+    assert status["candidate_wins"] == 3
+    assert status["baseline_wins"] == 0
+    assert cast(dict[str, int], status["baseline"])["task_valid"] == 6
+    assert cast(dict[str, int], status["candidate"])["task_valid"] == 6
+    assert cast(dict[str, int], status["baseline"])["forbidden_events"] == 6
+    assert cast(dict[str, int], status["candidate"])["forbidden_events"] == 0
+
+
+def test_relative_status_rejects_real_task_or_coverage_regression(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    manifest: dict[str, object] = {
+        "case_ids": ["P02", "P03", "P05"],
+        "initial_repetitions": 2,
+        "schedule": batch._schedule(batch.load_batch_config()),
+    }
+    monkeypatch.setattr(batch, "verify_freeze", _valid_freeze)
+
+    def private_manifest(_root: Path) -> dict[str, object]:
+        return manifest
+
+    monkeypatch.setattr(batch, "_private_manifest", private_manifest)
+
+    def assessment(
+        _root: Path,
+        _manifest: dict[str, object],
+        slot: dict[str, object],
+    ) -> dict[str, object]:
+        if slot["arm_key"] == "candidate":
+            return batch._assessment(_result("P02", required_missing=1))
+        return batch._assessment(_result("P02"))
+
+    monkeypatch.setattr(batch, "_validate_completed_slot", assessment)
+    status = batch.relative_status(tmp_path)
+    assert status["decision"] == "reject"
+    assert status["baseline_wins"] == 3
+    assert cast(dict[str, int], status["candidate"])["required_missing"] == 6
 
 
 def test_initial_outcome_validation_and_tiebreak_authorization_fail_closed(
@@ -660,8 +805,10 @@ def test_initial_outcome_validation_and_tiebreak_authorization_fail_closed(
     def one_slot(_manifest: object) -> list[dict[str, object]]:
         return [valid_slot]
 
-    def valid_completed(_root: Path, _manifest: object, _slot: object) -> str:
-        return "valid"
+    def valid_completed(
+        _root: Path, _manifest: object, _slot: object
+    ) -> dict[str, object]:
+        return batch._assessment(_result("P01"))
 
     monkeypatch.setattr(batch, "_smoke_slots", one_slot)
     monkeypatch.setattr(batch, "_validate_completed_slot", valid_completed)
@@ -728,7 +875,7 @@ def test_manifest_slot_accepts_only_an_eligible_tiebreak(
     completed = batch.run_manifest_slot(
         tmp_path, tmp_path / "auth.json", cast(str, tiebreak["slot_id"])
     )
-    assert completed["classification"] == "valid"
+    assert completed["classification"] == "precise"
 
     with pytest.raises(batch.BatchError, match="not authorized"):
         batch.run_manifest_slot(tmp_path, tmp_path / "auth.json", "r3-P04-1")
@@ -739,9 +886,9 @@ def test_manifest_slot_accepts_only_an_eligible_tiebreak(
 
 SMOKE_STATUS_CASES: list[tuple[frozenset[str], str]] = [
     (frozenset(), "ready_for_relative_analysis"),
-    (frozenset({"baseline"}), "ready_for_relative_analysis"),
-    (frozenset({"candidate"}), "ready_for_relative_analysis"),
-    (frozenset({"baseline", "candidate"}), "ready_for_relative_analysis"),
+    (frozenset({"baseline"}), "eligible_for_tiebreaks"),
+    (frozenset({"candidate"}), "eligible_for_tiebreaks"),
+    (frozenset({"baseline", "candidate"}), "eligible_for_tiebreaks"),
 ]
 
 
@@ -795,7 +942,7 @@ def test_smoke_status_recomputes_complete_ledger(
         )
     status = batch.smoke_status(tmp_path)
     assert status["state"] == expected_state
-    assert status["completed_slots"] == 24
+    assert status["completed_slots"] == 12
 
 
 def test_smoke_status_is_fail_closed_for_missing_failed_and_tampered_ledgers(
