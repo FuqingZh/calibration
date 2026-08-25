@@ -33,6 +33,8 @@ def _smoke_manifest() -> dict[str, object]:
     return {
         "requested_model": "frozen-model",
         "requested_reasoning_effort": "medium",
+        "case_ids": ["P01", "P02", "P03", "P04", "P05", "P10"],
+        "initial_repetitions": 2,
         "schedule": schedule,
     }
 
@@ -171,23 +173,31 @@ def test_classification_and_smoke_slot_boundaries_are_fail_closed() -> None:
 
     with pytest.raises(batch.BatchError, match="frozen schedule is invalid"):
         batch._smoke_slots({"schedule": "not-a-list"})
+    with pytest.raises(batch.BatchError, match="initial schedule metadata"):
+        batch._smoke_slots({"schedule": [], "case_ids": [], "initial_repetitions": 0})
     with pytest.raises(batch.BatchError, match="frozen smoke slot is invalid"):
         batch._smoke_slots(
-            {"schedule": [{"repetition": 1, "slot_id": "", "phase": "smoke"}]}
+            {
+                "case_ids": ["P01"],
+                "initial_repetitions": 1,
+                "schedule": [{"repetition": 1, "slot_id": "", "phase": "smoke"}],
+            }
         )
-    with pytest.raises(batch.BatchError, match="28 unique slots"):
+    with pytest.raises(batch.BatchError, match="24 unique slots"):
         batch._smoke_slots(
             {
+                "case_ids": ["P01", "P02", "P03", "P04", "P05", "P10"],
+                "initial_repetitions": 2,
                 "schedule": [
                     {"repetition": 1, "slot_id": "duplicate", "phase": "smoke"}
                 ]
-                * 28
+                * 24,
             }
         )
 
     manifest = _smoke_manifest()
     smoke_slots = batch._smoke_slots(manifest)
-    assert len(smoke_slots) == 28
+    assert len(smoke_slots) == 24
     first_slot = smoke_slots[0]
     position, selected = batch._slot_from_manifest(
         manifest, cast(str, first_slot["slot_id"])
@@ -195,6 +205,10 @@ def test_classification_and_smoke_slot_boundaries_are_fail_closed() -> None:
     assert position == 0 and selected == first_slot
     with pytest.raises(batch.BatchError, match="not in the frozen smoke schedule"):
         batch._slot_from_manifest(manifest, "missing-slot")
+    with pytest.raises(batch.BatchError, match="tiebreak schedule metadata"):
+        batch._tiebreak_slots({"schedule": "invalid", "case_ids": []})
+    with pytest.raises(batch.BatchError, match="12 unique slots"):
+        batch._tiebreak_slots({"schedule": [], "case_ids": manifest["case_ids"]})
 
 
 def test_completed_slot_rejects_invalid_ledger_identity_hash_and_symlink(

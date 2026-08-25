@@ -1,8 +1,8 @@
 {
   "canonicalization": "UTF-8 bytes; lexical POSIX-relative path order; root_tree_sha256 is SHA-256 of path, NUL, digest, newline records",
   "files": {
-    "batch-config.json": "681a8b68b4c18e0ea68a1e430d9b91d83382dfc2c9b72f4f6f19a90bdde6f489",
-    "batch.schema.json": "8b75051f61a92ac268c63619f484ab2e6d8b1e3a2f86efa51f9704fe417b0aca",
+    "batch-config.json": "daac6f33559beb8d9d863b9a25eeba5bc0d5b25cc56c6372b7d54cc81f3dc5a9",
+    "batch.schema.json": "bf3455c1a3299e233a91dde514be2b755281bf45162474147ed11084edc10f80",
     "cases/C01.yaml": "56219088a8c43c57aea17c98c51ff138374e1833ccae30a140b56a5f8f5dfc47",
     "cases/H01.yaml": "f420380fd8df6d09d223c450f38ab0eb5549235d1eac3b64588c1c4a8c898731",
     "cases/H02.yaml": "875499230ce31d36a7c3a8cf1c98de1aa1101642427d07ede3a4e78a9718c1eb",
@@ -156,6 +156,6 @@
     "rubric.yaml": "5fc67b68d0bbbae65eef6f357466f4444efacf677738f33b050f25d4c48cffe2"
   },
   "hash_algorithm": "sha256",
-  "root_tree_sha256": "eff68a91f5f46cee5cb01628353bc51bc79f434d7c0664880db147526527f47b",
+  "root_tree_sha256": "f2ec344ad178fdcea3fd4c00898da18b4b8d285d0464f6b4e3024f056450329f",
   "schema_version": 1
 }

@@ -552,6 +552,7 @@ def _schedule(config: Mapping[str, object]) -> list[dict[str, object]]:
     cases = cast(list[str], config["case_ids"])
     arms = cast(list[str], config["private_arm_keys"])
     repetitions = cast(int, config["valid_repetitions"])
+    initial_repetitions = cast(int, config["smoke_repetitions"])
     rng = random.Random(cast(int, config["seed"]))
     slots: list[dict[str, object]] = []
     assignment_order = cases.copy()
@@ -573,7 +574,9 @@ def _schedule(config: Mapping[str, object]) -> list[dict[str, object]]:
                         "slot_id": f"r{repetition + 1}-{case_id}-{position + 1}",
                         "case_id": case_id,
                         "repetition": repetition + 1,
-                        "phase": "smoke" if repetition == 0 else "repeat",
+                        "phase": (
+                            "smoke" if repetition < initial_repetitions else "tiebreak"
+                        ),
                         "arm_key": arm_key,
                         "paired_slot": f"r{repetition + 1}-{case_id}",
                     }
@@ -642,6 +645,9 @@ def freeze_batch(
             "requested_reasoning_effort": reasoning_effort,
             "turn_budget": config["turn_budget"],
             "seed": config["seed"],
+            "case_ids": config["case_ids"],
+            "initial_repetitions": config["smoke_repetitions"],
+            "valid_repetitions": config["valid_repetitions"],
             "arm_map": arm_map,
             "live_canary_case_id": canary_case_id,
             "canary_source": canary_source,
@@ -1094,7 +1100,7 @@ def _classification(arm_key: str, result: Mapping[str, object]) -> str:
     )
     if valid:
         return "valid"
-    if arm_key == "baseline" and workspace_safe and forbidden_only:
+    if workspace_safe and forbidden_only:
         return "comparable_overvalidation"
     return "critical"
 
@@ -1287,11 +1293,25 @@ def _smoke_slots(manifest: Mapping[str, object]) -> list[dict[str, object]]:
     schedule = manifest.get("schedule")
     if not isinstance(schedule, list):
         raise BatchError("frozen schedule is invalid")
+    raw_case_ids = manifest.get("case_ids")
+    initial_repetitions = manifest.get("initial_repetitions")
+    if (
+        not isinstance(raw_case_ids, list)
+        or not all(
+            isinstance(case_id, str) and case_id
+            for case_id in cast(list[object], raw_case_ids)
+        )
+        or not isinstance(initial_repetitions, int)
+        or isinstance(initial_repetitions, bool)
+        or initial_repetitions < 1
+    ):
+        raise BatchError("frozen initial schedule metadata is invalid")
+    case_ids = cast(list[object], raw_case_ids)
     slots = [
         cast(dict[str, object], item)
         for item in cast(list[object], schedule)
         if isinstance(item, dict)
-        and cast(dict[str, object], item).get("repetition") == 1
+        and cast(dict[str, object], item).get("phase") == "smoke"
     ]
     identities: list[str] = []
     for slot in slots:
@@ -1299,8 +1319,11 @@ def _smoke_slots(manifest: Mapping[str, object]) -> list[dict[str, object]]:
         if not isinstance(slot_id, str) or not slot_id or slot.get("phase") != "smoke":
             raise BatchError("frozen smoke slot is invalid")
         identities.append(slot_id)
-    if len(slots) != 28 or len(set(identities)) != 28:
-        raise BatchError("frozen smoke schedule must contain 28 unique slots")
+    expected_count = len(case_ids) * 2 * initial_repetitions
+    if len(slots) != expected_count or len(set(identities)) != expected_count:
+        raise BatchError(
+            f"frozen smoke schedule must contain {expected_count} unique slots"
+        )
     return slots
 
 
@@ -1311,6 +1334,80 @@ def _slot_from_manifest(
         if slot.get("slot_id") == slot_id:
             return position, slot
     raise BatchError(f"slot is not in the frozen smoke schedule: {slot_id}")
+
+
+def _tiebreak_slots(manifest: Mapping[str, object]) -> list[dict[str, object]]:
+    schedule = manifest.get("schedule")
+    raw_case_ids = manifest.get("case_ids")
+    if not isinstance(schedule, list) or not isinstance(raw_case_ids, list):
+        raise BatchError("frozen tiebreak schedule metadata is invalid")
+    case_ids = cast(list[object], raw_case_ids)
+    slots = [
+        cast(dict[str, object], item)
+        for item in cast(list[object], schedule)
+        if isinstance(item, dict)
+        and cast(dict[str, object], item).get("phase") == "tiebreak"
+    ]
+    identities = [slot.get("slot_id") for slot in slots]
+    expected_count = len(case_ids) * 2
+    if (
+        len(slots) != expected_count
+        or not all(isinstance(item, str) and item for item in identities)
+        or len(set(identities)) != expected_count
+    ):
+        raise BatchError(
+            f"frozen tiebreak schedule must contain {expected_count} unique slots"
+        )
+    return slots
+
+
+def _paired_outcome(baseline: str, candidate: str) -> str:
+    rank = {"critical": 0, "comparable_overvalidation": 1, "valid": 2}
+    if baseline not in rank or candidate not in rank:
+        raise BatchError("frozen classification is invalid")
+    if rank[candidate] > rank[baseline]:
+        return "candidate_win"
+    if rank[candidate] < rank[baseline]:
+        return "baseline_win"
+    return "tie"
+
+
+def _initial_case_outcomes(
+    root: Path, manifest: Mapping[str, object]
+) -> dict[str, list[str]]:
+    grouped: dict[tuple[str, int], dict[str, str]] = {}
+    for slot in _smoke_slots(manifest):
+        case_id = slot.get("case_id")
+        repetition = slot.get("repetition")
+        arm_key = slot.get("arm_key")
+        if (
+            not isinstance(case_id, str)
+            or not isinstance(repetition, int)
+            or isinstance(repetition, bool)
+            or arm_key not in {"baseline", "candidate"}
+        ):
+            raise BatchError("frozen initial slot identity is invalid")
+        grouped.setdefault((case_id, repetition), {})[cast(str, arm_key)] = (
+            _validate_completed_slot(root, manifest, slot)
+        )
+    outcomes: dict[str, list[str]] = {}
+    for (case_id, _), pair in grouped.items():
+        if set(pair) != {"baseline", "candidate"}:
+            raise BatchError("frozen initial pair is incomplete")
+        outcomes.setdefault(case_id, []).append(
+            _paired_outcome(pair["baseline"], pair["candidate"])
+        )
+    if any(len(values) != 2 for values in outcomes.values()):
+        raise BatchError("frozen initial case does not contain two paired outcomes")
+    return outcomes
+
+
+def _conflicting_case_ids(root: Path, manifest: Mapping[str, object]) -> list[str]:
+    return sorted(
+        case_id
+        for case_id, outcomes in _initial_case_outcomes(root, manifest).items()
+        if outcomes[0] != outcomes[1]
+    )
 
 
 def _validate_completed_slot(
@@ -1382,9 +1479,23 @@ def run_manifest_slot(
         raise BatchError("freeze verification failed")
     _require_verified_canary(private_root)
     manifest = _private_manifest(private_root)
-    position, slot = _slot_from_manifest(manifest, slot_id)
-    for previous in _smoke_slots(manifest)[:position]:
-        _validate_completed_slot(root, manifest, previous)
+    initial = _smoke_slots(manifest)
+    if any(slot.get("slot_id") == slot_id for slot in initial):
+        position, slot = _slot_from_manifest(manifest, slot_id)
+        for previous in initial[:position]:
+            _validate_completed_slot(root, manifest, previous)
+    else:
+        conflicts = set(_conflicting_case_ids(root, manifest))
+        matching_tiebreak = [
+            slot
+            for slot in _tiebreak_slots(manifest)
+            if slot.get("slot_id") == slot_id and slot.get("case_id") in conflicts
+        ]
+        if len(matching_tiebreak) != 1:
+            raise BatchError(
+                f"slot is not authorized by the frozen schedule: {slot_id}"
+            )
+        slot = matching_tiebreak[0]
     frozen_slot_id = slot.get("slot_id")
     case_id = slot.get("case_id")
     arm_key = slot.get("arm_key")
@@ -1470,6 +1581,7 @@ def _completed_smoke_prefix(
     root: Path,
     manifest: Mapping[str, object],
     smoke: Sequence[Mapping[str, object]],
+    allowed_existing_ids: frozenset[str] = frozenset(),
 ) -> list[dict[str, object]]:
     """Return the validated contiguous completed prefix, or fail closed.
 
@@ -1479,7 +1591,7 @@ def _completed_smoke_prefix(
     invalid run, not authority to delete or replace its artifacts.
     """
     completed: list[dict[str, object]] = []
-    expected_ids = {
+    expected_ids = allowed_existing_ids | {
         cast(str, slot["slot_id"])
         for slot in smoke
         if isinstance(slot.get("slot_id"), str)
@@ -1528,6 +1640,32 @@ def run_smoke(private_root: Path, auth_file: Path) -> list[dict[str, object]]:
     completed.extend(
         run_manifest_slot(private_root, auth_file, cast(str, slot["slot_id"]))
         for slot in remaining
+    )
+    return completed
+
+
+def run_tiebreaks(private_root: Path, auth_file: Path) -> list[dict[str, object]]:
+    """Execute only third pairs whose two frozen initial outcomes conflict."""
+    verification = verify_freeze(private_root)
+    if verification.get("valid") is not True:
+        raise BatchError("freeze verification failed")
+    _require_verified_canary(private_root)
+    manifest = _private_manifest(private_root)
+    root = _run_root(private_root)
+    _completed_smoke_prefix(root, manifest, _smoke_slots(manifest))
+    conflicts = set(_conflicting_case_ids(root, manifest))
+    selected = [
+        slot for slot in _tiebreak_slots(manifest) if slot.get("case_id") in conflicts
+    ]
+    initial_ids = frozenset(
+        cast(str, slot["slot_id"]) for slot in _smoke_slots(manifest)
+    )
+    completed = _completed_smoke_prefix(
+        root, manifest, selected, allowed_existing_ids=initial_ids
+    )
+    completed.extend(
+        run_manifest_slot(private_root, auth_file, cast(str, slot["slot_id"]))
+        for slot in selected[len(completed) :]
     )
     return completed
 
@@ -1589,16 +1727,14 @@ def smoke_status(private_root: Path) -> dict[str, object]:
         arm == "baseline" and classification == "critical"
         for arm, classification in classifications
     )
+    conflicts: list[str] = []
     if failed:
         state = "invalid"
     elif missing:
         state = "not_yet_verified"
-    elif candidate_critical:
-        state = "reject"
-    elif baseline_critical:
-        state = "incomparable"
     else:
-        state = "eligible_for_repeats"
+        conflicts = _conflicting_case_ids(root, manifest)
+        state = "eligible_for_tiebreaks" if conflicts else "ready_for_relative_analysis"
     return {
         "state": state,
         "expected_slots": len(expected),
@@ -1606,6 +1742,7 @@ def smoke_status(private_root: Path) -> dict[str, object]:
         "failed_slots": failed,
         "candidate_critical": candidate_critical,
         "baseline_critical": baseline_critical,
+        "conflicting_case_ids": conflicts,
     }
 
 
@@ -1646,6 +1783,9 @@ def _parser() -> argparse.ArgumentParser:
     smoke = children.add_parser("run-smoke")
     smoke.add_argument("--private-root", type=Path, required=True)
     smoke.add_argument("--auth-file", type=Path, required=True)
+    tiebreaks = children.add_parser("run-tiebreaks")
+    tiebreaks.add_argument("--private-root", type=Path, required=True)
+    tiebreaks.add_argument("--auth-file", type=Path, required=True)
     canary = children.add_parser("run-canary")
     canary.add_argument("--private-root", type=Path, required=True)
     canary.add_argument("--auth-file", type=Path, required=True)
@@ -1680,6 +1820,8 @@ def main(argv: list[str] | None = None) -> int:
             payload = verify_freeze(args.private_root)
         elif args.command == "run-smoke":
             payload = {"completed": run_smoke(args.private_root, args.auth_file)}
+        elif args.command == "run-tiebreaks":
+            payload = {"completed": run_tiebreaks(args.private_root, args.auth_file)}
         elif args.command == "run-canary":
             payload = run_canary(args.private_root, args.auth_file)
         elif args.command == "run-one":

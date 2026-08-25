@@ -8,10 +8,10 @@ Calibration is in stable maintenance mode. The v2.1 relative-replacement test
 plan is the current progressive-validation authority. G0 at
 `ff16714999465ad1acbd130dbb9711725584544f` with Codex 0.148.0 found that
 `codex exec --json` lacks structured, correlated approval events; its error
-items are not a reliable replacement, so the evaluation is
-`blocked_by_approval_observability`: zero
-model runs, no candidate acceptance or rejection, and no controller or config
-change. The v2.0 plan and its 2026-08-24 smoke/recovery results remain
+items are not a reliable replacement. Approval statistics were subsequently
+removed from the decision scope, so the outcome-only comparison is authorized
+without parsing that prose. `Approve for me` remains a symmetric runtime safety
+control. The v2.0 plan and its 2026-08-24 smoke/recovery results remain
 historical background only. This follows the completed v1.0
 proportional-wording increment and is layered on the ongoing project-docs
 architecture convergence and does not reopen the completed runtime or AO

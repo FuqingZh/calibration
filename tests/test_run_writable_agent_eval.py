@@ -575,6 +575,7 @@ def test_build_codex_command_contains_frozen_controls(tmp_path: Path) -> None:
     assert "--ephemeral" in command
     assert "--ignore-user-config" in command
     assert "--strict-config" in command
+    assert "--approve-for-me" in command
     assert "--ignore-rules" not in command
     assert command.count("--disable") == 5
     for feature in (

@@ -4,14 +4,14 @@
 
 The frozen 14-pair protocol below is historical background. Do not use it to
 accept, reject, tune, or migrate the candidate. The current formal authority is
-[`docs/testing/20260825-v2.1-progressive-validation-relative-replacement-test-plan.md`](../../docs/testing/20260825-v2.1-progressive-validation-relative-replacement-test-plan.md): it compares relative net improvement against the current effective baseline while preserving repository-owned mandates, uses fresh approval-aware P01/P02/P03/P04/P05/P10 runs, and treats common failure as inherited debt.
+[`docs/testing/20260825-v2.1-progressive-validation-relative-replacement-test-plan.md`](../../docs/testing/20260825-v2.1-progressive-validation-relative-replacement-test-plan.md): it compares relative net improvement against the current effective baseline while preserving repository-owned mandates, uses fresh outcome-only P01/P02/P03/P04/P05/P10 runs, and treats common failure as inherited debt.
 
 Its G0 preflight at `ff16714999465ad1acbd130dbb9711725584544f`, Codex 0.148.0,
-is `blocked_by_approval_observability`: `codex exec --json` has no structured,
-correlated approval event, and parsing its error-message prose would not supply
-the missing evidence. Therefore there are zero model runs, no candidate
-decision, and no authorized controller or configuration change. See the companion
-[`2026-08-25 preflight decision`](../../docs/decisions/2026-08-25-progressive-validation-relative-replacement-preflight.md).
+found that `codex exec --json` has no structured, correlated approval event.
+The revised protocol intentionally skips approval statistics and does not parse
+error-message prose. `Approve for me` remains enabled identically in both arms;
+the comparison uses 24 initial runs and no more than 36 runs. See the
+[`outcome-only scope decision`](../../docs/decisions/2026-08-25-progressive-validation-outcome-only-approval-scope.md).
 
 This frozen evaluation compares validation-selection behavior without treating
 command count as a quality signal. Deterministic command reconciliation decides
@@ -137,26 +137,32 @@ required-check/proof coverage, and final-answer contract failures. Partial gains
 do not offset deterministic critical failures. STOP: no repeats, judges,
 activation, or migration are authorized.
 
-Run one smoke repetition for each of the 14 comparison cases only. Continue
-only if both arms preserve authority and workspace safety and satisfy
-deterministic mandatory obligations.
+For the outcome-only v2.1 comparison, run two initial paired repetitions for
+P01, P02, P03, P04, P05, and P10. `run-smoke` executes those 24 slots.
+`smoke-status` reports conflicts without treating a candidate task failure as
+an automatic veto. Run `run-tiebreaks` only when that status names conflicting
+cases; it executes the frozen third pair for those cases and no others. The
+maximum is 36 runs. Approval activity is not collected or inferred.
 
 The batch controller freezes exact clean commits, source archives, fixture and
 runner hashes, the Codex CLI version, model controls, and the complete schedule
 before a model call. It archives its current controller commit separately for
 C01, then records the canary only in its independent private ledger. `run-one`
-accepts only a frozen smoke slot identifier after verified C01 completion; it
+accepts only an authorized frozen slot identifier after verified C01
+completion; it
 derives the case, arm archive, model, and effort from the private manifest and
 writes exclusive start, completion, or failure records. `smoke-status`
-recomputes result hashes and classifications for all 28 smoke slots. Missing
+recomputes result hashes and classifications for all 24 initial slots. Missing
 evidence remains `not_yet_verified`; a baseline selection-only forbidden check
-may remain comparable, but no execution, workspace, required-check, or final-
-answer failure is reclassified as overvalidation.
+and the same candidate outcome are classified symmetrically as comparable
+overvalidation, but no execution, workspace, required-check, or final-answer
+failure is reclassified as overvalidation.
 
-For every eligible arm and every primary or holdout case, record exactly three
-valid runs. A run is invalid, rather than replaced silently, when its capture,
-events, source hashes, or blind packet leak checks fail. A candidate critical
-failure stops that case from contributing an efficiency comparison.
+The third repetition is a conflict breaker, not a default. A run is invalid,
+rather than replaced silently, when its capture, events, source hashes, or
+isolation checks fail. Common paired failure is inherited debt; ordinary
+candidate-only failure is a loss, while only a realized candidate-only narrow
+veto stops the comparison.
 
 The holdouts H01--H04 remain outside instruction authoring and smoke tuning.
 They exercise executable prose, authority precedence, generated-output

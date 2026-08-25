@@ -36,6 +36,8 @@ def _manifest_root(
             "candidate": {"archive": "sources/candidate.tar"},
         },
         "schedule": batch._schedule(batch.load_batch_config()),
+        "case_ids": ["P01", "P02", "P03", "P04", "P05", "P10"],
+        "initial_repetitions": 2,
     }
     _write_manifest(root, manifest)
     return private_root, manifest
@@ -318,7 +320,7 @@ def test_run_smoke_requires_freeze_then_invokes_each_frozen_slot(
     expected = [
         cast(str, slot["slot_id"])
         for slot in cast(list[dict[str, object]], manifest["schedule"])
-        if slot["repetition"] == 1
+        if slot["phase"] == "smoke"
     ]
     assert calls == expected
     assert completed == [{"slot_id": slot_id} for slot_id in expected]

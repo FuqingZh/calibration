@@ -27,6 +27,7 @@ from scripts import run_progressive_validation_selection_eval as batch
         ),
         ("verify", [], "verify_freeze"),
         ("run-smoke", ["--auth-file", "auth"], "run_smoke"),
+        ("run-tiebreaks", ["--auth-file", "auth"], "run_tiebreaks"),
         ("run-one", ["--auth-file", "auth", "--slot-id", "slot"], "run_manifest_slot"),
         ("smoke-status", [], "smoke_status"),
         (
@@ -57,12 +58,19 @@ def test_main_routes_each_declared_cli_command(
 
     monkeypatch.setattr(batch, target, fake)
     argv = [command]
-    if command in {"freeze", "verify", "run-smoke", "run-one", "smoke-status"}:
+    if command in {
+        "freeze",
+        "verify",
+        "run-smoke",
+        "run-tiebreaks",
+        "run-one",
+        "smoke-status",
+    }:
         argv.extend(("--private-root", "/private"))
     argv.extend(arguments)
     assert batch.main(argv) == 0
     payload = json.loads(capsys.readouterr().out)
-    if command == "run-smoke":
+    if command in {"run-smoke", "run-tiebreaks"}:
         assert payload["completed"]["route"] == target
     else:
         assert payload["route"] == target

@@ -210,7 +210,7 @@ def test_freezes_fourteen_comparison_cases_and_one_independent_live_canary() -> 
         LIVE_CANARY_CASE_ID
     }
     config = json.loads((EVALUATION_ROOT / "batch-config.json").read_text())
-    assert set(config["case_ids"]) == CASE_IDS
+    assert config["case_ids"] == ["P01", "P02", "P03", "P04", "P05", "P10"]
     assert config["live_canary_case_id"] == LIVE_CANARY_CASE_ID
     for path in CASES:
         raw = yaml.safe_load(path.read_text(encoding="utf-8"))

@@ -1,7 +1,7 @@
 # Progressive Validation Relative-Replacement Approval-Observability Preflight
 
 Date: 2026-08-25
-Status: blocked by approval observability
+Status: superseded for the outcome-only protocol
 
 ## Decision
 
@@ -31,6 +31,12 @@ authorized from this result.
 The 2026-08-24 baseline, smoke, rejection, and recovery records are retained as
 historical evidence only. They do not resolve this blocked preflight and must
 not be pooled into the new relative comparison.
+
+The user subsequently removed approval statistics from the replacement
+decision. The missing structured events remain a real limitation, but the
+revised protocol neither scores nor reconstructs approval activity. This record
+therefore no longer blocks the outcome-only comparison; it remains the reason
+approval burden is excluded.
 
 ## Unblock Boundary
 

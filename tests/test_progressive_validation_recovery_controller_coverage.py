@@ -24,6 +24,8 @@ def _manifest() -> dict[str, object]:
             "candidate": {"archive": "sources/candidate.tar"},
         },
         "schedule": batch._schedule(batch.load_batch_config()),
+        "case_ids": ["P01", "P02", "P03", "P04", "P05", "P10"],
+        "initial_repetitions": 2,
     }
 
 

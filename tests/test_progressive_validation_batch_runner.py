@@ -42,6 +42,8 @@ def _private_manifest(tmp_path: Path) -> tuple[Path, dict[str, object]]:
             "git_tree_oid": "tree",
         },
         "schedule": batch._schedule(batch.load_batch_config()),
+        "case_ids": ["P01", "P02", "P03", "P04", "P05", "P10"],
+        "initial_repetitions": 2,
     }
     canonical = json.dumps(manifest, indent=2, sort_keys=True) + "\n"
     (root / "manifest.json").write_text(canonical, encoding="utf-8")
@@ -92,8 +94,8 @@ def _valid_freeze(_private_root: Path) -> dict[str, object]:
 def test_config_is_strict_and_schedule_counterbalances_all_slots() -> None:
     config = batch.load_batch_config()
     schedule = batch._schedule(config)
-    assert len(schedule) == 14 * 2 * 3
-    assert sum(slot["phase"] == "smoke" for slot in schedule) == 14 * 2
+    assert len(schedule) == 6 * 2 * 3
+    assert sum(slot["phase"] == "smoke" for slot in schedule) == 6 * 2 * 2
     assert schedule == batch._schedule(config)
     for repetition in range(1, 4):
         first_arms = [
@@ -102,8 +104,8 @@ def test_config_is_strict_and_schedule_counterbalances_all_slots() -> None:
             if slot["repetition"] == repetition
             and cast(str, slot["slot_id"]).endswith("-1")
         ]
-        assert first_arms.count("baseline") == 7
-        assert first_arms.count("candidate") == 7
+        assert first_arms.count("baseline") == 3
+        assert first_arms.count("candidate") == 3
     for case_id in cast(list[str], config["case_ids"]):
         for repetition in range(1, 4):
             pair = [
@@ -169,7 +171,7 @@ def test_freeze_requires_clean_exact_commits_and_archives(
         tmp_path, commit_a, commit_b, model="test-model", reasoning_effort="high"
     )
     assert manifest["status"] == "frozen"
-    assert len(cast(list[object], manifest["schedule"])) == 84
+    assert len(cast(list[object], manifest["schedule"])) == 36
     saved = json.loads(
         (tmp_path / "progressive-validation-selection/manifest.json").read_text()
     )
@@ -464,7 +466,7 @@ def test_manifest_slot_requires_frozen_order_and_records_failure(
     smoke = [
         slot
         for slot in cast(list[dict[str, object]], manifest["schedule"])
-        if slot["repetition"] == 1
+        if slot["phase"] == "smoke"
     ]
     monkeypatch.setattr(batch, "verify_freeze", _valid_freeze)
     with pytest.raises(batch.BatchError, match="incomplete"):
@@ -545,7 +547,7 @@ def test_result_classification_never_hides_non_selection_failure() -> None:
     )
     assert (
         batch._classification("candidate", _result("P01", oracle_errors=forbidden))
-        == "critical"
+        == "comparable_overvalidation"
     )
     assert (
         batch._classification(
@@ -562,13 +564,175 @@ def test_result_classification_never_hides_non_selection_failure() -> None:
     )
 
 
+def test_relative_pairing_and_tiebreak_execution_are_symmetric(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    assert batch._paired_outcome("critical", "valid") == "candidate_win"
+    assert batch._paired_outcome("valid", "critical") == "baseline_win"
+    assert (
+        batch._paired_outcome("comparable_overvalidation", "comparable_overvalidation")
+        == "tie"
+    )
+    with pytest.raises(batch.BatchError, match="classification is invalid"):
+        batch._paired_outcome("unknown", "valid")
+
+    manifest: dict[str, object] = {
+        "case_ids": ["P01", "P02", "P03", "P04", "P05", "P10"],
+        "initial_repetitions": 2,
+        "schedule": batch._schedule(batch.load_batch_config()),
+    }
+    monkeypatch.setattr(batch, "verify_freeze", _valid_freeze)
+
+    def private_manifest(_root: Path) -> dict[str, object]:
+        return manifest
+
+    prefix_allowances: list[int] = []
+
+    def completed_prefix(
+        _root: Path,
+        _manifest: dict[str, object],
+        _slots: list[dict[str, object]],
+        *,
+        allowed_existing_ids: frozenset[str] = frozenset(),
+    ) -> list[dict[str, object]]:
+        prefix_allowances.append(len(allowed_existing_ids))
+        return []
+
+    def conflicting_cases(_root: Path, _manifest: dict[str, object]) -> list[str]:
+        return ["P03"]
+
+    monkeypatch.setattr(batch, "_private_manifest", private_manifest)
+    monkeypatch.setattr(batch, "_completed_smoke_prefix", completed_prefix)
+    monkeypatch.setattr(batch, "_conflicting_case_ids", conflicting_cases)
+    calls: list[str] = []
+
+    def run_one(_root: Path, _auth: Path, slot_id: str) -> dict[str, object]:
+        calls.append(slot_id)
+        return {"slot_id": slot_id}
+
+    monkeypatch.setattr(batch, "run_manifest_slot", run_one)
+    completed = batch.run_tiebreaks(tmp_path, tmp_path / "auth.json")
+    expected = [
+        cast(str, slot["slot_id"])
+        for slot in batch._tiebreak_slots(manifest)
+        if slot["case_id"] == "P03"
+    ]
+    assert calls == expected
+    assert [item["slot_id"] for item in completed] == expected
+    assert prefix_allowances == [0, 24]
+
+
+def test_initial_outcome_validation_and_tiebreak_authorization_fail_closed(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    invalid_slot: dict[str, object] = {
+        "slot_id": "bad",
+        "case_id": None,
+        "repetition": 1,
+        "arm_key": "baseline",
+        "phase": "smoke",
+    }
+
+    def invalid_slots(_manifest: object) -> list[dict[str, object]]:
+        return [invalid_slot]
+
+    monkeypatch.setattr(batch, "_smoke_slots", invalid_slots)
+    with pytest.raises(batch.BatchError, match="initial slot identity"):
+        batch._initial_case_outcomes(tmp_path, {})
+
+    valid_slot: dict[str, object] = {
+        "slot_id": "r1-P01-1",
+        "case_id": "P01",
+        "repetition": 1,
+        "arm_key": "baseline",
+        "phase": "smoke",
+    }
+
+    def one_slot(_manifest: object) -> list[dict[str, object]]:
+        return [valid_slot]
+
+    def valid_completed(_root: Path, _manifest: object, _slot: object) -> str:
+        return "valid"
+
+    monkeypatch.setattr(batch, "_smoke_slots", one_slot)
+    monkeypatch.setattr(batch, "_validate_completed_slot", valid_completed)
+    with pytest.raises(batch.BatchError, match="initial pair is incomplete"):
+        batch._initial_case_outcomes(tmp_path, {})
+
+    pair = [
+        valid_slot,
+        {**valid_slot, "slot_id": "r1-P01-2", "arm_key": "candidate"},
+    ]
+
+    def one_pair(_manifest: object) -> list[dict[str, object]]:
+        return pair
+
+    monkeypatch.setattr(batch, "_smoke_slots", one_pair)
+    with pytest.raises(batch.BatchError, match="two paired outcomes"):
+        batch._initial_case_outcomes(tmp_path, {})
+
+    def invalid_freeze(_root: Path) -> dict[str, object]:
+        return {"valid": False}
+
+    monkeypatch.setattr(batch, "verify_freeze", invalid_freeze)
+    with pytest.raises(batch.BatchError, match="freeze verification failed"):
+        batch.run_tiebreaks(tmp_path, tmp_path / "auth.json")
+
+
+def test_manifest_slot_accepts_only_an_eligible_tiebreak(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    root, manifest = _private_manifest(tmp_path)
+    tiebreak = next(
+        slot for slot in batch._tiebreak_slots(manifest) if slot["case_id"] == "P03"
+    )
+
+    def no_initial(_manifest: object) -> list[dict[str, object]]:
+        return []
+
+    def conflicts(_root: Path, _manifest: object) -> list[str]:
+        return ["P03"]
+
+    def tiebreaks(_manifest: object) -> list[dict[str, object]]:
+        return [tiebreak]
+
+    def successful_run(
+        _archive: Path,
+        _source: Path,
+        _case: Path,
+        _workspace: Path,
+        _auth: Path,
+        output: Path,
+        model: str,
+        effort: str,
+    ) -> dict[str, object]:
+        payload = _result(cast(str, tiebreak["case_id"]), model=model, effort=effort)
+        output.mkdir(parents=True)
+        (output / "result.json").write_text(json.dumps(payload), encoding="utf-8")
+        return payload
+
+    monkeypatch.setattr(batch, "verify_freeze", _valid_freeze)
+    monkeypatch.setattr(batch, "_smoke_slots", no_initial)
+    monkeypatch.setattr(batch, "_conflicting_case_ids", conflicts)
+    monkeypatch.setattr(batch, "_tiebreak_slots", tiebreaks)
+    monkeypatch.setattr(batch, "run_archived_slot", successful_run)
+    completed = batch.run_manifest_slot(
+        tmp_path, tmp_path / "auth.json", cast(str, tiebreak["slot_id"])
+    )
+    assert completed["classification"] == "valid"
+
+    with pytest.raises(batch.BatchError, match="not authorized"):
+        batch.run_manifest_slot(tmp_path, tmp_path / "auth.json", "r3-P04-1")
+    assert (
+        root / "slots" / cast(str, tiebreak["slot_id"]) / "completed.json"
+    ).is_file()
+
+
 SMOKE_STATUS_CASES: list[tuple[frozenset[str], str]] = [
-    (frozenset(), "eligible_for_repeats"),
-    (frozenset({"baseline"}), "incomparable"),
-    (frozenset({"candidate"}), "reject"),
-    # Both arms completed a real deterministic semantic failure.  This is not
-    # a runner-boundary failure and remains candidate rejection.
-    (frozenset({"baseline", "candidate"}), "reject"),
+    (frozenset(), "ready_for_relative_analysis"),
+    (frozenset({"baseline"}), "ready_for_relative_analysis"),
+    (frozenset({"candidate"}), "ready_for_relative_analysis"),
+    (frozenset({"baseline", "candidate"}), "ready_for_relative_analysis"),
 ]
 
 
@@ -587,7 +751,7 @@ def test_smoke_status_recomputes_complete_ledger(
     smoke = [
         slot
         for slot in cast(list[dict[str, object]], manifest["schedule"])
-        if slot["repetition"] == 1
+        if slot["phase"] == "smoke"
     ]
     for slot in smoke:
         slot_id = cast(str, slot["slot_id"])
@@ -622,7 +786,7 @@ def test_smoke_status_recomputes_complete_ledger(
         )
     status = batch.smoke_status(tmp_path)
     assert status["state"] == expected_state
-    assert status["completed_slots"] == 28
+    assert status["completed_slots"] == 24
 
 
 def test_smoke_status_is_fail_closed_for_missing_failed_and_tampered_ledgers(

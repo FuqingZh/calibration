@@ -1465,6 +1465,7 @@ def build_codex_command(
         "--ephemeral",
         "--ignore-user-config",
         "--strict-config",
+        "--approve-for-me",
         "--disable",
         "apps",
         "--disable",

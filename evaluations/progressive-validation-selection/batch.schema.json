@@ -8,9 +8,9 @@
     "seed": {"type": "integer", "minimum": 0},
     "runner": {"const": "scripts/run_writable_agent_eval.py"},
     "live_canary_case_id": {"const": "C01"},
-    "case_ids": {"const": ["P01", "P02", "P03", "P04", "P05", "P06", "P07", "P08", "P09", "P10", "H01", "H02", "H03", "H04"]},
+    "case_ids": {"const": ["P01", "P02", "P03", "P04", "P05", "P10"]},
     "private_arm_keys": {"const": ["baseline", "candidate"]},
-    "smoke_repetitions": {"const": 1},
+    "smoke_repetitions": {"const": 2},
     "valid_repetitions": {"const": 3},
     "transient_retry_limit": {"const": 2},
     "turn_budget": {"const": 1}
