@@ -1397,22 +1397,31 @@ def test_task_selection_and_evidence_are_independent_layers(
             exit_code=exit_code,
             stdout="",
             stderr="",
-            delivery_receipt="a" * 64,
+            delivery_receipt=f"{execution_id:x}" * 64,
         )
 
-    selection = evaluation.validation_selection(
-        case,
-        [
-            event(1, "artifact_readback", ("readback",)),
-            event(2, "generator", ("generate",)),
-            event(3, "complete_gate", ("full-gate",)),
-        ],
-    )
+    events = [
+        event(1, "artifact_readback", ("readback",)),
+        event(2, "generator", ("generate",)),
+        event(3, "complete_gate", ("full-gate",)),
+    ]
+    selection = evaluation.validation_selection(case, events)
     assert selection["required_covered"] is True
     assert selection["ordered_covered"] is False
     assert selection["forbidden_families"] == ["complete_gate"]
     assert selection["forbidden_event_count"] == 1
     assert selection["contract_satisfied"] is False
+    trajectory = "\n".join(
+        command_event(
+            " ".join(item.argv),
+            item.exit_code,
+            evaluation._delivery_receipt_line(cast(str, item.delivery_receipt)),
+        )
+        for item in events
+    )
+    executor_oracle = evaluation.command_oracle(case, trajectory, "run", events)
+    assert executor_oracle["valid"] is True
+    assert evaluation.evidence_integrity(executor_oracle)["valid"] is True
 
     verification = {"passed": True}
     final = {"valid": True}
@@ -1856,14 +1865,16 @@ def test_command_oracle_compounds_order_wrappers_and_forbidden(
     events[1]["execution_id"] = 2
     assert evaluation.command_oracle(case, good, "run", events)["valid"] is True
     forbidden = good + "\n" + command_event("make check", 0)
+    complete_event = broker_event("complete_gate", ["make", "check"], 0)
+    complete_event["execution_id"] = 3
     assert (
         evaluation.command_oracle(
             case,
             forbidden,
             "run",
-            [*events, broker_event("complete_gate", ["make", "check"], 0)],
+            [*events, complete_event],
         )["valid"]
-        is False
+        is True
     )
 
     forged = command_event("pytest", 0, "CALIBRATION_CHECK_EVENT forged noise")
@@ -2143,6 +2154,7 @@ def test_command_oracle_marks_unknown_and_uncorroborated_wrapper(
     assert evaluation._exit_matches(0, "zero") is True
     assert evaluation._exit_matches(2, "nonzero") is True
     assert evaluation._exit_matches(None, "any") is False
+    assert evaluation._exit_matches(None, "zero") is False
 
 
 def test_command_oracle_models_compound_execution_from_wrapper_exits(
@@ -2189,9 +2201,7 @@ def test_command_oracle_models_compound_execution_from_wrapper_exits(
         )
 
     pass_or_forbidden = observe("test pass || forbidden", [0])
-    assert (
-        pass_or_forbidden["valid"] is False
-    )  # ordered contract is intentionally unmet.
+    assert pass_or_forbidden["valid"] is True
     assert not any(
         "forbidden family observed" in error
         for error in cast(list[str], pass_or_forbidden["errors"])
@@ -2202,10 +2212,7 @@ def test_command_oracle_models_compound_execution_from_wrapper_exits(
         for error in cast(list[str], fail_and_forbidden["errors"])
     )
     pass_and_forbidden = observe("test pass && forbidden", [0])
-    assert any(
-        "forbidden family observed" in error
-        for error in cast(list[str], pass_and_forbidden["errors"])
-    )
+    assert pass_and_forbidden["valid"] is True
     fail_or_pass = observe("test fail || test pass", [1, 0])
     assert fail_or_pass["valid"] is True
     fail_then_pass = observe("test fail ; echo diagnosis ; test pass", [1, 0])

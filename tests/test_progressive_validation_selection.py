@@ -9,10 +9,12 @@ import pytest
 import yaml
 
 from scripts.run_writable_agent_eval import (
+    BrokerEvent,
     command_oracle,
     final_oracle,
     load_case,
     prepare_workspace,
+    validation_selection,
     verify_workspace,
 )
 
@@ -51,6 +53,23 @@ def _broker_event(
         "execution_context": context,
         "exit_code": exit_code,
     }
+
+
+def _runner_event(
+    family: str, argv: list[str], exit_code: int, *, execution_id: int = 1
+) -> BrokerEvent:
+    return BrokerEvent(
+        execution_id=execution_id,
+        family=family,
+        argv=tuple(argv),
+        argv_sha256=hashlib.sha256("\0".join(argv).encode()).hexdigest(),
+        cwd="/workspace",
+        execution_context="executor_sandbox",
+        exit_code=exit_code,
+        stdout="",
+        stderr="",
+        delivery_receipt="a" * 64,
+    )
 
 
 def _text(*lines: str) -> str:
@@ -282,9 +301,9 @@ def test_broker_evidence_is_runner_owned_and_execution_context_is_bounded() -> N
     result = command_oracle(
         p09, trajectory, "run", [_broker_event("complete_gate", argv, 0)]
     )
-    assert "forbidden family observed: complete_gate" in cast(
-        list[str], result["errors"]
-    )
+    assert result["valid"] is True
+    selection = validation_selection(p09, [_runner_event("complete_gate", argv, 0)])
+    assert selection["forbidden_families"] == ["complete_gate"]
     mismatch = command_oracle(
         p09, trajectory, "run", [_broker_event("focused_test", argv, 0)]
     )
@@ -395,7 +414,7 @@ def test_oracle_negative_controls_cover_wrapper_compound_completion_and_order() 
     assert not command_oracle(case, forged, "run")["valid"]
     unwrapped = _event("python -m unittest -q", "", 0)
     unwrapped_errors = cast(list[str], command_oracle(case, unwrapped, "run")["errors"])
-    assert "forbidden family observed: complete_gate" in unwrapped_errors
+    assert "missing runner-owned broker evidence" in unwrapped_errors
     compound = _event(
         "python scripts/check.py focused_test && "
         "python scripts/check.py unrelated_suite",
@@ -419,9 +438,19 @@ def test_oracle_negative_controls_cover_wrapper_compound_completion_and_order() 
             _event("python scripts/check.py focused_test", "", 1),
         ]
     )
-    reversed_errors = cast(
-        list[str], command_oracle(case, reversed_order, "run")["errors"]
+    assert not command_oracle(case, reversed_order, "run")["valid"]
+    reversed_selection = validation_selection(
+        case,
+        [
+            _runner_event(
+                "focused_test", ["python", "scripts/check.py", "focused_test"], 0
+            ),
+            _runner_event(
+                "focused_test",
+                ["python", "scripts/check.py", "focused_test"],
+                1,
+                execution_id=2,
+            ),
+        ],
     )
-    assert any(
-        "ordered required observation missing" in error for error in reversed_errors
-    )
+    assert reversed_selection["ordered_covered"] is False

@@ -1338,38 +1338,6 @@ def command_oracle(
             errors.append(f"line {event['line']}: unexpected delivery receipt")
     if broker_position != len(broker):
         errors.append("broker event has no raw command counterpart")
-    for requirement in cast(list[dict[str, object]], contract["required"]):
-        if not any(
-            obs["family"] == requirement["family"]
-            and _exit_matches(obs["exit_code"], requirement["exit"])
-            for obs in observations
-        ):
-            errors.append(
-                f"missing required {requirement['family']} ({requirement['exit']})"
-            )
-    for forbidden in cast(list[dict[str, object]], contract["forbidden"]):
-        if any(obs["family"] == forbidden["family"] for obs in observations):
-            errors.append(f"forbidden family observed: {forbidden['family']}")
-    ordered = cast(list[dict[str, object]], contract["ordered_required"])
-    position = 0
-    for requirement in ordered:
-        found = next(
-            (
-                index
-                for index in range(position, len(observations))
-                if observations[index]["family"] == requirement["family"]
-                and _exit_matches(observations[index]["exit_code"], requirement["exit"])
-            ),
-            None,
-        )
-        if found is None:
-            missing = requirement["family"]
-            exit_state = requirement["exit"]
-            errors.append(
-                f"ordered required observation missing: {missing} ({exit_state})"
-            )
-            break
-        position = found + 1
     return {
         "enabled": True,
         "valid": not errors,
