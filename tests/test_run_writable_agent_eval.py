@@ -1790,14 +1790,15 @@ def test_install_arm_home_materializes_runtime_closure(
     source = tmp_path / "neutral-arm"
     skill = source / "skills/calibration"
     skill.mkdir(parents=True)
-    (skill / "SKILL.md").write_text(
-        "Read ../../references/engineering/principles.md\n", encoding="utf-8"
-    )
-    reference = source / "references/engineering/principles.md"
+    (skill / "SKILL.md").write_text("Read references/principles.md\n", encoding="utf-8")
+    reference = source / "skills/calibration/references/principles.md"
     reference.parent.mkdir(parents=True)
     reference.write_text("# Principles\n", encoding="utf-8")
-    runbook = source / "docs/runbooks/agent-orchestrator-review-continuation.md"
-    runbook.parent.mkdir(parents=True)
+    runbook = (
+        source
+        / "skills/calibration/references/agent-orchestrator-review-continuation.md"
+    )
+    runbook.parent.mkdir(parents=True, exist_ok=True)
     runbook.write_text("# Runbook\n", encoding="utf-8")
     license_file = source / "thirdparty/licenses/GonkaGate-Apache-2.0.txt"
     license_file.parent.mkdir(parents=True)
@@ -1819,8 +1820,12 @@ def test_install_arm_home_materializes_runtime_closure(
 
     assert (home / "skills/calibration/SKILL.md").is_file()
     assert not (home / "skills/calibration").is_symlink()
-    assert (home / "references/engineering/principles.md").is_file()
-    assert (home / "docs/runbooks/agent-orchestrator-review-continuation.md").is_file()
+    assert (home / "skills/calibration/references/principles.md").is_file()
+    assert (
+        home / "skills/calibration/references/agent-orchestrator-review-continuation.md"
+    ).is_file()
+    assert not (home / "references").exists()
+    assert not (home / "docs/runbooks").exists()
     assert (home / "licenses/GonkaGate-Apache-2.0.txt").is_file()
     rendered = (home / "AGENTS.md").read_text(encoding="utf-8")
     assert str(source) not in rendered

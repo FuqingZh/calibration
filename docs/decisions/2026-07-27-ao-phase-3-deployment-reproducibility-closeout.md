@@ -13,4 +13,4 @@ The public repository no longer retains the deployed wrapper, service drop-in,
 hashes, backup paths, credentials, or rollback commands. Those values are host
 configuration, not reusable calibration guidance. Portable AO integration is
 owned by
-[`../runbooks/agent-orchestrator-review-continuation.md`](../runbooks/agent-orchestrator-review-continuation.md).
+[`../../skills/calibration/references/agent-orchestrator-review-continuation.md`](../../skills/calibration/references/agent-orchestrator-review-continuation.md).

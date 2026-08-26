@@ -18,4 +18,4 @@ Status: historical public summary
 Host binaries, forks, patches, services, network addresses, hashes, backup
 paths, and deployment readback were moved to private host authority. Current
 public guidance lives in
-[`../runbooks/agent-orchestrator-review-continuation.md`](../runbooks/agent-orchestrator-review-continuation.md).
+[`../../skills/calibration/references/agent-orchestrator-review-continuation.md`](../../skills/calibration/references/agent-orchestrator-review-continuation.md).

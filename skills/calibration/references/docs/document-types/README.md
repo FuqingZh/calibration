@@ -29,8 +29,7 @@ type file that matches the current phase.
   `runbook.md`
 - Verified external or third-party behavior and safe adaptation:
   `compatibility-record.md`
-- Task-level expectation-versus-actual learning:
-  `trace-retro.md`
+- Task-level expectation-versus-actual learning: `$retrospect`
 
 ## Non-Types
 
@@ -50,9 +49,9 @@ Use `../workflow/project_docs_architecture/20260805-v1.1-project-docs-architectu
 for project `docs/` layout, file naming, README navigation, and archive
 lifecycle rules.
 
-Use `../workflow/task_traces_and_retros/20260527-v1.0-task-traces-and-retros.md`
-for `.traces/` layout, retrospective format, evidence handling, and promotion
-rules.
+Use `$retrospect` for `.traces/` layout, retrospective format, evidence
+handling, and promotion rules. Retrospect owns its supporting references; do
+not cross-read another skill's internals.
 
 For tutorial and how-to method guidance, use the linked Diataxis references in
 the corresponding type files. External methods inform authoring; they do not

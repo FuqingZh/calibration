@@ -15,7 +15,7 @@ def compact(path: str) -> str:
 
 
 def test_harness_defines_bounded_review_convergence_routing() -> None:
-    harness = compact("references/engineering/discipline/harness.md")
+    harness = compact("skills/calibration/references/discipline/harness.md")
 
     for phrase in (
         "current explicitly declared and authorized pull request contract",
@@ -72,8 +72,8 @@ def test_calibration_prompts_cover_both_review_convergence_branches() -> None:
 
 def test_focused_github_skills_own_ordinary_provider_mechanics() -> None:
     skill = compact("skills/calibration/SKILL.md")
-    discipline = compact("references/engineering/discipline/README.md")
-    harness = compact("references/engineering/discipline/harness.md")
+    discipline = compact("skills/calibration/references/discipline/README.md")
+    harness = compact("skills/calibration/references/discipline/harness.md")
     readme = compact("README.md")
 
     for surface in (skill, discipline, harness, readme):
@@ -114,7 +114,7 @@ def test_installer_propagates_global_review_tripwire(tmp_path: Path) -> None:
     assert "and feedback state and invoke calibration" in template
     assert "independent pull requests" not in template
     assert "independent pull requests" in compact(
-        "references/engineering/discipline/harness.md"
+        "skills/calibration/references/discipline/harness.md"
     )
 
     for profile in ("standard", "ao-worker"):

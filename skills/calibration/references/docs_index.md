@@ -33,7 +33,7 @@ may be loaded selectively when the task requires more detail.
 - `docs/workflow/project_docs_architecture/20260805-v1.1-project-docs-architecture.md`
   - Use when defining project `docs/` layout, documentation file names,
     README navigation, document lifecycle, and long-lived knowledge placement.
-- `docs/workflow/task_traces_and_retros/20260527-v1.0-task-traces-and-retros.md`
+- `$retrospect`
   - Use when defining `.traces/` layout, task retrospectives, evidence
     handling, and when to promote trace observations into project docs or canon.
 

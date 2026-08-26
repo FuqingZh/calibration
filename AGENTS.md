@@ -4,7 +4,8 @@
 
 - Read `README.md` for the repository and installer contract.
 - Read `docs/README.md` for current decisions and active implementation plans.
-- Reusable engineering guidance lives under `references/engineering/`.
+- Reusable engineering guidance owned by calibration lives under
+  `skills/calibration/references/`.
 - First-party skills live under `skills/`; do not change behavioral cases as
   part of an unrelated implementation.
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import shlex
 import sys
@@ -291,7 +292,9 @@ def _reference_targets(text: str, include_code_paths: bool) -> set[str]:
     return targets
 
 
-def _resolve_local_reference(root: Path, source: Path, target: str) -> Path | None:
+def _resolve_local_reference(
+    skill_root: Path, source: Path, target: str
+) -> Path | None:
     target = unquote(target.strip("<>"))
     split = urlsplit(target)
     if split.scheme or split.netloc or not split.path or split.path.startswith("#"):
@@ -299,27 +302,46 @@ def _resolve_local_reference(root: Path, source: Path, target: str) -> Path | No
     relative = Path(split.path)
     if relative.is_absolute():
         return Path("/__nonportable_absolute_reference__")
-    candidates = ((source.parent / relative).resolve(), (root / relative).resolve())
-    for candidate in candidates:
-        try:
-            candidate.relative_to(root.resolve())
-        except ValueError:
-            continue
-        if candidate.exists():
-            return candidate
-    return candidates[0]
+    candidate = Path(os.path.abspath(source.parent / relative))
+    try:
+        candidate.relative_to(Path(os.path.abspath(skill_root)))
+    except ValueError:
+        return Path("/__reference_outside_owning_skill__")
+    return candidate
+
+
+def _resolve_vendored_reference(
+    repository_root: Path, source: Path, target: str
+) -> Path | None:
+    target = unquote(target.strip("<>"))
+    split = urlsplit(target)
+    if split.scheme or split.netloc or not split.path or split.path.startswith("#"):
+        return None
+    relative = Path(split.path)
+    if relative.is_absolute():
+        return Path("/__nonportable_absolute_reference__")
+    candidates = (
+        (source.parent / relative).resolve(),
+        (repository_root / relative).resolve(),
+    )
+    return next(
+        (candidate for candidate in candidates if candidate.exists()), candidates[0]
+    )
 
 
 def _validate_active_references(
-    root: Path, active: list[Path], errors: list[str]
+    active: list[Path],
+    errors: list[str],
+    *,
+    vendored_repository_root: Path | None = None,
 ) -> None:
-    queue: deque[tuple[Path, bool]] = deque(
-        (path / "SKILL.md", True) for path in active
+    queue: deque[tuple[Path, Path, bool]] = deque(
+        (path, path / "SKILL.md", True) for path in active
     )
     visited: set[Path] = set()
     while queue:
-        source, include_code_paths = queue.popleft()
-        source = source.resolve()
+        skill_root, source, include_code_paths = queue.popleft()
+        source = Path(os.path.abspath(source))
         if source in visited:
             continue
         visited.add(source)
@@ -329,8 +351,21 @@ def _validate_active_references(
             errors.append(f"{source}: cannot read referenced file: {exc}")
             continue
         for target in sorted(_reference_targets(text, include_code_paths)):
-            resolved = _resolve_local_reference(root, source, target)
+            if vendored_repository_root is None:
+                resolved = _resolve_local_reference(skill_root, source, target)
+            else:
+                resolved = _resolve_vendored_reference(
+                    vendored_repository_root, source, target
+                )
             if resolved is None:
+                continue
+            if vendored_repository_root is None and resolved == Path(
+                "/__reference_outside_owning_skill__"
+            ):
+                errors.append(
+                    f"{source}: local reference {target!r} escapes owning skill "
+                    f"root {skill_root}"
+                )
                 continue
             if not resolved.exists():
                 errors.append(
@@ -338,7 +373,7 @@ def _validate_active_references(
                 )
                 continue
             if resolved.suffix.lower() == ".md":
-                queue.append((resolved, False))
+                queue.append((skill_root, resolved, False))
 
 
 def validate_repository(root: Path) -> list[str]:
@@ -360,7 +395,15 @@ def validate_repository(root: Path) -> list[str]:
         _validate_test_prompts(skill_dir, errors)
 
     active = _installer_skills(root, errors)
-    _validate_active_references(root, active, errors)
+    first_party_root = root / "skills"
+    first_party = [path for path in active if path.is_relative_to(first_party_root)]
+    vendored = [path for path in active if path not in first_party]
+    _validate_active_references(first_party, errors)
+    _validate_active_references(
+        vendored,
+        errors,
+        vendored_repository_root=root,
+    )
     return errors
 
 

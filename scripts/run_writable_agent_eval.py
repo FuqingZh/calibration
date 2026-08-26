@@ -2124,22 +2124,12 @@ def install_arm_home(source_root: Path, auth_file: Path, codex_home: Path) -> No
                 shutil.copytree(target, link)
             else:
                 shutil.copy2(target, link)
-    runtime_closure = (
-        (source_root / "references", codex_home / "references"),
-        (
-            source_root / "docs/runbooks/agent-orchestrator-review-continuation.md",
-            codex_home / "docs/runbooks/agent-orchestrator-review-continuation.md",
-        ),
-        (source_root / "thirdparty/licenses", codex_home / "licenses"),
-    )
+    runtime_closure = ((source_root / "thirdparty/licenses", codex_home / "licenses"),)
     for source, destination in runtime_closure:
         if not source.exists():
             continue
         destination.parent.mkdir(parents=True, exist_ok=True)
-        if source.is_dir():
-            shutil.copytree(source, destination)
-        else:
-            shutil.copy2(source, destination)
+        shutil.copytree(source, destination)
     agents_file = codex_home / "AGENTS.md"
     if agents_file.is_file():
         rendered = agents_file.read_text(encoding="utf-8")

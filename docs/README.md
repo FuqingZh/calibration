@@ -2,7 +2,7 @@
 
 This directory records calibration decisions, evaluations, historical plans,
 and portable integration guidance. Reusable cross-project engineering guidance
-lives under `../references/engineering/`.
+lives with its owning skill under `../skills/calibration/references/`.
 
 Calibration is in stable maintenance mode. The v2.1 relative-replacement run
 is now diagnostic history: audit showed that its raw-command evidence oracle
@@ -48,7 +48,7 @@ remains a proposal rather than current AO behavior.
 
 Calibration has four layers:
 
-1. reusable references under `../references/engineering/`;
+1. reusable references under `../skills/calibration/references/`;
 2. skills under `../skills/` as model interaction entrypoints;
 3. AO as an optional environment adapter; and
 4. private host configuration outside this public repository.
@@ -64,17 +64,18 @@ back to `$HOME/.config/calibration/AGENTS.md`.
 | Need | Current authority |
 | --- | --- |
 | Repository and installer contract | `../README.md` |
-| Cross-project judgment defaults | `../references/engineering/principles.md` |
+| Cross-project judgment defaults | `../skills/calibration/references/principles.md` |
 | Calibration routing | `../skills/calibration/SKILL.md` |
 | Explicit task closeout | `../skills/closeout/SKILL.md` |
-| Repository capability and delivery placement | `../references/engineering/discipline/harness.md` |
-| Completion and external-result evidence | `../references/engineering/discipline/verification.md` |
-| Agent and workflow comparison | `../references/engineering/discipline/evaluation.md` |
+| Repository capability and delivery placement | `../skills/calibration/references/discipline/harness.md` |
+| Completion and external-result evidence | `../skills/calibration/references/discipline/verification.md` |
+| Agent and workflow comparison | `../skills/calibration/references/discipline/evaluation.md` |
 | Sol Advisor and Calibration ablation | `../evaluations/sol-advisor-calibration-ablation/results.md` |
 | Diagnostic suppression policy | `decisions/2026-08-14-diagnostic-suppression-policy.md` |
 | Teach adaptation evidence | `decisions/2026-08-13-teach-adaptation-evaluation.md` |
-| Project docs architecture | `../references/engineering/docs/workflow/project_docs_architecture/20260805-v1.1-project-docs-architecture.md` |
-| Durable implementation-plan contract | `../references/engineering/docs/document-types/implementation-plan.md` |
+| Project docs architecture | `../skills/calibration/references/docs/workflow/project_docs_architecture/20260805-v1.1-project-docs-architecture.md` |
+| Durable implementation-plan contract | `../skills/calibration/references/docs/document-types/implementation-plan.md` |
+| Self-contained first-party skills migration | `implementation-plans/20260826-v1.0-self-contained-first-party-skills-migration-implementation-plan.md` |
 | Project docs architecture convergence plan | `implementation-plans/20260805-v1.0-project-docs-architecture-convergence-implementation-plan.md` |
 | Progressive validation relative-replacement test plan | `testing/20260825-v2.1-progressive-validation-relative-replacement-test-plan.md` |
 | Progressive validation corrected relative-replacement plan | `testing/20260825-v2.2-progressive-validation-relative-replacement-correction-plan.md` |
@@ -84,7 +85,7 @@ back to `$HOME/.config/calibration/AGENTS.md`.
 | Progressive validation frozen baseline | `decisions/2026-08-24-progressive-validation-selection-baseline.md` |
 | Progressive validation activation candidate | `decisions/2026-08-24-progressive-validation-selection-candidate.md` |
 | Progressive validation invalid smoke and C01 recovery | `decisions/2026-08-24-progressive-validation-selection-smoke-invalid.md` |
-| Portable AO integration | `runbooks/agent-orchestrator-review-continuation.md` |
+| Portable AO integration | `../skills/calibration/references/agent-orchestrator-review-continuation.md` |
 | Native AO delivery and auto-merge boundary | `decisions/2026-07-29-ao-native-delivery-convergence.md` |
 | Current AI-native direction | `decisions/2026-07-27-ai-native-calibration-review.md` |
 | Writable comparative evidence | `decisions/2026-07-27-ai-native-writable-implementation-evaluation-closeout.md` |

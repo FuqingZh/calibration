@@ -15,6 +15,8 @@ from scripts.validate_skills import (
     _installer_skills,
     _load_yaml,
     _resolve_local_reference,
+    _resolve_vendored_reference,
+    _validate_active_references,
     main,
     validate_repository,
 )
@@ -431,28 +433,36 @@ def test_reports_unreadable_and_incomplete_installer(
 
 
 def test_resolves_only_portable_repository_local_references(tmp_path: Path) -> None:
-    source = tmp_path / "docs/source.md"
-    source.parent.mkdir()
+    skill_root = tmp_path / "skill"
+    source = skill_root / "docs/source.md"
+    source.parent.mkdir(parents=True)
     source.write_text("", encoding="utf-8")
-    target = tmp_path / "target.md"
+    target = skill_root / "target.md"
     target.write_text("", encoding="utf-8")
 
-    assert _resolve_local_reference(tmp_path, source, "https://example.com") is None
-    assert _resolve_local_reference(tmp_path, source, "#section") is None
-    assert _resolve_local_reference(tmp_path, source, "/tmp/file.md") == Path(
+    assert _resolve_local_reference(skill_root, source, "https://example.com") is None
+    assert _resolve_local_reference(skill_root, source, "#section") is None
+    assert _resolve_local_reference(skill_root, source, "/tmp/file.md") == Path(
         "/__nonportable_absolute_reference__"
     )
-    assert _resolve_local_reference(tmp_path, source, "../target.md") == target
-    assert (
-        _resolve_local_reference(tmp_path, source, "../../outside.md")
-        == (source.parent / "../../outside.md").resolve()
+    assert _resolve_local_reference(skill_root, source, "../target.md") == target
+    assert _resolve_local_reference(skill_root, source, "../../outside.md") == Path(
+        "/__reference_outside_owning_skill__"
+    )
+
+
+def test_vendored_reference_resolver_rejects_absolute_paths(tmp_path: Path) -> None:
+    source = tmp_path / "thirdparty/skills/sample/SKILL.md"
+
+    assert _resolve_vendored_reference(tmp_path, source, "/tmp/file.md") == Path(
+        "/__nonportable_absolute_reference__"
     )
 
 
 def test_reference_traversal_handles_cycles_and_unreadable_targets(
     skill_fixture: SkillFixture,
 ) -> None:
-    docs = skill_fixture.root / "docs"
+    docs = skill_fixture.skill_dir / "docs"
     docs.mkdir()
     first = docs / "first.md"
     second = docs / "second.md"
@@ -465,12 +475,61 @@ def test_reference_traversal_handles_cycles_and_unreadable_targets(
     second.write_text("[first](first.md)\n", encoding="utf-8")
     skill = skill_fixture.skill_dir / "SKILL.md"
     skill.write_text(
-        skill.read_text(encoding="utf-8") + "\n[docs](../../docs/first.md)\n",
+        skill.read_text(encoding="utf-8") + "\n[docs](docs/first.md)\n",
         encoding="utf-8",
     )
 
     errors = validate_repository(skill_fixture.root)
     assert any("cannot read referenced file" in error for error in errors)
+
+
+def test_rejects_existing_reference_outside_owning_skill(
+    skill_fixture: SkillFixture,
+) -> None:
+    outside = skill_fixture.root / "outside.md"
+    outside.write_text("# Existing outside file\n", encoding="utf-8")
+    skill = skill_fixture.skill_dir / "SKILL.md"
+    skill.write_text(
+        skill.read_text(encoding="utf-8") + "\nRead `../../outside.md`.\n",
+        encoding="utf-8",
+    )
+
+    assert_has_error(skill_fixture.root, "escapes owning skill root")
+
+
+def test_repository_root_fallback_cannot_hide_missing_skill_reference(
+    skill_fixture: SkillFixture,
+) -> None:
+    fallback = skill_fixture.root / "references/shared.md"
+    fallback.parent.mkdir()
+    fallback.write_text("# Repository fallback\n", encoding="utf-8")
+    skill = skill_fixture.skill_dir / "SKILL.md"
+    skill.write_text(
+        skill.read_text(encoding="utf-8") + "\nRead `references/shared.md`.\n",
+        encoding="utf-8",
+    )
+
+    assert_has_error(skill_fixture.root, "missing repository-local reference")
+
+
+def test_lexical_skill_link_cannot_escape_to_installed_home(tmp_path: Path) -> None:
+    source_skill = tmp_path / "source/skills/sample"
+    source_skill.mkdir(parents=True)
+    (source_skill / "SKILL.md").write_text(
+        "Read `../../references/shared.md`.\n", encoding="utf-8"
+    )
+    installed_home = tmp_path / "installed-home"
+    installed_skill = installed_home / "skills/sample"
+    installed_skill.parent.mkdir(parents=True)
+    installed_skill.symlink_to(source_skill)
+    installed_reference = installed_home / "references/shared.md"
+    installed_reference.parent.mkdir()
+    installed_reference.write_text("# Wrong lexical owner\n", encoding="utf-8")
+
+    errors: list[str] = []
+    _validate_active_references([installed_skill], errors)
+
+    assert any("escapes owning skill root" in error for error in errors)
 
 
 def test_empty_repository_is_rejected(tmp_path: Path) -> None:
@@ -523,9 +582,9 @@ def test_calibration_defaults_to_outcome_autonomy() -> None:
     skill = (REPOSITORY_ROOT / "skills/calibration/SKILL.md").read_text(
         encoding="utf-8"
     )
-    principles = (REPOSITORY_ROOT / "references/engineering/principles.md").read_text(
-        encoding="utf-8"
-    )
+    principles = (
+        REPOSITORY_ROOT / "skills/calibration/references/principles.md"
+    ).read_text(encoding="utf-8")
     agents_template = (REPOSITORY_ROOT / "codex/AGENTS.md.template").read_text(
         encoding="utf-8"
     )
@@ -546,7 +605,7 @@ def test_calibration_defaults_to_outcome_autonomy() -> None:
 
 def test_harness_is_proportional_not_a_repository_tier_list() -> None:
     harness = (
-        REPOSITORY_ROOT / "references/engineering/discipline/harness.md"
+        REPOSITORY_ROOT / "skills/calibration/references/discipline/harness.md"
     ).read_text(encoding="utf-8")
 
     assert "## Harness Proportionality" in harness
@@ -580,13 +639,13 @@ def test_shared_ruff_guidance_preserves_local_authority_and_defines_fallback() -
         encoding="utf-8"
     )
     discipline = (
-        REPOSITORY_ROOT / "references/engineering/discipline/README.md"
+        REPOSITORY_ROOT / "skills/calibration/references/discipline/README.md"
     ).read_text(encoding="utf-8")
     harness = (
-        REPOSITORY_ROOT / "references/engineering/discipline/harness.md"
+        REPOSITORY_ROOT / "skills/calibration/references/discipline/harness.md"
     ).read_text(encoding="utf-8")
 
-    assert "../../references/engineering/discipline/README.md" in skill
+    assert "references/discipline/README.md" in skill
     assert "Python lint policy, or Ruff rule selection | `harness.md`" in discipline
     assert "repository-local Ruff contract first" in harness
     assert "`E`, `F`, `I`, `UP`, `B`, `SIM`,\nand `RUF`" in harness
@@ -600,7 +659,7 @@ def test_diagnostic_suppression_policy_preserves_first_party_contracts() -> None
         .split()
     )
     harness = " ".join(
-        (REPOSITORY_ROOT / "references/engineering/discipline/harness.md")
+        (REPOSITORY_ROOT / "skills/calibration/references/discipline/harness.md")
         .read_text(encoding="utf-8")
         .split()
     )
@@ -618,7 +677,7 @@ def test_diagnostic_suppression_policy_preserves_first_party_contracts() -> None
 
 def test_delivery_loop_classifies_failures_before_harness_changes() -> None:
     harness = (
-        REPOSITORY_ROOT / "references/engineering/discipline/harness.md"
+        REPOSITORY_ROOT / "skills/calibration/references/discipline/harness.md"
     ).read_text(encoding="utf-8")
 
     assert "before changing the harness" in harness
@@ -628,7 +687,7 @@ def test_delivery_loop_classifies_failures_before_harness_changes() -> None:
 
 def test_delivery_loop_hands_remote_waits_to_background() -> None:
     harness = (
-        REPOSITORY_ROOT / "references/engineering/discipline/harness.md"
+        REPOSITORY_ROOT / "skills/calibration/references/discipline/harness.md"
     ).read_text(encoding="utf-8")
 
     assert "first remote readback" in harness
@@ -639,7 +698,7 @@ def test_delivery_loop_hands_remote_waits_to_background() -> None:
 
 def test_evaluation_reserves_broad_ab_for_important_claims() -> None:
     evaluation = (
-        REPOSITORY_ROOT / "references/engineering/discipline/evaluation.md"
+        REPOSITORY_ROOT / "skills/calibration/references/discipline/evaluation.md"
     ).read_text(encoding="utf-8")
 
     assert "## Evaluation Proportionality" in evaluation
@@ -648,7 +707,7 @@ def test_evaluation_reserves_broad_ab_for_important_claims() -> None:
 
 def test_evaluation_separates_context_advisor_and_model_routing() -> None:
     evaluation = (
-        REPOSITORY_ROOT / "references/engineering/discipline/evaluation.md"
+        REPOSITORY_ROOT / "skills/calibration/references/discipline/evaluation.md"
     ).read_text(encoding="utf-8")
 
     assert "### Separate Context, Advisor, And Model Effects" in evaluation
@@ -659,11 +718,11 @@ def test_evaluation_separates_context_advisor_and_model_routing() -> None:
 
 
 def test_human_authority_boundary_is_not_repeated_as_a_tutorial() -> None:
-    principles = (REPOSITORY_ROOT / "references/engineering/principles.md").read_text(
-        encoding="utf-8"
-    )
+    principles = (
+        REPOSITORY_ROOT / "skills/calibration/references/principles.md"
+    ).read_text(encoding="utf-8")
     harness = (
-        REPOSITORY_ROOT / "references/engineering/discipline/harness.md"
+        REPOSITORY_ROOT / "skills/calibration/references/discipline/harness.md"
     ).read_text(encoding="utf-8")
 
     assert "Resolve\n  discoverable facts" in principles
@@ -673,14 +732,14 @@ def test_human_authority_boundary_is_not_repeated_as_a_tutorial() -> None:
 
 def test_agents_content_boundary_has_one_canonical_owner() -> None:
     harness = (
-        REPOSITORY_ROOT / "references/engineering/discipline/harness.md"
+        REPOSITORY_ROOT / "skills/calibration/references/discipline/harness.md"
     ).read_text(encoding="utf-8")
     document_types = (
-        REPOSITORY_ROOT / "references/engineering/docs/document-types/README.md"
+        REPOSITORY_ROOT / "skills/calibration/references/docs/document-types/README.md"
     ).read_text(encoding="utf-8")
     project_docs = (
         REPOSITORY_ROOT
-        / "references/engineering/docs/workflow/project_docs_architecture"
+        / "skills/calibration/references/docs/workflow/project_docs_architecture"
         / "20260805-v1.1-project-docs-architecture.md"
     ).read_text(encoding="utf-8")
 

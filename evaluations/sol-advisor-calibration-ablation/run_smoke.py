@@ -574,7 +574,9 @@ def observable_metrics(path: Path) -> dict[str, Any]:
         )
     )
     calibration_routes = max(calibration_skill_reads, calibration_announcements)
-    reference_loads = sum("/references/engineering/" in command for command in commands)
+    reference_loads = sum(
+        "/skills/calibration/references/" in command for command in commands
+    )
     capsule_labels = (
         "authority:",
         "frozen boundary:",

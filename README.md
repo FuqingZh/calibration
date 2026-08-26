@@ -12,17 +12,20 @@ configuration remains outside the public repository.
 
 - `install.sh`: local installer for Codex global entry and skill symlinks
 - `codex/AGENTS.md.template`: canonical template for `~/.codex/AGENTS.md`
-- `skills/calibration/SKILL.md`: default Codex engineering skill entrypoint, including architecture and implementation design judgment
+- `skills/calibration/`: self-contained default Codex engineering skill,
+  including its routed engineering references
 - `skills/closeout/SKILL.md`: explicitly invoked minimal task closeout and durable handoff entrypoint
-- `skills/retrospect/SKILL.md`: user-invoked evidence-driven retrospective and lesson-refinement skill
+- `skills/retrospect/`: self-contained user-invoked evidence-driven
+  retrospective and lesson-refinement skill
 - `skills/writing-code-docs/SKILL.md`: language-aware, Python-calibrated code documentation for public APIs and durable workflow boundaries
-- `references/engineering/principles.md`: stable cross-project engineering principles
-- `references/engineering/naming/`: naming and interface conventions, split by decision surface
-- `references/engineering/discipline/`: refactoring, debugging, verification,
+- `skills/calibration/references/principles.md`: stable cross-project engineering principles
+- `skills/calibration/references/naming/`: naming and interface conventions,
+  split by decision surface
+- `skills/calibration/references/discipline/`: refactoring, debugging, verification,
   repository-harness, and evaluation decisions
-- `references/engineering/design/`: codebase design and boundary judgment
-- `references/engineering/docs_index.md`: navigation for longer specifications
-- `references/engineering/docs/`: reusable long-form specifications and patterns
+- `skills/calibration/references/design/`: codebase design and boundary judgment
+- `skills/calibration/references/docs_index.md`: navigation for longer specifications
+- `skills/calibration/references/docs/`: reusable long-form specifications and patterns
 - `evaluations/ai-native-implementation/`: writable repository fixtures,
   deterministic contracts, and the blind-review rubric for calibration
   behavior comparison
@@ -108,7 +111,8 @@ Codex installation. Ruff linting uses the explicit stable baseline `E`, `F`,
 
 - Keep reusable Codex skill entrypoints in `skills/`; keep architecture/design judgment in `calibration` unless it needs a distinct interaction mode.
 - Keep narrow topics such as naming and project-doc placement as references unless they need a distinct interaction mode.
-- Keep engineering source documents in `references/engineering/`.
+- Keep every first-party skill's source documents inside that skill directory;
+  calibration's engineering references live in `skills/calibration/references/`.
 - Keep AO optional and keep private host configuration outside this repository.
 - Treat `~/.codex/AGENTS.md` as a local generated file; update the template in
   this repository, then rerun `install.sh`.
