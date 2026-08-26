@@ -135,6 +135,7 @@ def isolated_installer_runtime() -> Iterator[None]:
     isolated_patch = pytest.MonkeyPatch()
     original_run = evaluation._run
     original_which = evaluation.shutil.which
+    original_install = evaluation.install_arm_home
 
     def emulated_run(
         command: tuple[str, ...] | list[str],
@@ -163,8 +164,18 @@ def isolated_installer_runtime() -> Iterator[None]:
     def emulated_which(name: str) -> str | None:
         return "/usr/bin/bwrap" if name == "bwrap" else original_which(name)
 
-    isolated_patch.setattr(evaluation.shutil, "which", emulated_which)
-    isolated_patch.setattr(evaluation, "_run", emulated_run)
+    def emulated_install(source_root: Path, auth_file: Path, codex_home: Path) -> None:
+        current_run = evaluation._run
+        current_which = evaluation.shutil.which
+        evaluation.shutil.which = emulated_which
+        evaluation._run = emulated_run if current_run is original_run else current_run
+        try:
+            original_install(source_root, auth_file, codex_home)
+        finally:
+            evaluation._run = current_run
+            evaluation.shutil.which = current_which
+
+    isolated_patch.setattr(evaluation, "install_arm_home", emulated_install)
     yield
     isolated_patch.undo()
 
@@ -1730,15 +1741,6 @@ def test_install_arm_home_validates_inputs_and_installs(
     with pytest.raises(EvaluationError, match="missing Codex auth"):
         evaluation.install_arm_home(source, auth, home)
     auth.write_text("{}\n", encoding="utf-8")
-    original_which = evaluation.shutil.which
-
-    def no_bwrap(name: str) -> str | None:
-        return None if name == "bwrap" else original_which(name)
-
-    monkeypatch.setattr(evaluation.shutil, "which", no_bwrap)
-    with pytest.raises(EvaluationError, match="bwrap is required"):
-        evaluation.install_arm_home(source, auth, home)
-    monkeypatch.setattr(evaluation.shutil, "which", original_which)
     evaluation.install_arm_home(source, auth, home)
     assert (home / "auth.json").read_text() == auth.read_text()
     assert (home / "auth.json").stat().st_mode & 0o777 == 0o600
@@ -1751,6 +1753,23 @@ def test_install_arm_home_validates_inputs_and_installs(
     monkeypatch.setattr(evaluation, "_run", failed_run)
     with pytest.raises(EvaluationError, match="arm install failed"):
         evaluation.install_arm_home(source, auth, tmp_path / "failed-home")
+
+
+def test_install_arm_home_requires_bwrap(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source = tmp_path / "source"
+    source.mkdir()
+    (source / "install.sh").write_text("#!/bin/sh\n", encoding="utf-8")
+    auth = tmp_path / "auth.json"
+    auth.write_text("{}\n", encoding="utf-8")
+
+    def no_executable(_name: str) -> None:
+        return None
+
+    monkeypatch.setattr(evaluation.shutil, "which", no_executable)
+    with pytest.raises(EvaluationError, match="bwrap is required"):
+        evaluation.install_arm_home(source, auth, tmp_path / "home")
 
 
 def test_install_arm_home_materializes_runtime_closure(
