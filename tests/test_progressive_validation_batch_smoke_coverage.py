@@ -72,6 +72,7 @@ def _result(case_id: str, *, model: str = "frozen-model") -> dict[str, object]:
             "observations": [],
         },
         "evidence_integrity": {"valid": True, "errors": []},
+        "realized_safety_events": [],
         "command_oracle": {"valid": True, "errors": []},
     }
 

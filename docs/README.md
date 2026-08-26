@@ -24,7 +24,10 @@ remain separate work and were not changed by this evaluation. The v2.0 plan
 and its 2026-08-24 smoke/recovery results remain historical background only.
 This follows the completed v1.0
 proportional-wording increment and is layered on the ongoing project-docs
-architecture convergence and does not reopen the completed runtime or AO
+architecture convergence. The user subsequently authorized candidate adoption
+despite that inconclusive evidence, so the shared pinned `coding-protocol` is
+installed without making a comparative-improvement claim. This does not reopen
+the completed runtime or AO
 implementation phases. The completed bounded v2.4 closeout-skill increment
 adds an explicitly invoked first-party closeout contract and makes no
 comparative improvement claim.

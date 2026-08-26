@@ -1,4 +1,5 @@
 import json
+import re
 from pathlib import Path
 
 from check_event import run
@@ -7,15 +8,17 @@ from check_event import run
 def check() -> None:
     instruction = Path("AGENTS.md").read_text()
     sample = json.loads(Path("samples/review-finding.json").read_text())
-    fields = {
-        label.removesuffix(":"): value
-        for label, value in (
-            ("Affected seam:", sample["affected_seam"]),
-            ("Validation evidence:", sample["validation_evidence"]),
-        )
-        if label in instruction
-    }
-    conclusion = "\n".join(f"{key}: {value}" for key, value in fields.items())
+    rule = re.search(
+        r"Review conclusions must render `Affected seam: <affected_seam>` followed "
+        r"by `Validation evidence: <validation_evidence>`\.",
+        instruction,
+    )
+    if rule is None:
+        raise ValueError("review instruction lacks an applicable conclusion rule")
+    conclusion = (
+        f"Affected seam: {sample['affected_seam']}\n"
+        f"Validation evidence: {sample['validation_evidence']}"
+    )
     if conclusion != (
         "Affected seam: review result contract\n"
         "Validation evidence: focused review sample passed"

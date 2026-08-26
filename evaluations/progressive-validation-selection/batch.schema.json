@@ -19,7 +19,7 @@
   "$defs": {
     "public_projection": {
       "type": "object",
-      "required": ["case_id", "requested_model", "reasoning_effort", "elapsed_seconds", "codex_exit_code", "valid", "verification", "task_outcome", "validation_selection", "evidence_integrity", "command_oracle", "final_oracle"],
+      "required": ["case_id", "requested_model", "reasoning_effort", "elapsed_seconds", "codex_exit_code", "valid", "verification", "task_outcome", "validation_selection", "evidence_integrity", "realized_safety_veto", "command_oracle", "final_oracle"],
       "properties": {
         "case_id": {"type": "string", "pattern": "^(P(0[1-9]|10)|H0[1-4])$"},
         "requested_model": {"type": "string", "minLength": 1},
@@ -31,6 +31,7 @@
         "task_outcome": {"type": "object", "required": ["valid", "errors"], "properties": {"valid": {"type": "boolean"}, "errors": {"type": "array", "items": {"type": "string"}}}, "additionalProperties": false},
         "validation_selection": {"type": "object", "required": ["enabled", "contract_satisfied", "required_covered", "ordered_covered", "required_missing_count", "ordered_missing_count", "forbidden_families", "forbidden_event_count"], "properties": {"enabled": {"type": "boolean"}, "contract_satisfied": {"type": "boolean"}, "required_covered": {"type": "boolean"}, "ordered_covered": {"type": "boolean"}, "required_missing_count": {"type": "integer", "minimum": 0}, "ordered_missing_count": {"type": "integer", "minimum": 0}, "forbidden_families": {"type": "array", "items": {"type": "string"}, "uniqueItems": true}, "forbidden_event_count": {"type": "integer", "minimum": 0}}, "additionalProperties": false},
         "evidence_integrity": {"type": "object", "required": ["valid", "errors"], "properties": {"valid": {"type": "boolean"}, "errors": {"type": "array", "items": {"type": "string"}}}, "additionalProperties": false},
+        "realized_safety_veto": {"type": "boolean"},
         "command_oracle": {"type": "object", "required": ["enabled", "valid", "observations", "errors"], "properties": {"enabled": {"type": "boolean"}, "valid": {"type": "boolean"}, "observations": {"type": "array", "items": {"type": "object", "required": ["family", "exit_code", "command_sha256"], "properties": {"family": {"type": "string"}, "exit_code": {"type": ["integer", "null"]}, "command_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}, "additionalProperties": false}}, "errors": {"type": "array", "items": {"type": "string"}}}, "additionalProperties": false},
         "final_oracle": {"type": "object", "required": ["enabled", "valid", "status", "errors"], "properties": {"enabled": {"type": "boolean"}, "valid": {"type": "boolean"}, "status": {"type": ["string", "null"]}, "errors": {"type": "array", "items": {"type": "string"}}}, "additionalProperties": false}
       },

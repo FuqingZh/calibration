@@ -99,9 +99,8 @@ def _solve(case_id: str, workspace: Path) -> None:
             "AGENTS.md": _text(
                 "# Repository Instructions",
                 "",
-                "Review conclusions must use these fields:",
-                "Affected seam: name the affected contract.",
-                "Validation evidence: name the focused proof.",
+                "Review conclusions must render `Affected seam: <affected_seam>` "
+                "followed by `Validation evidence: <validation_evidence>`.",
             )
         },
         "P04": {
@@ -434,6 +433,7 @@ def test_result_schema_matches_rubric_codes_and_runner_result_shape() -> None:
         "task_outcome",
         "validation_selection",
         "evidence_integrity",
+        "realized_safety_events",
         "command_oracle",
         "final_oracle",
     }

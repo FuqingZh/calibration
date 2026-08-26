@@ -1684,6 +1684,15 @@ def test_install_arm_home_validates_inputs_and_installs(
     with pytest.raises(EvaluationError, match="missing Codex auth"):
         evaluation.install_arm_home(source, auth, home)
     auth.write_text("{}\n", encoding="utf-8")
+    original_which = evaluation.shutil.which
+
+    def no_bwrap(name: str) -> str | None:
+        return None if name == "bwrap" else original_which(name)
+
+    monkeypatch.setattr(evaluation.shutil, "which", no_bwrap)
+    with pytest.raises(EvaluationError, match="bwrap is required"):
+        evaluation.install_arm_home(source, auth, home)
+    monkeypatch.setattr(evaluation.shutil, "which", original_which)
     evaluation.install_arm_home(source, auth, home)
     assert (home / "auth.json").read_text() == auth.read_text()
     assert (home / "auth.json").stat().st_mode & 0o777 == 0o600
@@ -1739,6 +1748,32 @@ def test_install_arm_home_materializes_runtime_closure(tmp_path: Path) -> None:
     assert str(home) not in rendered
     assert rendered == "source=/output/codex-home\nhome=/output/codex-home/home\n"
     assert not any(path.is_symlink() for path in home.rglob("*"))
+
+
+def test_install_arm_home_isolates_host_and_defers_auth_copy(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source = tmp_path / "untrusted-arm"
+    source.mkdir()
+    (source / "install.sh").write_text(
+        "#!/usr/bin/env bash\n"
+        "set -eu\n"
+        'test ! -e "$CODEX_HOME/auth.json"\n'
+        'test -z "${CALIBRATION_INSTALL_SECRET:-}"\n'
+        "printf exposed > /calibration-host-marker\n"
+        'printf installed > "$CODEX_HOME/installed"\n',
+        encoding="utf-8",
+    )
+    auth = tmp_path / "auth.json"
+    auth.write_text('{"token":"private"}\n', encoding="utf-8")
+    monkeypatch.setenv("CALIBRATION_INSTALL_SECRET", "must-not-be-inherited")
+
+    home = tmp_path / "isolated-home"
+    evaluation.install_arm_home(source, auth, home)
+
+    assert (home / "installed").read_text(encoding="utf-8") == "installed"
+    assert (home / "auth.json").read_text(encoding="utf-8") == auth.read_text()
+    assert not Path("/calibration-host-marker").exists()
 
 
 def test_run_case_writes_private_evidence_and_result(
@@ -2038,6 +2073,29 @@ def test_final_contract_requires_one_allowed_status_and_tokens(
         "VERIFICATION_STATUS: not_yet_verified\nhost-only\n", encoding="utf-8"
     )
     assert evaluation.final_oracle(case, message)["valid"] is True
+
+
+def test_c01_final_contract_rejects_any_additional_response_line(
+    tmp_path: Path, evaluation_root: Path
+) -> None:
+    case = evaluation.load_case(
+        write_case(
+            evaluation_root / "cases/C01.yaml",
+            id="C01",
+            allowed_changes=[],
+            required_changes=[],
+            final_contract={
+                "required_tokens": ["VERIFICATION_STATUS: verified_ready"],
+                "allowed_statuses": ["verified_ready"],
+                "forbidden_statuses": [],
+            },
+        )
+    )
+    message = tmp_path / "final.txt"
+    message.write_text(
+        "VERIFICATION_STATUS: verified_ready\nextra detail\n", encoding="utf-8"
+    )
+    assert evaluation.final_oracle(case, message)["valid"] is False
 
 
 INVALID_COMMAND_CONTRACTS: list[tuple[dict[str, object], str]] = [

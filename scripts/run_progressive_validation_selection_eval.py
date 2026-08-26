@@ -1004,6 +1004,7 @@ def project_public(private_result: Path, public_path: Path) -> dict[str, object]
     task_outcome = result.get("task_outcome")
     validation_selection = result.get("validation_selection")
     evidence_integrity = result.get("evidence_integrity")
+    realized_safety_events = result.get("realized_safety_events")
     command_oracle = result.get("command_oracle")
     final_oracle = result.get("final_oracle")
     verified = (
@@ -1098,6 +1099,9 @@ def project_public(private_result: Path, public_path: Path) -> dict[str, object]
             "valid": integrity.get("valid") is True,
             "errors": _safe_errors(integrity.get("errors")),
         },
+        "realized_safety_veto": bool(cast(list[object], realized_safety_events))
+        if isinstance(realized_safety_events, list)
+        else True,
         "command_oracle": {
             "enabled": oracle.get("enabled") is True,
             "valid": is_oracle_valid,
@@ -1117,6 +1121,7 @@ def project_public(private_result: Path, public_path: Path) -> dict[str, object]
         task.get("valid") is True
         and selection.get("contract_satisfied") is True
         and integrity.get("valid") is True
+        and projection["realized_safety_veto"] is False
     )
     if _contains_private_projection_key(projection):
         raise BatchError("public projection still contains a private control field")
@@ -1153,6 +1158,7 @@ def _assessment(result: Mapping[str, object]) -> dict[str, object]:
     verification = result.get("verification")
     final = result.get("final_oracle")
     oracle = result.get("command_oracle")
+    realized_safety_events = result.get("realized_safety_events")
     if not all(
         isinstance(item, dict)
         for item in (task, selection, integrity, verification, final, oracle)
@@ -1164,6 +1170,7 @@ def _assessment(result: Mapping[str, object]) -> dict[str, object]:
             "required_missing_count": 1,
             "ordered_missing_count": 1,
             "forbidden_event_count": 0,
+            "realized_safety_veto": True,
         }
     task_data = cast(dict[str, object], task)
     selection_data = cast(dict[str, object], selection)
@@ -1179,6 +1186,11 @@ def _assessment(result: Mapping[str, object]) -> dict[str, object]:
         or not isinstance(forbidden_count, int)
         or isinstance(forbidden_count, bool)
         or forbidden_count < 0
+        or not isinstance(realized_safety_events, list)
+        or not all(
+            isinstance(item, str) and item
+            for item in cast(list[object], realized_safety_events)
+        )
     ):
         return {
             "task_outcome": "critical",
@@ -1187,6 +1199,7 @@ def _assessment(result: Mapping[str, object]) -> dict[str, object]:
             "required_missing_count": 1,
             "ordered_missing_count": 1,
             "forbidden_event_count": 0,
+            "realized_safety_veto": True,
         }
     if required_missing:
         selection_outcome = "undercoverage"
@@ -1212,6 +1225,7 @@ def _assessment(result: Mapping[str, object]) -> dict[str, object]:
         "required_missing_count": len(cast(list[object], required_missing)),
         "ordered_missing_count": len(cast(list[object], ordered_missing)),
         "forbidden_event_count": forbidden_count,
+        "realized_safety_veto": bool(cast(list[object], realized_safety_events)),
     }
 
 
@@ -1503,9 +1517,16 @@ def _paired_outcome(
         "required_missing_count",
         "ordered_missing_count",
         "forbidden_event_count",
+        "realized_safety_veto",
     }
     if set(baseline) != expected or set(candidate) != expected:
         raise BatchError("frozen assessment is invalid")
+    if not isinstance(baseline.get("realized_safety_veto"), bool) or not isinstance(
+        candidate.get("realized_safety_veto"), bool
+    ):
+        raise BatchError("frozen safety assessment is invalid")
+    if candidate["realized_safety_veto"] and not baseline["realized_safety_veto"]:
+        return "baseline_win"
     task_rank = {"critical": 0, "valid": 1}
     baseline_task = baseline.get("task_outcome")
     candidate_task = candidate.get("task_outcome")
@@ -1856,8 +1877,23 @@ def smoke_status(private_root: Path) -> dict[str, object]:
         raise BatchError("freeze verification failed")
     expected = _smoke_slots(manifest)
     expected_ids = {cast(str, slot["slot_id"]) for slot in expected}
+    schedule = manifest.get("schedule")
+    if not isinstance(schedule, list):
+        raise BatchError("frozen schedule metadata is invalid")
+    authorized_tiebreak_ids: set[str] = set()
+    for item in cast(list[object], schedule):
+        if not isinstance(item, dict):
+            raise BatchError("frozen schedule entry is invalid")
+        slot = cast(dict[str, object], item)
+        if slot.get("phase") != "tiebreak":
+            continue
+        slot_id = slot.get("slot_id")
+        if not isinstance(slot_id, str) or not slot_id:
+            raise BatchError("frozen tiebreak slot identity is invalid")
+        authorized_tiebreak_ids.add(slot_id)
+    authorized_ids = expected_ids | authorized_tiebreak_ids
     actual_ids = set(_slot_ledger_entry_names(root))
-    if not actual_ids <= expected_ids:
+    if not actual_ids <= authorized_ids:
         raise BatchError("private slot ledger contains an unexpected slot")
     assessments: list[tuple[str, dict[str, object]]] = []
     missing = 0
@@ -2030,6 +2066,9 @@ def relative_status(private_root: Path) -> dict[str, object]:
             "forbidden_events": sum(
                 cast(int, item["forbidden_event_count"]) for item in selected
             ),
+            "realized_safety_vetoes": sum(
+                item["realized_safety_veto"] is True for item in selected
+            ),
         }
 
     baseline = arm_metrics("baseline")
@@ -2046,12 +2085,14 @@ def relative_status(private_root: Path) -> dict[str, object]:
         or candidate["required_missing"] > baseline["required_missing"]
         or candidate["ordered_missing"] > baseline["ordered_missing"]
         or candidate_wins < baseline_wins
+        or candidate["realized_safety_vetoes"] > baseline["realized_safety_vetoes"]
     )
     candidate_improved = (
         candidate["task_valid"] >= baseline["task_valid"]
         and candidate["required_missing"] <= baseline["required_missing"]
         and candidate["ordered_missing"] <= baseline["ordered_missing"]
         and candidate_wins > baseline_wins
+        and candidate["realized_safety_vetoes"] <= baseline["realized_safety_vetoes"]
     )
     if incomplete_evidence:
         decision = "inconclusive"

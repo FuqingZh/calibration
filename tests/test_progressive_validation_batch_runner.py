@@ -109,6 +109,7 @@ def _result(
             "observations": [],
         },
         "evidence_integrity": {"valid": oracle_valid, "errors": errors},
+        "realized_safety_events": [],
         "command_oracle": {"valid": oracle_valid, "errors": errors},
         "final_oracle": {"valid": final_valid},
     }
@@ -274,6 +275,7 @@ def test_public_projection_hashes_raw_commands_and_removes_private_fields(
                     "observations": [],
                 },
                 "evidence_integrity": {"valid": True, "errors": []},
+                "realized_safety_events": [],
                 "command_oracle": {
                     "valid": True,
                     "observations": [

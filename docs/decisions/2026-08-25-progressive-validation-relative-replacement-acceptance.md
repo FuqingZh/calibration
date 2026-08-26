@@ -1,17 +1,16 @@
 # Progressive Validation Relative-Replacement Decision
 
 Date: 2026-08-25
-Status: inconclusive; replacement not accepted
+Status: comparative evidence inconclusive; candidate adopted by user direction
 
-## Decision
+## Comparative result
 
-Retain frozen baseline `0f21f880383859f060156db6ce69d08eff73ed44` as
-the current progressive-validation authority. Candidate
+The corrected relative comparison remains inconclusive. Candidate
 `5a94f5826c99f6e748a2d712851874b604471a23` did not prove a net improvement
 under the corrected relative rule: P05 favored the candidate, P03 favored the
 baseline, and P02 tied.
 
-This decision supersedes the earlier acceptance interpretation. Audit found
+This empirical result supersedes the earlier acceptance interpretation. Audit found
 that the earlier fixtures credited a literal `\\n` artifact in P02, used a
 phrase-only behavior sample in P03, and failed to require preservation of all
 consumer fields in P05. Those defects changed the compared behavior and made
@@ -54,8 +53,21 @@ elapsed time was also slightly higher, but elapsed time was a secondary
 diagnostic and did not decide the result.
 
 The result therefore says neither implementation is uniformly better on the
-tested behaviors. It does not justify replacing the baseline, activating the
-candidate globally, or migrating downstream repositories.
+tested behaviors. It does not itself justify replacement, global activation,
+or downstream migration.
+
+## User-authorized adoption decision
+
+On 2026-08-26, the user explicitly directed adoption and merge of the candidate
+despite the corrected comparison being empirically inconclusive. That product
+decision, rather than a comparative-improvement claim, makes the candidate the
+current repository and installer authority. Both the `standard` and `ao-worker`
+profiles therefore install the single pinned shared `coding-protocol` skill.
+
+This adoption does not relabel the corrected result as acceptance evidence and
+does not claim better correctness, validation selection, or speed. The frozen
+baseline and immutable run remain the comparison reference; future replacement
+claims require new representative evidence.
 
 ## Invalid diagnostic attempts
 
@@ -74,11 +86,10 @@ No result, ledger, or slot was rewritten or reused.
 
 ## Consequences
 
-The candidate branch and evaluation artifacts remain reviewable evidence, but
-the candidate must not be merged as the replacement. The remote default branch
-continues to represent the baseline. Harness and fixture corrections may be
-adopted separately only under a change that does not activate the rejected
-candidate behavior.
+Merge the candidate as a user-authorized adoption while preserving the
+inconclusive comparison record. The installer activation is intentional in
+both profiles. Downstream repository migration remains a separate decision;
+this adoption does not authorize changing those repositories.
 
 Approval telemetry remains out of scope. No active user installation or
 downstream repository was changed by the formal comparison.

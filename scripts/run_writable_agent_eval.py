@@ -1539,9 +1539,10 @@ def final_oracle(case: CaseSpec, final_message: Path) -> dict[str, object]:
         return {"enabled": False, "valid": True, "errors": []}
     errors: list[str] = []
     text = final_message.read_text(encoding="utf-8") if final_message.is_file() else ""
-    lines = [
-        line for line in text.splitlines() if line.startswith("VERIFICATION_STATUS:")
-    ]
+    all_lines = text.splitlines()
+    lines = [line for line in all_lines if line.startswith("VERIFICATION_STATUS:")]
+    if case.case_id == "C01" and all_lines != ["VERIFICATION_STATUS: verified_ready"]:
+        errors.append("C01 requires exactly its single verified-ready response line")
     if len(lines) != 1:
         errors.append("expected exactly one VERIFICATION_STATUS line")
         status = None
@@ -2044,23 +2045,78 @@ def install_arm_home(source_root: Path, auth_file: Path, codex_home: Path) -> No
         raise EvaluationError(f"missing arm installer: {source_root / 'install.sh'}")
     if not auth_file.is_file():
         raise EvaluationError(f"missing Codex auth file: {auth_file}")
+    if shutil.which("bwrap") is None:
+        raise EvaluationError("bwrap is required for isolated arm installation")
     codex_home.mkdir(mode=0o700, parents=True)
     install_home = codex_home / "home"
     install_home.mkdir(mode=0o700)
-    shutil.copyfile(auth_file, codex_home / "auth.json")
-    (codex_home / "auth.json").chmod(0o600)
-    env = os.environ.copy()
-    env["CODEX_HOME"] = str(codex_home)
-    env["HOME"] = str(install_home)
-    result = _run(("bash", "install.sh"), source_root, env=env)
+    source_root = source_root.resolve()
+    codex_home = codex_home.resolve()
+    command = (
+        "bwrap",
+        "--die-with-parent",
+        "--unshare-all",
+        "--new-session",
+        "--dir",
+        "/usr",
+        "--ro-bind",
+        "/usr",
+        "/usr",
+        "--dir",
+        "/etc",
+        "--ro-bind",
+        "/etc",
+        "/etc",
+        "--symlink",
+        "usr/bin",
+        "/bin",
+        "--symlink",
+        "usr/sbin",
+        "/sbin",
+        "--symlink",
+        "usr/lib",
+        "/lib",
+        "--symlink",
+        "usr/lib64",
+        "/lib64",
+        "--dev",
+        "/dev",
+        "--proc",
+        "/proc",
+        "--tmpfs",
+        "/tmp",
+        "--ro-bind",
+        str(source_root),
+        "/source",
+        "--bind",
+        str(codex_home),
+        "/output",
+        "--chdir",
+        "/source",
+        "--",
+        "/usr/bin/env",
+        "-i",
+        "PATH=/usr/bin:/bin",
+        "CODEX_HOME=/output",
+        "HOME=/output/home",
+        "bash",
+        "install.sh",
+    )
+    result = _run(command, source_root, env={})
     if result.returncode:
         raise EvaluationError(f"arm install failed: {result.stderr.strip()}")
+    shutil.copyfile(auth_file, codex_home / "auth.json")
+    (codex_home / "auth.json").chmod(0o600)
     skills_dir = codex_home / "skills"
     if skills_dir.is_dir():
         for link in sorted(skills_dir.iterdir()):
             if not link.is_symlink():
                 continue
-            target = link.resolve()
+            raw_target = link.readlink()
+            if raw_target.is_absolute() and raw_target.is_relative_to("/source"):
+                target = source_root / raw_target.relative_to("/source")
+            else:
+                target = link.resolve()
             if not target.exists():
                 raise EvaluationError(f"installed skill link is broken: {link}")
             link.unlink()
@@ -2087,6 +2143,8 @@ def install_arm_home(source_root: Path, auth_file: Path, codex_home: Path) -> No
     agents_file = codex_home / "AGENTS.md"
     if agents_file.is_file():
         rendered = agents_file.read_text(encoding="utf-8")
+        rendered = rendered.replace("/output", "/output/codex-home")
+        rendered = rendered.replace("/source", "/output/codex-home")
         rendered = rendered.replace(str(source_root.resolve()), "/output/codex-home")
         rendered = rendered.replace(str(codex_home.resolve()), "/output/codex-home")
         agents_file.write_text(rendered, encoding="utf-8")
@@ -2379,6 +2437,7 @@ def run_case(
         "task_outcome": outcome,
         "validation_selection": selection,
         "evidence_integrity": integrity,
+        "realized_safety_events": [],
         "command_oracle": executor_oracle,
         "final_oracle": final_answer_oracle,
     }

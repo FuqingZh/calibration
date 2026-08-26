@@ -36,6 +36,7 @@ def _result(case_id: str = "P01") -> dict[str, object]:
             "observations": [],
         },
         "evidence_integrity": {"valid": True, "errors": []},
+        "realized_safety_events": [],
         "command_oracle": {"valid": True, "errors": []},
         "final_oracle": {"valid": True},
     }
@@ -117,6 +118,7 @@ def test_project_public_filters_observations_hashes_errors_and_rejects_leaks(
     projection = batch.project_public(private, public)
 
     assert projection["valid"] is False
+    assert projection["realized_safety_veto"] is False
     assert projection["verification"] == {
         "passed": True,
         "changed_path_count": 1,
@@ -151,6 +153,13 @@ def test_project_public_filters_observations_hashes_errors_and_rejects_leaks(
     assert not batch._contains_private_projection_key(
         {"requested_model": "auth-arm-candidate"}
     )
+
+    unsafe = _result()
+    unsafe["realized_safety_events"] = ["sandbox_bypass"]
+    private.write_text(json.dumps(unsafe), encoding="utf-8")
+    unsafe_projection = batch.project_public(private, tmp_path / "unsafe.json")
+    assert unsafe_projection["realized_safety_veto"] is True
+    assert unsafe_projection["valid"] is False
 
     def reports_private_key(_value: object) -> bool:
         return True

@@ -52,6 +52,7 @@ def _result() -> dict[str, object]:
             "observations": [],
         },
         "evidence_integrity": {"valid": True, "errors": []},
+        "realized_safety_events": [],
         "command_oracle": {"valid": True, "broker_events": [{}]},
         "final_oracle": {"valid": True},
     }
@@ -502,6 +503,64 @@ def test_smoke_status_counts_a_valid_started_slot_as_incomplete(
     monkeypatch.setattr(batch, "verify_freeze", _valid_freeze)
     monkeypatch.setattr(batch, "_smoke_slots", smoke_slots)
     assert batch.smoke_status(tmp_path)["state"] == "not_yet_verified"
+
+
+def test_smoke_status_allows_authorized_tiebreak_ledgers_but_assesses_initial_only(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    root = _canary_root(tmp_path)
+    smoke: dict[str, object] = {
+        "slot_id": "r1-P01-1",
+        "case_id": "P01",
+        "arm_key": "baseline",
+        "repetition": 1,
+        "phase": "smoke",
+    }
+    tiebreak: dict[str, object] = {
+        "slot_id": "r3-P01-1",
+        "case_id": "P01",
+        "arm_key": "baseline",
+        "repetition": 3,
+        "phase": "tiebreak",
+    }
+    (root / "slots/r3-P01-1").mkdir(parents=True)
+    manifest: dict[str, object] = {"schedule": [smoke, tiebreak]}
+
+    def private_manifest(_root: Path) -> dict[str, object]:
+        return manifest
+
+    def smoke_slots(_manifest: object) -> list[dict[str, object]]:
+        return [smoke]
+
+    monkeypatch.setattr(batch, "_private_manifest", private_manifest)
+    monkeypatch.setattr(batch, "verify_freeze", _valid_freeze)
+    monkeypatch.setattr(batch, "_smoke_slots", smoke_slots)
+
+    status = batch.smoke_status(tmp_path)
+    assert status["state"] == "not_yet_verified"
+    assert status["completed_slots"] == 0
+
+
+@pytest.mark.parametrize(
+    "schedule",
+    [None, ["malformed"], [{"phase": "tiebreak", "slot_id": ""}]],
+)
+def test_smoke_status_rejects_malformed_authorized_schedule(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, schedule: object
+) -> None:
+    manifest: dict[str, object] = {"schedule": schedule}
+
+    def private_manifest(_root: Path) -> dict[str, object]:
+        return manifest
+
+    def smoke_slots(_manifest: object) -> list[dict[str, object]]:
+        return []
+
+    monkeypatch.setattr(batch, "_private_manifest", private_manifest)
+    monkeypatch.setattr(batch, "verify_freeze", _valid_freeze)
+    monkeypatch.setattr(batch, "_smoke_slots", smoke_slots)
+    with pytest.raises(batch.BatchError, match=r"schedule|tiebreak slot"):
+        batch.smoke_status(tmp_path)
 
 
 def test_cli_routes_canary_status_and_serializes_batch_error(

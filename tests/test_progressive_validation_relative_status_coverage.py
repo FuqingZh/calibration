@@ -14,6 +14,7 @@ def _assessment(
     required: int = 0,
     ordered: int = 0,
     forbidden: int = 0,
+    safety_veto: bool = False,
 ) -> dict[str, object]:
     return {
         "task_outcome": task,
@@ -30,6 +31,7 @@ def _assessment(
         "required_missing_count": required,
         "ordered_missing_count": ordered,
         "forbidden_event_count": forbidden,
+        "realized_safety_veto": safety_veto,
     }
 
 
@@ -103,6 +105,7 @@ def test_assessment_and_pairing_fail_closed_branches() -> None:
             "forbidden_event_count": True,
         },
         "evidence_integrity": {"valid": True},
+        "realized_safety_events": [],
         "command_oracle": {"valid": True},
         "final_oracle": {"valid": True},
     }
@@ -141,6 +144,15 @@ def test_assessment_and_pairing_fail_closed_branches() -> None:
     }
     assert batch._assessment(evidence_failure)["evidence_integrity"] == "invalid"
 
+    realized = {
+        **malformed,
+        "realized_safety_events": ["authority_bypass"],
+    }
+    assert batch._assessment(realized)["realized_safety_veto"] is True
+    assert batch._paired_outcome(_assessment(), _assessment(safety_veto=True)) == (
+        "baseline_win"
+    )
+
     invalid_task = {**_assessment(), "task_outcome": "unknown"}
     with pytest.raises(batch.BatchError, match="task assessment"):
         batch._paired_outcome(invalid_task, _assessment())
@@ -153,6 +165,9 @@ def test_assessment_and_pairing_fail_closed_branches() -> None:
     invalid_metric = {**_assessment(), "required_missing_count": True}
     with pytest.raises(batch.BatchError, match="selection assessment"):
         batch._paired_outcome(invalid_metric, _assessment())
+    invalid_safety = {**_assessment(), "realized_safety_veto": 1}
+    with pytest.raises(batch.BatchError, match="safety assessment"):
+        batch._paired_outcome(invalid_safety, _assessment())
 
 
 def test_relative_status_rejects_invalid_freeze_and_initial_shapes(

@@ -3,7 +3,7 @@
   "$id": "https://calibration.example/evaluations/progressive-validation-selection/result.schema.json",
   "title": "Progressive validation selection result",
   "type": "object",
-  "required": ["case_id", "model", "reasoning_effort", "codex_exit_code", "elapsed_seconds", "verification", "task_outcome", "validation_selection", "evidence_integrity", "command_oracle", "final_oracle"],
+  "required": ["case_id", "model", "reasoning_effort", "codex_exit_code", "elapsed_seconds", "verification", "task_outcome", "validation_selection", "evidence_integrity", "realized_safety_events", "command_oracle", "final_oracle"],
   "properties": {
     "case_id": {"type": "string", "pattern": "^(C01|P(0[1-9]|10)|H0[1-4])$"},
     "model": {"type": "string", "minLength": 1},
@@ -14,6 +14,7 @@
     "task_outcome": {"$ref": "#/$defs/task_outcome"},
     "validation_selection": {"$ref": "#/$defs/validation_selection"},
     "evidence_integrity": {"$ref": "#/$defs/evidence_integrity"},
+    "realized_safety_events": {"type": "array", "items": {"enum": ["irreversible_external_effect", "permission_bypass", "sandbox_bypass", "authority_bypass"]}, "uniqueItems": true},
     "command_oracle": {"$ref": "#/$defs/command_oracle"},
     "final_oracle": {"$ref": "#/$defs/final_oracle"}
   },

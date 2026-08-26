@@ -2,7 +2,7 @@
   "canonicalization": "UTF-8 bytes; lexical POSIX-relative path order; root_tree_sha256 is SHA-256 of path, NUL, digest, newline records",
   "files": {
     "batch-config.json": "ca9b115ef5d87c66e493cf6dfaada26850e50dc362f18c774ed08558c27094b2",
-    "batch.schema.json": "52cee231593610a51c1afb3b2ef7c39ce3bb2887f44c2ed2ebd9d361c08bf826",
+    "batch.schema.json": "c08db5288c950d9e1ef8b2ea91b7fe0ed722a0493b7007ca8fa4af6383df2ade",
     "cases/C01.yaml": "56219088a8c43c57aea17c98c51ff138374e1833ccae30a140b56a5f8f5dfc47",
     "cases/H01.yaml": "f420380fd8df6d09d223c450f38ab0eb5549235d1eac3b64588c1c4a8c898731",
     "cases/H02.yaml": "875499230ce31d36a7c3a8cf1c98de1aa1101642427d07ede3a4e78a9718c1eb",
@@ -74,7 +74,7 @@
     "fixtures/P03/AGENTS.md": "2070edd529a076554a101d1ed48d4f7a009bae3eaca2aec609d7ed5e70b2e621",
     "fixtures/P03/Makefile": "04c1b683df3c5e6c17f3939fe4ae86f6638aacae9c3662dd08cd8a2965847058",
     "fixtures/P03/samples/review-finding.json": "90b4ddb985fc0c5196ac5050a392c1cf01f8b99e2124c7927c8754e81d8d5625",
-    "fixtures/P03/scripts/behavior_sample.py": "dc16991aa0623b42251a0c35f879a2f66d3909384ae00a28d3a312294e28b83f",
+    "fixtures/P03/scripts/behavior_sample.py": "9ddb2dffad1e277b53df271aa410b043f34225d127b70ce85c4e1c242153de4d",
     "fixtures/P03/scripts/behavior_sample.sh": "0a03d5310c8dabdeb6fd0a4784431d381d02a954455aff3594d2215a0bc1e235",
     "fixtures/P03/scripts/check_event.py": "74656e231860b6c882ec9b5712332f505487e1fa9b98ff83124c8bca35058cf9",
     "fixtures/P03/scripts/complete_gate.py": "5f3bae9c00ff82b2c14e73c340c25caf11780c9464b6b7c0051350219546997a",
@@ -153,10 +153,10 @@
     "fixtures/P10/tests/test_selector.py": "b732055cc46a71a4e840504b47aae2e39f5e5539edf4b244b02546b86f022bea",
     "fixtures/P10/validation/selector.py": "884ce2797abb585d0644ae7e183e93ccbd95101f908c2ae98a79ee6173d30c7e",
     "judge-prompt.md": "ee1443024dd318e4f121bd9de7808d56c62dfdfb994e81187bf131448ff59773",
-    "result.schema.json": "ef7c0db810cabef9eaf52f91208591daadaf88f609dc569583342c8378a9e337",
+    "result.schema.json": "263e6c960fca5b9b1bd5e254a9345bbfcab353dd49484b1b4187ec08e01c2e28",
     "rubric.yaml": "5fc67b68d0bbbae65eef6f357466f4444efacf677738f33b050f25d4c48cffe2"
   },
   "hash_algorithm": "sha256",
-  "root_tree_sha256": "4068faeed5466cc441b7ebb8ace30e2b803faf842112c046ac4cb9c8e80279f7",
+  "root_tree_sha256": "1f5a7471d59905f76fba0789a77ebde626b3314edd413a49cf1f65dbf8c1fbaf",
   "schema_version": 1
 }
