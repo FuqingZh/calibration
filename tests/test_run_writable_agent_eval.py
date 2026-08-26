@@ -126,8 +126,8 @@ def evaluation_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return root
 
 
-@pytest.fixture(autouse=True)
-def emulate_isolated_arm_installer_without_bwrap() -> Iterator[None]:
+@pytest.fixture
+def isolated_installer_runtime() -> Iterator[None]:
     """Keep installer unit coverage portable when CI does not provide bwrap."""
     if evaluation.shutil.which("bwrap") is not None:
         yield
@@ -1715,8 +1715,11 @@ def test_fifo_shim_lock_timeout_fails_closed_without_broker_event(
 
 
 def test_install_arm_home_validates_inputs_and_installs(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    isolated_installer_runtime: None,
 ) -> None:
+    del isolated_installer_runtime
     source = tmp_path / "source"
     source.mkdir()
     auth = tmp_path / "auth.json"
@@ -1750,7 +1753,10 @@ def test_install_arm_home_validates_inputs_and_installs(
         evaluation.install_arm_home(source, auth, tmp_path / "failed-home")
 
 
-def test_install_arm_home_materializes_runtime_closure(tmp_path: Path) -> None:
+def test_install_arm_home_materializes_runtime_closure(
+    tmp_path: Path, isolated_installer_runtime: None
+) -> None:
+    del isolated_installer_runtime
     source = tmp_path / "neutral-arm"
     skill = source / "skills/calibration"
     skill.mkdir(parents=True)
@@ -1794,8 +1800,11 @@ def test_install_arm_home_materializes_runtime_closure(tmp_path: Path) -> None:
 
 
 def test_install_arm_home_isolates_host_and_defers_auth_copy(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    isolated_installer_runtime: None,
 ) -> None:
+    del isolated_installer_runtime
     source = tmp_path / "untrusted-arm"
     source.mkdir()
     (source / "install.sh").write_text(
@@ -2822,8 +2831,12 @@ def test_contract_and_oracle_cover_invalid_mapping_and_broker_shapes(
 
 
 def test_schema_private_files_boundary_and_installation_negative_paths(
-    tmp_path: Path, evaluation_root: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path,
+    evaluation_root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    isolated_installer_runtime: None,
 ) -> None:
+    del isolated_installer_runtime
     root = tmp_path / "schema-root"
     write_fixture(root)
     case = evaluation.load_case(write_case(root / "cases/C.yaml"))
@@ -3398,8 +3411,12 @@ def test_runner_branches_reject_invalid_runtime_and_preserve_broker_truth(
 
 
 def test_install_file_link_and_run_case_broker_error_are_materialized(
-    tmp_path: Path, evaluation_root: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path,
+    evaluation_root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    isolated_installer_runtime: None,
 ) -> None:
+    del isolated_installer_runtime
     patch_runtime_discovery(monkeypatch, tmp_path)
     source = tmp_path / "source"
     source.mkdir()
