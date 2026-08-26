@@ -148,7 +148,7 @@ def isolated_installer_runtime() -> Iterator[None]:
         output_index = command.index("/output")
         source = Path(command[source_index - 1])
         output = Path(command[output_index - 1])
-        return subprocess.run(
+        result = subprocess.run(
             ["bash", "install.sh"],
             cwd=source,
             env={
@@ -160,6 +160,17 @@ def isolated_installer_runtime() -> Iterator[None]:
             capture_output=True,
             text=True,
         )
+        skills = output / "skills"
+        if result.returncode == 0 and skills.is_dir():
+            for link in skills.iterdir():
+                if not link.is_symlink():
+                    continue
+                target = link.resolve()
+                if not target.is_relative_to(source):
+                    continue
+                link.unlink()
+                link.symlink_to(Path("/source") / target.relative_to(source))
+        return result
 
     def emulated_which(name: str) -> str | None:
         return "/usr/bin/bwrap" if name == "bwrap" else original_which(name)
