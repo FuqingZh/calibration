@@ -4,9 +4,30 @@ This directory records calibration decisions, evaluations, historical plans,
 and portable integration guidance. Reusable cross-project engineering guidance
 lives under `../references/engineering/`.
 
-Calibration is in stable maintenance mode. The proportional-validation plan is
-the current bounded validation slice and is layered on the ongoing project-docs
-architecture convergence; neither reopens the completed runtime or AO
+Calibration is in stable maintenance mode. The v2.1 relative-replacement run
+is now diagnostic history: audit showed that its raw-command evidence oracle
+had been collapsed into task completion even though every repository verifier
+passed. The corrected v2.2 comparison is complete and inconclusive, so the
+frozen baseline remains current authority. Both arms were 7/7 task-valid and
+evidence-valid. The candidate reduced forbidden events from five to three, but
+P03 favored the baseline while P05 favored the candidate and P02 tied. It did
+not establish a net behavioral or speed improvement. G0 at
+`ff16714999465ad1acbd130dbb9711725584544f` with Codex 0.148.0 found that
+`codex exec --json` lacks structured, correlated approval events; its error
+items are not a reliable replacement. Approval statistics were subsequently
+removed from the decision scope, so the outcome-only comparison is authorized
+without parsing that prose. `Approve for me` remains a symmetric runtime safety
+control. The v2.2 contract separates task outcome, runner-owned validation
+selection, and evidence integrity; it completed 12 initial runs plus the P05
+tiebreak pair. The active user installation and downstream-repository pilot
+remain separate work and were not changed by this evaluation. The v2.0 plan
+and its 2026-08-24 smoke/recovery results remain historical background only.
+This follows the completed v1.0
+proportional-wording increment and is layered on the ongoing project-docs
+architecture convergence. The user subsequently authorized candidate adoption
+despite that inconclusive evidence, so the shared pinned `coding-protocol` is
+installed without making a comparative-improvement claim. This does not reopen
+the completed runtime or AO
 implementation phases. The completed bounded v2.4 closeout-skill increment
 adds an explicitly invoked first-party closeout contract and makes no
 comparative improvement claim.
@@ -55,7 +76,14 @@ back to `$HOME/.config/calibration/AGENTS.md`.
 | Project docs architecture | `../references/engineering/docs/workflow/project_docs_architecture/20260805-v1.1-project-docs-architecture.md` |
 | Durable implementation-plan contract | `../references/engineering/docs/document-types/implementation-plan.md` |
 | Project docs architecture convergence plan | `implementation-plans/20260805-v1.0-project-docs-architecture-convergence-implementation-plan.md` |
-| Proportional validation selection plan | `implementation-plans/20260807-v1.0-proportional-validation-selection-implementation-plan.md` |
+| Progressive validation relative-replacement test plan | `testing/20260825-v2.1-progressive-validation-relative-replacement-test-plan.md` |
+| Progressive validation corrected relative-replacement plan | `testing/20260825-v2.2-progressive-validation-relative-replacement-correction-plan.md` |
+| Progressive validation corrected decision | `decisions/2026-08-25-progressive-validation-relative-replacement-acceptance.md` |
+| Progressive validation v2.0 historical implementation plan | `implementation-plans/20260824-v2.0-progressive-validation-selection-implementation-plan.md` |
+| Progressive validation approval-observability preflight | `decisions/2026-08-25-progressive-validation-relative-replacement-preflight.md` |
+| Progressive validation frozen baseline | `decisions/2026-08-24-progressive-validation-selection-baseline.md` |
+| Progressive validation activation candidate | `decisions/2026-08-24-progressive-validation-selection-candidate.md` |
+| Progressive validation invalid smoke and C01 recovery | `decisions/2026-08-24-progressive-validation-selection-smoke-invalid.md` |
 | Portable AO integration | `runbooks/agent-orchestrator-review-continuation.md` |
 | Native AO delivery and auto-merge boundary | `decisions/2026-07-29-ao-native-delivery-convergence.md` |
 | Current AI-native direction | `decisions/2026-07-27-ai-native-calibration-review.md` |
@@ -168,6 +196,7 @@ evidence remains in its owning public decisions.
 - `decisions/2026-07-21-harness-successor-evaluation-closeout.md`
 - `decisions/2026-07-27-ai-native-calibration-evaluation-closeout.md`
 - `decisions/2026-07-27-ai-native-writable-implementation-evaluation-closeout.md`
+- `implementation-plans/20260807-v1.0-proportional-validation-selection-implementation-plan.md`
 
 ### Delivery And Orchestration
 

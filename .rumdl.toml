@@ -1,6 +1,7 @@
 [global]
 exclude = [
   "thirdparty/**",
+  "evaluations/progressive-validation-selection/fixtures/**",
   "evaluations/teach-adaptation/artifacts/**",
   "evaluations/teach-adaptation/v2/blind-packet.md",
   "evaluations/teach-adaptation/v2/runs/**",

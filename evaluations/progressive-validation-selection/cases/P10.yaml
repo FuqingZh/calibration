@@ -1,0 +1,37 @@
+id: P10
+title: Validation gate selector, lockfile, and harness change
+fixture: P10
+prompt: |
+  Repair the fixture's validation-selection integration: the selector, lockfile
+  authority, and harness must agree on the documented complete-gate behavior.
+  Follow the repository instructions. A narrow unit check alone cannot establish
+  this gate-wide contract.
+verify:
+  - [python, scripts/verify_result.py]
+allowed_changes:
+  - validation/selector.py
+  - dependency.lock
+  - scripts/harness.py
+required_changes:
+  - validation/selector.py
+  - dependency.lock
+  - scripts/harness.py
+command_contract:
+  families:
+    focused_test:
+      commands:
+        - [python, scripts/check.py, focused_test]
+        - [python, -m, unittest, -q, tests.test_selector]
+      wrapper_required: true
+      covered_seam: selector-unit
+    complete_gate:
+      commands:
+        - [python, scripts/check.py, complete_gate]
+        - [python, -m, unittest, -q]
+      wrapper_required: true
+      covered_seam: selector-lockfile-harness-integration
+  required:
+    - {family: complete_gate, exit: zero}
+  forbidden: []
+  ordered:
+    - {family: complete_gate, exit: zero}

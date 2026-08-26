@@ -23,9 +23,11 @@ CODE_PATH_PATTERN = re.compile(
     r"(?<!`)`([^`\n]+\.(?:md|json|ya?ml|py|sh|js|cjs|html))`"
 )
 INSTALL_ARRAY_PATTERN = re.compile(
-    r"(?ms)^\s*(MANAGED_SKILLS|MANAGED_THIRDPARTY_SKILLS)=\(\s*(.*?)^\s*\)"
+    r"(?ms)^\s*(MANAGED_SKILLS|MANAGED_THIRDPARTY_SKILLS|"
+    r"MANAGED_SHARED_THIRDPARTY_SKILLS)=\(\s*(.*?)^\s*\)"
 )
 RETIRED_FIELD = "disable-model-invocation"
+IMPLICIT_THIRDPARTY_ALLOWLIST = frozenset({"coding-protocol"})
 
 
 def discover_skills(root: Path) -> list[Path]:
@@ -172,9 +174,17 @@ def _validate_openai_metadata(
     if not isinstance(implicit, bool):
         errors.append(f"{path}: allow_implicit_invocation must be an explicit boolean")
     elif description is not None:
-        is_third_party = skill_dir.is_relative_to(root / "thirdparty/skills")
+        third_party_root = root / "thirdparty/skills"
+        is_third_party = skill_dir.is_relative_to(third_party_root)
+        is_shared_implicit_skill = (
+            isinstance(name, str)
+            and name in IMPLICIT_THIRDPARTY_ALLOWLIST
+            and skill_dir == third_party_root / name
+        )
         is_user_invoked = description.casefold().startswith("user-invoked")
-        expected_implicit = not (is_third_party or is_user_invoked)
+        expected_implicit = is_shared_implicit_skill or not (
+            is_third_party or is_user_invoked
+        )
         if implicit != expected_implicit:
             intended = "enable" if expected_implicit else "disable"
             errors.append(
@@ -232,9 +242,25 @@ def _installer_skills(root: Path, errors: list[str]) -> list[Path]:
         name: shlex.split(body, comments=True)
         for name, body in INSTALL_ARRAY_PATTERN.findall(text)
     }
+    shared = arrays.get("MANAGED_SHARED_THIRDPARTY_SKILLS")
+    expected_shared = sorted(IMPLICIT_THIRDPARTY_ALLOWLIST)
+    if shared is not None and shared != expected_shared:
+        errors.append(
+            f"{path}: MANAGED_SHARED_THIRDPARTY_SKILLS must be exactly "
+            f"{expected_shared!r}"
+        )
+    optional = arrays.get("MANAGED_THIRDPARTY_SKILLS")
+    if shared is not None and optional is not None:
+        overlap = sorted(set(shared) & set(optional))
+        if overlap:
+            errors.append(
+                f"{path}: shared and standard-only third-party arrays overlap: "
+                f"{overlap!r}"
+            )
     expected = {
         "MANAGED_SKILLS": root / "skills",
         "MANAGED_THIRDPARTY_SKILLS": root / "thirdparty/skills",
+        "MANAGED_SHARED_THIRDPARTY_SKILLS": root / "thirdparty/skills",
     }
     active: list[Path] = []
     for array_name, source_root in expected.items():

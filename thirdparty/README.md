@@ -12,10 +12,23 @@ patches stay explicit.
 - `skills/`: vendored skill directories installed into `$CODEX_HOME/skills`
 - `sources.tsv`: upstream source and local policy for each vendored skill
 - `PATCHES.md`: local modifications from the upstream or imported copy
+- `import-manifests/`: machine-readable source roles, license treatment, and
+  byte hashes for multi-source imports
 
 Retired sources may remain in `sources.tsv` after their vendored trees are
 removed. Their entries retain immutable provenance and use an explicit
 `retired-not-vendored` policy.
+
+The progressive-validation-selection provenance uses three more specific
+states:
+
+- `vendored+patched+shared`: an imported runtime tree with a documented local
+  patch, installed by the shared registry in both profiles. It is a singular
+  audited exception, not a general third-party installation or invocation rule.
+- `method-adapted-not-vendored`: an upstream method source for a separately
+  attributed local derivative; no upstream skill tree is distributed.
+- `method-reference-not-vendored`: a source used only to inform independently
+  expressed structure; neither its text nor its files are distributed.
 
 ## Policy
 

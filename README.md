@@ -55,8 +55,8 @@ The default `standard` profile preserves the existing installation behavior:
 bash install.sh --profile standard
 ```
 
-Install an isolated AO worker home with only first-party managed skills and
-global instructions:
+Install an isolated AO worker home with first-party managed skills, the single
+shared pinned `coding-protocol`, and global instructions:
 
 ```bash
 bash install.sh --profile ao-worker --codex-home /path/to/worker-home
@@ -73,9 +73,11 @@ The installer renders `codex/AGENTS.md.template` into the selected Codex home
 with the current repository path and a conditional pointer to private host
 authority at `$XDG_CONFIG_HOME/calibration/AGENTS.md`, or
 `$HOME/.config/calibration/AGENTS.md` when `XDG_CONFIG_HOME` is unset. Standard
-installs symlink managed first-party and vendored skills. AO worker installs
-only managed first-party skills. Existing `AGENTS.md` content is backed up
-before replacement when it differs.
+installs symlink managed first-party skills, the shared pinned
+`coding-protocol`, and standard-only optional vendored skills. AO worker
+installs only managed first-party skills plus that single shared pinned
+protocol; standard-only optional third-party skills remain excluded. Existing
+`AGENTS.md` content is backed up before replacement when it differs.
 
 ## Development
 
@@ -128,6 +130,10 @@ The managed third-party optional skills are:
 - `teach`: explicitly invoked teaching with session-only mode or isolated
   personal learning state
 - `writing-great-skills`: reference for writing and editing skills predictably
+
+`coding-protocol` is the only shared third-party skill: it is pinned under
+`thirdparty/skills/` and installed in both profiles. All other optional
+third-party skills remain standard-only and explicitly invoked.
 
 Third-party skills are vendored under `thirdparty/skills/`. The installer does
 not download them from the network. Local patches and source notes are tracked

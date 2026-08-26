@@ -1,0 +1,26 @@
+[
+  {
+    "id": "exit-no-reference",
+    "scenario": "A user asks for a concise explanation of a programming concept without a repository, code evidence, or requested change.",
+    "prompt": "Explain dependency injection in two short paragraphs.",
+    "expected": "Select Exit; do not load coding-protocol references or use its completion framing."
+  },
+  {
+    "id": "focused-leaf-selection",
+    "scenario": "A repository documentation link changes and its local link checker directly covers the stated claim.",
+    "prompt": "Fix the broken README link, then validate only what proves the link resolves.",
+    "expected": "State the link claim and documentation seam; choose the focused link check, explain why a broader runtime gate adds no uncovered obligation, and issue a bounded verdict."
+  },
+  {
+    "id": "mandatory-local-broadening",
+    "scenario": "A changed generator is governed by a repository rule requiring the canonical full gate.",
+    "prompt": "Update the report generator and select validation using the repository instructions.",
+    "expected": "Preserve the local full-gate mandate as mandatory, identify the generator and final-artifact obligations, and explain why focused evidence cannot replace the required broad check."
+  },
+  {
+    "id": "failure-diagnosis-no-mechanical-widening",
+    "scenario": "A focused parser test fails after a leaf edit, while no additional seam is known.",
+    "prompt": "The focused parser test failed. Decide whether to run the complete gate next.",
+    "expected": "Diagnose the failing parser seam first; do not mechanically widen to the complete gate unless diagnosis or a local mandate identifies another obligation."
+  }
+]

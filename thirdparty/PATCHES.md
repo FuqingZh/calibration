@@ -3,6 +3,29 @@
 This file records local behavior changes made to vendored third-party skills.
 Exact imported and checked refs live in `sources.tsv`.
 
+## coding-protocol
+
+Imported from lencx `skills/coding-protocol` at
+`b848e124111be50a795cc961558247e7751825e2`, with these local changes:
+
+- Add `agents/openai.yaml` with
+  `policy.allow_implicit_invocation: true`. This is the single audited
+  third-party implicit-invocation exception; its exact name and directory are
+  enforced by the local validator, and the shared installer registry installs
+  it in both profiles.
+- Extend `SKILL.md` section 7 and References with a conditionally loaded,
+  repository-neutral validation-selection reference. Exit still loads no
+  references.
+- Add `references/validation-selection.md` as an Apache-2.0 derivative of
+  GonkaGate `verification-before-completion` at
+  `461578373f9c3a8eae3037504f659e0f3e0cc7cd`; it is independently written,
+  carries source, license, and modification notices, and omits language- or
+  project-specific command matrices.
+- Extend `references/rule-rationale.md` for verification inflation,
+  local-mandate omission, and failure-only widening.
+- Add static behavioral prompts for Exit, focused selection, mandatory
+  broadening, and failure diagnosis.
+
 ## brainstorming
 
 Imported from Superpowers `brainstorming`.

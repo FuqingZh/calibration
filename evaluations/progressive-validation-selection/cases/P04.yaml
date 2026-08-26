@@ -1,0 +1,45 @@
+id: P04
+title: Leaf slug implementation
+fixture: P04
+prompt: >-
+  Fix the slug helper so spaces normalize to hyphens while preserving its
+  existing public function signature. Keep the repair local to the affected
+  implementation and verify the affected behavior.
+verify:
+  - [python3, scripts/verify_result.py]
+allowed_changes:
+  - src/slug.py
+required_changes:
+  - src/slug.py
+command_contract:
+  families:
+    focused_test:
+      commands:
+        - [python3, scripts/focused_test.py]
+        - [bash, scripts/focused_test.sh]
+        - [python3, -m, unittest, -q, tests.test_slug]
+      wrapper_required: true
+      covered_seam: slug-normalization
+    unrelated_suite:
+      commands:
+        - [python3, scripts/unrelated_suite.py]
+        - [bash, scripts/unrelated_suite.sh]
+        - [python3, -m, unittest, -q, tests.test_unrelated]
+      wrapper_required: true
+      covered_seam: unrelated-notification-suite
+    complete_gate:
+      commands:
+        - [bash, scripts/complete_gate.sh]
+        - [make, check]
+        - [python3, -m, unittest, -q]
+      wrapper_required: true
+      covered_seam: repository-complete-gate
+  required:
+    - family: focused_test
+      exit: zero
+  forbidden:
+    - unrelated_suite
+    - complete_gate
+  ordered:
+    - family: focused_test
+      exit: zero

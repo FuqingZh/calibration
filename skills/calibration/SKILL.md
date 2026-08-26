@@ -1,6 +1,6 @@
 ---
 name: calibration
-description: Use for substantive cross-project engineering judgment, non-local architecture or refactoring, public or compatibility-sensitive contracts, unclear validation, repository harnesses, agent or workflow evaluation, and durable engineering documentation. Ordinary local implementation with clear repository rules and executable feedback does not require this skill.
+description: Use for substantive cross-project engineering judgment, non-local architecture or refactoring, public or compatibility-sensitive contracts, unclear validation, repository harnesses, or agent or workflow evaluation. Ordinary local implementation and repository prose with clear repository rules and executable feedback do not require this skill; cross-boundary contract documentation does.
 ---
 
 # Calibration
@@ -37,7 +37,7 @@ Load only the routers required by the decisions at hand:
   `../../docs/runbooks/agent-orchestrator-review-continuation.md`
 - architecture, module boundaries, interfaces, and abstraction:
   `../../references/engineering/design/README.md`
-- long-form engineering specifications and document routing:
+- cross-boundary contract documentation or long-form engineering specifications:
   `../../references/engineering/docs_index.md`
 
 Do not load the AO guide merely because a repository is opted in. Ordinary

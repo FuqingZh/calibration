@@ -156,6 +156,9 @@ MANAGED_THIRDPARTY_SKILLS=(
   teach
   writing-great-skills
 )
+MANAGED_SHARED_THIRDPARTY_SKILLS=(
+  coding-protocol
+)
 RETIRED_SKILLS=(
   engineering-design
   global-defaults
@@ -167,6 +170,8 @@ RETIRED_SKILLS=(
 RETIRED_THIRDPARTY_SKILLS=(
   writing-plans
   darwin-skill
+)
+RETIRED_SHARED_THIRDPARTY_SKILLS=(
 )
 RETIRED_UNMANAGED_SKILLS=(
   grill-me
@@ -334,9 +339,7 @@ install_agents_file() {
 main() {
   require_file "$TEMPLATE"
   require_dir "$SKILL_SOURCE_ROOT"
-  if [[ "$PROFILE" == "standard" ]]; then
-    require_dir "$THIRDPARTY_SKILL_SOURCE_ROOT"
-  fi
+  require_dir "$THIRDPARTY_SKILL_SOURCE_ROOT"
 
   say "Profile: $PROFILE"
   say "Calibration root: $CALIBRATION_ROOT"
@@ -352,6 +355,9 @@ main() {
       preflight_skill_link "$skill" "$THIRDPARTY_SKILL_SOURCE_ROOT"
     done
   fi
+  for skill in "${MANAGED_SHARED_THIRDPARTY_SKILLS[@]}"; do
+    preflight_skill_link "$skill" "$THIRDPARTY_SKILL_SOURCE_ROOT"
+  done
   preflight_agents_file
 
   if [[ "$PROFILE" == "ao-worker" ]]; then
@@ -372,6 +378,14 @@ main() {
   done
   for skill in "${MANAGED_SKILLS[@]}"; do
     install_skill_link "$skill" "$SKILL_SOURCE_ROOT"
+  done
+
+  for skill in "${RETIRED_SHARED_THIRDPARTY_SKILLS[@]}"; do
+    remove_owned_skill_link \
+      "$skill" "$THIRDPARTY_SKILL_SOURCE_ROOT" "Retired shared third-party skill"
+  done
+  for skill in "${MANAGED_SHARED_THIRDPARTY_SKILLS[@]}"; do
+    install_skill_link "$skill" "$THIRDPARTY_SKILL_SOURCE_ROOT"
   done
 
   if [[ "$PROFILE" == "standard" ]]; then

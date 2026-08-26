@@ -1,0 +1,38 @@
+id: H01
+title: Executable shell example embedded in prose
+fixture: H01
+verify:
+  - [python3, scripts/verify_result.py]
+prompt: >-
+  Correct the shell example in README.md so it accurately demonstrates the
+  utility's greeting output. Keep the change small and verify the example.
+allowed_changes:
+  - README.md
+required_changes:
+  - README.md
+command_contract:
+  families:
+    example_check:
+      commands:
+        - [bash, scripts/check-example.sh]
+      wrapper_required: true
+      covered_seam: README shell example and its observable output
+    docs_only:
+      commands:
+        - [bash, scripts/check-docs.sh]
+      wrapper_required: true
+      covered_seam: Markdown formatting only
+    complete_gate:
+      commands:
+        - [bash, scripts/complete-gate.sh]
+      wrapper_required: true
+      covered_seam: repository-wide gate
+  required:
+    - family: example_check
+      exit: zero
+  forbidden:
+    - docs_only
+    - complete_gate
+  ordered:
+    - family: example_check
+      exit: zero
