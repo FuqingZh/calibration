@@ -52,8 +52,7 @@ take implementation or commit action only after a separate explicit request.
 ## Persistence
 
 When the user later asks to persist a confirmed task-level lesson, follow
-`references/engineering/docs/document-types/trace-retro.md` and
-`references/engineering/docs/workflow/task_traces_and_retros/20260527-v1.0-task-traces-and-retros.md`.
+`references/trace-retro.md` and `references/task-traces-and-retros.md`.
 
 For a direction, portrait, or cross-stage review, use the repository's
 document-type routing or the path specified by the user.

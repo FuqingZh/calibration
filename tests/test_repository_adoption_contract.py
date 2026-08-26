@@ -31,7 +31,9 @@ def test_public_architecture_keeps_ao_optional() -> None:
 
 
 def test_portable_ao_guide_preserves_state_and_adoption_contracts() -> None:
-    runbook = compact("docs/runbooks/agent-orchestrator-review-continuation.md")
+    runbook = compact(
+        "skills/calibration/references/agent-orchestrator-review-continuation.md"
+    )
 
     for owner in ("sandbox state", "worker state", "daemon state", "host state"):
         assert owner in runbook
@@ -53,8 +55,10 @@ def test_portable_ao_guide_preserves_state_and_adoption_contracts() -> None:
 def test_pull_request_gates_remain_exact_head_and_conditional() -> None:
     for authority in (
         compact("AGENTS.md"),
-        compact("references/engineering/discipline/harness.md"),
-        compact("docs/runbooks/agent-orchestrator-review-continuation.md"),
+        compact("skills/calibration/references/discipline/harness.md"),
+        compact(
+            "skills/calibration/references/agent-orchestrator-review-continuation.md"
+        ),
     ):
         assert "exact current head" in authority or "exact-head" in authority
         assert "current-head review" in authority
@@ -69,7 +73,9 @@ def test_pull_request_gates_remain_exact_head_and_conditional() -> None:
 
 
 def test_dashboard_terminal_boundary_is_portable_and_safe() -> None:
-    runbook = compact("docs/runbooks/agent-orchestrator-review-continuation.md")
+    runbook = compact(
+        "skills/calibration/references/agent-orchestrator-review-continuation.md"
+    )
     decision = compact(
         "docs/decisions/2026-07-30-dashboard-terminal-access-boundary.md"
     )
@@ -108,9 +114,11 @@ def test_generated_agents_is_the_only_private_profile_discovery_path() -> None:
 
 
 def test_orchestrator_containment_is_portable_and_bounded() -> None:
-    harness = compact("references/engineering/discipline/harness.md")
+    harness = compact("skills/calibration/references/discipline/harness.md")
     template = compact("codex/AGENTS.md.template")
-    runbook = compact("docs/runbooks/agent-orchestrator-review-continuation.md")
+    runbook = compact(
+        "skills/calibration/references/agent-orchestrator-review-continuation.md"
+    )
     decision = compact("docs/decisions/2026-07-31-portable-orchestrator-containment.md")
     plan = compact(
         "docs/implementation-plans/"
@@ -146,8 +154,10 @@ def test_orchestrator_containment_is_portable_and_bounded() -> None:
 
 def test_process_release_requires_empty_observable_retryable_containment() -> None:
     template = compact("codex/AGENTS.md.template")
-    harness = compact("references/engineering/discipline/harness.md")
-    runbook = compact("docs/runbooks/agent-orchestrator-review-continuation.md")
+    harness = compact("skills/calibration/references/discipline/harness.md")
+    runbook = compact(
+        "skills/calibration/references/agent-orchestrator-review-continuation.md"
+    )
     decision = compact("docs/decisions/2026-07-31-portable-orchestrator-containment.md")
 
     for authority in (template, harness, runbook, decision):
@@ -165,8 +175,10 @@ def test_process_release_requires_empty_observable_retryable_containment() -> No
 
 
 def test_workspace_mismatch_routes_mutation_to_single_owner() -> None:
-    harness = compact("references/engineering/discipline/harness.md")
-    runbook = compact("docs/runbooks/agent-orchestrator-review-continuation.md")
+    harness = compact("skills/calibration/references/discipline/harness.md")
+    runbook = compact(
+        "skills/calibration/references/agent-orchestrator-review-continuation.md"
+    )
     decision = compact("docs/decisions/2026-07-31-portable-orchestrator-containment.md")
 
     for authority in (harness, runbook, decision):
@@ -430,7 +442,7 @@ def test_workspace_mismatch_routes_mutation_to_single_owner() -> None:
             "No AO owner does not prove" in authority
         )
 
-    harness = compact("references/engineering/discipline/harness.md")
+    harness = compact("skills/calibration/references/discipline/harness.md")
     decision = compact("docs/decisions/2026-07-31-portable-orchestrator-containment.md")
     for authority in (
         compact("AGENTS.md"),
@@ -508,7 +520,9 @@ def test_workspace_mismatch_routes_mutation_to_single_owner() -> None:
 
 
 def test_ao_review_continuation_is_owner_directed_and_retryable() -> None:
-    runbook = compact("docs/runbooks/agent-orchestrator-review-continuation.md")
+    runbook = compact(
+        "skills/calibration/references/agent-orchestrator-review-continuation.md"
+    )
 
     assert "An already AO-owned draft routes to its owner before" in runbook
     assert "unclaimed draft's authorized current writer marks it ready" in runbook
@@ -579,8 +593,10 @@ def test_ao_review_continuation_is_owner_directed_and_retryable() -> None:
 
 
 def test_owner_retry_budget_and_state_routing_cross_authority_surfaces() -> None:
-    harness = compact("references/engineering/discipline/harness.md")
-    runbook = compact("docs/runbooks/agent-orchestrator-review-continuation.md")
+    harness = compact("skills/calibration/references/discipline/harness.md")
+    runbook = compact(
+        "skills/calibration/references/agent-orchestrator-review-continuation.md"
+    )
     decision = compact("docs/decisions/2026-07-31-portable-orchestrator-containment.md")
 
     for authority in (harness, runbook, decision):
@@ -770,7 +786,9 @@ def test_adoption_adapter_and_installer_have_distinct_codex_home_contracts() -> 
     decision = compact(
         "docs/decisions/2026-07-30-ao-host-context-and-config-compatibility.md"
     )
-    runbook = compact("docs/runbooks/agent-orchestrator-review-continuation.md")
+    runbook = compact(
+        "skills/calibration/references/agent-orchestrator-review-continuation.md"
+    )
 
     for phrase in (
         "apps = false",

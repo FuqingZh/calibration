@@ -18,27 +18,28 @@ specification, or approval stage merely because a task changes code.
 
 ## Baseline
 
-Read `../../references/engineering/principles.md`.
+Read `references/principles.md`.
 
 ## Route
 
 Load only the routers required by the decisions at hand:
 
-- naming: `../../references/engineering/naming/README.md`
+- naming: `references/naming/README.md`
 - refactoring, debugging, verification, repository harnesses, and agent or
   workflow evaluation:
-  `../../references/engineering/discipline/README.md`
+  `references/discipline/README.md`
 - repository capability assessment, minimal adoption, repeated delivery
   failures, missing CI or review capability, cross-contract review feedback,
   review-convergence exhaustion, and delivery topology decisions:
-  `../../references/engineering/discipline/harness.md`
+  `references/discipline/harness.md`
 - explicit AO onboarding, AO diagnosis, or AO-mediated pull-request delivery
   for an opted-in repository using an already installed Agent Orchestrator:
-  `../../docs/runbooks/agent-orchestrator-review-continuation.md`
+  `references/agent-orchestrator-review-continuation.md`
 - architecture, module boundaries, interfaces, and abstraction:
-  `../../references/engineering/design/README.md`
+  `references/design/README.md`
 - cross-boundary contract documentation or long-form engineering specifications:
-  `../../references/engineering/docs_index.md`
+  `references/docs_index.md`
+- task-level retrospectives and retrospective persistence: `$retrospect`
 
 Do not load the AO guide merely because a repository is opted in. Ordinary
 calibration engineering tasks remain on the engineering references above.
@@ -51,7 +52,7 @@ they do not grant write or scope authority, transfer AO ownership, or trigger
 calibration merely by being present or absent.
 
 For a completion claim involving a public or cross-boundary contract, always
-load `../../references/engineering/discipline/verification.md`.
+load `references/discipline/verification.md`.
 
 If a routed reference is unavailable, continue from the baseline, name the
 missing source, and do not invent its rules.

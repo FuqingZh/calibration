@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 from pathlib import Path
 
 import pytest
+
+from scripts.validate_skills import _validate_active_references
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 MANAGED_SKILLS = ("calibration", "closeout", "retrospect", "writing-code-docs")
@@ -96,6 +99,38 @@ def test_default_and_explicit_standard_are_equivalent(tmp_path: Path) -> None:
     assert explicit.returncode == 0, explicit.stderr
     assert snapshot_tree(default_home) == snapshot_tree(explicit_home)
     assert_standard_installed(REPOSITORY_ROOT, default_home)
+
+
+@pytest.mark.parametrize("profile", ["standard", "ao-worker"])
+def test_installed_first_party_skills_are_lexically_self_contained(
+    tmp_path: Path, profile: str
+) -> None:
+    codex_home = tmp_path / profile
+    arguments = ["--profile", profile]
+    if profile == "ao-worker":
+        arguments.extend(["--codex-home", str(codex_home)])
+
+    result = run_installer(codex_home, *arguments)
+
+    assert result.returncode == 0, result.stderr
+    for name in MANAGED_SKILLS:
+        lexical_skill_root = codex_home / "skills" / name
+        assert lexical_skill_root.is_symlink()
+        errors: list[str] = []
+        _validate_active_references([lexical_skill_root], errors)
+        assert errors == []
+
+
+def test_each_first_party_skill_is_portable_without_repository_context(
+    tmp_path: Path,
+) -> None:
+    portable_root = tmp_path / "portable-skills"
+    for name in MANAGED_SKILLS:
+        skill_root = portable_root / name
+        shutil.copytree(REPOSITORY_ROOT / "skills" / name, skill_root)
+        errors: list[str] = []
+        _validate_active_references([skill_root], errors)
+        assert errors == []
 
 
 def test_missing_home_and_codex_home_is_controlled_zero_write_failure(

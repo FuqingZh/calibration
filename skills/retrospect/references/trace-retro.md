@@ -8,7 +8,7 @@ forward.
 
 ## Method Reference
 
-Use the [task traces and retrospectives guidance](../workflow/task_traces_and_retros/20260527-v1.0-task-traces-and-retros.md)
+Use the [task traces and retrospectives guidance](task-traces-and-retros.md)
 for scope, evidence handling, and promotion rules.
 
 ## Local Requirements

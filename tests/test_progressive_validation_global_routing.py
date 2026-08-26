@@ -24,7 +24,7 @@ def test_global_fallback_selects_validation_from_claim_and_affected_seam() -> No
 
 
 def test_shared_principle_keeps_broadening_bounded_and_reported() -> None:
-    principles = _compact("references/engineering/principles.md")
+    principles = _compact("skills/calibration/references/principles.md")
 
     assert "completion claim and affected seam" in principles
     assert "smallest repository-owned check that can falsify the claim" in principles
