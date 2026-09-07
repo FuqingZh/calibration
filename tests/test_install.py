@@ -15,9 +15,8 @@ MANAGED_THIRDPARTY_SKILLS = (
     "brainstorming",
     "grilling",
     "teach",
-    "writing-great-skills",
 )
-MANAGED_SHARED_THIRDPARTY_SKILLS = ("coding-protocol",)
+MANAGED_SHARED_THIRDPARTY_SKILLS: tuple[str, ...] = ()
 
 
 def run_installer(
@@ -483,7 +482,9 @@ def test_profiles_are_idempotent_and_convert_safely(tmp_path: Path) -> None:
     assert_standard_installed(REPOSITORY_ROOT, codex_home)
 
 
-def test_shared_protocol_preserves_foreign_link_until_force(tmp_path: Path) -> None:
+def test_retired_protocol_preserves_foreign_link_even_with_force(
+    tmp_path: Path,
+) -> None:
     codex_home = tmp_path / "codex-home"
     skills = codex_home / "skills"
     skills.mkdir(parents=True)
@@ -492,16 +493,10 @@ def test_shared_protocol_preserves_foreign_link_until_force(tmp_path: Path) -> N
     shared = skills / "coding-protocol"
     shared.symlink_to(foreign, target_is_directory=True)
 
-    refused = run_installer(codex_home)
-
-    assert refused.returncode == 1
-    assert "without --force" in refused.stderr
-    assert shared.is_symlink() and shared.readlink() == foreign
-
-    forced = run_installer(codex_home, "--force")
-
-    assert forced.returncode == 0, forced.stderr
-    assert_shared_third_party_installed(REPOSITORY_ROOT, codex_home)
+    for arguments in [(), ("--force",)]:
+        result = run_installer(codex_home, *arguments)
+        assert result.returncode == 0, result.stderr
+        assert shared.is_symlink() and shared.readlink() == foreign
 
 
 @pytest.mark.parametrize("profile", ["standard", "ao-worker"])
@@ -512,13 +507,6 @@ def test_retired_shared_protocol_removes_only_owned_links_idempotently(
     (repository_root / "codex").mkdir(parents=True)
     (repository_root / "thirdparty").mkdir()
     installer = (REPOSITORY_ROOT / "install.sh").read_text(encoding="utf-8")
-    installer = installer.replace(
-        "MANAGED_SHARED_THIRDPARTY_SKILLS=(\n  coding-protocol\n)",
-        "MANAGED_SHARED_THIRDPARTY_SKILLS=(\n)",
-    ).replace(
-        "RETIRED_SHARED_THIRDPARTY_SKILLS=(\n)",
-        "RETIRED_SHARED_THIRDPARTY_SKILLS=(\n  coding-protocol\n)",
-    )
     (repository_root / "install.sh").write_text(installer, encoding="utf-8")
     (repository_root / "codex/AGENTS.md.template").write_bytes(
         (REPOSITORY_ROOT / "codex/AGENTS.md.template").read_bytes()
@@ -566,12 +554,12 @@ def test_retired_shared_protocol_removes_only_owned_links_idempotently(
 
 
 @pytest.mark.parametrize("profile", ["standard", "ao-worker"])
-def test_shared_preflight_fails_before_creating_either_profile_home(
+def test_first_party_preflight_fails_before_creating_either_profile_home(
     tmp_path: Path, profile: str
 ) -> None:
-    repository_root = tmp_path / "missing-shared-source"
+    repository_root = tmp_path / "missing-first-party-source"
     (repository_root / "codex").mkdir(parents=True)
-    (repository_root / "skills").symlink_to(REPOSITORY_ROOT / "skills")
+    (repository_root / "skills").mkdir()
     (repository_root / "thirdparty/skills").mkdir(parents=True)
     (repository_root / "install.sh").write_bytes(
         (REPOSITORY_ROOT / "install.sh").read_bytes()
@@ -825,3 +813,27 @@ def test_repository_and_home_paths_with_spaces_are_supported(
 
     assert result.returncode == 0, result.stderr
     assert_standard_installed(repository_root, codex_home)
+
+
+@pytest.mark.parametrize("profile", ["standard", "ao-worker"])
+def test_archived_skill_removes_only_owned_link(tmp_path: Path, profile: str) -> None:
+    home = tmp_path / "home"
+    skills = home / "skills"
+    skills.mkdir(parents=True)
+    home.chmod(0o700)
+    link = skills / "writing-great-skills"
+    source = REPOSITORY_ROOT / "thirdparty/skills/writing-great-skills"
+    link.symlink_to(source)
+    arguments = ["--profile", profile, "--codex-home", str(home)]
+    preview = run_installer(home, *arguments, "--dry-run")
+    assert preview.returncode == 0, preview.stderr
+    assert link.is_symlink()
+    applied = run_installer(home, *arguments)
+    assert applied.returncode == 0, applied.stderr
+    assert not link.is_symlink() and not link.exists()
+    foreign = tmp_path / "foreign"
+    foreign.mkdir()
+    link.symlink_to(foreign)
+    preserved = run_installer(home, *arguments, "--force")
+    assert preserved.returncode == 0, preserved.stderr
+    assert link.is_symlink() and link.readlink() == foreign

@@ -34,5 +34,11 @@
     "scenario": "非 Python 本地约定",
     "prompt": "Use $writing-code-docs to revise code documentation in a Rust or R repository with an established local convention.",
     "expected": "Follow the repository's language-native documentation carrier and local format, and do not transfer Python Google-style section names or Polars numpydoc sections by analogy."
+  },
+  {
+    "id": 7,
+    "scenario": "独立代码片段不搜索仓库",
+    "prompt": "Use $writing-code-docs to provide a docstring for this standalone snippet, not part of the current repository: def load_report(path): return json.loads(Path(path).read_text(encoding=\"utf-8\")). Return only the docstring; do not modify files.",
+    "expected": "Use the supplied implementation and Python fallback. Explain the JSON return value, UTF-8 and relevant exceptions with a minimal example; do not search the workspace for style files or callers, or invent behavior."
   }
 ]

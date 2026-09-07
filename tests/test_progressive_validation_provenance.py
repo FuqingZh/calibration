@@ -32,6 +32,7 @@ POLICIES = {
     "verification-before-completion": "method-adapted-not-vendored",
     "designing-workflow-skills": "method-reference-not-vendored",
 }
+CURRENT_POLICIES = {**POLICIES, "coding-protocol": "vendored+patched+runtime-archived"}
 ROLES = {
     "coding-protocol": "Direct Runtime Base",
     "verification-before-completion": "Validation Algorithm",
@@ -213,13 +214,13 @@ def test_gonkagate_derivative_and_trail_method_boundary_are_recorded() -> None:
     assert "independently expressed" in trail["independent_expression_review"]
 
 
-def test_sources_tsv_matches_manifest_exact_policies() -> None:
+def test_sources_tsv_preserves_provenance_and_current_runtime_policy() -> None:
     with (REPOSITORY_ROOT / "thirdparty/sources.tsv").open(
         encoding="utf-8", newline=""
     ) as source_file:
         rows = {row["name"]: row for row in csv.DictReader(source_file, delimiter="\t")}
 
-    for name, policy in POLICIES.items():
+    for name, policy in CURRENT_POLICIES.items():
         assert rows[name]["local_policy"] == policy
 
     assert rows["coding-protocol"]["imported_ref"] == (
@@ -231,8 +232,8 @@ def test_sources_tsv_matches_manifest_exact_policies() -> None:
     assert rows["designing-workflow-skills"]["upstream_ref_checked"] == (
         "293fb74c3151cceda32a85a545fe8acd67f8f5c6"
     )
-    assert "activated" in rows["coding-protocol"]["notes"]
-    assert "single pinned shared third-party skill" in rows["coding-protocol"]["notes"]
+    assert "retired from both profiles" in rows["coding-protocol"]["notes"]
+    assert "retained for restoration" in rows["coding-protocol"]["notes"]
     assert "current local derivative" in rows["verification-before-completion"]["notes"]
     assert (
         "planned local derivative"
@@ -240,7 +241,7 @@ def test_sources_tsv_matches_manifest_exact_policies() -> None:
     )
 
 
-def test_coding_protocol_is_shared_implicit_and_installer_managed() -> None:
+def test_coding_protocol_preserves_metadata_but_is_not_installer_managed() -> None:
     metadata = (
         REPOSITORY_ROOT / "thirdparty/skills/coding-protocol/agents/openai.yaml"
     ).read_text(encoding="utf-8")
@@ -249,4 +250,4 @@ def test_coding_protocol_is_shared_implicit_and_installer_managed() -> None:
     errors: list[str] = []
     active_skills = _installer_skills(REPOSITORY_ROOT, errors)
     assert errors == []
-    assert REPOSITORY_ROOT / "thirdparty/skills/coding-protocol" in active_skills
+    assert REPOSITORY_ROOT / "thirdparty/skills/coding-protocol" not in active_skills

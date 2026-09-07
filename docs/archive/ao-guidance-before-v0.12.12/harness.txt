@@ -147,18 +147,200 @@ an accepted plan, or publish the resulting change. A request to analyze,
 review, discuss, or write a plan remains read-only unless it also authorizes
 the change.
 
-At intake, discover the repository's accepted delivery path. Ordinary local
-engineering does not require AO, an issue tracker, or an orchestrator session.
+At intake, discover the repository's current delivery path and whether the
+current host and repository already have an accepted continuation
+orchestrator. When they do, and the authorized task is intended to cross a
+pull-request CI or review boundary, route it to that orchestrator without
+requiring the user to name the tool again:
 
-For AO-mediated delivery, adoption, owner routing, or teardown, read the
-[canonical AO integration guide](../agent-orchestrator-review-continuation.md)
-before lifecycle actions. It owns the exact-head GitHub native auto-merge gates,
-single-writer and release conditions, state evidence, and bounded retries.
-Preserve already-owned work and do not cross-write sibling worktrees. If the
-guide or its required authority is unavailable, preserve owned state; use
-isolated-worktree fallback only for new or unowned pull-request-bound work.
-Use native `using-ao` and CLI help for command mechanics. Do not create a second
-feedback scheduler or maintain another copy of AO's state table here.
+- start a task-specific owning worker in an isolated workspace for truly
+  unowned new work, immediately perform authoritative session readback, hand
+  the task through normal activity-state routing, and require only that owner
+  to create the branch or pull request;
+- claim or restore the owning worker when a pull request already exists; and
+- retain human authority for high-risk, irreversible, permission, security,
+  secret, release, compatibility, and other materially underdetermined
+  decisions.
+
+Normal automatic AO lifecycle routing requires installed AO, an adopted
+repository, supplied local host authority, and an accepted
+`continuation-proven` orchestrator; an explicitly bounded canary may route only
+its current task. Without supplied authority, new or unowned pull-request-bound
+work uses the isolated-worktree fallback and existing AO-owned work preserves
+its branch, worktree, and feedback. With authority, when continuation is
+unproven and the current task is not that explicitly bounded canary, the same
+fallback and preservation apply. A mechanically enforced transfer mechanism
+may route only when authoritatively verified.
+
+### Low-risk GitHub native auto-merge
+
+Conversation authorization for a low-risk implementation includes permission
+to request GitHub native auto-merge without a second merge authorization; a
+repository-local stricter policy wins. Request it only after reading back that
+required CI passes on the exact current head, current-head review is clean, and
+no actionable review threads remain. Withhold the request after an explicit
+user stop or when the work requires a high-risk, irreversible, permission,
+security, secret, release, or compatibility decision.
+
+This is a per-pull-request GitHub control armed only after the exact-head gate.
+It is not permission to enable always-on AO project `autoMerge` or a reaction
+that automatically merges approvals. Those AO configuration paths lack proven
+head-change, failure, review-arrival, and cancellation behavior. Those
+unproven AO paths remain disabled unless a separate repository decision
+establishes them.
+
+### AO worker completion and teardown
+
+For a pull-request-bound AO worker, once authoritative readback establishes PR
+attribution or claim and before merge can occur, enable AO's native per-session
+terminate-on-PR-merge policy when the installed AO supports it, then read the
+session policy back. This is teardown policy: it neither grants merge authority
+nor enables GitHub native auto-merge or AO project `autoMerge`.
+
+After a merge, read back both session termination and cleanup or resource
+state. Preserve the terminated session record as archive and audit history;
+cleanup applies to runtime, terminal, and worktree resources, not the session
+record. For a session attributed to multiple or stacked pull requests,
+terminate only when no attributed pull request remains open and at least one
+has merged.
+
+Keep pending cleanup observable and bounded-retryable. Preserve a dirty
+worktree, never force-delete it, and escalate `preserved_dirty`, `failed`, or
+an inability to prove resource release. For cancelled work, work with no pull
+request, or pull requests closed without merge, perform explicit session
+termination only after authoritative session and dirty-worktree checks. Do not
+claim full descendant-process release when no OS-owned containment boundary is
+available.
+
+Use only an already accepted repository, host, identity, and permission
+configuration. Do not silently register every repository, enable
+permissionless execution on another host, or introduce an orchestrator merely
+because implementation was authorized. If the accepted orchestrator is
+unavailable or the repository has not adopted it, use the normal isolated-
+worktree delivery path only for new or unowned pull-request-bound work.
+Existing AO-owned pull requests defer to the ownership-preservation rule below.
+
+## Orchestrator Containment
+
+Treat each task workspace as the default filesystem discovery and mutation
+boundary. An orchestrated worker must not recursively enumerate an aggregation
+root that contains sibling worktrees, sessions, repositories, or unrelated
+user data merely because that root is reachable. Resolve the assigned
+repository and task workspace first, run discovery from that boundary, and
+name any additional repository or external path before accessing it.
+
+This is a portable orchestrator invariant, independent of a particular service
+manager or host layout. Repository instructions and orchestration adapters
+should make the assigned workspace discoverable and keep mutations scoped to
+it. Process-level enforcement, such as a service-manager scope that constrains
+descendant processes, is a stronger defense in depth when the upstream
+orchestrator supports it; documentation must not describe a proposed
+containment mechanism as current AO behavior.
+
+A **workspace capability mismatch** exists when the controller's assigned
+writable workspace or Git root does not contain the target change, while an AO
+worker owns the target repository, worktree, branch, or pull request. Before
+mutation, compare the assigned writable workspace and resolved Git root with
+the target and its owning AO worker. On mismatch, the controller remains
+read-only: it must not apply patches, stage, commit, or push in a sibling
+worktree, and it must not loop on rejected filesystem escalation. Send an
+`active` or `idle` owner directly only after inspecting `session.isTerminated`
+first. If true, restore the terminated owner only after authoritative readback
+proves runtime release and an empty containment boundary; otherwise preserve
+state and monitor. After successful restoration, perform fresh authoritative
+session readback and route the resulting non-terminated activity state through
+the same rules below. When `session.isTerminated` is false, initially or on
+that fresh post-restore readback, route `active` or `idle`. Hold
+`waiting_input` for provenance, send only when authoritative evidence proves an
+already-authorized ordinary idle prompt, and escalate permission or
+user-decision prompts. When `session.isTerminated=false` and
+`session.activity.state=exited`, use the existing REST resume-agent boundary.
+Route `session.activity.state=blocked` to human authority. Use the controller
+only for orchestration and readback.
+
+Explicit ownership transfer requires the former owner to be quiesced and must
+preserve exactly one writer. Quiesced means authoritative readback proves the
+former owner cannot write, normally because it is terminated and ownership is
+released, and proves complete runtime release with an empty containment
+boundary. An idle or live owner, or a terminated owner with cleanup pending,
+is not quiesced; preserve state and do not transfer. Within the same authorized
+scope, a pull request with no orchestrator owner is not thereby unowned. Before
+claim or spawn, authoritative verification must prove every controller, human,
+or non-orchestrator writer is quiesced and cannot write. Otherwise preserve
+state, do not claim or spawn, and escalate; owner absence alone is not proof.
+Within the same authorized scope, the owner
+autonomously retries mechanical CI and review repairs and only idempotent
+transient network operations or polling. Retry loops require an explicit
+attempt or deadline budget, backoff, and `Retry-After`; they stop on head or
+scope change, cancellation, non-transient authentication or permission
+failure, or budget exhaustion. For an external write with unknown outcome,
+authoritative readback and deduplication must prove the intended state absent
+before retry. On stop, preserve observable state and report the actual stop
+reason instead of looping or requesting repeated approval. Use
+`delivery degraded` only for a corresponding external integration or
+authentication failure while the core daemon remains ready.
+
+Security, compatibility, irreversible, secret, and genuine permission
+decisions remain human authority. The existing low-risk GitHub native
+auto-merge contract may preauthorize merge; deploy requires separate explicit
+authority unless a distinct deployment contract exists. A workspace
+capability mismatch is not evidence that AO is unavailable.
+
+True AO unavailability may use the normal isolated-worktree fallback for new or
+unowned pull-request-bound work. For an existing AO-owned pull request,
+especially with dirty state, preserve its branch, worktree, and feedback and
+wait for AO or owner restoration. Transfer requires a real enforceable
+containment or write-authority revocation mechanism that is authoritatively
+verified; process, tmux, session, or writer absence is not equivalent proof.
+
+## Orchestrator Process Release
+
+Treat process release as a separate portable lifecycle invariant. An
+orchestrator may treat worker termination as complete or mark its runtime
+released only after the OS-owned containment boundary assigned to that worker
+is empty. A worker or session may enter a terminated state while cleanup
+remains pending. A terminal, tmux pane, shell, harness session, or orchestrator
+session disappearing is not proof that descendant processes have exited.
+
+When the containment boundary is not empty or cannot be authoritatively read,
+keep the incomplete release observable and retryable. Preserve enough worker
+identity and containment state for the owning control plane to retry cleanup
+and verify emptiness; do not silently convert a partial teardown into a
+released state.
+
+This is a portable release contract, not a claim about current enforcement.
+Per-worker systemd scopes are one proposed upstream mechanism for providing an
+OS-owned boundary. Current AO does not yet enforce those scopes.
+
+## Accepted Orchestrator Repository Adoption
+
+For an explicitly opted-in repository on a host whose orchestrator, identity,
+and permission profile are already accepted, distinguish these states:
+
+1. **registered**: the orchestrator has a project record for the repository;
+2. **configured**: persisted configuration readback matches the accepted host
+   profile and repository branch/session settings;
+3. **runtime-ready**: the persistent service is enabled and active, daemon
+   status is ready, and orchestrator diagnostics pass; and
+4. **continuation-proven**: a real pull request demonstrates that actionable
+   CI or review feedback returns to the original worker and that the worker can
+   push its correction.
+
+Do not report repository adoption as complete at registration, configuration,
+or a passing static health check. Use the portable AO guide plus conditional
+private host authority instead of inventing permission, identity, or service
+defaults. Record the repository-specific adoption fact and task-intake
+entrypoint in the repository's own `AGENTS.md` through its normal delivery
+path. Keep any accepted continuation service alive beyond the initiating
+conversation.
+
+For conversation-authorized work, neither issue-tracker intake nor a separate
+orchestrator session is a prerequisite. For truly unowned new implementation,
+start a task-specific owning worker, immediately perform authoritative session
+readback, and hand the task through normal activity-state routing; only that
+owner creates the branch or pull request. Until the real-event canary passes,
+label the repository `runtime-ready`, keep AO project `autoMerge` off, and
+retain the normal isolated-Worktree fallback.
 
 ## Repository Delivery Feedback Loop
 

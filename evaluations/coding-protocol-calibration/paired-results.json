@@ -1,0 +1,58 @@
+[
+  {
+    "case": "local",
+    "rep": 0,
+    "cal_tokens": 88535,
+    "both_tokens": 66343,
+    "percent_change": -25.065793189134244
+  },
+  {
+    "case": "local",
+    "rep": 1,
+    "cal_tokens": 88700,
+    "both_tokens": 86702,
+    "percent_change": -2.2525366403607694
+  },
+  {
+    "case": "contract",
+    "rep": 0,
+    "cal_tokens": 111126,
+    "both_tokens": 93731,
+    "percent_change": -15.653402444072494
+  },
+  {
+    "case": "contract",
+    "rep": 1,
+    "cal_tokens": 89017,
+    "both_tokens": 97038,
+    "percent_change": 9.010638417380946
+  },
+  {
+    "case": "review",
+    "rep": 0,
+    "cal_tokens": 88372,
+    "both_tokens": 120561,
+    "percent_change": 36.42443307835062
+  },
+  {
+    "case": "review",
+    "rep": 1,
+    "cal_tokens": 88576,
+    "both_tokens": 120344,
+    "percent_change": 35.865245664739874
+  },
+  {
+    "case": "gate",
+    "rep": 0,
+    "cal_tokens": 161594,
+    "both_tokens": 174245,
+    "percent_change": 7.82887978514053
+  },
+  {
+    "case": "gate",
+    "rep": 1,
+    "cal_tokens": 160252,
+    "both_tokens": 148078,
+    "percent_change": -7.596785063524947
+  }
+]

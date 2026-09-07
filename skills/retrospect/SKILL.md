@@ -14,6 +14,11 @@ causes as hypotheses rather than polishing them into lessons.
 Let checked evidence, rather than chronology or moral judgment, determine the
 lesson.
 
+Routine conversation organization and documentation gap filling belong to
+`$closeout`. Use this skill to investigate expectation versus outcome, assess
+causes, or derive lessons and future rules. Closeout may preserve a lesson
+already confirmed here without conducting another retrospective.
+
 ## Method
 
 - establish the task, failure, or period under review

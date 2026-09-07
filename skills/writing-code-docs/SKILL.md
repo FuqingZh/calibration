@@ -5,19 +5,22 @@ description: Use for writing, revising, or auditing docstrings and language-nati
 
 # Writing Code Docs
 
-Trace each in-scope symbol through real use until its contract is clear to its
-intended readers.
+For repository work, trace in-scope symbols through relevant code, call sites,
+tests, schemas, or outputs until their contracts are clear to their readers.
 
-Ground that contract in relevant code, call sites, tests, schemas, or outputs,
-not the signature alone.
+For a self-contained code snippet, work from the supplied implementation and
+requirements. Do not search the workspace for callers or conventions unless
+the user connects the snippet to a repository. State material gaps rather than
+inventing behavior.
 
 A contract is clear to callers when they know what they may rely on, and to
 maintainers when they know what they must preserve.
 
 ## Convention
 
-Before writing, find and follow any repository-local, language-native
-documentation convention.
+For repository work, find and follow its language-native documentation
+convention. For standalone snippets, use the supplied format or the language
+fallback below; do not search an unrelated workspace.
 
 For Python without a local convention, follow the docstring convention in the
 [Google Python Style Guide](https://google.github.io/styleguide/pyguide.html#s3.8-comments-and-docstrings).
@@ -34,9 +37,7 @@ Do not transfer Python sections by analogy.
 
 ## Readers
 
-Classify each in-scope symbol by its readers: callers, maintainers, both, or
-none.
-
+Classify in-scope symbols as caller-facing, maintainer-facing, both, or neither.
 Do not document symbols with no reader.
 
 In prose, do not restate what names, signatures, types, schemas, or nearby code
@@ -47,21 +48,14 @@ For callers, show how to use the symbol and what they may rely on.
 Give every caller-facing class, function, method, and property its own example,
 even when its contract is simple.
 
-Exercise the symbol and show the smallest public consequence that explains why
-a caller would use it.
+Use short examples that exercise the symbol and show each distinct public
+consequence once.
 
-Cover each distinct public consequence once.
-
-When example coverage or granularity remains unclear, read
-[Polars: Writing doc examples](https://docs.pola.rs/development/contributing/test/#writing-doc-examples).
-Borrow its coverage judgment: start with default use, show meaningful parameter
-effects and special interactions, and keep each example short without repeating
-the same consequence. Inspect one analogous Polars API page only when that
-still leaves the degree unclear.
-
-Keep the repository's selected format, or the Google-style fallback for Python.
-Polars' numpydoc section format is not part of this skill. If the link is
-unavailable, continue from the rules above.
+If coverage remains unclear, consult
+[Polars: Writing doc examples](https://docs.pola.rs/development/contributing/test/#writing-doc-examples)
+for default use, meaningful parameter effects, and interactions. Inspect one
+analogous API page only if still needed. Keep the selected language format;
+do not import Polars' numpydoc format. If unavailable, use the rules above.
 
 For maintainers, name the boundary, why it exists, and the tempting change that
 would break it.
@@ -80,8 +74,6 @@ architecture records.
 
 ## Completion
 
-Complete only when every in-scope symbol has been classified, every retained
-code document follows the selected language convention and serves its readers,
-each caller-facing symbol has its own example, the examples collectively cover
-every distinct public consequence once, and maintenance notes state any
-boundary that is easy to break by an apparently safe change.
+Complete when all in-scope documentation meets the reader, convention, and
+example requirements above, and maintenance notes identify boundaries that
+an apparently safe change could break.

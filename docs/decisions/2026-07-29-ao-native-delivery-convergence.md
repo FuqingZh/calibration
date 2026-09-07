@@ -1,5 +1,10 @@
 # AO-Native Delivery Convergence
 
+Historical decision and evidence. For current commands and lifecycle routing,
+use the [v0.12.12 consolidation](2026-09-07-ao-native-guidance-consolidation.md)
+and its canonical AO guide; old draft-ready, REST-only, and project-autoMerge
+instructions below are not current operating requirements.
+
 Date: 2026-07-29
 
 Status: historical public summary
