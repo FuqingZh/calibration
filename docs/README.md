@@ -119,7 +119,7 @@ supersedes the older minimal-handoff and unconditional durability gates.
 | Containment rationale and historical canary | `decisions/2026-07-31-portable-orchestrator-containment.md` |
 | CAL-1 implementation status | `implementation-plans/20260731-v2.1-portable-orchestrator-containment-implementation-plan.md` |
 | Review-convergence routing status | `implementation-plans/20260803-v2.3-review-convergence-routing-implementation-plan.md` |
-| Closeout skill status | `implementation-plans/20260804-v2.4-closeout-skill-implementation-plan.md` |
+| Closeout skill status | `decisions/2026-09-07-closeout-whole-conversation-contract.md` |
 
 The current default is outcome autonomy within repository-local, reversible
 boundaries. AO is optional and conditional. Ordinary engineering tasks do not

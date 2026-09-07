@@ -33,13 +33,18 @@ Future installer refreshes apply the same owned-link retirement to either
 profile. Existing tasks may retain already-loaded skill text; observe the trial
 in fresh tasks.
 
-For immediate personal rollback, first verify the entry path is still absent,
-then recreate its symlink to the retained source:
+For immediate personal rollback, set `calibration_checkout` to the absolute
+path of the retained calibration checkout recorded in the restoration receipt.
+Do not infer it from the current project directory. Verify the source exists
+and the entry is absent before recreating the symlink:
 
 ```bash
+calibration_checkout="/absolute/path/to/calibration" # Replace with the recorded checkout
 coding_protocol_entry="${CODEX_HOME:-$HOME/.codex}/skills/coding-protocol"
-coding_protocol_source="$(git rev-parse --show-toplevel)/thirdparty/skills/coding-protocol"
-test ! -e "$coding_protocol_entry" && test ! -L "$coding_protocol_entry" && \
+coding_protocol_source="$calibration_checkout/thirdparty/skills/coding-protocol"
+test -f "$calibration_checkout/skills/calibration/SKILL.md" && \
+  test -f "$coding_protocol_source/SKILL.md" && \
+  test ! -e "$coding_protocol_entry" && test ! -L "$coding_protocol_entry" && \
   ln -s "$coding_protocol_source" "$coding_protocol_entry"
 ```
 
