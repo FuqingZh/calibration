@@ -25,8 +25,9 @@ and its 2026-08-24 smoke/recovery results remain historical background only.
 This follows the completed v1.0
 proportional-wording increment and is layered on the ongoing project-docs
 architecture convergence. The user subsequently authorized candidate adoption
-despite that inconclusive evidence, so the shared pinned `coding-protocol` is
-installed without making a comparative-improvement claim. This does not reopen
+despite that inconclusive evidence, so the shared pinned `coding-protocol` was
+installed without making a comparative-improvement claim. Its independent
+runtime entry is now retired for the user-authorized trial linked below. This does not reopen
 the completed runtime or AO
 implementation phases. The completed bounded v2.4 closeout-skill increment
 adds an explicitly invoked first-party closeout contract and makes no
@@ -44,6 +45,19 @@ suppression default is accepted from a bounded same-model W07 comparison; it
 adds no general correctness or efficiency claim. Upstream systemd containment
 remains a proposal rather than current AO behavior.
 
+The [GPT-6 coding-protocol versus calibration comparison](../evaluations/coding-protocol-calibration/README.md)
+completed 24 attempts. Calibration alone and both together completed 8/8 tasks
+each; the median paired token change was +2.8% with mixed directions. This
+supports considering a reversible retirement trial, not a general overhead or
+blinded equivalence claim. The user subsequently authorized the
+[runtime retirement trial](decisions/2026-09-07-coding-protocol-runtime-retirement-trial.md);
+source and license remain preserved.
+
+The [AO native guidance consolidation](decisions/2026-09-07-ao-native-guidance-consolidation.md)
+updates routing for upstream v0.12.12 and centralizes ownership and release
+rules in the portable AO guide. Older command restrictions are archived;
+installed-version and real-work behavior remain separate evidence boundaries.
+
 ## Public Architecture
 
 Calibration has four layers:
@@ -58,6 +72,13 @@ absent. Host paths, credentials, services, proxy configuration, deployment
 state, and rollback material belong to private authority. The installer renders
 only a conditional pointer to `$XDG_CONFIG_HOME/calibration/AGENTS.md`, falling
 back to `$HOME/.config/calibration/AGENTS.md`.
+
+The bounded [GPT-6 skill cleanup](decisions/2026-09-07-gpt6-skill-retirement-and-snippet-scope.md)
+retires the writing-great-skills runtime entry and scopes code-documentation
+workspace discovery to repository work.
+
+The [whole-conversation closeout contract](decisions/2026-09-07-closeout-whole-conversation-contract.md)
+supersedes the older minimal-handoff and unconditional durability gates.
 
 ## Current Authority
 
@@ -86,7 +107,8 @@ back to `$HOME/.config/calibration/AGENTS.md`.
 | Progressive validation activation candidate | `decisions/2026-08-24-progressive-validation-selection-candidate.md` |
 | Progressive validation invalid smoke and C01 recovery | `decisions/2026-08-24-progressive-validation-selection-smoke-invalid.md` |
 | Portable AO integration | `../skills/calibration/references/agent-orchestrator-review-continuation.md` |
-| Native AO delivery and auto-merge boundary | `decisions/2026-07-29-ao-native-delivery-convergence.md` |
+| AO native routing and consolidation | `decisions/2026-09-07-ao-native-guidance-consolidation.md` |
+| Historical AO delivery decision | `decisions/2026-07-29-ao-native-delivery-convergence.md` |
 | Current AI-native direction | `decisions/2026-07-27-ai-native-calibration-review.md` |
 | Writable comparative evidence | `decisions/2026-07-27-ai-native-writable-implementation-evaluation-closeout.md` |
 | Five-phase convergence result | `decisions/2026-07-27-ai-native-calibration-convergence-closeout.md` |
@@ -94,10 +116,10 @@ back to `$HOME/.config/calibration/AGENTS.md`.
 | Codex-home adoption compatibility | `decisions/2026-07-30-ao-host-context-and-config-compatibility.md` |
 | AO host calibration CLI closeout | `decisions/2026-08-04-ao-host-calibration-cli-closeout.md` |
 | Dashboard terminal boundary | `decisions/2026-07-30-dashboard-terminal-access-boundary.md` |
-| Portable orchestrator containment | `decisions/2026-07-31-portable-orchestrator-containment.md` |
+| Containment rationale and historical canary | `decisions/2026-07-31-portable-orchestrator-containment.md` |
 | CAL-1 implementation status | `implementation-plans/20260731-v2.1-portable-orchestrator-containment-implementation-plan.md` |
 | Review-convergence routing status | `implementation-plans/20260803-v2.3-review-convergence-routing-implementation-plan.md` |
-| Closeout skill status | `implementation-plans/20260804-v2.4-closeout-skill-implementation-plan.md` |
+| Closeout skill status | `decisions/2026-09-07-closeout-whole-conversation-contract.md` |
 
 The current default is outcome autonomy within repository-local, reversible
 boundaries. AO is optional and conditional. Ordinary engineering tasks do not

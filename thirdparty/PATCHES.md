@@ -3,7 +3,7 @@
 This file records local behavior changes made to vendored third-party skills.
 Exact imported and checked refs live in `sources.tsv`.
 
-## coding-protocol
+## coding-protocol (runtime archived for reversible trial)
 
 Imported from lencx `skills/coding-protocol` at
 `b848e124111be50a795cc961558247e7751825e2`, with these local changes:
@@ -11,8 +11,8 @@ Imported from lencx `skills/coding-protocol` at
 - Add `agents/openai.yaml` with
   `policy.allow_implicit_invocation: true`. This is the single audited
   third-party implicit-invocation exception; its exact name and directory are
-  enforced by the local validator, and the shared installer registry installs
-  it in both profiles.
+  enforced by the local validator. This metadata is preserved for restoration;
+  neither installer profile currently activates its runtime entry.
 - Extend `SKILL.md` section 7 and References with a conditionally loaded,
   repository-neutral validation-selection reference. Exit still loads no
   references.
@@ -60,6 +60,9 @@ Local changes:
 ## writing-great-skills
 
 Imported from Matt Pocock's `skills/productivity/writing-great-skills`.
+
+Archived on 2026-09-07: retained for provenance and license review, excluded
+from runtime installation. Refresh removes only this repository's owned link.
 
 Local changes:
 

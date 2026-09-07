@@ -28,7 +28,9 @@ INSTALL_ARRAY_PATTERN = re.compile(
     r"MANAGED_SHARED_THIRDPARTY_SKILLS)=\(\s*(.*?)^\s*\)"
 )
 RETIRED_FIELD = "disable-model-invocation"
+# Preserve archived metadata for restoration without permitting runtime installation.
 IMPLICIT_THIRDPARTY_ALLOWLIST = frozenset({"coding-protocol"})
+RETIRED_SHARED_THIRDPARTY_SKILLS = frozenset({"coding-protocol"})
 
 
 def discover_skills(root: Path) -> list[Path]:
@@ -244,7 +246,9 @@ def _installer_skills(root: Path, errors: list[str]) -> list[Path]:
         for name, body in INSTALL_ARRAY_PATTERN.findall(text)
     }
     shared = arrays.get("MANAGED_SHARED_THIRDPARTY_SKILLS")
-    expected_shared = sorted(IMPLICIT_THIRDPARTY_ALLOWLIST)
+    expected_shared = sorted(
+        IMPLICIT_THIRDPARTY_ALLOWLIST - RETIRED_SHARED_THIRDPARTY_SKILLS
+    )
     if shared is not None and shared != expected_shared:
         errors.append(
             f"{path}: MANAGED_SHARED_THIRDPARTY_SKILLS must be exactly "
@@ -257,6 +261,12 @@ def _installer_skills(root: Path, errors: list[str]) -> list[Path]:
             errors.append(
                 f"{path}: shared and standard-only third-party arrays overlap: "
                 f"{overlap!r}"
+            )
+    for registry in (shared, optional):
+        retired = sorted(set(registry or []) & RETIRED_SHARED_THIRDPARTY_SKILLS)
+        if retired:
+            errors.append(
+                f"{path}: retired runtime skills must not be installed: {retired!r}"
             )
     expected = {
         "MANAGED_SKILLS": root / "skills",

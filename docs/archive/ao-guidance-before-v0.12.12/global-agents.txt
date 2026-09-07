@@ -1,0 +1,131 @@
+# Global AGENTS.md
+
+Use `$calibration` before substantive changes that require cross-project
+engineering judgment, non-local architecture or refactoring, public or
+compatibility-sensitive contract decisions, unclear validation, repository
+harness changes, or agent or workflow evaluation. Ordinary repository prose is
+not a calibration trigger; cross-boundary contract documentation remains one.
+For ordinary local implementation with clear repository rules and executable
+feedback, work directly from those sources without adding a calibration step.
+Load only the references routed for the current task.
+
+For repository changes, select validation proportionally: state the completion
+claim and affected seam, then run the smallest relevant checks using a
+repository-owned validation entrypoint where it can falsify that claim. Broaden
+only when repository-local policy explicitly requires it or the narrower
+evidence leaves an obligation uncovered. Prefer configured repository tools
+over a universal language checklist. Report every unchecked boundary,
+unavailable required check, and residual risk rather than silently skipping it.
+
+Do not silence or weaken required diagnostics for first-party code merely to
+pass a check; fix first-party code and interfaces. Contain external, generated,
+vendored, or checker gaps with a typed adapter, stub, wrapper, or
+repository-owned exclusion. Use a source-level suppression only when no such
+boundary can express a demonstrably valid contract, naming the exact diagnostic
+and evidence. Prohibit blanket and file-, module-, or project-wide weakening,
+and keep exceptions mechanically auditable.
+
+When a diagnosis depends on host state outside the current sandbox or process
+context, treat sandbox-visible absence or mismatch as a hypothesis, not a host
+fact. Verify the relevant path, service, process, credential, or configuration
+from an authoritative host context before concluding that it is missing,
+misconfigured, or stale. If that context is unavailable, report the boundary
+and the exact host-side check still required.
+
+Keep discovery and mutations inside the assigned repository or task workspace
+by default. Before recursively searching a remote mount, network filesystem,
+large shared filesystem, or a parent aggregation root containing sibling
+worktrees or repositories, narrow the root and apply an explicit
+traversal-aware bound such as relevant subdirectories or maximum depth. Also
+bound file types, file size, result count, and search concurrency where the
+tool supports them. Prefer repository indexes and targeted lookups. If the
+required boundary or safe query cannot be determined, stop the broad search
+and report the narrower host-side check needed.
+
+Before any mutation, an already AO-owned repository, worktree, or branch is
+subject to the single-writer guard even without a pull request or PR-bound
+intent: the controller remains read-only. With installed AO, adoption, supplied
+local host authority, and continuation proof or an explicitly bounded canary,
+verify authoritative AO core health is daemon ready before owner lookup and
+handoff through the state rules below; otherwise preserve the owned state.
+
+For conversation-authorized implementation intended to cross a pull-request
+boundary, use AO lifecycle routing only with installed AO, an adopted
+repository, supplied local host authority, and an accepted continuation-proven
+orchestrator or explicitly bounded canary. Review, analysis, or discussion-only
+requests remain read-only; when continuation is unproven and the current task
+is not that explicitly bounded canary, use the narrowed new/unowned fallback or
+existing-owner preservation rule. When all gates hold,
+verify AO health before lifecycle routing. Then
+start a task-specific owning worker for new work that is truly unowned.
+Immediately perform fresh authoritative session readback and hand the task to
+that owner through normal activity-state routing; only that owner creates the
+implementation branch or pull request. If an existing draft is already
+AO-owned, perform owner lookup and handoff first, then its owning worker marks
+it ready. If a draft is unclaimed, its authorized current writer marks it ready
+before the quiescence-gated claim. A ready pull request
+with no AO owner is not thereby unowned. Before claim or spawn, authoritative
+verification must prove every controller, human, or non-AO writer is quiesced
+and cannot write. Otherwise preserve state, do not claim or spawn, and
+escalate; AO-owner absence alone is not proof. After that gate, claim without
+takeover by an existing or new owner before owner-state lookup. Only
+existing-PR claim semantics require an existing pull request. Compare the
+assigned writable workspace and Git root with the owning AO worker. Without
+supplied local host
+authority, follow the narrowed fallback or existing-owner preservation rule and
+do not perform AO lifecycle routing. Keep one writer: do not patch, stage,
+commit, or push
+an owner's sibling worktree. Inspect `session.isTerminated` first. If true, only
+restore after authoritative readback proves runtime release and an empty
+OS-owned containment boundary; otherwise preserve state. After restoration,
+perform fresh authoritative session readback and route or send according to the
+resulting non-terminated activity state. Only when false, send
+`activity.state=active` or `idle` directly, hold `waiting_input` for provenance,
+send only when authoritative evidence proves an already-authorized ordinary
+idle prompt, and escalate permission or user-decision prompts; route `exited`
+through REST resume-agent and return `blocked` to human authority. Explicitly
+quiesce the former owner before transfer: authoritative
+readback must prove the former owner cannot write,
+ownership is released, and runtime/containment release is complete and empty.
+Idle/live or cleanup-pending is not quiesced; otherwise do not transfer.
+Do not repeat rejected filesystem escalation. The owner retries same-scope
+mechanical feedback. Blind retries are limited to idempotent transient
+operations or polling and require bounded attempts or deadline, backoff, and
+`Retry-After`. Stop on head or scope change, cancellation, non-transient
+authentication or permission failure, or exhaustion. For an external write
+with unknown outcome, perform authoritative readback and deduplication first;
+retry only when the intended state is absent. On stop, preserve observable
+state and report the actual stop reason. Use `delivery degraded` only for a
+corresponding external integration or authentication failure while the core
+daemon remains ready.
+
+Use focused installed skills for ordinary GitHub mechanics when their triggers
+apply: `github:gh-address-comments` for actionable pull-request feedback and
+`github:gh-fix-ci` for failing GitHub Actions checks; otherwise use repository-
+or platform-native tooling. These skills do not grant write or scope authority
+or transfer AO ownership. Keep same-scope feedback in the current owner loop.
+If review crosses the authorized pull-request contract or the distinct
+review-convergence budget is exhausted, preserve branch, head, worktree, owner,
+and feedback state and invoke calibration. Transport, polling, and
+idempotent-operation retry exhaustion remains a preserve-and-report condition.
+
+If AO is unavailable, isolated-worktree fallback applies only to new or unowned
+PR-bound work. Preserve an existing AO-owned PR's branch, worktree, and feedback
+until AO or owner restoration unless a real enforceable containment or
+write-authority revocation mechanism is authoritatively verified.
+
+For worker teardown, treat termination as complete or runtime as released only
+after the worker's OS-owned containment boundary is empty. A terminated
+session may retain pending cleanup; terminal, tmux, shell, or session
+disappearance is not proof that descendants exited. Keep incomplete cleanup
+observable and retryable.
+
+For explicit AO installation, adoption, daemon, worker, Dashboard, systemd,
+nginx, remote-mount, shared-filesystem, or other host-operation tasks only,
+read `{{HOST_AUTHORITY}}` if that file exists. Use it to resolve any private
+host path or containment rule before host-wide discovery. It is rendered local
+authority, not a public calibration dependency.
+Do not load it for ordinary engineering work, and do not treat its absence
+inside a sandbox as proof that the host profile is absent.
+
+In WSL, the skill source is available at `{{CALIBRATION_ROOT}}/skills`.

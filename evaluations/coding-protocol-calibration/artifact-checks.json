@@ -1,0 +1,242 @@
+[
+  {
+    "run": "contract-both-0",
+    "valid": true,
+    "checks": {
+      "independent_behavior": true,
+      "scope_preserved": true,
+      "identity": true
+    }
+  },
+  {
+    "run": "contract-both-1",
+    "valid": true,
+    "checks": {
+      "independent_behavior": true,
+      "scope_preserved": true,
+      "identity": true
+    }
+  },
+  {
+    "run": "contract-cal-0",
+    "valid": true,
+    "checks": {
+      "independent_behavior": true,
+      "scope_preserved": true,
+      "identity": true
+    }
+  },
+  {
+    "run": "contract-cal-1",
+    "valid": true,
+    "checks": {
+      "independent_behavior": true,
+      "scope_preserved": true,
+      "identity": true
+    }
+  },
+  {
+    "run": "contract-cp-0",
+    "valid": true,
+    "checks": {
+      "independent_behavior": true,
+      "scope_preserved": true,
+      "identity": true
+    }
+  },
+  {
+    "run": "contract-cp-1",
+    "valid": true,
+    "checks": {
+      "independent_behavior": true,
+      "scope_preserved": true,
+      "identity": true
+    }
+  },
+  {
+    "run": "gate-both-0",
+    "valid": true,
+    "checks": {
+      "compliant.py": true,
+      "violating.py": true,
+      "compact.py": true,
+      "wrong_value.py": true,
+      "wrong_exit.py": true,
+      "invalid_json.py": true,
+      "scope_preserved": true,
+      "identity": true
+    }
+  },
+  {
+    "run": "gate-both-1",
+    "valid": true,
+    "checks": {
+      "compliant.py": true,
+      "violating.py": true,
+      "compact.py": true,
+      "wrong_value.py": true,
+      "wrong_exit.py": true,
+      "invalid_json.py": true,
+      "scope_preserved": true,
+      "identity": true
+    }
+  },
+  {
+    "run": "gate-cal-0",
+    "valid": true,
+    "checks": {
+      "compliant.py": true,
+      "violating.py": true,
+      "compact.py": true,
+      "wrong_value.py": true,
+      "wrong_exit.py": true,
+      "invalid_json.py": true,
+      "scope_preserved": true,
+      "identity": true
+    }
+  },
+  {
+    "run": "gate-cal-1",
+    "valid": true,
+    "checks": {
+      "compliant.py": true,
+      "violating.py": true,
+      "compact.py": true,
+      "wrong_value.py": true,
+      "wrong_exit.py": true,
+      "invalid_json.py": true,
+      "scope_preserved": true,
+      "identity": true
+    }
+  },
+  {
+    "run": "gate-cp-0",
+    "valid": true,
+    "checks": {
+      "compliant.py": true,
+      "violating.py": true,
+      "compact.py": true,
+      "wrong_value.py": true,
+      "wrong_exit.py": true,
+      "invalid_json.py": true,
+      "scope_preserved": true,
+      "identity": true
+    }
+  },
+  {
+    "run": "gate-cp-1",
+    "valid": true,
+    "checks": {
+      "compliant.py": true,
+      "violating.py": false,
+      "compact.py": true,
+      "wrong_value.py": false,
+      "wrong_exit.py": false,
+      "invalid_json.py": false,
+      "scope_preserved": true,
+      "identity": true
+    }
+  },
+  {
+    "run": "local-both-0",
+    "valid": true,
+    "checks": {
+      "independent_behavior": true,
+      "scope_preserved": true,
+      "identity": true
+    }
+  },
+  {
+    "run": "local-both-1",
+    "valid": true,
+    "checks": {
+      "independent_behavior": true,
+      "scope_preserved": true,
+      "identity": true
+    }
+  },
+  {
+    "run": "local-cal-0",
+    "valid": true,
+    "checks": {
+      "independent_behavior": true,
+      "scope_preserved": true,
+      "identity": true
+    }
+  },
+  {
+    "run": "local-cal-1",
+    "valid": true,
+    "checks": {
+      "independent_behavior": true,
+      "scope_preserved": true,
+      "identity": true
+    }
+  },
+  {
+    "run": "local-cp-0",
+    "valid": true,
+    "checks": {
+      "independent_behavior": true,
+      "scope_preserved": true,
+      "identity": true
+    }
+  },
+  {
+    "run": "local-cp-1",
+    "valid": true,
+    "checks": {
+      "independent_behavior": true,
+      "scope_preserved": true,
+      "identity": true
+    }
+  },
+  {
+    "run": "review-both-0",
+    "valid": true,
+    "checks": {
+      "scope_preserved": true,
+      "identity": true
+    }
+  },
+  {
+    "run": "review-both-1",
+    "valid": true,
+    "checks": {
+      "scope_preserved": true,
+      "identity": true
+    }
+  },
+  {
+    "run": "review-cal-0",
+    "valid": true,
+    "checks": {
+      "scope_preserved": true,
+      "identity": true
+    }
+  },
+  {
+    "run": "review-cal-1",
+    "valid": true,
+    "checks": {
+      "scope_preserved": true,
+      "identity": true
+    }
+  },
+  {
+    "run": "review-cp-0",
+    "valid": true,
+    "checks": {
+      "scope_preserved": true,
+      "identity": true
+    }
+  },
+  {
+    "run": "review-cp-1",
+    "valid": true,
+    "checks": {
+      "scope_preserved": true,
+      "identity": true
+    }
+  }
+]

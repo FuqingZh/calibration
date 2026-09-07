@@ -154,10 +154,8 @@ MANAGED_THIRDPARTY_SKILLS=(
   brainstorming
   grilling
   teach
-  writing-great-skills
 )
 MANAGED_SHARED_THIRDPARTY_SKILLS=(
-  coding-protocol
 )
 RETIRED_SKILLS=(
   engineering-design
@@ -168,10 +166,12 @@ RETIRED_SKILLS=(
   writing-docstrings
 )
 RETIRED_THIRDPARTY_SKILLS=(
+  writing-great-skills
   writing-plans
   darwin-skill
 )
 RETIRED_SHARED_THIRDPARTY_SKILLS=(
+  coding-protocol
 )
 RETIRED_UNMANAGED_SKILLS=(
   grill-me

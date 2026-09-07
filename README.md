@@ -14,7 +14,7 @@ configuration remains outside the public repository.
 - `codex/AGENTS.md.template`: canonical template for `~/.codex/AGENTS.md`
 - `skills/calibration/`: self-contained default Codex engineering skill,
   including its routed engineering references
-- `skills/closeout/SKILL.md`: explicitly invoked minimal task closeout and durable handoff entrypoint
+- `skills/closeout/SKILL.md`: explicitly invoked whole-conversation documentation and handoff entrypoint
 - `skills/retrospect/`: self-contained user-invoked evidence-driven
   retrospective and lesson-refinement skill
 - `skills/writing-code-docs/SKILL.md`: language-aware, Python-calibrated code documentation for public APIs and durable workflow boundaries
@@ -58,8 +58,8 @@ The default `standard` profile preserves the existing installation behavior:
 bash install.sh --profile standard
 ```
 
-Install an isolated AO worker home with first-party managed skills, the single
-shared pinned `coding-protocol`, and global instructions:
+Install an isolated AO worker home with first-party managed skills and global
+instructions:
 
 ```bash
 bash install.sh --profile ao-worker --codex-home /path/to/worker-home
@@ -76,10 +76,9 @@ The installer renders `codex/AGENTS.md.template` into the selected Codex home
 with the current repository path and a conditional pointer to private host
 authority at `$XDG_CONFIG_HOME/calibration/AGENTS.md`, or
 `$HOME/.config/calibration/AGENTS.md` when `XDG_CONFIG_HOME` is unset. Standard
-installs symlink managed first-party skills, the shared pinned
-`coding-protocol`, and standard-only optional vendored skills. AO worker
-installs only managed first-party skills plus that single shared pinned
-protocol; standard-only optional third-party skills remain excluded. Existing
+installs symlink managed first-party skills and standard-only optional vendored
+skills. AO worker installs only managed first-party skills; optional third-party
+skills remain excluded. Existing
 `AGENTS.md` content is backed up before replacement when it differs.
 
 ## Development
@@ -123,7 +122,7 @@ Codex installation. Ruff linting uses the explicit stable baseline `E`, `F`,
 
 The installer also manages selected first-party skills:
 
-- `closeout`: explicitly invoked minimal persistence, task handoff, and native archival at the safe boundary
+- `closeout`: explicitly invoked whole-conversation documentation gap filling and unresolved-context handoff
 - `retrospect`: evidence-driven retrospective and lesson-refinement mode for completed work and cross-stage patterns
 - `writing-code-docs`: language-aware, Python-calibrated code documentation for public APIs and durable workflow boundaries
 
@@ -133,11 +132,14 @@ The managed third-party optional skills are:
 - `grilling`: adversarial stress-test mode for plans and designs
 - `teach`: explicitly invoked teaching with session-only mode or isolated
   personal learning state
-- `writing-great-skills`: reference for writing and editing skills predictably
 
-`coding-protocol` is the only shared third-party skill: it is pinned under
-`thirdparty/skills/` and installed in both profiles. All other optional
-third-party skills remain standard-only and explicitly invoked.
+`coding-protocol` is archived from runtime installation for a reversible trial.
+Both profiles remove only its symlink owned by this repository, preserving
+foreign links and directories even with `--force`. Its pinned source, body,
+metadata, references, and licenses remain under `thirdparty/`.
+The [trial and restoration instructions](docs/decisions/2026-09-07-coding-protocol-runtime-retirement-trial.md)
+record its evidence limits and rollback. Other optional third-party skills
+remain standard-only and explicitly invoked.
 
 Third-party skills are vendored under `thirdparty/skills/`. The installer does
 not download them from the network. Local patches and source notes are tracked
@@ -158,6 +160,10 @@ The installed `teach` adaptation has bounded regression-acceptance evidence in
 `docs/decisions/2026-08-13-teach-adaptation-evaluation.md`, with reconstructable
 sanitized evidence under `evaluations/teach-adaptation/`. It does not claim a
 general improvement in teaching effectiveness or token use.
+
+`writing-great-skills` is archived: its source and license remain vendored for
+provenance, but neither profile installs it. Refreshing an installation removes
+only its symlink owned by this repository and preserves foreign links.
 
 `writing-plans` remains vendored for source and provenance review but is no
 longer installed as a runtime skill. Codex Plan Mode plus the

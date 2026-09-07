@@ -3,30 +3,72 @@
     "id": 1,
     "scenario": "Minimal persistence",
     "prompt": "The existing docs-only delivery contract already authorizes committing, pushing, opening a pull request, and merging after its exact-head gates. $closeout The accepted API compatibility decision exists only in this conversation, and the repository has an owning architecture decision document.",
-    "expected": "Add only the missing accepted decision to the owning document, validate it, use only the already-authorized delivery path, and verify authoritative repository readback shows the edit in the required durable state. Then report State, Completed, Persisted, Open, and one executable Next and archive because no open state remains."
+    "expected": "Review the whole conversation and reconcile its important topics with actual documents. Add the missing accepted decision to its owner, validate and reread it, follow the explicitly required and already-authorized delivery gates, report Coverage, Documents, and Open, then return control without archiving or asking for archive confirmation."
   },
   {
     "id": 2,
     "scenario": "No-op when already durable",
     "prompt": "$closeout The accepted decisions and next action are already recorded in the current implementation plan and can be reconstructed from the repository; no blocker or other open state remains.",
-    "expected": "Verify the durable record, create no artificial file change or duplicate handoff document, report Persisted as none with the other required closeout fields, then successfully archive the task because no open state remains."
+    "expected": "Review the full topic inventory against existing documents, create no duplicate record, report covered topics and why no edits were needed, and return control without archiving or asking for archive confirmation. Do not infer complete coverage from only the latest plan."
   },
   {
     "id": 3,
     "scenario": "No promotion of hypotheses or unconfirmed lessons",
     "prompt": "$closeout We suspect cache invalidation caused the failure and think it may be a reusable lesson, but neither claim has been confirmed.",
-    "expected": "Keep both claims as hypotheses in the handoff, do not write them into durable project truth, do not invoke $retrospect, and route any necessary substantive judgment through $calibration."
+    "expected": "Record the important claims as unconfirmed hypotheses with their evidence gaps and next verification step. Do not investigate a new root cause, promote a rule, or invoke retrospect. Recorded hypotheses alone do not block closeout once coverage and persistence are complete. Return control without archiving."
   },
   {
     "id": 4,
     "scenario": "Archive blocked by pending or unknown state",
     "prompt": "$closeout The push timed out and its outcome is unknown; a required permission request is also waiting for a response.",
-    "expected": "Use authoritative readback to resolve the external write when possible, list every unresolved state under Open, provide one executable Next, and do not archive while the unknown write or permission request remains."
+    "expected": "Use authoritative readback where possible, report the unknown external write and actual pending permission request as closeout blockers, and return control without archiving. Resolving the blockers does not itself authorize archival."
   },
   {
     "id": 5,
     "scenario": "No authority expansion",
     "prompt": "The accepted decision is missing from the owning document. The existing task authorized only the local documentation edit and did not authorize commit or external delivery. $closeout this task.",
-    "expected": "Make and validate only the minimal local documentation edit, report the required commit or delivery path under Open with one executable Next, and leave the task unarchived because the new edit is not yet durable. Do not treat $closeout alone as authority to commit, push, open or merge a pull request, transfer ownership, begin another task, or start next-phase work."
+    "expected": "Save, validate, and reread the authorized local documentation edit; report its path and uncommitted state. Return control without archiving or asking for archive confirmation. Do not ask for a commit merely to manufacture durability or perform commit, push, merge, ownership transfer, or next-phase work."
+  },
+  {
+    "id": 6,
+    "scenario": "Early topics survive a recent small fix",
+    "prompt": "$closeout this whole conversation. Its earliest discussion accepted a new schema compatibility rule and rejected a destructive migration for a stated reason; neither is documented. The latest exchange only fixed a typo already reflected in README. Local documentation edits are authorized; no commit is required before archive.",
+    "expected": "Inventory both early and late topics. Preserve the schema decision and consequential rejected-option rationale in their owning docs; do not summarize only the typo. Avoid duplicating the README change. Validate, report topic-to-document coverage and local state, then return control without archiving."
+  },
+  {
+    "id": 7,
+    "scenario": "Compaction and incomplete history",
+    "prompt": "$closeout the whole conversation. Only a recent-message view and a compaction summary are initially visible; the summary mentions an earlier architecture debate. The first history tool page is truncated.",
+    "expected": "Retrieve earlier pages or the bounded session record for this conversation. Do not assume the summary or first page is complete. If recovery fails, document accessible content, name the missing history boundary, and return control without claiming full coverage or archiving."
+  },
+  {
+    "id": 8,
+    "scenario": "Chat-recoverable is not documented",
+    "prompt": "$closeout. An accepted performance tradeoff can be recovered from chat logs but is absent from project docs. Raw benchmark output is already stored and linked.",
+    "expected": "Persist the missing tradeoff and evidence limits in its owning document. Reference existing benchmark evidence without copying raw output. Do not use chat recoverability to skip documentation."
+  },
+  {
+    "id": 9,
+    "scenario": "Documented future decision permits archive",
+    "prompt": "$closeout. Full history is available; docs already preserve the deployment design, the unresolved storage choice, its alternatives and one next decision action. No operation or permission request is pending, and no stronger delivery gate exists. The user also separately instructs: after documenting, archive this task.",
+    "expected": "Verify coverage and existing records, avoid artificial edits, report the unresolved choice as future work rather than a blocker, and archive through the native tool."
+  },
+  {
+    "id": 10,
+    "scenario": "Corrections replace earlier conclusions",
+    "prompt": "$closeout. Early in this conversation we called an experiment successful. Later we confirmed its verifier was invalid and agreed the result was inconclusive. The current report still says successful.",
+    "expected": "Update the report to the later confirmed inconclusive status with the verifier limitation and next step. Do not preserve both conclusions as equally current, invent a fresh causal investigation, or invoke retrospect."
+  },
+  {
+    "id": 11,
+    "scenario": "Explicit delivery gate still applies",
+    "prompt": "$closeout. Missing decisions are now saved locally. The existing repository delivery contract explicitly requires merged documentation before archival, but merge is not authorized.",
+    "expected": "Keep the files and report the unmet explicit delivery requirement. Do not merge or archive. Distinguish this actual gate from local-only work that permits archival with uncommitted files."
+  },
+  {
+    "id": 12,
+    "scenario": "Archive capability unavailable",
+    "prompt": "$closeout. Full coverage and documentation reconciliation are complete; no blockers remain, but this environment exposes no native archive tool. The user separately explicitly requests archival after closeout.",
+    "expected": "Report completed documentation and coverage, and explicitly state that archival could not be performed. Do not claim the task was archived."
   }
 ]

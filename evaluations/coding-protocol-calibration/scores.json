@@ -1,0 +1,266 @@
+[
+  {
+    "run": "contract-both-0",
+    "criteria_pass": [
+      true,
+      true,
+      true,
+      true
+    ],
+    "task_complete": true,
+    "note": "Controller reviewed final answer, changed paths, actual check commands and independent artifact evidence."
+  },
+  {
+    "run": "contract-both-1",
+    "criteria_pass": [
+      true,
+      true,
+      true,
+      true
+    ],
+    "task_complete": true,
+    "note": "Controller reviewed final answer, changed paths, actual check commands and independent artifact evidence."
+  },
+  {
+    "run": "contract-cal-0",
+    "criteria_pass": [
+      true,
+      true,
+      true,
+      true
+    ],
+    "task_complete": true,
+    "note": "Controller reviewed final answer, changed paths, actual check commands and independent artifact evidence."
+  },
+  {
+    "run": "contract-cal-1",
+    "criteria_pass": [
+      true,
+      true,
+      true,
+      true
+    ],
+    "task_complete": true,
+    "note": "Controller reviewed final answer, changed paths, actual check commands and independent artifact evidence."
+  },
+  {
+    "run": "contract-cp-0",
+    "criteria_pass": [
+      true,
+      true,
+      true,
+      true
+    ],
+    "task_complete": true,
+    "note": "Controller reviewed final answer, changed paths, actual check commands and independent artifact evidence."
+  },
+  {
+    "run": "contract-cp-1",
+    "criteria_pass": [
+      true,
+      true,
+      true,
+      true
+    ],
+    "task_complete": true,
+    "note": "Controller reviewed final answer, changed paths, actual check commands and independent artifact evidence."
+  },
+  {
+    "run": "gate-both-0",
+    "criteria_pass": [
+      true,
+      true,
+      true,
+      true
+    ],
+    "task_complete": true,
+    "note": "Controller reviewed final answer, changed paths, actual check commands and independent artifact evidence."
+  },
+  {
+    "run": "gate-both-1",
+    "criteria_pass": [
+      true,
+      true,
+      true,
+      true
+    ],
+    "task_complete": true,
+    "note": "Controller reviewed final answer, changed paths, actual check commands and independent artifact evidence."
+  },
+  {
+    "run": "gate-cal-0",
+    "criteria_pass": [
+      true,
+      true,
+      true,
+      true
+    ],
+    "task_complete": true,
+    "note": "Controller reviewed final answer, changed paths, actual check commands and independent artifact evidence."
+  },
+  {
+    "run": "gate-cal-1",
+    "criteria_pass": [
+      true,
+      true,
+      true,
+      true
+    ],
+    "task_complete": true,
+    "note": "Controller reviewed final answer, changed paths, actual check commands and independent artifact evidence."
+  },
+  {
+    "run": "gate-cp-0",
+    "criteria_pass": [
+      true,
+      true,
+      true,
+      true
+    ],
+    "task_complete": true,
+    "note": "Controller reviewed final answer, changed paths, actual check commands and independent artifact evidence."
+  },
+  {
+    "run": "gate-cp-1",
+    "criteria_pass": [
+      true,
+      false,
+      false,
+      true
+    ],
+    "task_complete": false,
+    "note": "No edit: requested unavailable calibration under the shared global mandate. Original vacuous gate accepts violating targets. This is a task noncompletion, not a transport error or evidence that coding-protocol is intrinsically harmful."
+  },
+  {
+    "run": "local-both-0",
+    "criteria_pass": [
+      true,
+      true,
+      true,
+      true
+    ],
+    "task_complete": true,
+    "note": "Controller reviewed final answer, changed paths, actual check commands and independent artifact evidence."
+  },
+  {
+    "run": "local-both-1",
+    "criteria_pass": [
+      true,
+      true,
+      true,
+      true
+    ],
+    "task_complete": true,
+    "note": "Controller reviewed final answer, changed paths, actual check commands and independent artifact evidence."
+  },
+  {
+    "run": "local-cal-0",
+    "criteria_pass": [
+      true,
+      true,
+      true,
+      true
+    ],
+    "task_complete": true,
+    "note": "Controller reviewed final answer, changed paths, actual check commands and independent artifact evidence."
+  },
+  {
+    "run": "local-cal-1",
+    "criteria_pass": [
+      true,
+      true,
+      true,
+      true
+    ],
+    "task_complete": true,
+    "note": "Controller reviewed final answer, changed paths, actual check commands and independent artifact evidence."
+  },
+  {
+    "run": "local-cp-0",
+    "criteria_pass": [
+      true,
+      true,
+      true,
+      true
+    ],
+    "task_complete": true,
+    "note": "Controller reviewed final answer, changed paths, actual check commands and independent artifact evidence."
+  },
+  {
+    "run": "local-cp-1",
+    "criteria_pass": [
+      true,
+      true,
+      true,
+      true
+    ],
+    "task_complete": true,
+    "note": "Controller reviewed final answer, changed paths, actual check commands and independent artifact evidence."
+  },
+  {
+    "run": "review-both-0",
+    "criteria_pass": [
+      true,
+      true,
+      true,
+      true
+    ],
+    "task_complete": true,
+    "note": "Controller reviewed final answer, changed paths, actual check commands and independent artifact evidence."
+  },
+  {
+    "run": "review-both-1",
+    "criteria_pass": [
+      true,
+      true,
+      true,
+      true
+    ],
+    "task_complete": true,
+    "note": "Controller reviewed final answer, changed paths, actual check commands and independent artifact evidence."
+  },
+  {
+    "run": "review-cal-0",
+    "criteria_pass": [
+      true,
+      true,
+      true,
+      true
+    ],
+    "task_complete": true,
+    "note": "Controller reviewed final answer, changed paths, actual check commands and independent artifact evidence."
+  },
+  {
+    "run": "review-cal-1",
+    "criteria_pass": [
+      true,
+      true,
+      true,
+      true
+    ],
+    "task_complete": true,
+    "note": "Controller reviewed final answer, changed paths, actual check commands and independent artifact evidence."
+  },
+  {
+    "run": "review-cp-0",
+    "criteria_pass": [
+      true,
+      true,
+      true,
+      true
+    ],
+    "task_complete": true,
+    "note": "Controller reviewed final answer, changed paths, actual check commands and independent artifact evidence."
+  },
+  {
+    "run": "review-cp-1",
+    "criteria_pass": [
+      true,
+      true,
+      true,
+      true
+    ],
+    "task_complete": true,
+    "note": "Controller reviewed final answer, changed paths, actual check commands and independent artifact evidence."
+  }
+]

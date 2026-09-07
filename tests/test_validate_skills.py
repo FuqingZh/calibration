@@ -56,7 +56,7 @@ def skill_fixture(tmp_path: Path) -> SkillFixture:
     (tmp_path / "thirdparty/skills").mkdir(parents=True)
     (tmp_path / "install.sh").write_text(
         "MANAGED_SKILLS=(\n  sample\n)\nMANAGED_THIRDPARTY_SKILLS=(\n)\n"
-        "MANAGED_SHARED_THIRDPARTY_SKILLS=(\n  coding-protocol\n)\n",
+        "MANAGED_SHARED_THIRDPARTY_SKILLS=(\n)\n",
         encoding="utf-8",
     )
     write_skill(tmp_path, "thirdparty/skills", "coding-protocol")
@@ -208,26 +208,33 @@ def test_shared_registry_is_exact_and_disjoint_from_standard_only(
     original = installer.read_text(encoding="utf-8")
     installer.write_text(
         original.replace(
-            "MANAGED_SHARED_THIRDPARTY_SKILLS=(\n  coding-protocol\n)",
+            "MANAGED_SHARED_THIRDPARTY_SKILLS=(\n)",
             "MANAGED_SHARED_THIRDPARTY_SKILLS=(\n  coding-protocol\n  sample\n)",
         ),
         encoding="utf-8",
     )
     assert_has_error(
         skill_fixture.root,
-        "MANAGED_SHARED_THIRDPARTY_SKILLS must be exactly ['coding-protocol']",
+        "MANAGED_SHARED_THIRDPARTY_SKILLS must be exactly []",
     )
 
     installer.write_text(
         original.replace(
             "MANAGED_THIRDPARTY_SKILLS=(\n)",
             "MANAGED_THIRDPARTY_SKILLS=(\n  coding-protocol\n)",
+        ).replace(
+            "MANAGED_SHARED_THIRDPARTY_SKILLS=(\n)",
+            "MANAGED_SHARED_THIRDPARTY_SKILLS=(\n  coding-protocol\n)",
         ),
         encoding="utf-8",
     )
     assert_has_error(
         skill_fixture.root,
         "shared and standard-only third-party arrays overlap: ['coding-protocol']",
+    )
+    assert_has_error(
+        skill_fixture.root,
+        "retired runtime skills must not be installed: ['coding-protocol']",
     )
 
 

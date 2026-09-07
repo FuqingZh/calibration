@@ -19,16 +19,23 @@ Retired sources may remain in `sources.tsv` after their vendored trees are
 removed. Their entries retain immutable provenance and use an explicit
 `retired-not-vendored` policy.
 
-The progressive-validation-selection provenance uses three more specific
-states:
+The progressive-validation-selection provenance distinguishes these policies:
 
 - `vendored+patched+shared`: an imported runtime tree with a documented local
   patch, installed by the shared registry in both profiles. It is a singular
   audited exception, not a general third-party installation or invocation rule.
+- `vendored+patched+runtime-archived`: the patched source, license, and invocation
+  metadata remain available, but neither installer profile activates its runtime
+  entry. This is the current policy for `coding-protocol`.
 - `method-adapted-not-vendored`: an upstream method source for a separately
   attributed local derivative; no upstream skill tree is distributed.
 - `method-reference-not-vendored`: a source used only to inform independently
   expressed structure; neither its text nor its files are distributed.
+
+The import manifest records historical import treatment and immutable byte
+hashes; its `vendored+patched+shared` label describes the original import.
+`sources.tsv` records current runtime policy, and `PATCHES.md` records the
+transition. Runtime retirement does not rewrite historical import evidence.
 
 ## Policy
 
