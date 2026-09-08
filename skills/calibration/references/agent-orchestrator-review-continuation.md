@@ -104,6 +104,17 @@ to a permission prompt. The controller then performs readback; the owner handles
 same-scope mechanical feedback through AO's native CI/review loop. Verify the
 configured loop instead of creating a second controller polling or nudge loop.
 
+Apply the coordinator accountability and foreground handoff gate in
+[Repository Delivery Feedback Loop](discipline/harness.md#repository-delivery-feedback-loop).
+A running worker, ready daemon, or delivered task does not prove that AO has
+accepted project-level follow-up or can notify the current coordinator. Verify
+coverage for the actual session, work, and feedback source; a proven PR loop
+does not by itself cover pre-PR execution approvals or later stages of a larger
+task. Preserve responsibility for final acceptance until the outcome is verified
+or an explicit, observable coordination handoff has been accepted. Use native
+in-flight steering for current-task corrections where supported; queued work
+is not evidence that a correction reached the running turn.
+
 ## Delivery And Release
 
 GitHub native per-PR auto-merge may use already-granted low-risk implementation

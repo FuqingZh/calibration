@@ -162,6 +162,20 @@ feedback scheduler or maintain another copy of AO's state table here.
 
 ## Repository Delivery Feedback Loop
 
+Delegation transfers execution, not responsibility for the requested outcome.
+The coordinator tracks progress, routes actionable blockers, and verifies final
+acceptance. A sent instruction, running worker, or intermediate success is not
+completion. Use existing task state to retain the goal, acceptance criteria,
+owner, outstanding work, and next observation; do not require another document.
+
+Before ending foreground tracking of unfinished work, verify that a durable
+continuation mechanism has accepted responsibility for observing the work,
+resuming its owner, and delivering actionable or terminal notifications to a
+reachable recipient. Otherwise continue bounded observation and authorized
+follow-up, or report the exact tracking blocker when continuation is unavailable.
+Do not silently make the user responsible for asking again. This accountability
+does not require per-command supervision or a duplicate polling scheduler.
+
 When a repository change is intended to land through a pull request:
 
 Focused installed skills may own ordinary GitHub mechanics:
@@ -187,9 +201,10 @@ harness gap.
 5. Prefer one repository-owned entrypoint that local agents, CI, cloud
    environments, and developers can reuse.
 6. Hand the pull request to mechanical validation and platform-native agent
-   review. After the first remote readback confirms that those systems accepted
-   the current commit, return control with the durable PR state instead of
-   keeping a foreground conversation open for expected remote waits.
+   review. After remote readback confirms acceptance of the current commit and
+   the continuation handoff above is verified, return control with the durable
+   PR state and outstanding work instead of keeping a foreground conversation
+   open for expected remote waits. PR submission alone is not that handoff.
 7. Continue asynchronous CI, review, and deployment waits through the owning
    platform or an already accepted event-driven continuation orchestrator.
    Use a background or scheduled task only when that control plane can observe

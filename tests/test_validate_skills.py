@@ -697,9 +697,14 @@ def test_delivery_loop_hands_remote_waits_to_background() -> None:
         REPOSITORY_ROOT / "skills/calibration/references/discipline/harness.md"
     ).read_text(encoding="utf-8")
 
-    assert "first remote readback" in harness
+    harness = " ".join(harness.split())
+
+    assert "the continuation handoff above is verified" in harness
+    assert "PR submission alone is not that handoff" in harness
+    assert "a durable continuation mechanism has accepted responsibility" in harness
+    assert "Otherwise continue bounded observation and authorized" in harness
     assert "return control with the durable PR state" in harness
-    assert "foreground conversation that\nrepeatedly polls" in harness
+    assert "foreground conversation that repeatedly polls" in harness
     assert "keep pending work explicit" in harness
 
 
