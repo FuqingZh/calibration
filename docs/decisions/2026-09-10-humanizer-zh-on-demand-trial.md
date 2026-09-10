@@ -1,8 +1,13 @@
 # Chinese Humanizer On-Demand Trial
 
-Status: installed for an explicitly invoked trial; not a default writing policy.
+Status: accepted for an explicitly invoked trial; not a default writing policy.
 
-## Source And Installation
+This portable decision does not assert installation in any particular clone or
+Codex home. Live installation and removal state belong to that home's private
+`INSTALLATION.json` and installation receipt; inspect them before claiming
+availability. The verification below records the original setup event only.
+
+## Source And Trial Setup
 
 - Repository: [holygeek00/humanizer-zh-cn](https://github.com/holygeek00/humanizer-zh-cn).
 - Pinned commit: `401e372eeb1a91045d15ec21c2d13b9d0f7842ea`.
@@ -15,7 +20,7 @@ Status: installed for an explicitly invoked trial; not a default writing policy.
   verification was not disabled. Root-path sparse checkout omitted nested
   resources, so the installed checkout was fully materialized at the same SHA.
 
-This is a separately installed external skill. Calibration records adoption;
+This is a separately managed external skill. Calibration records adoption;
 its installer arrays, core references, and global instructions do not load or
 install Humanizer. No upstream source is vendored in this repository.
 
@@ -26,13 +31,13 @@ writing mannerisms, or `$humanizer-zh`. Ordinary answers and unrelated task
 outputs do not activate it. Respect the requested text scope and preserve
 facts, technical terms, and supplied voice samples.
 
-The installed `agents/openai.yaml` sets `policy.allow_implicit_invocation` to
+The trial installation contract requires `agents/openai.yaml` to set `policy.allow_implicit_invocation` to
 `false`. A short local scope paragraph follows the title in `SKILL.md`; the
 remaining upstream body is unchanged. These are installation adaptations, not
 a new upstream release. Before adaptation, the installed skill body matched
 the frozen experiment source byte for byte.
 
-The installed `INSTALLATION.json` records the source SHA, original and installed
+Each trial installation retains `INSTALLATION.json`, which records the source SHA, original and installed
 file hashes, the two local adaptations, and the evidence locator. A private
 installation receipt retains the original files and source Git metadata. Future
 updates require an explicit decision and must preserve the invocation policy;
@@ -82,7 +87,7 @@ removal reversible and preserves the license and receipt. Do not remove another
 home's copy or an installation whose identity has changed without inspecting it.
 Calibration's normal installer does not recreate this independent trial entry.
 
-Installation verification covered the exact commit, complete tracked source
+At the original trial setup, installation verification covered the exact commit, complete tracked source
 tree, frozen evaluation-body equality, retained license, local scope paragraph,
 and explicit-invocation metadata. The upstream package validator passed after
 adaptation. Repository checks cover this adoption record and navigation only;
