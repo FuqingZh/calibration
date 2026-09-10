@@ -82,6 +82,10 @@ supersedes the older minimal-handoff and unconditional durability gates.
 
 ## Current Authority
 
+The [Chinese Humanizer on-demand trial](decisions/2026-09-10-humanizer-zh-on-demand-trial.md)
+records a separately installed, pinned Chinese copy-editing skill. It is
+explicitly invoked and does not extend calibration's core or global routing.
+
 | Need | Current authority |
 | --- | --- |
 | Repository and installer contract | `../README.md` |
