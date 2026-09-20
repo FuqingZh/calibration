@@ -86,6 +86,12 @@ The [Chinese Humanizer on-demand trial](decisions/2026-09-10-humanizer-zh-on-dem
 records a separately managed, pinned Chinese copy-editing skill. It is
 explicitly invoked and does not extend calibration's core or global routing.
 
+The [body compression trial](decisions/2026-09-20-calibration-body-compression-and-routing.md)
+adopts three tested reference bodies while retaining the original entrypoints
+and routing. Its focused 16-run diagnosis passed all artifact checks and found
+task-specific sensitivity to descriptions and repository overview instructions;
+it makes no general efficiency claim.
+
 | Need | Current authority |
 | --- | --- |
 | Repository and installer contract | `../README.md` |
@@ -160,6 +166,10 @@ acceptance checks. It identifies bounded compression candidates and repeated
 seed/naming convention effects. That evaluation left active guidance unchanged;
 the result does not establish whole-skill redundancy or a generally superior
 replacement.
+
+The [2026-09-20 body compression and routing diagnosis](../evaluations/calibration-routing-diagnosis/README.md)
+records the subsequent scoped adoption, preceding 32-run comparison, and fresh
+16-run factor trial. Metadata candidates remain experimental.
 
 `../evaluations/ai-native-implementation/README.md` owns the writable fixture
 protocol. Raw trajectories, credentials, isolated homes, workspaces, and

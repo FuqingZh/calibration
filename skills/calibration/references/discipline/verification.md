@@ -1,29 +1,16 @@
 # Verification Discipline
 
-Use this before claiming completion, especially for user-visible behavior,
-external writes, generated outputs, deployments, cross-language contracts,
-public APIs, CLIs, schemas, reports, and package artifacts.
+Use before completion claims for public or cross-boundary contracts,
+user-visible behavior, generated outputs, external writes, or deployments.
 
-## Evidence
-
-- Prefer fresh evidence from the current state over memory or earlier runs.
-- Validate the final contract, not only an intermediate implementation detail.
-- For generated outputs, inspect the final expected path and relevant content,
-  not only the generator's exit code.
-- For external writes, read back the created or updated record when practical.
-- For deployments or services, verify the live endpoint, process, rollout, or
-  service state that the user actually depends on.
-- For public APIs, CLIs, schemas, and compatibility surfaces, check naming,
-  backward compatibility, tests, and documentation impact.
-- If a check is too expensive or unsafe to run, state the exact skipped command
-  or evidence path and the residual risk.
-
-## Completion Criteria
-
-A completion claim should include:
-
-- what changed
-- what was verified
-- the exact command, artifact, endpoint, or readback used as evidence
-- any checks not run and why
-- any residual risk that could affect the user
+- Use current evidence for the final contract. Inspect generated outputs at
+  their expected path and check relevant content; generator exit status alone
+  does not establish the result.
+- Read back external writes when practical. For deployments and services,
+  verify the live endpoint, process, rollout, or service state the user relies on.
+- For APIs, CLIs, schemas, and compatibility surfaces, verify naming, backward
+  compatibility, tests, and documentation impact, using checks proportionate
+  to the affected contract.
+- Report what changed, what was verified, and the command, artifact, endpoint,
+  or readback supporting the claim. For checks not run, state the exact command
+  or evidence path, why it was skipped, and the remaining risk to the user.

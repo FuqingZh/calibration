@@ -1,53 +1,30 @@
 # Principles
 
-These are the cross-project defaults that remain useful across engineering
-topics.
-
 ## Problem Framing
 
-- Challenge a false constraint, wrong abstraction, or pseudo-requirement when
-  it materially changes the solution.
-- Prefer a corrected problem statement over a polished solution to the wrong
-  problem.
+Correct a false constraint, abstraction, or requirement when it materially
+changes the solution.
 
 ## Outcome Autonomy And Feedback
 
-- Prefer explicit outcomes, invariants, boundaries, and executable acceptance
-  feedback over prescribed implementation steps.
-- Within reversible repository-local boundaries, let the agent choose and
-  revise its execution path from current code, runtime evidence, and validation
-  results.
-- Treat plans as working hypotheses rather than implementation authority. When
-  repository or runtime evidence disproves a planned path, update the path
-  instead of preserving the plan.
-- Select validation proportionally: state the completion claim and affected
-  seam before selecting validation. Run the smallest repository-owned check
-  that can falsify the claim; broaden only for an explicit repository-local
-  mandate or an uncovered obligation, and report unchecked boundaries and
-  residual risk.
-- Add durable process artifacts only when coordination, risk, interruption, or
-  repeated failure makes them useful. Do not require plans, specifications, or
-  approval stages merely because a task changes code.
+- Work from outcomes, invariants, and acceptance evidence. Within authorized,
+  reversible local work, choose and revise the path when current evidence
+  disproves an assumption or plan.
+- State the completion claim and affected seam, then select the smallest
+  repository-owned check that can falsify it. Broaden for a repository mandate
+  or an uncovered obligation; report unchecked boundaries and residual risk.
+- Add plans, specifications, or approval stages only when coordination, risk,
+  interruption, or repeated failure warrants them. A code change alone does
+  not require these stages or renewed approval for already-authorized work.
 
 ## Native Abstractions and Data Flow
 
-- Prefer the installed domain library's native bulk abstractions over
-  handwritten loops or ad hoc intermediate state.
-- For tabular data, prefer DataFrame or query-expression APIs for projection,
-  grouping, window calculation, joining, reshaping, and column-wise transforms.
-- For arrays and numerical work, prefer vectorized or batched APIs from the
-  numerical or statistical library that owns the operation.
-- For graph, text, sequence, Excel, Parquet, JSON, and similar structured
-  domains, use stable parser, writer, graph, or domain-model APIs instead of
-  manual string splitting or reimplementing core algorithms.
-- Keep information on one appropriate structure when it naturally belongs
-  there. Split, pivot, rejoin, or materialize parallel state only when a
-  boundary or algorithm requires it.
-- Convert to lower-level forms such as lists, dictionaries, NumPy arrays,
-  pandas frames, or temporary files at explicit boundaries, close to the caller
-  that requires the conversion.
-- For fast-moving libraries, inspect the installed version, available API,
-  source, or a small executable example before relying on remembered idioms.
+- Prefer established domain parsers, writers, and bulk or vectorized APIs over
+  reimplementing their operations.
+- Keep related information together. Split, convert, or materialize data only
+  at an algorithm or consumer boundary that requires it.
+- For fast-moving libraries, verify the installed version and applicable API
+  through source, documentation, or a small executable example.
 
 ## Configuration and Defaults
 
@@ -87,17 +64,11 @@ topics.
 
 ## Performance and Measurement
 
-- Measure against explicit inputs, environments, and scale.
-- Validate outputs as well as runtime.
-- Keep benchmarks as reproducible artifacts rather than isolated headline
-  numbers.
+Keep reproducible benchmarks with explicit inputs, environment, and scale;
+validate outputs as well as runtime.
 
 ## Communication
 
-- Lead with the conclusion or preferred option.
-- Include the evidence checked and enough rationale to audit the decision.
-- State material assumptions, uncertainty, and residual risk with their impact.
-- Give the next action when one remains.
-- Remove repeated background, low-information process narration, slogans, and
-  boilerplate before removing decision evidence.
-- Provide concise decision rationale rather than private chain-of-thought.
+Lead with the conclusion and give the rationale and evidence needed to assess
+it, material uncertainty and risk with their impact, and any next action.
+Remove repeated background and boilerplate; keep decision rationale concise.

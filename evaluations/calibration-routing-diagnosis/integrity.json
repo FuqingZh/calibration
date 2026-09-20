@@ -1,0 +1,39 @@
+{
+  "frozen_inputs_unchanged": true,
+  "frozen_input_count": 2734,
+  "installed_files_checked": 1184,
+  "system_files_checked": 960,
+  "installed_mismatches": [],
+  "global_agents_unique_hashes": [
+    "c06156a85626c34ec727c150b4b5b96bc7e63a7a59d9edb17f4138ba5345f8d5"
+  ],
+  "model_catalog_raw_hash_count": 16,
+  "model_catalog_differing_fields": [
+    "fetched_at"
+  ],
+  "model_catalog_payload_unique_hashes": [
+    "ffd52b6aa7476eedfb0212e3ee4fa3eff21c3732a4aad7f6e72276646e0d6132"
+  ],
+  "model_catalog_payload_hash_method": "SHA-256 of sorted compact JSON, excluding only fetched_at; etag/client_version/models all equal",
+  "requested_models": [
+    "gpt-6-astra"
+  ],
+  "reasoning_efforts": [
+    "medium"
+  ],
+  "source_arm_differences": {
+    "short_cal": [
+      "skills/calibration/SKILL.md"
+    ],
+    "short_docs": [
+      "skills/writing-code-docs/SKILL.md"
+    ],
+    "short_both": [
+      "skills/calibration/SKILL.md",
+      "skills/writing-code-docs/SKILL.md"
+    ]
+  },
+  "skill_bodies_identical_across_arms": true,
+  "runner_sha256": "0a861a0fcc2f9373966271905ff93cac06c04651d1058eea31bcac91f2653a67",
+  "adapter_sha256": "d9d43b8868d42e3a8bcf0d52c895781912eb07527cd78ec812f33b1e227f8e09"
+}
