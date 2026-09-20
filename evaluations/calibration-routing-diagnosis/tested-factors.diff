@@ -1,0 +1,18 @@
+--- original/skills/calibration/SKILL.md
++++ candidate/skills/calibration/SKILL.md
+@@ -3 +3 @@
+-description: Use for substantive cross-project engineering judgment, non-local architecture or refactoring, public or compatibility-sensitive contracts, unclear validation, repository harnesses, or agent or workflow evaluation. Ordinary local implementation and repository prose with clear repository rules and executable feedback do not require this skill; cross-boundary contract documentation does.
++description: Use for cross-project judgment, non-local architecture/refactoring, public or compatibility-sensitive contracts, unclear validation, repository harnesses, or agent/workflow evaluation.
+--- original/skills/writing-code-docs/SKILL.md
++++ candidate/skills/writing-code-docs/SKILL.md
+@@ -3 +3 @@
+-description: Use for writing, revising, or auditing docstrings and language-native documentation comments. Also use at public APIs and durable workflow or product boundaries when code documentation must explain usage, contracts, maintenance rationale, or compatibility-sensitive behavior.
++description: Write or review docstrings and documentation comments, including public API and durable workflow contracts.
+--- original/AGENTS.md
++++ candidate/AGENTS.md
+@@ -5,2 +5,3 @@
+-- Read `README.md` for the repository and installer contract.
+-- Read `docs/README.md` for current decisions and active implementation plans.
++- For repository or installer contract decisions, read `README.md`.
++- For prior decisions or active implementation plans relevant to the task,
++  consult `docs/README.md`.

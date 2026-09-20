@@ -1,0 +1,23 @@
+{
+  "candidates": 64,
+  "valid_candidates": 64,
+  "judges": 16,
+  "valid_judges": 16,
+  "artifacts": 20,
+  "artifact_passes": 20,
+  "source_hashes_match": true,
+  "candidate_prompt_hashes_match": true,
+  "candidate_usage": {
+    "input_tokens": 1317847,
+    "cached_input_tokens": 139776,
+    "output_tokens": 18545
+  },
+  "judge_usage": {
+    "input_tokens": 305431,
+    "cached_input_tokens": 0,
+    "output_tokens": 4354
+  },
+  "manual_adjudications": 4,
+  "active_source_changed": false,
+  "model_attestation": "requested model and effort only; no independent server-side attestation"
+}

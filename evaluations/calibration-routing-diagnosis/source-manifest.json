@@ -1,0 +1,74 @@
+{
+  "baseline_commit": "15135fbd5d3e70edbb79d5293beeaa0687e4df23",
+  "adopted_reference_bodies": [
+    {
+      "path": "skills/calibration/references/principles.md",
+      "baseline_sha256": "f33bca0fbd8d099393f7edb8c73fe7b3f2adedd01b9e8828527a3fa7af270a1f",
+      "adopted_sha256": "6ed50f093f3b1ba7d3da9c3c7d3c05ea8f0127888820e4c32f1ce28d653f5bfe",
+      "baseline_bytes": 5194,
+      "adopted_bytes": 3687,
+      "tested_sha256": "8530f804d13e6f15dc332ea07f1fd6b6995ac99417cf265885724ebb3a517438",
+      "tested_bytes": 3591
+    },
+    {
+      "path": "skills/calibration/references/discipline/verification.md",
+      "baseline_sha256": "b88806a3e2cc92c37f99a5dbe854ba68494ddacc38bc0e9f9ec66a2c685e2287",
+      "adopted_sha256": "6c334075bcde9baa51bba9575a0cda7e7bc0894a80fb1b981ab29f7811de6137",
+      "baseline_bytes": 1230,
+      "adopted_bytes": 935,
+      "tested_sha256": "6c334075bcde9baa51bba9575a0cda7e7bc0894a80fb1b981ab29f7811de6137",
+      "tested_bytes": 935
+    },
+    {
+      "path": "skills/calibration/references/discipline/debugging.md",
+      "baseline_sha256": "3b9d974962e112feb202e7178ae7fa86f27cd2440f8fad7c146e05aa7deda773",
+      "adopted_sha256": "5fed68a578f0858ed862f44081b6f3dbdd225cec0cb120d391622ff5564a1827",
+      "baseline_bytes": 1384,
+      "adopted_bytes": 981,
+      "tested_sha256": "5fed68a578f0858ed862f44081b6f3dbdd225cec0cb120d391622ff5564a1827",
+      "tested_bytes": 981
+    }
+  ],
+  "frozen_inputs_sha256": "0dec0e4d136b197025f62e0046bcbaff6443f6aa5d96ebed2094981c3f9c5377",
+  "protocol_sha256": "0a3a212b56d54d2f2598904fb3d8d8bf5567250357e6459725fdf5f860cb6d85",
+  "schedule_sha256": "7e58314df368326b5f7406fa13d2651c54d05b5e6d5a9db9d845ef195e638b12",
+  "case_input_sha256": {
+    "suite/cases/W04.yaml": "f6022a39872a0a1913e8db58c1034f3e475d498089cb72a3acec85e30d16ed2e",
+    "suite/cases/A02.yaml": "44bceca678e6c172c62a5e2fba4c2189d69e2aa25500309de98a912c7ea5b404",
+    "suite/fixtures/W04/.gitignore": "862263fa1f46c20f0d1e4dac5ffcc75abd55c08211b2c3864c5f8764b9d87793",
+    "suite/fixtures/W04/AGENTS.md": "217c3795f8a5c97c97796959621e4f66a4ad37949ca54d3a5ba6c76ca66bbe9c",
+    "suite/fixtures/W04/Makefile": "fb3ef42ed43fc73f18fade2eca7bcbb627e0d57dec886bcee0b9807c867f68b6",
+    "suite/fixtures/A02/AGENTS.md": "60176ab2e2275627eb06db46e2d8effe6ccc52f30c1c5c68e7320e9cb52e26ea",
+    "suite/fixtures/A02/README.md": "4706a938a9158ae74b9313453d8436339727a3e0ad9df10270407a45659cf049",
+    "suite/fixtures/A02/install-defaults.json": "79a1e263bdef0d6dbc68efb40d34573b8f02d696661353e6cb0f297af5813d7f",
+    "suite/fixtures/A02/docs/README.md": "2849a48b08ecbdd20b0cb2d5af48d9442263dc903c03df571677c119c47a8453",
+    "suite/fixtures/A02/scripts/check.sh": "afdd654ae6c7700c7824cb762976b760d6a8e0e916574a14874a477f7d8c8853",
+    "suite/fixtures/A02/docs/decisions/adoption.md": "716e6587e15f17c68a1af8dfd8e89474085352d8d5298b5c223ea6abcfdd0827",
+    "suite/fixtures/W04/scripts/verify_contract.py": "2a73abf19ea97fa1678cbaa91aa6033550473ea557a8ada7a9d3ef4938796bdf",
+    "suite/fixtures/W04/src/__init__.py": "2c616e16e8b2651a5af0cdb5a452ed043e0442d5fbf6a7b6c6703a1fe75c7618",
+    "suite/fixtures/W04/src/slug.py": "4cf4f82fa14ed4de459886c43f683b7b4153ad33d0361c7cbe410ab8df527082",
+    "suite/fixtures/W04/tests/__init__.py": "809248a52f6290ecfe269e30fdb70fbcaf8ba19487005fa091ef5b9e4d2f3a52",
+    "suite/fixtures/W04/tests/test_slug.py": "c79c3c165120a9fbb21421ce86e28332c5663910a512e6b1f83979a5cc34a8cb"
+  },
+  "metadata_sources": {
+    "long_base": {
+      "calibration": "8102cd5f74754ddfcc46f0fa4f6fc549468d3311b5e5ae48c89a95234e3eb231",
+      "writing-code-docs": "10a4bc0950c207c9ffd0ce0882bf547ada54fccbccf78b9fa36dcf12a29343ec"
+    },
+    "short_cal": {
+      "calibration": "fd0718a29b4c920c219c8fb4c26bcf2bb9904abbc6f4d4dcdab0fd9457056340",
+      "writing-code-docs": "10a4bc0950c207c9ffd0ce0882bf547ada54fccbccf78b9fa36dcf12a29343ec"
+    },
+    "short_docs": {
+      "calibration": "8102cd5f74754ddfcc46f0fa4f6fc549468d3311b5e5ae48c89a95234e3eb231",
+      "writing-code-docs": "b20e23485e8980b3ecbcfb35a78f8716d08acca3b0aa562db4e4b3aedc2cc264"
+    },
+    "short_both": {
+      "calibration": "fd0718a29b4c920c219c8fb4c26bcf2bb9904abbc6f4d4dcdab0fd9457056340",
+      "writing-code-docs": "b20e23485e8980b3ecbcfb35a78f8716d08acca3b0aa562db4e4b3aedc2cc264"
+    }
+  },
+  "original_repository_agents_sha256": "60176ab2e2275627eb06db46e2d8effe6ccc52f30c1c5c68e7320e9cb52e26ea",
+  "conditional_repository_agents_sha256": "e05743a1f58304137de0edf31482773f339772cf4cef9e718b06e909831e6a2e",
+  "delivery_adjustment": "Restore existing outcome-autonomy and proportional-validation contract phrases in principles after two repository assertion failures. No test changes. The 16 model runs used tested_sha256, not the later adopted_sha256."
+}

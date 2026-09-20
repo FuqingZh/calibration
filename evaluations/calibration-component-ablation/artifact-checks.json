@@ -1,0 +1,162 @@
+[
+  {
+    "sample": "run-001",
+    "case": "C2",
+    "pass": true,
+    "exit": 0,
+    "stdout": "DEFAULT_SEED=None\nACCEPTANCE_PASSED\n",
+    "stderr": ""
+  },
+  {
+    "sample": "run-004",
+    "case": "C2",
+    "pass": true,
+    "exit": 0,
+    "stdout": "DEFAULT_SEED=None\nACCEPTANCE_PASSED\n",
+    "stderr": ""
+  },
+  {
+    "sample": "run-007",
+    "case": "C1",
+    "pass": true,
+    "exit": 0,
+    "stdout": "ACCEPTANCE_PASSED\n",
+    "stderr": ""
+  },
+  {
+    "sample": "run-010",
+    "case": "N1",
+    "pass": true,
+    "exit": 0,
+    "stdout": "ACCEPTANCE_PASSED\n",
+    "stderr": ""
+  },
+  {
+    "sample": "run-012",
+    "case": "C1",
+    "pass": true,
+    "exit": 0,
+    "stdout": "ACCEPTANCE_PASSED\n",
+    "stderr": ""
+  },
+  {
+    "sample": "run-015",
+    "case": "C1",
+    "pass": true,
+    "exit": 0,
+    "stdout": "ACCEPTANCE_PASSED\n",
+    "stderr": ""
+  },
+  {
+    "sample": "run-016",
+    "case": "C2",
+    "pass": true,
+    "exit": 0,
+    "stdout": "DEFAULT_SEED=42\nACCEPTANCE_PASSED\n",
+    "stderr": ""
+  },
+  {
+    "sample": "run-020",
+    "case": "C2",
+    "pass": true,
+    "exit": 0,
+    "stdout": "DEFAULT_SEED=42\nACCEPTANCE_PASSED\n",
+    "stderr": ""
+  },
+  {
+    "sample": "run-021",
+    "case": "N1",
+    "pass": true,
+    "exit": 0,
+    "stdout": "ACCEPTANCE_PASSED\n",
+    "stderr": ""
+  },
+  {
+    "sample": "run-025",
+    "case": "G1",
+    "pass": true,
+    "exit": 0,
+    "stdout": "ACCEPTANCE_PASSED\n",
+    "stderr": ""
+  },
+  {
+    "sample": "run-028",
+    "case": "V2",
+    "pass": true,
+    "exit": 0,
+    "stdout": "ACCEPTANCE_PASSED\n",
+    "stderr": ""
+  },
+  {
+    "sample": "run-031",
+    "case": "V2",
+    "pass": true,
+    "exit": 0,
+    "stdout": "ACCEPTANCE_PASSED\n",
+    "stderr": ""
+  },
+  {
+    "sample": "run-033",
+    "case": "N1",
+    "pass": true,
+    "exit": 0,
+    "stdout": "ACCEPTANCE_PASSED\n",
+    "stderr": ""
+  },
+  {
+    "sample": "run-034",
+    "case": "G1",
+    "pass": true,
+    "exit": 0,
+    "stdout": "ACCEPTANCE_PASSED\n",
+    "stderr": ""
+  },
+  {
+    "sample": "run-039",
+    "case": "V2",
+    "pass": true,
+    "exit": 0,
+    "stdout": "ACCEPTANCE_PASSED\n",
+    "stderr": ""
+  },
+  {
+    "sample": "run-042",
+    "case": "V2",
+    "pass": true,
+    "exit": 0,
+    "stdout": "ACCEPTANCE_PASSED\n",
+    "stderr": ""
+  },
+  {
+    "sample": "run-049",
+    "case": "G1",
+    "pass": true,
+    "exit": 0,
+    "stdout": "ACCEPTANCE_PASSED\n",
+    "stderr": ""
+  },
+  {
+    "sample": "run-058",
+    "case": "N1",
+    "pass": true,
+    "exit": 0,
+    "stdout": "ACCEPTANCE_PASSED\n",
+    "stderr": ""
+  },
+  {
+    "sample": "run-061",
+    "case": "C1",
+    "pass": true,
+    "exit": 0,
+    "stdout": "ACCEPTANCE_PASSED\n",
+    "stderr": ""
+  },
+  {
+    "sample": "run-063",
+    "case": "G1",
+    "pass": true,
+    "exit": 0,
+    "stdout": "ACCEPTANCE_PASSED\n",
+    "stderr": ""
+  }
+]

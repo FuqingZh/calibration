@@ -1,0 +1,114 @@
+{
+  "source_commit": "15135fbd5d3e70edbb79d5293beeaa0687e4df23",
+  "model_requested": "gpt-6-astra",
+  "effort_requested": "medium",
+  "cli_version": "codex-cli 0.154.0",
+  "runs_planned": 64,
+  "repeats": 2,
+  "concurrency": 4,
+  "timeout_seconds": 180,
+  "modules": {
+    "general": {
+      "remove_sections": [
+        "Problem Framing",
+        "Outcome Autonomy And Feedback",
+        "Performance and Measurement"
+      ],
+      "refs": []
+    },
+    "native": {
+      "remove_sections": [
+        "Native Abstractions and Data Flow"
+      ],
+      "refs": []
+    },
+    "config": {
+      "remove_sections": [
+        "Configuration and Defaults"
+      ],
+      "refs": []
+    },
+    "communication": {
+      "remove_sections": [
+        "Communication"
+      ],
+      "refs": []
+    },
+    "naming": {
+      "remove_sections": [],
+      "refs": [
+        "references/naming/function.md",
+        "references/naming/variable.md"
+      ]
+    },
+    "design": {
+      "remove_sections": [],
+      "refs": [
+        "references/design/codebase.md"
+      ]
+    },
+    "verification": {
+      "remove_sections": [],
+      "refs": [
+        "references/discipline/verification.md",
+        "references/discipline/debugging.md"
+      ]
+    },
+    "ao": {
+      "remove_sections": [],
+      "refs": [
+        "references/agent-orchestrator-review-continuation.md",
+        "references/discipline/harness.md"
+      ]
+    }
+  },
+  "source_sha256": {
+    "test-prompts.json": "93eb17d51c2af090765669ebe3ef60813105e26db8a3a8b3edc6d3d828653c9c",
+    "SKILL.md": "8102cd5f74754ddfcc46f0fa4f6fc549468d3311b5e5ae48c89a95234e3eb231",
+    "global-template.txt": "1fe95c7639e27c0a7c505ba9a108b10f571bb8460b16e34b03c59f76c8f7f8a4",
+    "agents/openai.yaml": "995df1fa0fb6a882b72e27e1c27e578db5ec9ecf319e29ee87c1e5794ba67f6b",
+    "references/docs_index.md": "c6692882a7489eac1993f25d3c2c3497ea5412cb6ece78082cb0c4f652039476",
+    "references/principles.md": "f33bca0fbd8d099393f7edb8c73fe7b3f2adedd01b9e8828527a3fa7af270a1f",
+    "references/agent-orchestrator-review-continuation.md": "7435bf02a4eebc1cab1d3918fc92fba6c44c62eb67b191312dc8c21a27cc4be3",
+    "references/design/README.md": "bef9c81ee1ba2b3549b8e6cd40c6943a744ad418571c2d8a863cb7bd19b42843",
+    "references/design/codebase.md": "998d5c22ab8db86c6227226dec1076d830cac09fd14879596da5352af91a810f",
+    "references/discipline/README.md": "37ec8e960d3b2ef702f5ec2564de44142c2e5360368cd9ebd6708e4855702650",
+    "references/discipline/debugging.md": "3b9d974962e112feb202e7178ae7fa86f27cd2440f8fad7c146e05aa7deda773",
+    "references/discipline/evaluation.md": "1f33fac081427d504694978a16f984cddc21286cbf5420eee1a1a38f272e8ec3",
+    "references/discipline/refactor.md": "5071c0317be3ba6d75480f5869196476883717840a388d1ca6119de239cd2cad",
+    "references/discipline/verification.md": "b88806a3e2cc92c37f99a5dbe854ba68494ddacc38bc0e9f9ec66a2c685e2287",
+    "references/discipline/harness.md": "ef0218e5b54662f31533b2e6db8c0678d5ca6b78451fdd8d6f322754657db641",
+    "references/docs/README.md": "1eb93072f7b5c15e3dc8cc8b239e44f0f2019fe8749d8b525d4949aaee76ca23",
+    "references/naming/README.md": "eb1a8720425a8c2fbcebf5cba348a300295ea7559d365579a8f68d61a8d5c081",
+    "references/naming/artifact.md": "9271f9c95bd4599897bc6ca222bb2deaab9e66fd3290da809d12bd48a3d21c8f",
+    "references/naming/branch.md": "790690e26318baa979efe844aff1566254c30c9e4cdacc55456b40bad4de16e2",
+    "references/naming/cli.md": "0d42166beaeb4edc207bd59d67591773b350bd81c7634d7c07b86bea962778a8",
+    "references/naming/function.md": "699ceaaa3a4d94f70f8538eea52d9e15fb4ae6ee8434a61dffc0e41333c71fc3",
+    "references/naming/loop.md": "b9434c23570ddd11a48ce1421615a1397ad59ebbd34148b67a2b044811917436",
+    "references/naming/method.md": "bc6c84abea3b210a8e7dd31749b3e1b2cb2d468163d40a164a07df95b5b68a65",
+    "references/naming/schema.md": "01bbffe40177b45b15c1139b9490c1d55c6b563c06691808794e429e1a692357",
+    "references/naming/type.md": "a9db9718841021359d556f77f18ce20b187492a1b6ee7971fe58bb074ba03ac6",
+    "references/naming/variable.md": "05b449e0dd392a271156cbe12af3e25577751dac0b4bd150b867cc1fc568f6ca",
+    "references/docs/document-types/README.md": "616854317fa8cf3bd8bbe9d8f25f1ef9bd2c480c26bef39dc0196bdaa6be57be",
+    "references/docs/document-types/architecture-overview.md": "ae230986364c3ca42e5e4385fc17a2a3eb7182b48a587791fac17e70f3fefcab",
+    "references/docs/document-types/benchmark-record.md": "20d922272d7af58598daa86287b57cb892899da9a0efd1e03b7f8add705854cd",
+    "references/docs/document-types/compatibility-record.md": "f46962b544ebb7249bd748967f7924d83c9463fb3f5688b995fd13d39787759b",
+    "references/docs/document-types/decision-record.md": "cbf926c2f29a6b9ab2162de102659e50687d84d3d7ce6886a1e0159de19d438a",
+    "references/docs/document-types/design-proposal.md": "0947e643513bc2bebbeb8ab1d92560c4cb629f9b590da2b9fad4a2427085e496",
+    "references/docs/document-types/how-to-guide.md": "677a4183ce273fe5be5e32651c5ac5cc2baea02278f7f77bf414f1836f94f7cc",
+    "references/docs/document-types/implementation-plan.md": "ac0f5c8a0ccddd8249ee50949590fe0e6ec8d468013469ca16bc74569177147f",
+    "references/docs/document-types/runbook.md": "14334283347742edcb67bd0059a53ae089d8bf9bcbcdff48effee847d6c4238f",
+    "references/docs/document-types/test-plan.md": "80bdd67c09b0942833e38f9e1f1689a4164144a361e4eb64145335e41410720c",
+    "references/docs/document-types/tutorial.md": "296d1070ff54120c848ae26bb7c3b81e41f6c52191f29d279f1ef08b689f61e2",
+    "references/docs/schema/README.md": "72642bd6a48c2ed21069d89a9d278a2fcbc6625f9ebd427323526d9fbb326613",
+    "references/docs/technology/main_path_readability/20260318-v1.0.md": "1ef4f2995b485daf37fb3bf7c05d97825a20bb94bae0112e432deb5caa09c5fb",
+    "references/docs/workflow/branch_and_pr_collaboration/20260602-v1.0.md": "4c87eb8f89c71186b6087202c9f171c3a8e0ce844bbda86d52ae813e9d8e4859",
+    "references/docs/workflow/project_docs_architecture/20260527-v1.0-project-docs-architecture.md": "f6b60bfdcf1960de69c95d39d391019dc800e61c442fec7f31c3039ec3c3a61d",
+    "references/docs/workflow/project_docs_architecture/20260805-v1.1-project-docs-architecture.md": "0a92f3045d5152c7c2a045e113d7c7316ba5967423c3ca49c1f9c3a65f4eed43",
+    "references/docs/schema/identifier/20260304-v1.1.md": "128ec173740fbb138430b3c76837952da0ef9de30f9170592601df55997a0951",
+    "references/docs/schema/pipeline_directory_layout_specification/20260304-v1.1.md": "05ac10c81137a145dddbd50e120504631ffe12f5b4cf7412947bf1800a22db9f",
+    "references/docs/schema/step_to_step_artifact_flow_specification/20260304-v1.1.md": "2475f6c4a96ef1e4b7d9d0ae95bfef874261968864d9910726b14f0da4c07068"
+  },
+  "design": "Paired leave-one-module-out. Native CLI and global template fixed; task-specific references explicitly injected. Full guidance is relevant bundle, not entire repository. Closed-material decisions/code proposals; no natural routing or live AO claims. Sources and criteria frozen before runs.",
+  "decision": "No automatic deletion. A tied small-case result means unproven marginal value only. Caller-specific seed/naming/style compliance reported separately from correctness."
+}
