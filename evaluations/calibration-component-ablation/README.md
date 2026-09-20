@@ -140,7 +140,7 @@ acceptance after those repairs; these incidents are not model failures.
 
 ## Evidence
 
-- [Frozen tasks](cases.json), [rubric](rubric.json), and [prompt prefix](prompt-prefix.txt).
+- [Frozen tasks](cases.json), [rubric](rubric.json), and [prompt prefix](prompt-prefix.json).
 - [Source manifest](manifest.json) and [source inventory](source-inventory.json).
 - [All 64 anonymous answers](answers.json) and [per-run records](run-records.json).
 - [Independent code checks](artifact-checks.json), [adjudicated scores](scores.json),
@@ -153,3 +153,6 @@ remain in the user-selected private run directory. The public manifest's
 `global-template.txt` hash corresponds to the frozen copy of
 `codex/AGENTS.md.template`; the remaining source paths are relative to
 `skills/calibration/`. Raw homes and authentication links are not public evidence.
+
+The prompt prefix is JSON-encoded to preserve its exact trailing newlines.
+Decode the JSON string before reconstructing the frozen prompt.
