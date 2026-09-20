@@ -1,0 +1,248 @@
+{
+  "files": [
+    {
+      "path": "SKILL.md",
+      "bytes": 3485,
+      "lines": 73
+    },
+    {
+      "path": "references/agent-orchestrator-review-continuation.md",
+      "bytes": 10492,
+      "lines": 169
+    },
+    {
+      "path": "references/design/README.md",
+      "bytes": 558,
+      "lines": 18
+    },
+    {
+      "path": "references/design/codebase.md",
+      "bytes": 2006,
+      "lines": 43
+    },
+    {
+      "path": "references/discipline/README.md",
+      "bytes": 1626,
+      "lines": 26
+    },
+    {
+      "path": "references/discipline/debugging.md",
+      "bytes": 1384,
+      "lines": 32
+    },
+    {
+      "path": "references/discipline/evaluation.md",
+      "bytes": 5488,
+      "lines": 133
+    },
+    {
+      "path": "references/discipline/harness.md",
+      "bytes": 17386,
+      "lines": 322
+    },
+    {
+      "path": "references/discipline/refactor.md",
+      "bytes": 1691,
+      "lines": 36
+    },
+    {
+      "path": "references/discipline/verification.md",
+      "bytes": 1230,
+      "lines": 29
+    },
+    {
+      "path": "references/docs/README.md",
+      "bytes": 415,
+      "lines": 19
+    },
+    {
+      "path": "references/docs/document-types/README.md",
+      "bytes": 2308,
+      "lines": 58
+    },
+    {
+      "path": "references/docs/document-types/architecture-overview.md",
+      "bytes": 972,
+      "lines": 28
+    },
+    {
+      "path": "references/docs/document-types/benchmark-record.md",
+      "bytes": 1027,
+      "lines": 29
+    },
+    {
+      "path": "references/docs/document-types/compatibility-record.md",
+      "bytes": 1256,
+      "lines": 31
+    },
+    {
+      "path": "references/docs/document-types/decision-record.md",
+      "bytes": 990,
+      "lines": 28
+    },
+    {
+      "path": "references/docs/document-types/design-proposal.md",
+      "bytes": 911,
+      "lines": 26
+    },
+    {
+      "path": "references/docs/document-types/how-to-guide.md",
+      "bytes": 1049,
+      "lines": 30
+    },
+    {
+      "path": "references/docs/document-types/implementation-plan.md",
+      "bytes": 1899,
+      "lines": 43
+    },
+    {
+      "path": "references/docs/document-types/runbook.md",
+      "bytes": 1121,
+      "lines": 29
+    },
+    {
+      "path": "references/docs/document-types/test-plan.md",
+      "bytes": 1004,
+      "lines": 28
+    },
+    {
+      "path": "references/docs/document-types/tutorial.md",
+      "bytes": 1107,
+      "lines": 32
+    },
+    {
+      "path": "references/docs/schema/README.md",
+      "bytes": 328,
+      "lines": 10
+    },
+    {
+      "path": "references/docs/schema/identifier/20260304-v1.1.md",
+      "bytes": 1880,
+      "lines": 77
+    },
+    {
+      "path": "references/docs/schema/pipeline_directory_layout_specification/20260304-v1.1.md",
+      "bytes": 3931,
+      "lines": 105
+    },
+    {
+      "path": "references/docs/schema/step_to_step_artifact_flow_specification/20260304-v1.1.md",
+      "bytes": 4869,
+      "lines": 144
+    },
+    {
+      "path": "references/docs/technology/main_path_readability/20260318-v1.0.md",
+      "bytes": 2973,
+      "lines": 98
+    },
+    {
+      "path": "references/docs/workflow/branch_and_pr_collaboration/20260602-v1.0.md",
+      "bytes": 5679,
+      "lines": 171
+    },
+    {
+      "path": "references/docs/workflow/project_docs_architecture/20260527-v1.0-project-docs-architecture.md",
+      "bytes": 3962,
+      "lines": 138
+    },
+    {
+      "path": "references/docs/workflow/project_docs_architecture/20260805-v1.1-project-docs-architecture.md",
+      "bytes": 10441,
+      "lines": 205
+    },
+    {
+      "path": "references/docs_index.md",
+      "bytes": 2367,
+      "lines": 53
+    },
+    {
+      "path": "references/naming/README.md",
+      "bytes": 1208,
+      "lines": 36
+    },
+    {
+      "path": "references/naming/artifact.md",
+      "bytes": 1912,
+      "lines": 34
+    },
+    {
+      "path": "references/naming/branch.md",
+      "bytes": 2034,
+      "lines": 59
+    },
+    {
+      "path": "references/naming/cli.md",
+      "bytes": 614,
+      "lines": 13
+    },
+    {
+      "path": "references/naming/function.md",
+      "bytes": 7558,
+      "lines": 117
+    },
+    {
+      "path": "references/naming/loop.md",
+      "bytes": 615,
+      "lines": 12
+    },
+    {
+      "path": "references/naming/method.md",
+      "bytes": 730,
+      "lines": 24
+    },
+    {
+      "path": "references/naming/schema.md",
+      "bytes": 533,
+      "lines": 10
+    },
+    {
+      "path": "references/naming/type.md",
+      "bytes": 4871,
+      "lines": 55
+    },
+    {
+      "path": "references/naming/variable.md",
+      "bytes": 803,
+      "lines": 19
+    },
+    {
+      "path": "references/principles.md",
+      "bytes": 5194,
+      "lines": 103
+    }
+  ],
+  "ablation_deltas": [
+    {
+      "module": "ao",
+      "removed_utf8_bytes": 27972
+    },
+    {
+      "module": "communication",
+      "removed_utf8_bytes": 706
+    },
+    {
+      "module": "config",
+      "removed_utf8_bytes": 932
+    },
+    {
+      "module": "design",
+      "removed_utf8_bytes": 2040
+    },
+    {
+      "module": "general",
+      "removed_utf8_bytes": 1781
+    },
+    {
+      "module": "naming",
+      "removed_utf8_bytes": 8429
+    },
+    {
+      "module": "native",
+      "removed_utf8_bytes": 1187
+    },
+    {
+      "module": "verification",
+      "removed_utf8_bytes": 2695
+    }
+  ]
+}

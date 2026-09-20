@@ -1,0 +1,30 @@
+[
+  {
+    "sample": "run-028",
+    "criterion_index": 3,
+    "original_passed": false,
+    "adjudicated_passed": true,
+    "reason": "V2 requests code and how to verify the gate; the frozen closed-material prefix prohibits actual operations and execution claims. Each answer specifies conforming and violating targets and does not claim execution. The blind judge added an execution requirement absent from the task. Applied symmetrically to all four V2 answers, after unblinding; original ratings retained."
+  },
+  {
+    "sample": "run-031",
+    "criterion_index": 3,
+    "original_passed": false,
+    "adjudicated_passed": true,
+    "reason": "V2 requests code and how to verify the gate; the frozen closed-material prefix prohibits actual operations and execution claims. Each answer specifies conforming and violating targets and does not claim execution. The blind judge added an execution requirement absent from the task. Applied symmetrically to all four V2 answers, after unblinding; original ratings retained."
+  },
+  {
+    "sample": "run-039",
+    "criterion_index": 3,
+    "original_passed": false,
+    "adjudicated_passed": true,
+    "reason": "V2 requests code and how to verify the gate; the frozen closed-material prefix prohibits actual operations and execution claims. Each answer specifies conforming and violating targets and does not claim execution. The blind judge added an execution requirement absent from the task. Applied symmetrically to all four V2 answers, after unblinding; original ratings retained."
+  },
+  {
+    "sample": "run-042",
+    "criterion_index": 3,
+    "original_passed": false,
+    "adjudicated_passed": true,
+    "reason": "V2 requests code and how to verify the gate; the frozen closed-material prefix prohibits actual operations and execution claims. Each answer specifies conforming and violating targets and does not claim execution. The blind judge added an execution requirement absent from the task. Applied symmetrically to all four V2 answers, after unblinding; original ratings retained."
+  }
+]

@@ -1,0 +1,178 @@
+[
+  {
+    "id": "G1",
+    "module": "general",
+    "request": "普通本地修复，只交付 ids.py 的替换正文。normalize 要剥掉每项两端空白并过滤空项，保留顺序与重复。原文件：PREFIX = \"keep-user-change\"\ndef normalize(values):\n    return [v.strip() for v in values if v]\n项目要求只运行 python check_ids.py，未要求计划文档或其他门禁；没有 AO owner，不交付 PR。请给出最小改动和验证选择。",
+    "criteria": [
+      "code:ids.py normalization",
+      "preserve PREFIX",
+      "select only check_ids.py; no invented plan/approval",
+      "no claim check executed"
+    ]
+  },
+  {
+    "id": "G2",
+    "module": "general",
+    "request": "只做验证选择。仓库把 typo 检查收口为 pdm run docs-check；你刚纠正 README 一处拼写，没有代码、链接、示例命令或行为变化。CI 的默认全套包含 40 分钟 GPU 测试，但仓库允许按影响范围选择检查。给出本次应该运行的命令及完成依据。未运行任何检查。",
+    "criteria": [
+      "docs-check sufficient",
+      "no mandatory GPU/universal checklist",
+      "no execution claim",
+      "brief reason tied to unchanged behavior"
+    ]
+  },
+  {
+    "id": "N1",
+    "module": "native",
+    "request": "实现 io_rows.py 的两个函数 read_rows(text) 和 write_rows(rows)，使用 Python 标准库。CSV 第一行是表头；read_rows 返回列表，每行是字符串值字典；write_rows 输入非空的同字段字典列表，返回含表头的 CSV 字符串。必须正确往返逗号、双引号、字段内换行、空串和中文。项目没有其他框架。",
+    "criteria": [
+      "code:CSV roundtrip",
+      "standard csv parser/writer",
+      "no split/join custom parser",
+      "no new dependency"
+    ]
+  },
+  {
+    "id": "N2",
+    "module": "native",
+    "request": "给出 query.sql 的单条 SQL：DuckDB 已有 events(user_id VARCHAR, ts TIMESTAMP, status VARCHAR, seq BIGINT)。每个 user_id 只保留 status=ok 中 ts 最新的一行；同 ts 时 seq 最大者优先。数据 8000 万行，Python 进程内存 1GB。返回 user_id,ts,status,seq，不改数据库结构。",
+    "criteria": [
+      "filter ok before rank",
+      "partition user, ts desc seq desc",
+      "SQL bulk no Python materialization",
+      "exact requested columns"
+    ]
+  },
+  {
+    "id": "C1",
+    "module": "config",
+    "request": "实现 config.py 的 load(data)。本模块公开合同：input/output 必须是非空白字符串，无效值 ValueError；返回独立字典，保留原字符串和所有未知插件字段，包括嵌套对象，不修改入参。现状只是 return dict(data)。第三方插件依赖 vendor_options；不新增依赖。给出完整替换函数。",
+    "criteria": [
+      "code:valid inputs retain extensions",
+      "reject booleans/blank/missing",
+      "distinct result and no mutation",
+      "no exact-key whitelist"
+    ]
+  },
+  {
+    "id": "C2",
+    "module": "config",
+    "request": "给出 split.py 的 split_ids(ids, train_fraction=0.8) 实现：复制输入并随机打乱，以 int(len(ids)*train_fraction) 为界返回两段；检查比例在 0 到 1 之间；允许调用者传随机种子且不要修改进程全局随机状态。新仓库尚无种子约定，本题不指定默认种子。给出默认值选择和理由。",
+    "criteria": [
+      "code:split correct, no input/global mutation",
+      "explicit seed override",
+      "calibration convention default seed 42",
+      "validate fraction"
+    ]
+  },
+  {
+    "id": "S1",
+    "module": "communication",
+    "request": "给一个同事写简短答复，直接交代：这次把 CSV 手工分割改成标准解析器；原因是字段中可能有逗号与换行；本地三个用例通过；线上尚未验证。对方没有提出任何误解或替代方案。返回可直接发送的中文正文，不要标题。",
+    "criteria": [
+      "four facts retained",
+      "no unsolicited not-X-but-Y contrast",
+      "no slogan or irrelevant detail",
+      "clear local-vs-live evidence"
+    ]
+  },
+  {
+    "id": "S2",
+    "module": "communication",
+    "request": "同事问：任务接口返回 202，是否就能确认数据已入库？现有事实：202 表示已接收；需要查询 operation_id 对应的最终状态，且当前未查询。请简短解释，允许必要概念区分，不添加未提供的实现架构。",
+    "criteria": [
+      "202 not completion",
+      "query operation_id terminal state",
+      "do not invent result",
+      "necessary contrast allowed"
+    ]
+  },
+  {
+    "id": "M1",
+    "module": "naming",
+    "request": "为这六个尚未发布的 Python 函数提英文 snake_case 名称，用 names.json 返回对象，键为 a-f：a 接受文件路径，以迭代器逐批读数据，不先完整加载；b 把各批数据直接流式写入目标，内存不持有全量；c 仅检查配置，无效就抛错；d 确保目录存在，必要时创建；e 按条件保留行；f 选择并重排列。只给名字与必要理由，不改业务。",
+    "criteria": [
+      "valid descriptive identifiers",
+      "a scan_ b sink_ local conventions",
+      "c validate_ d ensure_",
+      "e filter_ f select_"
+    ]
+  },
+  {
+    "id": "M2",
+    "module": "naming",
+    "request": "只评审内部变量命名，不改代码。这个仓库用 PEP8，但没有把命名偏好设成门禁。dict1 明确表示“样本 ID 到分组的映射”，建议改善它；另外已公开字段 sampleID 是客户合同，不能顺便重命名。请给出候选名和是否阻止合并的意见。",
+    "criteria": [
+      "role-based group_by_sample_id or equivalent",
+      "do not block solely preference",
+      "preserve public sampleID",
+      "no wholesale rename"
+    ]
+  },
+  {
+    "id": "D1",
+    "module": "design",
+    "request": "只评审方案。一个命令当前 main -> parse_config -> export_report。为了“整洁”，提案增加 ReportCoordinator.execute -> ReportService.run -> ReportManager.handle，三层均只透传相同参数且无策略、生命周期或额外调用方。下季度可能有其他导出类型，但没有需求。给出采纳与否、最小替代方案及验证影响。",
+    "criteria": [
+      "reject forwarding-only layers",
+      "keep direct path",
+      "future hypotheticals not enough",
+      "preserve existing contracts and tests"
+    ]
+  },
+  {
+    "id": "D2",
+    "module": "design",
+    "request": "只评审重构：render_report(data, theme) 正被三个已发布插件 import，其中主题默认值由调用方决定。工程师想删除该导出并把主题读取、文件写入和渲染合并进私有 _run()，理由是代码行数减少。给出是否接受、一个最小可行重构，以及兼容性验证方式。",
+    "criteria": [
+      "preserve public render_report signature",
+      "keep caller theme ownership",
+      "do not equate LOC with simplification",
+      "verify plugin compatibility"
+    ]
+  },
+  {
+    "id": "V1",
+    "module": "verification",
+    "request": "只诊断，不执行。worker 沙箱中 /mnt/archive 不存在，systemctl --user 无法连接；宿主服务管理器尚未查询。已有只读命令 hostctl path-stat /mnt/archive 和 hostctl service-status worker 可从授权宿主入口调用。工程师建议现在重装服务并改挂载配置。给出结论、下一步命令、证据边界。",
+    "criteria": [
+      "sandbox absence indeterminate",
+      "read authoritative host path/service",
+      "no reinstall or config mutation",
+      "separate hypothesis from root cause"
+    ]
+  },
+  {
+    "id": "V2",
+    "module": "verification",
+    "request": "实现 gate.py 的 main(argv=None)，检测被测 Python CLI，argv 为 [target_path]。正常参数 ok 必须返回码 0 且 stdout JSON 对象恰为 {\"value\":\"ok\"}（允许排版差异）；bad 必须返回码 2。gate 仅在两项都满足时返回 0，否则返回 1。为便于程序调用，main 返回整数，直接运行脚本时用 sys.exit(main())。不修改被测程序。给出代码和应如何验证门禁。",
+    "criteria": [
+      "code:positive and negative behavior",
+      "parse JSON not substring",
+      "reject misleading always-success target",
+      "test compliant and violating targets; no fake execution"
+    ]
+  },
+  {
+    "id": "A1",
+    "module": "ao",
+    "request": "只按快照判断下一步，不调用工具。AO 已安装、仓库已采用、有本地 authority，历史 PR 反馈续跑已证实；daemon ready。session.isTerminated=true，runtime.cleanup=pending，所属 cgroup 仍有 PID。owner 工作区包含未提交改动。用户授权继续实现但未授权转移所有权。controller 能读该工作区。如何处理？",
+    "criteria": [
+      "no restore while containment nonempty",
+      "no controller cross-write/transfer",
+      "preserve dirty work",
+      "bounded observe cleanup with exact blocker"
+    ]
+  },
+  {
+    "id": "A2",
+    "module": "ao",
+    "request": "只判断交接是否完成。用户让 coordinator 完成三个阶段；stage1 worker 已接单并开始运行，尚无 PR。AO daemon ready，过去仅验证过 PR 的 CI 反馈续跑。尚无证据表明 pre-PR 执行权限请求或 stage2/stage3 会回到当前 coordinator；通知接收方也未核验。能否现在结束跟踪并报完成？下一步是什么？",
+    "criteria": [
+      "do not claim goal complete",
+      "worker running insufficient handoff proof",
+      "verify notification recipient and actual-stage coverage",
+      "bounded observation or precise tracking blocker"
+    ]
+  }
+]

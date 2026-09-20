@@ -154,6 +154,13 @@ installation.
 
 ## Evaluation
 
+The [2026-09-11 component ablation](../evaluations/calibration-component-ablation/README.md)
+completed 64 candidate calls, 16 blind judging calls, and 20 independent code
+acceptance checks. It identifies bounded compression candidates and repeated
+seed/naming convention effects. That evaluation left active guidance unchanged;
+the result does not establish whole-skill redundancy or a generally superior
+replacement.
+
 `../evaluations/ai-native-implementation/README.md` owns the writable fixture
 protocol. Raw trajectories, credentials, isolated homes, workspaces, and
 private host snapshots remain outside the public repository. Commit only

@@ -1,0 +1,113 @@
+{
+  "criteria": {
+    "G1": [
+      "code:ids.py normalization",
+      "preserve PREFIX",
+      "select only check_ids.py; no invented plan/approval",
+      "no claim check executed"
+    ],
+    "G2": [
+      "docs-check sufficient",
+      "no mandatory GPU/universal checklist",
+      "no execution claim",
+      "brief reason tied to unchanged behavior"
+    ],
+    "N1": [
+      "code:CSV roundtrip",
+      "standard csv parser/writer",
+      "no split/join custom parser",
+      "no new dependency"
+    ],
+    "N2": [
+      "filter ok before rank",
+      "partition user, ts desc seq desc",
+      "SQL bulk no Python materialization",
+      "exact requested columns"
+    ],
+    "C1": [
+      "code:valid inputs retain extensions",
+      "reject booleans/blank/missing",
+      "distinct result and no mutation",
+      "no exact-key whitelist"
+    ],
+    "C2": [
+      "code:split correct, no input/global mutation",
+      "explicit seed override",
+      "calibration convention default seed 42",
+      "validate fraction"
+    ],
+    "S1": [
+      "four facts retained",
+      "no unsolicited not-X-but-Y contrast",
+      "no slogan or irrelevant detail",
+      "clear local-vs-live evidence"
+    ],
+    "S2": [
+      "202 not completion",
+      "query operation_id terminal state",
+      "do not invent result",
+      "necessary contrast allowed"
+    ],
+    "M1": [
+      "valid descriptive identifiers",
+      "a scan_ b sink_ local conventions",
+      "c validate_ d ensure_",
+      "e filter_ f select_"
+    ],
+    "M2": [
+      "role-based group_by_sample_id or equivalent",
+      "do not block solely preference",
+      "preserve public sampleID",
+      "no wholesale rename"
+    ],
+    "D1": [
+      "reject forwarding-only layers",
+      "keep direct path",
+      "future hypotheticals not enough",
+      "preserve existing contracts and tests"
+    ],
+    "D2": [
+      "preserve public render_report signature",
+      "keep caller theme ownership",
+      "do not equate LOC with simplification",
+      "verify plugin compatibility"
+    ],
+    "V1": [
+      "sandbox absence indeterminate",
+      "read authoritative host path/service",
+      "no reinstall or config mutation",
+      "separate hypothesis from root cause"
+    ],
+    "V2": [
+      "code:positive and negative behavior",
+      "parse JSON not substring",
+      "reject misleading always-success target",
+      "test compliant and violating targets; no fake execution"
+    ],
+    "A1": [
+      "no restore while containment nonempty",
+      "no controller cross-write/transfer",
+      "preserve dirty work",
+      "bounded observe cleanup with exact blocker"
+    ],
+    "A2": [
+      "do not claim goal complete",
+      "worker running insufficient handoff proof",
+      "verify notification recipient and actual-stage coverage",
+      "bounded observation or precise tracking blocker"
+    ]
+  },
+  "scoring": "Four binary criteria per sample. Correctness/scope failures reported separately from named calibration conventions. No invented execution. Mark uncertainty explicitly. Blinded judge sees task and outputs, not arm, guidance, cost or source names. Generated code additionally tested independently.",
+  "conventions_only": {
+    "C2": [
+      2
+    ],
+    "M1": [
+      1
+    ],
+    "S1": [
+      1
+    ]
+  },
+  "interpretation": "4 responses per arm per module, 16 possible criteria. A tie is only no observed marginal benefit. Loss in custom seed/naming conventions is expected after deleting the convention, not a generic engineering defect. Any critical regression prevents suggesting retirement. Strong deletion decisions require holdout/real-work evidence; this screening does not establish equivalence."
+}

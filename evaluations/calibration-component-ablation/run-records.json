@@ -1,0 +1,1730 @@
+[
+  {
+    "case": "C2",
+    "module": "config",
+    "arm": "minus",
+    "repeat": 2,
+    "run": "run-001",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 30.826331546530128,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 20020,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 418,
+        "reasoning_output_tokens": 51
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "96996042e9639421d0d73598bd31b079fef17d21fb93bbb33f1ce602c67c44e5",
+    "prompt_sha256": "398d054153a68c6fad56fa62d9c19e6be725b1db41417897f7985a79623e5c63",
+    "prompt_bytes": 13874
+  },
+  {
+    "case": "S1",
+    "module": "communication",
+    "arm": "full",
+    "repeat": 2,
+    "run": "run-002",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 25.952047808095813,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 20177,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 58,
+        "reasoning_output_tokens": 0
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "340a4bfa4c144ae615991eaefb5ce51561027568daabba0d0c17ac9216ac4a79",
+    "prompt_sha256": "c2b8d9a91c30b03bf441d94922361bf5f01927562fd0ef10fb5b5ce3fef02a67",
+    "prompt_bytes": 14753
+  },
+  {
+    "case": "G2",
+    "module": "general",
+    "arm": "minus",
+    "repeat": 2,
+    "run": "run-003",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 63.8512600408867,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 19433,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 147,
+        "reasoning_output_tokens": 0
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "b2a98f016b3bc1a5df1f7d0af086f5f2030f8a11238dfddacb177c23fcc9f0a0",
+    "prompt_sha256": "91940467473306572a107841bcb0003163b43d49c23b6fafc41519c25a4b6ffa",
+    "prompt_bytes": 13009
+  },
+  {
+    "case": "C2",
+    "module": "config",
+    "arm": "minus",
+    "repeat": 1,
+    "run": "run-004",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 36.08744982723147,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 20020,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 446,
+        "reasoning_output_tokens": 43
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "77763f3f0af24dbdef69af7d5bcdb9d8b4446120a9d3db47e5d6f9cb618808ee",
+    "prompt_sha256": "398d054153a68c6fad56fa62d9c19e6be725b1db41417897f7985a79623e5c63",
+    "prompt_bytes": 13874
+  },
+  {
+    "case": "D2",
+    "module": "design",
+    "arm": "full",
+    "repeat": 2,
+    "run": "run-005",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 43.861391763202846,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 20587,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 386,
+        "reasoning_output_tokens": 0
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "2eb7d550e9ed1cc81a72774d4b499172d21fc3a84439cdd42249fb4a791e9ca4",
+    "prompt_sha256": "def9ff6eeb71acd4684636e781b0780ec61a581e51e8d880d85851d4c36a80e4",
+    "prompt_bytes": 16826
+  },
+  {
+    "case": "M1",
+    "module": "naming",
+    "arm": "full",
+    "repeat": 2,
+    "run": "run-006",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 30.446179868653417,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 22190,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 160,
+        "reasoning_output_tokens": 0
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "92ecafe90bf51a59e0e0ad8b5baf37ed6bd67037d7827f7eec2449669761b4ad",
+    "prompt_sha256": "8280d54384cbdebc0cbf53d47d530102c1fc522177cd3945c7d7b13d6f7ef6cd",
+    "prompt_bytes": 23315
+  },
+  {
+    "case": "C1",
+    "module": "config",
+    "arm": "minus",
+    "repeat": 2,
+    "run": "run-007",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 32.60026150662452,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 20008,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 373,
+        "reasoning_output_tokens": 117
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "3df6f5233d6e4322b453571640d1ccda84bd3f52d7bd5acea44209c466293c1e",
+    "prompt_sha256": "f218d6dd97d2e6220aa545889ba5492ad21ee1b5fc3624be537f2542ef2e3cf9",
+    "prompt_bytes": 13877
+  },
+  {
+    "case": "A1",
+    "module": "ao",
+    "arm": "minus",
+    "repeat": 2,
+    "run": "run-008",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 41.39446508232504,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 20193,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 295,
+        "reasoning_output_tokens": 0
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "31e10bb61bc27b84939206e507ed87f0be0b175e81c5e4b0469e5ce0c902aa36",
+    "prompt_sha256": "f380630e53b2c6250615c92740d54d61574c6ebb4e83bd294b9f3cca67dff8ae",
+    "prompt_bytes": 14833
+  },
+  {
+    "case": "D2",
+    "module": "design",
+    "arm": "minus",
+    "repeat": 1,
+    "run": "run-009",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 59.167773239314556,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 20183,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 343,
+        "reasoning_output_tokens": 0
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "9abc4c628335f884b012ad0356208b1ff5c231a815a7a346e8fd71a8017f89ff",
+    "prompt_sha256": "864a0d8c73e8425a612a85aed1e557fafdc38163290101e71d7d893f7fe92d93",
+    "prompt_bytes": 14786
+  },
+  {
+    "case": "N1",
+    "module": "native",
+    "arm": "full",
+    "repeat": 2,
+    "run": "run-010",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 32.786564990878105,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 20192,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 385,
+        "reasoning_output_tokens": 56
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "acc7ed60ac143a1b0f91e0d99fd0455209a544cbc6df8cb850e62b2901c12439",
+    "prompt_sha256": "32432f8b13d301742a66f1d291eee240ccd84a73e9b3c596a7576f1ee6dfe41e",
+    "prompt_bytes": 14826
+  },
+  {
+    "case": "D1",
+    "module": "design",
+    "arm": "full",
+    "repeat": 1,
+    "run": "run-011",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 26.89380995184183,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 20595,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 263,
+        "reasoning_output_tokens": 0
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "1fce0cf89f49c55d29a52095ea7fb117ba93567c5761d3463d118e4a90a043db",
+    "prompt_sha256": "bea091bc3ef37dfb8c19a171e82d812d45baea0d74db3aad69633969def3e877",
+    "prompt_bytes": 16876
+  },
+  {
+    "case": "C1",
+    "module": "config",
+    "arm": "minus",
+    "repeat": 1,
+    "run": "run-012",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 44.76473783981055,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 20008,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 329,
+        "reasoning_output_tokens": 81
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "66f68a93c6d0d02c158f5fc069a0b8cecbc0dbfa94237079699116b1e334dd75",
+    "prompt_sha256": "f218d6dd97d2e6220aa545889ba5492ad21ee1b5fc3624be537f2542ef2e3cf9",
+    "prompt_bytes": 13877
+  },
+  {
+    "case": "D1",
+    "module": "design",
+    "arm": "minus",
+    "repeat": 1,
+    "run": "run-013",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 42.37596422433853,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 20186,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 273,
+        "reasoning_output_tokens": 0
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "ad76407ebcf23aeedc3d4394058dc1456873c0c45260796499e0cf536197583c",
+    "prompt_sha256": "d4797ab5ec325ab6dbc6b2979688bc9178b5edc42948945d0b4de285ab30f9d2",
+    "prompt_bytes": 14836
+  },
+  {
+    "case": "S2",
+    "module": "communication",
+    "arm": "minus",
+    "repeat": 2,
+    "run": "run-014",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 26.89039433002472,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 20041,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 75,
+        "reasoning_output_tokens": 0
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "191143545cf8babe1e941d14a4c050741160a5933fef47e5f24f408cad60dca1",
+    "prompt_sha256": "6bb638ef395d8f924e2df28e03ab074cad32a6c846a6fb851c8d1c19655284d3",
+    "prompt_bytes": 14016
+  },
+  {
+    "case": "C1",
+    "module": "config",
+    "arm": "full",
+    "repeat": 1,
+    "run": "run-015",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 85.7437180345878,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 20181,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 334,
+        "reasoning_output_tokens": 93
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "94eb8af29de4cb1ea83916dc9043829a58541045d2bfe63b58d25a18a76896df",
+    "prompt_sha256": "cfcdd83a45cce56f5e6eb49a84bc55f6fb45edff579a2d959b8b00ecd0257792",
+    "prompt_bytes": 14809
+  },
+  {
+    "case": "C2",
+    "module": "config",
+    "arm": "full",
+    "repeat": 2,
+    "run": "run-016",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 32.10704856738448,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 20193,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 387,
+        "reasoning_output_tokens": 38
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "054b0a36e058f0bac4bc5a58f75268739d9a166ccd1bab80f0a864baaa3cdc82",
+    "prompt_sha256": "2fef36c67cecd7789cac23b2ed93847bd24df8fee019c03bced71349fe3a304d",
+    "prompt_bytes": 14806
+  },
+  {
+    "case": "M2",
+    "module": "naming",
+    "arm": "full",
+    "repeat": 1,
+    "run": "run-017",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 45.89047753158957,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 22154,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 142,
+        "reasoning_output_tokens": 0
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "6c239c0743a23bbbdd44f4fbc386e353c6086775d83de882679100fc5a9961dd",
+    "prompt_sha256": "b982243a8279abbbcc8018656688e29a53a46973361d4f45cc85c80f65677f53",
+    "prompt_bytes": 23193
+  },
+  {
+    "case": "D1",
+    "module": "design",
+    "arm": "full",
+    "repeat": 2,
+    "run": "run-018",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 51.5910414988175,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 20590,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 246,
+        "reasoning_output_tokens": 0
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "228851fe5545ee0905ba56257ca83e7f093008615fe28d1147f78d8e2e9187d8",
+    "prompt_sha256": "bea091bc3ef37dfb8c19a171e82d812d45baea0d74db3aad69633969def3e877",
+    "prompt_bytes": 16876
+  },
+  {
+    "case": "S2",
+    "module": "communication",
+    "arm": "full",
+    "repeat": 2,
+    "run": "run-019",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 33.202605043537915,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 20166,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 75,
+        "reasoning_output_tokens": 0
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "5f19256fc13c73e106621e116e947ec60502a9ec11505dcffbac4ab83cbb5167",
+    "prompt_sha256": "e04fddd017f5acddf1e46ae1a5977ee201ed892efff4846e79adcabe126aa001",
+    "prompt_bytes": 14722
+  },
+  {
+    "case": "C2",
+    "module": "config",
+    "arm": "full",
+    "repeat": 1,
+    "run": "run-020",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 64.99736596364528,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 20193,
+        "cached_input_tokens": 11648,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 382,
+        "reasoning_output_tokens": 73
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "8dc83502e7f5161af3af2c85faf5067bd805b50a82eb438b24ca38a10468d8b5",
+    "prompt_sha256": "2fef36c67cecd7789cac23b2ed93847bd24df8fee019c03bced71349fe3a304d",
+    "prompt_bytes": 14806
+  },
+  {
+    "case": "N1",
+    "module": "native",
+    "arm": "minus",
+    "repeat": 2,
+    "run": "run-021",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 55.40865037124604,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 19949,
+        "cached_input_tokens": 11648,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 493,
+        "reasoning_output_tokens": 105
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "ee5b44dedd6a8671929673b266c0db66418966ad5d599de717e0eeeda6789194",
+    "prompt_sha256": "bc5fdc8470571e834e8b8afa75ffc0cc2fab59b1e8c02995c0306ffb62837f21",
+    "prompt_bytes": 13639
+  },
+  {
+    "case": "V1",
+    "module": "verification",
+    "arm": "minus",
+    "repeat": 1,
+    "run": "run-022",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 42.30927484575659,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 20188,
+        "cached_input_tokens": 11648,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 264,
+        "reasoning_output_tokens": 0
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "38bb2bcd0e5301e1356b053b847883fcbaf5d7ea0098032a6076b12d22d366dc",
+    "prompt_sha256": "b77ad2b0007e58ee28d8c73bae4196807e3a9df2775a044b38b5b3ae20da52b5",
+    "prompt_bytes": 14813
+  },
+  {
+    "case": "M2",
+    "module": "naming",
+    "arm": "minus",
+    "repeat": 2,
+    "run": "run-023",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 24.933076594024897,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 20183,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 175,
+        "reasoning_output_tokens": 0
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "912a432f2fec0ef79eb91162ff5b75f872fe43c611368fe1373d34089c98bf0f",
+    "prompt_sha256": "b0beaef28b98fa4c5aed3e4765eab22b065bd56d8dccaa307cc1ce6d6cc07f3e",
+    "prompt_bytes": 14764
+  },
+  {
+    "case": "V1",
+    "module": "verification",
+    "arm": "full",
+    "repeat": 1,
+    "run": "run-024",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 59.52661715541035,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 20729,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 270,
+        "reasoning_output_tokens": 0
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "b722386afa393cd12ea86a2f5cdb239bd69495ad5c831ef3ed752f4179124d8f",
+    "prompt_sha256": "40f0d3f3ca495e8b51b751ce7b700e1c06145ba2da800e1eac16443d9443390b",
+    "prompt_bytes": 17508
+  },
+  {
+    "case": "G1",
+    "module": "general",
+    "arm": "minus",
+    "repeat": 2,
+    "run": "run-025",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 39.35606627725065,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 19876,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 137,
+        "reasoning_output_tokens": 0
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "6d1d947b5e16bfea0e8e1020e96f1aa71bc1dd575a3ea5ee650ecc7ecc9c2169",
+    "prompt_sha256": "5a884d57188756c6a5cd9f00cd0b6f265aaa7523960ee57407afb90a9c6b9404",
+    "prompt_bytes": 13076
+  },
+  {
+    "case": "S2",
+    "module": "communication",
+    "arm": "minus",
+    "repeat": 1,
+    "run": "run-026",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 57.596777067519724,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 19606,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 78,
+        "reasoning_output_tokens": 0
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "1ec0feacf10c4f6122d5ca4d422665c8501baec34466952453e6fc28492d119f",
+    "prompt_sha256": "6bb638ef395d8f924e2df28e03ab074cad32a6c846a6fb851c8d1c19655284d3",
+    "prompt_bytes": 14016
+  },
+  {
+    "case": "S1",
+    "module": "communication",
+    "arm": "full",
+    "repeat": 1,
+    "run": "run-027",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 48.7950459420681,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 18588,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 90,
+        "reasoning_output_tokens": 30
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "340a4bfa4c144ae615991eaefb5ce51561027568daabba0d0c17ac9216ac4a79",
+    "prompt_sha256": "c2b8d9a91c30b03bf441d94922361bf5f01927562fd0ef10fb5b5ce3fef02a67",
+    "prompt_bytes": 14753
+  },
+  {
+    "case": "V2",
+    "module": "verification",
+    "arm": "minus",
+    "repeat": 2,
+    "run": "run-028",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 52.344585709273815,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 20214,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 676,
+        "reasoning_output_tokens": 178
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "d7825fa949593bd063e4f4938e98498a7d4dc91fa7448999f126b204b7d32665",
+    "prompt_sha256": "e24ea10b06bd81fc85ee7d4996ac7be8b2ab4842d7b46f0fc72689fc0a480a5f",
+    "prompt_bytes": 14884
+  },
+  {
+    "case": "G2",
+    "module": "general",
+    "arm": "full",
+    "repeat": 1,
+    "run": "run-029",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 37.20643431972712,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 20186,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 134,
+        "reasoning_output_tokens": 0
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "50ccfdef20e80c6c8785658c8b50b81c223cd4eb384b5cc2c76d42478cd82ce4",
+    "prompt_sha256": "0b5923850f403f30bd6a80871e8d54d8cb86cd4566022745b3293afd9ac63af7",
+    "prompt_bytes": 14790
+  },
+  {
+    "case": "A1",
+    "module": "ao",
+    "arm": "full",
+    "repeat": 2,
+    "run": "run-030",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 62.457113112322986,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 25632,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 280,
+        "reasoning_output_tokens": 0
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "88e0b1e52c3827e3fe7a619d110b53ce5513e487ee1e686d23e86cafb7c671b8",
+    "prompt_sha256": "fb46b63b50ee8c03f628b03e9c4b1e7e156615075f8050ba57c9ae58fb176f2a",
+    "prompt_bytes": 42805
+  },
+  {
+    "case": "V2",
+    "module": "verification",
+    "arm": "minus",
+    "repeat": 1,
+    "run": "run-031",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 46.487000674940646,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 20214,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 703,
+        "reasoning_output_tokens": 211
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "82b45485e647943db58ef8ed040226973508f6e036cbfb1c3f36290a0ac76bb6",
+    "prompt_sha256": "e24ea10b06bd81fc85ee7d4996ac7be8b2ab4842d7b46f0fc72689fc0a480a5f",
+    "prompt_bytes": 14884
+  },
+  {
+    "case": "V1",
+    "module": "verification",
+    "arm": "full",
+    "repeat": 2,
+    "run": "run-032",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 41.626306532882154,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 20724,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 286,
+        "reasoning_output_tokens": 0
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "6bff44da75ccbce2bf8f7e03fc1b0d40a506c39fe75686b6515afce1a4fa5232",
+    "prompt_sha256": "40f0d3f3ca495e8b51b751ce7b700e1c06145ba2da800e1eac16443d9443390b",
+    "prompt_bytes": 17508
+  },
+  {
+    "case": "N1",
+    "module": "native",
+    "arm": "minus",
+    "repeat": 1,
+    "run": "run-033",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 45.63531790487468,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 19949,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 452,
+        "reasoning_output_tokens": 92
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "5a944b4f405b80fd80afe9249795e062e4d412766dfe6bd6cd35c04db6d71342",
+    "prompt_sha256": "bc5fdc8470571e834e8b8afa75ffc0cc2fab59b1e8c02995c0306ffb62837f21",
+    "prompt_bytes": 13639
+  },
+  {
+    "case": "G1",
+    "module": "general",
+    "arm": "full",
+    "repeat": 1,
+    "run": "run-034",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 37.98841360677034,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 20204,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 130,
+        "reasoning_output_tokens": 0
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "09f108e773076adad03c1386aeaa210cbbf91e0fc884ae2352ec241666ed0d83",
+    "prompt_sha256": "4c72d5f9877f9e22e51c1b757f69f2847b6e2b077e9f52996e836ad3cc61a28c",
+    "prompt_bytes": 14857
+  },
+  {
+    "case": "A2",
+    "module": "ao",
+    "arm": "full",
+    "repeat": 1,
+    "run": "run-035",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 38.87168970424682,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 25639,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 267,
+        "reasoning_output_tokens": 0
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "fd8b756c87f3d74911feaec91aec99e739cdfb64e3443559751bba689edfecaf",
+    "prompt_sha256": "7cc56bfc8aeef28b802fa0d9cea536ee5b78b76d590b8246fb801bc8619f6c64",
+    "prompt_bytes": 42802
+  },
+  {
+    "case": "S2",
+    "module": "communication",
+    "arm": "full",
+    "repeat": 1,
+    "run": "run-036",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 34.83455081935972,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 20166,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 77,
+        "reasoning_output_tokens": 0
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "0d8cd25d5e3a6442e01da0aee7facaba520d2dbec21de5b8fa1875fcafa80094",
+    "prompt_sha256": "e04fddd017f5acddf1e46ae1a5977ee201ed892efff4846e79adcabe126aa001",
+    "prompt_bytes": 14722
+  },
+  {
+    "case": "D2",
+    "module": "design",
+    "arm": "full",
+    "repeat": 1,
+    "run": "run-037",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 48.20685919560492,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 20587,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 384,
+        "reasoning_output_tokens": 0
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "42230d46869daf06e386b68d72ee387171361e3f9c0fce9063150f173217169b",
+    "prompt_sha256": "def9ff6eeb71acd4684636e781b0780ec61a581e51e8d880d85851d4c36a80e4",
+    "prompt_bytes": 16826
+  },
+  {
+    "case": "S1",
+    "module": "communication",
+    "arm": "minus",
+    "repeat": 1,
+    "run": "run-038",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 50.32752711698413,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 19617,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 80,
+        "reasoning_output_tokens": 20
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "340a4bfa4c144ae615991eaefb5ce51561027568daabba0d0c17ac9216ac4a79",
+    "prompt_sha256": "ab27261ee15ad84b83dd43f607033d7392a79b8234c49bb52c91cf5072e29e54",
+    "prompt_bytes": 14047
+  },
+  {
+    "case": "V2",
+    "module": "verification",
+    "arm": "full",
+    "repeat": 1,
+    "run": "run-039",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 52.25587103050202,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 20750,
+        "cached_input_tokens": 11648,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 689,
+        "reasoning_output_tokens": 168
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "d994d146344ba5e1d5a6d6c60e36ddc80bb98f2a1106ae761516d3fc85278130",
+    "prompt_sha256": "2bc23ec194042830f4e633ea78a1c0cf011603a6922d8d9e2e500560af6390a9",
+    "prompt_bytes": 17579
+  },
+  {
+    "case": "N2",
+    "module": "native",
+    "arm": "full",
+    "repeat": 1,
+    "run": "run-040",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 50.83039332740009,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 20191,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 400,
+        "reasoning_output_tokens": 145
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "72bd88fa48b5b7c4aec0a45edfaf77d1f4f14bb87e07e7149a957250f19c5b12",
+    "prompt_sha256": "43e5984e688f705f0b7c1b434f46369f52bf7d4fcd47d2711f86d4d242642e00",
+    "prompt_bytes": 14770
+  },
+  {
+    "case": "M1",
+    "module": "naming",
+    "arm": "minus",
+    "repeat": 2,
+    "run": "run-041",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 30.25094075407833,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 20219,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 220,
+        "reasoning_output_tokens": 74
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "2ea7daf830f3152affb50a9af0757cc29c872a1688a228c14f49a5b7d39599f1",
+    "prompt_sha256": "5f3651bbadd902df569bf518e6737cd2b9e065c2c36dfd62faf4bd390706382e",
+    "prompt_bytes": 14886
+  },
+  {
+    "case": "V2",
+    "module": "verification",
+    "arm": "full",
+    "repeat": 2,
+    "run": "run-042",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 59.86447921395302,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 20750,
+        "cached_input_tokens": 11648,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 720,
+        "reasoning_output_tokens": 216
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "48cacf41214233e0fac6d39311629a66b4b3593a50962002a8e1fbcbb150cbed",
+    "prompt_sha256": "2bc23ec194042830f4e633ea78a1c0cf011603a6922d8d9e2e500560af6390a9",
+    "prompt_bytes": 17579
+  },
+  {
+    "case": "M2",
+    "module": "naming",
+    "arm": "minus",
+    "repeat": 1,
+    "run": "run-043",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 36.89814665727317,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 20183,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 195,
+        "reasoning_output_tokens": 0
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "2ef29c4eba3cbb44436e408d3c869ad7f1106fbd3e6b54600adc8dbccd4801ff",
+    "prompt_sha256": "b0beaef28b98fa4c5aed3e4765eab22b065bd56d8dccaa307cc1ce6d6cc07f3e",
+    "prompt_bytes": 14764
+  },
+  {
+    "case": "M1",
+    "module": "naming",
+    "arm": "full",
+    "repeat": 1,
+    "run": "run-044",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 43.75508987996727,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 22190,
+        "cached_input_tokens": 11648,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 145,
+        "reasoning_output_tokens": 0
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "41543d5e898be1ad94900b145a83f880a286fca42e3fd8f05b7fdadf18a3f0bd",
+    "prompt_sha256": "8280d54384cbdebc0cbf53d47d530102c1fc522177cd3945c7d7b13d6f7ef6cd",
+    "prompt_bytes": 23315
+  },
+  {
+    "case": "A1",
+    "module": "ao",
+    "arm": "minus",
+    "repeat": 1,
+    "run": "run-045",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 37.33393108192831,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 20188,
+        "cached_input_tokens": 11648,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 307,
+        "reasoning_output_tokens": 0
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "deed53e3a4fb2e1fdc53d79622526624c4e62eba7aec0d574be40caee9d9a0b5",
+    "prompt_sha256": "f380630e53b2c6250615c92740d54d61574c6ebb4e83bd294b9f3cca67dff8ae",
+    "prompt_bytes": 14833
+  },
+  {
+    "case": "N2",
+    "module": "native",
+    "arm": "full",
+    "repeat": 2,
+    "run": "run-046",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 52.62043861951679,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 20191,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 365,
+        "reasoning_output_tokens": 116
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "c5c022a81bcd6fdba095e2538c615f89a062e512495bdd55adb2149c53819203",
+    "prompt_sha256": "43e5984e688f705f0b7c1b434f46369f52bf7d4fcd47d2711f86d4d242642e00",
+    "prompt_bytes": 14770
+  },
+  {
+    "case": "V1",
+    "module": "verification",
+    "arm": "minus",
+    "repeat": 2,
+    "run": "run-047",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 40.36025673523545,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 20193,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 258,
+        "reasoning_output_tokens": 0
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "39e0dbdab8d63aad79065e779f261ca475b4587f107144d1c9cf68b0ea273a9d",
+    "prompt_sha256": "b77ad2b0007e58ee28d8c73bae4196807e3a9df2775a044b38b5b3ae20da52b5",
+    "prompt_bytes": 14813
+  },
+  {
+    "case": "A2",
+    "module": "ao",
+    "arm": "minus",
+    "repeat": 1,
+    "run": "run-048",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 39.300080105662346,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 20195,
+        "cached_input_tokens": 11648,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 255,
+        "reasoning_output_tokens": 0
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "d9cb534942ff4d20f3370162c2e2c3bf02b4e9c2768e1b3775bcfe0cbbb21745",
+    "prompt_sha256": "4d133f432f8f7befffb2e58320fb2fb9a05aeb09fe366c76036d23a888a70d31",
+    "prompt_bytes": 14830
+  },
+  {
+    "case": "G1",
+    "module": "general",
+    "arm": "minus",
+    "repeat": 1,
+    "run": "run-049",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 47.775893837213516,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 19832,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 129,
+        "reasoning_output_tokens": 0
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "bbfecff405262f4ceb9e58dea9d2bfcab6ba7975f2d4f6c66e176f81b33a2bbd",
+    "prompt_sha256": "5a884d57188756c6a5cd9f00cd0b6f265aaa7523960ee57407afb90a9c6b9404",
+    "prompt_bytes": 13076
+  },
+  {
+    "case": "S1",
+    "module": "communication",
+    "arm": "minus",
+    "repeat": 2,
+    "run": "run-050",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 26.311532353051007,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 20052,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 58,
+        "reasoning_output_tokens": 0
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "340a4bfa4c144ae615991eaefb5ce51561027568daabba0d0c17ac9216ac4a79",
+    "prompt_sha256": "ab27261ee15ad84b83dd43f607033d7392a79b8234c49bb52c91cf5072e29e54",
+    "prompt_bytes": 14047
+  },
+  {
+    "case": "M2",
+    "module": "naming",
+    "arm": "full",
+    "repeat": 2,
+    "run": "run-051",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 51.53353921417147,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 22154,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 148,
+        "reasoning_output_tokens": 0
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "5489ac6b518702925e8f1954862589269cd96a34b09142d6d209f6da60144c8e",
+    "prompt_sha256": "b982243a8279abbbcc8018656688e29a53a46973361d4f45cc85c80f65677f53",
+    "prompt_bytes": 23193
+  },
+  {
+    "case": "G2",
+    "module": "general",
+    "arm": "full",
+    "repeat": 2,
+    "run": "run-052",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 50.65769860614091,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 19712,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 136,
+        "reasoning_output_tokens": 0
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "2c784cc6366ea194b9dfb384f5f0a992ccb62ad45ec052fd58c9f7fc4e4d297a",
+    "prompt_sha256": "0b5923850f403f30bd6a80871e8d54d8cb86cd4566022745b3293afd9ac63af7",
+    "prompt_bytes": 14790
+  },
+  {
+    "case": "M1",
+    "module": "naming",
+    "arm": "minus",
+    "repeat": 1,
+    "run": "run-053",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 43.66128999739885,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 20219,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 313,
+        "reasoning_output_tokens": 138
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "58b9df73e96c39806eea1050dba45fa58fd19808c69f7423be3e1a52799d422c",
+    "prompt_sha256": "5f3651bbadd902df569bf518e6737cd2b9e065c2c36dfd62faf4bd390706382e",
+    "prompt_bytes": 14886
+  },
+  {
+    "case": "A1",
+    "module": "ao",
+    "arm": "full",
+    "repeat": 1,
+    "run": "run-054",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 45.958738720044494,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 25632,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 302,
+        "reasoning_output_tokens": 0
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "a4cbed35b2159afa27db66a87ed2f716647d02addda7f0b1c3d45819a162ba95",
+    "prompt_sha256": "fb46b63b50ee8c03f628b03e9c4b1e7e156615075f8050ba57c9ae58fb176f2a",
+    "prompt_bytes": 42805
+  },
+  {
+    "case": "D1",
+    "module": "design",
+    "arm": "minus",
+    "repeat": 2,
+    "run": "run-055",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 45.86079887021333,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 20186,
+        "cached_input_tokens": 11648,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 279,
+        "reasoning_output_tokens": 0
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "5948f03fa43f31576f75f2e7f6a918b019e0d2d54b6e594c280e2c8919fbba3e",
+    "prompt_sha256": "d4797ab5ec325ab6dbc6b2979688bc9178b5edc42948945d0b4de285ab30f9d2",
+    "prompt_bytes": 14836
+  },
+  {
+    "case": "G2",
+    "module": "general",
+    "arm": "minus",
+    "repeat": 1,
+    "run": "run-056",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 30.49822768662125,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 19863,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 154,
+        "reasoning_output_tokens": 0
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "f603916aec7f69df3fafb84de42f08d6ed530a4306d1082687a5f1a711e59cdc",
+    "prompt_sha256": "91940467473306572a107841bcb0003163b43d49c23b6fafc41519c25a4b6ffa",
+    "prompt_bytes": 13009
+  },
+  {
+    "case": "A2",
+    "module": "ao",
+    "arm": "full",
+    "repeat": 2,
+    "run": "run-057",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 55.27845115493983,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 25639,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 323,
+        "reasoning_output_tokens": 0
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "05870ce80b725cd077f176ce8e6f7d0f2fc54ddc7fc5f92146d924fa41ce873c",
+    "prompt_sha256": "7cc56bfc8aeef28b802fa0d9cea536ee5b78b76d590b8246fb801bc8619f6c64",
+    "prompt_bytes": 42802
+  },
+  {
+    "case": "N1",
+    "module": "native",
+    "arm": "full",
+    "repeat": 1,
+    "run": "run-058",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 39.60648515727371,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 20192,
+        "cached_input_tokens": 11648,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 462,
+        "reasoning_output_tokens": 103
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "706d55bb098a547167efb53f88a7b433d96fcfa24f0bd354c79d4d7116b6c381",
+    "prompt_sha256": "32432f8b13d301742a66f1d291eee240ccd84a73e9b3c596a7576f1ee6dfe41e",
+    "prompt_bytes": 14826
+  },
+  {
+    "case": "A2",
+    "module": "ao",
+    "arm": "minus",
+    "repeat": 2,
+    "run": "run-059",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 35.66081061773002,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 20195,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 261,
+        "reasoning_output_tokens": 0
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "7cb92ead15bcbf0f4199ff1bea034ab184b8d0e48067b7306f41e470ec2d6966",
+    "prompt_sha256": "4d133f432f8f7befffb2e58320fb2fb9a05aeb09fe366c76036d23a888a70d31",
+    "prompt_bytes": 14830
+  },
+  {
+    "case": "N2",
+    "module": "native",
+    "arm": "minus",
+    "repeat": 2,
+    "run": "run-060",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 65.09003106039017,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 19513,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 620,
+        "reasoning_output_tokens": 281
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "e963a40fe3a9896a2b87a498f2894261ac1edbba98479af41cc70cfb7f0ea9c9",
+    "prompt_sha256": "3f7c1bea80227db848789247ffc50e098b9cc84bf4640d002cec752c528ab0df",
+    "prompt_bytes": 13583
+  },
+  {
+    "case": "C1",
+    "module": "config",
+    "arm": "full",
+    "repeat": 2,
+    "run": "run-061",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 48.69156738277525,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 20181,
+        "cached_input_tokens": 11648,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 343,
+        "reasoning_output_tokens": 100
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "1851ea121950c435ca5a0fac6c60e82e81d4802f5486e053d3ae5ccd1f47a8f5",
+    "prompt_sha256": "cfcdd83a45cce56f5e6eb49a84bc55f6fb45edff579a2d959b8b00ecd0257792",
+    "prompt_bytes": 14809
+  },
+  {
+    "case": "D2",
+    "module": "design",
+    "arm": "minus",
+    "repeat": 2,
+    "run": "run-062",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 47.24423610325903,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 20183,
+        "cached_input_tokens": 11648,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 391,
+        "reasoning_output_tokens": 0
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "79668c945779a90595735f6ec30e3751781b073db10c605763f7e891cdf11edb",
+    "prompt_sha256": "864a0d8c73e8425a612a85aed1e557fafdc38163290101e71d7d893f7fe92d93",
+    "prompt_bytes": 14786
+  },
+  {
+    "case": "G1",
+    "module": "general",
+    "arm": "full",
+    "repeat": 2,
+    "run": "run-063",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 43.377816796302795,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 20209,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 216,
+        "reasoning_output_tokens": 97
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "c00a4d63bbc3fa6497b9296000ecf46065d1f16ba7d42d589c99eef0cff08c7e",
+    "prompt_sha256": "4c72d5f9877f9e22e51c1b757f69f2847b6e2b077e9f52996e836ad3cc61a28c",
+    "prompt_bytes": 14857
+  },
+  {
+    "case": "N2",
+    "module": "native",
+    "arm": "minus",
+    "repeat": 1,
+    "run": "run-064",
+    "exit": 0,
+    "stop_reason": null,
+    "elapsed": 62.07736092340201,
+    "parsed": true,
+    "tool_calls": [],
+    "usage": [
+      {
+        "input_tokens": 19474,
+        "cached_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 363,
+        "reasoning_output_tokens": 83
+      }
+    ],
+    "errors": [],
+    "cleanup_signal_needed": false,
+    "runtime_evidence": "process-group readback only; no claim of complete OS containment",
+    "output_sha256": "4a1a5d625f17e01811dfee1f3319d174e57f267f96ba273685fbe10f5e132471",
+    "prompt_sha256": "3f7c1bea80227db848789247ffc50e098b9cc84bf4640d002cec752c528ab0df",
+    "prompt_bytes": 13583
+  }
+]
