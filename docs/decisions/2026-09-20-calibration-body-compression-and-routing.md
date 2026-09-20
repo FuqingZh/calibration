@@ -5,10 +5,10 @@ entrypoint descriptions and routing retained. No general efficiency claim.
 
 ## Decision
 
-Adopt the reviewed compression of `principles.md`,
+Adopt the reviewed compression, with existing contract phrases retained, of `principles.md`,
 `discipline/verification.md`, and `discipline/debugging.md` under
-`skills/calibration/references/`. Together they shrink from 7,808 to 5,507 bytes
-(29.5%). Consolidate repeated workflow, communication, API, verification, and
+`skills/calibration/references/`. Together they shrink from 7,808 to 5,603 bytes
+(28.2%). Consolidate repeated workflow, communication, API, verification, and
 debugging prose. Configuration/defaults and project-knowledge sections remain
 byte-identical. Preserve compatibility checks, final-artifact evidence,
 external-state readback, and explicit unchecked boundaries.
@@ -54,15 +54,22 @@ Validation passed: `pdm run validate-skills` (10 skills),
 `pdm run validate-markdown-links` (137 Markdown files), and
 `pdm run rumdl check` for the six affected Markdown files. The system
 skill-creator quick validator passed for calibration. Worktree, staged, and
-committed-range diff checks passed. The adopted reference bytes match the
-executed trial sources; unchanged entrypoints match the baseline commit.
+committed-range diff checks passed. Verification and debugging match the executed trial bytes. Principles
+restores 96 bytes of existing outcome-autonomy and proportional-validation
+contract wording after two repository assertion failures. The original tests
+then pass unchanged. The manifest distinguishes tested and adopted hashes;
+the later wording was not rerun through the model comparison. Unchanged
+entrypoints match the baseline commit.
 
 The executed model experiments supply behavioral evidence separately from
 those static checks; they do not establish production performance or
-statistical equivalence. The full `pdm run check` suite and installer dry run
-were not repeated for this reference-and-record-only increment: runtime code,
-installer behavior, metadata, and routing are unchanged. Real-world rollout
-performance remains unverified.
+statistical equivalence. Delivery subsequently ran the full `pdm run check` suite and installer dry
+run. Six no-model Codex isolation tests fail locally with the same missing
+`/output/tmp` panic on both the delivery branch and frozen baseline. These
+pre-existing environment compatibility failures remain unfixed; runtime code
+and tests are unchanged. The two wording regressions introduced by compression
+are fixed without weakening their tests. Installer dry run passes. Remote CI
+is a separate merge gate, and real-world rollout performance remains unverified.
 
 To reverse this trial, restore only the three named reference bodies from
 the baseline commit after inspecting intervening edits. Preserve unrelated

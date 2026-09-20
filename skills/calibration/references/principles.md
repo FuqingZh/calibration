@@ -7,12 +7,13 @@ changes the solution.
 
 ## Outcome Autonomy And Feedback
 
-- Work from outcomes, invariants, and acceptance evidence. Within authorized,
-  reversible local work, choose and revise the path when current evidence
-  disproves an assumption or plan.
-- State the completion claim and affected seam, then select the smallest
-  repository-owned check that can falsify it. Broaden for a repository mandate
-  or an uncovered obligation; report unchecked boundaries and residual risk.
+- Treat plans as working hypotheses. Work from outcomes, invariants, and
+  acceptance evidence. Within authorized, reversible local work, choose and
+  revise the path when current evidence disproves an assumption or plan.
+- Select validation proportionally: state the completion claim and affected
+  seam, then run the smallest repository-owned check that can falsify the claim.
+  Broaden only for an explicit repository-local mandate or an uncovered obligation;
+  report unchecked boundaries and residual risk.
 - Add plans, specifications, or approval stages only when coordination, risk,
   interruption, or repeated failure warrants them. A code change alone does
   not require these stages or renewed approval for already-authorized work.

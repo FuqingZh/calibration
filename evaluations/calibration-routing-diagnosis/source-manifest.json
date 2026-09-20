@@ -4,23 +4,29 @@
     {
       "path": "skills/calibration/references/principles.md",
       "baseline_sha256": "f33bca0fbd8d099393f7edb8c73fe7b3f2adedd01b9e8828527a3fa7af270a1f",
-      "adopted_sha256": "8530f804d13e6f15dc332ea07f1fd6b6995ac99417cf265885724ebb3a517438",
+      "adopted_sha256": "6ed50f093f3b1ba7d3da9c3c7d3c05ea8f0127888820e4c32f1ce28d653f5bfe",
       "baseline_bytes": 5194,
-      "adopted_bytes": 3591
+      "adopted_bytes": 3687,
+      "tested_sha256": "8530f804d13e6f15dc332ea07f1fd6b6995ac99417cf265885724ebb3a517438",
+      "tested_bytes": 3591
     },
     {
       "path": "skills/calibration/references/discipline/verification.md",
       "baseline_sha256": "b88806a3e2cc92c37f99a5dbe854ba68494ddacc38bc0e9f9ec66a2c685e2287",
       "adopted_sha256": "6c334075bcde9baa51bba9575a0cda7e7bc0894a80fb1b981ab29f7811de6137",
       "baseline_bytes": 1230,
-      "adopted_bytes": 935
+      "adopted_bytes": 935,
+      "tested_sha256": "6c334075bcde9baa51bba9575a0cda7e7bc0894a80fb1b981ab29f7811de6137",
+      "tested_bytes": 935
     },
     {
       "path": "skills/calibration/references/discipline/debugging.md",
       "baseline_sha256": "3b9d974962e112feb202e7178ae7fa86f27cd2440f8fad7c146e05aa7deda773",
       "adopted_sha256": "5fed68a578f0858ed862f44081b6f3dbdd225cec0cb120d391622ff5564a1827",
       "baseline_bytes": 1384,
-      "adopted_bytes": 981
+      "adopted_bytes": 981,
+      "tested_sha256": "5fed68a578f0858ed862f44081b6f3dbdd225cec0cb120d391622ff5564a1827",
+      "tested_bytes": 981
     }
   ],
   "frozen_inputs_sha256": "0dec0e4d136b197025f62e0046bcbaff6443f6aa5d96ebed2094981c3f9c5377",
@@ -63,5 +69,6 @@
     }
   },
   "original_repository_agents_sha256": "60176ab2e2275627eb06db46e2d8effe6ccc52f30c1c5c68e7320e9cb52e26ea",
-  "conditional_repository_agents_sha256": "e05743a1f58304137de0edf31482773f339772cf4cef9e718b06e909831e6a2e"
+  "conditional_repository_agents_sha256": "e05743a1f58304137de0edf31482773f339772cf4cef9e718b06e909831e6a2e",
+  "delivery_adjustment": "Restore existing outcome-autonomy and proportional-validation contract phrases in principles after two repository assertion failures. No test changes. The 16 model runs used tested_sha256, not the later adopted_sha256."
 }
