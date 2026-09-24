@@ -10,7 +10,7 @@ configuration remains outside the public repository.
 
 ## Layout
 
-- `install.sh`: local installer for Codex global entry and skill symlinks
+- `install.sh`: local installer for Codex, Grok Build, and Pi skill symlinks and global instructions
 - `codex/AGENTS.md.template`: canonical template for `~/.codex/AGENTS.md`
 - `skills/calibration/`: self-contained default Codex engineering skill,
   including its routed engineering references
@@ -51,6 +51,41 @@ Install or refresh the local Codex entry:
 ```bash
 bash install.sh
 ```
+
+Install to selected clients (no client executable or mise activation required):
+
+```bash
+bash install.sh --agent codex grok pi --dry-run
+bash install.sh --agent codex grok pi
+bash install.sh --agent pi --skills-only
+```
+
+`--agent all` selects these three clients. Each skill links directly to this
+checkout, which must remain at the installed path. Updating the checkout updates
+the linked content; restart or reload the client to discover changes.
+
+| Client | Default home | Override |
+| --- | --- | --- |
+| Codex | `$CODEX_HOME` or `~/.codex` | `--codex-home PATH` |
+| Grok Build | `~/.grok` | `--grok-home PATH` |
+| Pi | `$PI_CODING_AGENT_DIR` or `~/.pi/agent` | `--pi-home PATH` |
+
+Skills are linked individually under each home's `skills/`. All selected
+homes are preflighted before installation; overlapping homes are rejected.
+Client programs, mise installations, credentials, MCP, and approval settings
+are not modified. Filesystem failures during application can leave an earlier
+target installed; correct the failure and rerun the idempotent installer.
+
+Without `--skills-only`, Codex retains its existing whole-file AGENTS.md rendering
+and backup behavior. Grok and Pi receive the same guidance in a marked
+`calibration:begin` / `calibration:end` block in their global AGENTS.md;
+user instructions outside that block are retained. Malformed or duplicate blocks
+are rejected. `--skills-only` leaves global instructions untouched, including
+existing calibration blocks. `ao-worker` remains Codex-only.
+
+Explicit-only skills carry both Codex metadata and Pi/Grok frontmatter. This
+preserves invocation intent across clients; it does not establish equal model
+behavior or install support for client-specific tools mentioned in skill bodies.
 
 The default `standard` profile preserves the existing installation behavior:
 

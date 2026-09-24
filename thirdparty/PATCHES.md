@@ -3,6 +3,13 @@
 This file records local behavior changes made to vendored third-party skills.
 Exact imported and checked refs live in `sources.tsv`.
 
+## Cross-client explicit invocation
+
+The installed `brainstorming`, `grilling`, and `teach` skills also declare
+`disable-model-invocation: true` in SKILL.md frontmatter for Pi and Grok Build.
+This mirrors their existing Codex explicit-only policy; source refs and bodies
+are unchanged.
+
 ## coding-protocol (runtime archived for reversible trial)
 
 Imported from lencx `skills/coding-protocol` at

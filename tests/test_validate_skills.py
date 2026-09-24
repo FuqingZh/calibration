@@ -759,3 +759,31 @@ def test_agents_content_boundary_has_one_canonical_owner() -> None:
     assert "../../discipline/harness.md" in document_types
     assert "../../../discipline/harness.md" in project_docs
     assert "Do not copy architecture descriptions" not in project_docs
+
+
+@pytest.mark.parametrize(
+    ("value", "message"),
+    [("true", "invocation policies disagree"), ("'false'", "must be a boolean")],
+)
+def test_cross_client_invocation_rejects_inconsistency(
+    skill_fixture: SkillFixture, value: str, message: str
+) -> None:
+    path = skill_fixture.skill_dir / "SKILL.md"
+    path.write_text(
+        path.read_text().replace(
+            "name: sample", f"disable-model-invocation: {value}\nname: sample"
+        )
+    )
+    assert_has_error(skill_fixture.root, message)
+
+
+def test_cross_client_invocation_accepts_consistent_metadata(
+    skill_fixture: SkillFixture,
+) -> None:
+    path = skill_fixture.skill_dir / "SKILL.md"
+    path.write_text(
+        path.read_text().replace(
+            "name: sample", "disable-model-invocation: false\nname: sample"
+        )
+    )
+    assert validate_repository(skill_fixture.root) == []

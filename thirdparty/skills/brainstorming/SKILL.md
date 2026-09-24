@@ -1,4 +1,5 @@
 ---
+disable-model-invocation: true
 name: brainstorming
 description: User-invoked exploratory design mode for ambiguous problems, feature shape, behavior changes, or implementation approaches.
 ---

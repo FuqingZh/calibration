@@ -1,4 +1,5 @@
 ---
+disable-model-invocation: true
 name: closeout
 description: User-invoked whole-conversation closeout that fills documentation gaps across all important topics, preserves unresolved context, and returns control to the user without automatic archival.
 ---
