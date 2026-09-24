@@ -114,7 +114,9 @@ pdm run check
 
 The full gate runs Ruff, Pyright, rumdl, Markdown link checks, ShellCheck,
 pytest with 100% line coverage for repository-owned Python tools, and skill
-validation. For a focused installer change:
+validation. Ruff uses the explicit stable baseline `E`, `F`,
+`I`, `UP`, `B`, `SIM`, and `RUF`; preview rules are not enabled.
+For a focused installer change:
 
 ```bash
 pdm run lint-shell
