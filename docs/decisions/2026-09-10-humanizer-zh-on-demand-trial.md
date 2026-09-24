@@ -33,12 +33,24 @@ facts, technical terms, and supplied voice samples.
 
 The trial installation contract requires `agents/openai.yaml` to set `policy.allow_implicit_invocation` to
 `false`. A short local scope paragraph follows the title in `SKILL.md`; the
-remaining upstream body is unchanged. These are installation adaptations, not
+remaining upstream body is unchanged. A local expression preference added on
+2026-09-20 requires direct affirmative openings and prohibits rhetorical
+setup-and-pivot contrasts such as “A 很容易，难的是 B”, “不是 A，而是 B”,
+and “真正的 X 不是 A，而是 B”. State the main point directly while preserving
+facts, necessary negative conditions, and uncertainty. For example:
+“下次打开对话时，找到上次没讲完的问题仍是难点。”
+Combine parallel clauses when their correspondence remains clear, reducing
+repeated predicates and rhetorical symmetry. For example:
+“规则和工具权限分别决定它应当如何工作、实际能做什么。”
+Keep separate clauses when combining them would create ambiguity or an
+overlong sentence.
+This local preference takes precedence over upstream rhetorical suggestions.
+These are installation adaptations, not
 a new upstream release. Before adaptation, the installed skill body matched
 the frozen experiment source byte for byte.
 
 Each trial installation retains `INSTALLATION.json`, which records the source SHA, original and installed
-file hashes, the two local adaptations, and the evidence locator. A private
+file hashes, the local adaptations, and the evidence locator. A private
 installation receipt retains the original files and source Git metadata. Future
 updates require an explicit decision and must preserve the invocation policy;
 do not track upstream main automatically.
