@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Install calibration into a Codex configuration home.
+# Install calibration skills and instructions into selected agent homes.
 
 set -euo pipefail
 
@@ -10,12 +10,21 @@ BACKUP=true
 PROFILE=standard
 CLI_CODEX_HOME_SET=false
 CLI_CODEX_HOME=
+CLI_GROK_HOME=
+CLI_PI_HOME=
+CODEX_ENV_HOME="${CODEX_HOME:-}"
+SKILLS_ONLY=false
+AGENTS=()
 
 usage() {
   cat <<'EOF'
 Usage: bash install.sh [OPTIONS]
 
 Options:
+  --agent AGENTS...   Select codex (default), grok, pi, or all.
+  --skills-only       Install skill links without changing global instructions.
+  --grok-home PATH    Override the default ~/.grok directory.
+  --pi-home PATH      Override PI_CODING_AGENT_DIR or ~/.pi/agent.
   --profile PROFILE   Install profile: standard (default) or ao-worker.
   --codex-home PATH   Override CODEX_HOME. Required for ao-worker.
   --dry-run           Show planned actions without modifying files.
@@ -33,6 +42,28 @@ fail_usage() {
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --agent)
+      shift
+      [[ $# -gt 0 && "$1" != --* ]] || fail_usage "--agent requires a value"
+      while [[ $# -gt 0 && "$1" != --* ]]; do
+        case "$1" in
+          codex|grok|pi) AGENTS+=("$1") ;;
+          all) AGENTS+=(codex grok pi) ;;
+          *) fail_usage "Unknown agent: $1" ;;
+        esac
+        shift
+      done
+      continue
+      ;;
+    --skills-only)
+      SKILLS_ONLY=true
+      ;;
+    --grok-home|--pi-home)
+      [[ $# -ge 2 && -n "$2" && "$2" != --* ]] || fail_usage "$1 requires a path"
+      [[ "$2" == /* ]] || fail_usage "$1 must be an absolute path"
+      if [[ "$1" == --grok-home ]]; then CLI_GROK_HOME="$2"; else CLI_PI_HOME="$2"; fi
+      shift
+      ;;
     --profile)
       [[ $# -ge 2 ]] || fail_usage "--profile requires a value"
       [[ "$2" != --* ]] || fail_usage "--profile requires a value"
@@ -72,54 +103,84 @@ case "$PROFILE" in
   *) fail_usage "Unknown profile: $PROFILE" ;;
 esac
 
-if [[ "$PROFILE" == "ao-worker" ]] && ! $CLI_CODEX_HOME_SET; then
-  fail_usage "ao-worker requires an explicit --codex-home PATH"
+[[ ${#AGENTS[@]} -gt 0 ]] || AGENTS=(codex)
+if [[ "$PROFILE" == "ao-worker" ]]; then
+  [[ "${AGENTS[*]}" == codex ]] || fail_usage "ao-worker supports only codex"
 fi
-if $CLI_CODEX_HOME_SET; then
-  [[ -n "$CLI_CODEX_HOME" ]] ||
-    fail_usage "--codex-home requires a non-empty path"
-  [[ "$CLI_CODEX_HOME" == /* ]] ||
-    fail_usage "--codex-home must be an absolute path"
-  CODEX_HOME="$CLI_CODEX_HOME"
-elif [[ -n "${CODEX_HOME:-}" ]]; then
-  :
-elif [[ -n "${HOME:-}" ]]; then
-  CODEX_HOME="$HOME/.codex"
-else
-  fail_usage "Cannot derive default Codex home: HOME and CODEX_HOME are unset"
-fi
-[[ -n "$CODEX_HOME" ]] || fail_usage "Codex home must not be empty"
-SELECTED_CODEX_HOME="$CODEX_HOME"
-
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 CALIBRATION_ROOT="$(realpath -m -- "$SCRIPT_DIR")"
-LEXICAL_CODEX_HOME="$(realpath -m -s -- "$CODEX_HOME")"
-CODEX_HOME="$(realpath -m -- "$CODEX_HOME")"
-[[ "$CODEX_HOME" != "/" ]] || fail_usage "Refusing to use / as Codex home"
-case "$CODEX_HOME" in
-  "$CALIBRATION_ROOT"|"$CALIBRATION_ROOT"/*)
-    fail_usage "Codex home must not equal or be inside the calibration checkout"
-    ;;
-esac
-case "$CALIBRATION_ROOT" in
-  "$CODEX_HOME"/*)
-    fail_usage "Codex home must not contain the calibration checkout"
-    ;;
-esac
-if [[ "$PROFILE" == "ao-worker" ]]; then
-  if [[ "$LEXICAL_CODEX_HOME" != "$CODEX_HOME" ]]; then
-    fail_usage "ao-worker Codex home path must not traverse a symlink"
+configure_target() {
+  if [[ "$PROFILE" == "ao-worker" ]] && ! $CLI_CODEX_HOME_SET; then
+    fail_usage "ao-worker requires an explicit --codex-home PATH"
   fi
-  if [[ -e "$SELECTED_CODEX_HOME" && ! -d "$SELECTED_CODEX_HOME" ]]; then
-    fail_usage "ao-worker Codex home must be a directory"
+  if $CLI_CODEX_HOME_SET; then
+    [[ -n "$CLI_CODEX_HOME" ]] ||
+      fail_usage "--codex-home requires a non-empty path"
+    [[ "$CLI_CODEX_HOME" == /* ]] ||
+      fail_usage "--codex-home must be an absolute path"
+    TARGET_HOME="$CLI_CODEX_HOME"
+  elif [[ -n "$CODEX_ENV_HOME" ]]; then
+    TARGET_HOME="$CODEX_ENV_HOME"
+  elif [[ -n "${HOME:-}" ]]; then
+    TARGET_HOME="$HOME/.codex"
+  else
+    fail_usage "Cannot derive default Codex home: HOME and CODEX_HOME are unset"
   fi
-  if [[ -d "$SELECTED_CODEX_HOME" ]]; then
-    home_mode="$(stat -c '%a' -- "$SELECTED_CODEX_HOME")"
-    if (( (8#$home_mode & 8#077) != 0 )); then
-      fail_usage "ao-worker Codex home must not grant group or other permissions"
+  [[ -n "$TARGET_HOME" ]] || fail_usage "Codex home must not be empty"
+  case "$AGENT" in
+    grok) TARGET_HOME="${CLI_GROK_HOME:-$HOME/.grok}" ;;
+    pi) TARGET_HOME="${CLI_PI_HOME:-${PI_CODING_AGENT_DIR:-$HOME/.pi/agent}}" ;;
+  esac
+  [[ "$TARGET_HOME" == /* ]] || fail_usage "Agent home must be an absolute path"
+  SELECTED_TARGET_HOME="$TARGET_HOME"
+
+  LEXICAL_TARGET_HOME="$(realpath -m -s -- "$TARGET_HOME")"
+  TARGET_HOME="$(realpath -m -- "$TARGET_HOME")"
+  [[ "$TARGET_HOME" != "/" ]] || fail_usage "Refusing to use / as Codex home"
+  case "$TARGET_HOME" in
+    "$CALIBRATION_ROOT"|"$CALIBRATION_ROOT"/*)
+      fail_usage "Codex home must not equal or be inside the calibration checkout"
+      ;;
+  esac
+  case "$CALIBRATION_ROOT" in
+    "$TARGET_HOME"/*)
+      fail_usage "Codex home must not contain the calibration checkout"
+      ;;
+  esac
+  if [[ "$PROFILE" == "ao-worker" ]]; then
+    if [[ "$LEXICAL_TARGET_HOME" != "$TARGET_HOME" ]]; then
+      fail_usage "ao-worker Codex home path must not traverse a symlink"
+    fi
+    if [[ -e "$SELECTED_TARGET_HOME" && ! -d "$SELECTED_TARGET_HOME" ]]; then
+      fail_usage "ao-worker Codex home must be a directory"
+    fi
+    if [[ -d "$SELECTED_TARGET_HOME" ]]; then
+      home_mode="$(stat -c '%a' -- "$SELECTED_TARGET_HOME")"
+      if (( (8#$home_mode & 8#077) != 0 )); then
+        fail_usage "ao-worker Codex home must not grant group or other permissions"
+      fi
     fi
   fi
-fi
+
+  SKILLS_DIR="$TARGET_HOME/skills"
+  AGENTS_TARGET="$TARGET_HOME/AGENTS.md"
+  if [[ "$PROFILE" == "ao-worker" ]]; then
+    if [[ -L "$SKILLS_DIR" ]]; then
+      fail_usage "ao-worker skills target must not be a symlink"
+    fi
+    if [[ -e "$SKILLS_DIR" && ! -d "$SKILLS_DIR" ]]; then
+      fail_usage "ao-worker skills target must be a directory"
+    fi
+  fi
+  for directory in "$TARGET_HOME" "$SKILLS_DIR"; do
+    if [[ ( -e "$directory" || -L "$directory" ) && ! -d "$directory" ]]; then
+      fail_usage "Agent home and skills root must be directories: $directory"
+    fi
+  done
+}
+
+AGENT="${AGENTS[0]}"
+configure_target
 
 if [[ -n "${XDG_CONFIG_HOME:-}" ]]; then
   [[ "$XDG_CONFIG_HOME" == /* ]] ||
@@ -130,20 +191,10 @@ else
   HOST_CONFIG_ROOT="$(realpath -m -- "$HOME/.config")"
 fi
 
-SKILLS_DIR="$CODEX_HOME/skills"
-AGENTS_TARGET="$CODEX_HOME/AGENTS.md"
 SKILL_SOURCE_ROOT="$CALIBRATION_ROOT/skills"
 THIRDPARTY_SKILL_SOURCE_ROOT="$CALIBRATION_ROOT/thirdparty/skills"
 TEMPLATE="$CALIBRATION_ROOT/codex/AGENTS.md.template"
 HOST_AUTHORITY="$HOST_CONFIG_ROOT/calibration/AGENTS.md"
-if [[ "$PROFILE" == "ao-worker" ]]; then
-  if [[ -L "$SKILLS_DIR" ]]; then
-    fail_usage "ao-worker skills target must not be a symlink"
-  fi
-  if [[ -e "$SKILLS_DIR" && ! -d "$SKILLS_DIR" ]]; then
-    fail_usage "ao-worker skills target must be a directory"
-  fi
-fi
 MANAGED_SKILLS=(
   calibration
   closeout
@@ -195,7 +246,7 @@ escape_sed_replacement() {
   printf '%s' "$1" | sed 's/[\/&]/\\&/g'
 }
 
-render_template() {
+render_body() {
   local escaped_root escaped_host_authority
   escaped_root="$(escape_sed_replacement "$CALIBRATION_ROOT")"
   escaped_host_authority="$(escape_sed_replacement "$HOST_AUTHORITY")"
@@ -203,6 +254,36 @@ render_template() {
     -e "s/{{CALIBRATION_ROOT}}/$escaped_root/g" \
     -e "s/{{HOST_AUTHORITY}}/$escaped_host_authority/g" \
     "$TEMPLATE"
+}
+
+render_template() {
+  if [[ "$AGENT" == codex ]]; then
+    render_body
+    return
+  fi
+  # Preserve user text outside one unambiguous managed block.
+  local body
+  body="$(render_body | sed 's/[$]calibration/calibration/g')"
+  if [[ -f "$AGENTS_TARGET" && ! -L "$AGENTS_TARGET" ]]; then
+    CALIBRATION_RENDERED_BODY="$body" awk '
+      BEGIN { body=ENVIRON["CALIBRATION_RENDERED_BODY"]; inside=0; count=0 }
+      $0 == "<!-- calibration:begin -->" {
+        if (inside || count) exit 2
+        inside=1; count++; print; print body; next
+      }
+      $0 == "<!-- calibration:end -->" {
+        if (!inside) exit 2
+        inside=0; print; next
+      }
+      !inside { print }
+      END {
+        if (inside) exit 2
+        if (!count) print "\n<!-- calibration:begin -->\n" body "\n<!-- calibration:end -->"
+      }
+    ' "$AGENTS_TARGET"
+  else
+    printf '<!-- calibration:begin -->\n%s\n<!-- calibration:end -->\n' "$body"
+  fi
 }
 
 preflight_agents_file() {
@@ -302,7 +383,7 @@ backup_agents_target() {
     return 0
   fi
   local backup
-  backup="$AGENTS_TARGET.bak.$(date +%Y%m%d%H%M%S)"
+  backup="$AGENTS_TARGET.bak.$(date +%Y%m%d%H%M%S).$$"
   run cp -a "$AGENTS_TARGET" "$backup"
   if $DRY_RUN; then
     say "Backup planned for existing AGENTS.md: $backup"
@@ -336,14 +417,15 @@ install_agents_file() {
   fi
 }
 
-main() {
+preflight_target() {
   require_file "$TEMPLATE"
   require_dir "$SKILL_SOURCE_ROOT"
   require_dir "$THIRDPARTY_SKILL_SOURCE_ROOT"
 
   say "Profile: $PROFILE"
   say "Calibration root: $CALIBRATION_ROOT"
-  say "Codex home: $CODEX_HOME"
+  say "Agent: $AGENT"
+  say "Codex home / selected agent home: $TARGET_HOME"
   say "Private host authority: $HOST_AUTHORITY"
   say "Skills target root: $SKILLS_DIR"
 
@@ -358,11 +440,13 @@ main() {
   for skill in "${MANAGED_SHARED_THIRDPARTY_SKILLS[@]}"; do
     preflight_skill_link "$skill" "$THIRDPARTY_SKILL_SOURCE_ROOT"
   done
-  preflight_agents_file
+  if ! $SKILLS_ONLY; then preflight_agents_file; fi
+}
 
+install_target() {
   if [[ "$PROFILE" == "ao-worker" ]]; then
-    if [[ ! -d "$CODEX_HOME" ]]; then
-      run install -d -m 0700 "$CODEX_HOME"
+    if [[ ! -d "$TARGET_HOME" ]]; then
+      run install -d -m 0700 "$TARGET_HOME"
     fi
     if [[ ! -e "$SKILLS_DIR" ]]; then
       run install -d -m 0700 "$SKILLS_DIR"
@@ -409,7 +493,25 @@ main() {
         "$skill" "$THIRDPARTY_SKILL_SOURCE_ROOT" "Managed third-party skill"
     done
   fi
-  install_agents_file
+  if ! $SKILLS_ONLY; then install_agents_file; fi
 }
 
-main "$@"
+# Validate every selected destination before changing any of them.
+SELECTED_HOMES=()
+for AGENT in "${AGENTS[@]}"; do
+  configure_target
+  for selected_home in "${SELECTED_HOMES[@]}"; do
+    case "$TARGET_HOME/" in
+      "$selected_home/"*) fail_usage "Selected agent homes must not overlap" ;;
+    esac
+    case "$selected_home/" in
+      "$TARGET_HOME/"*) fail_usage "Selected agent homes must not overlap" ;;
+    esac
+  done
+  SELECTED_HOMES+=("$TARGET_HOME")
+  preflight_target
+done
+for AGENT in "${AGENTS[@]}"; do
+  configure_target
+  install_target
+done

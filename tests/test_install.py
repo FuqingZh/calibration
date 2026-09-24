@@ -837,3 +837,172 @@ def test_archived_skill_removes_only_owned_link(tmp_path: Path, profile: str) ->
     preserved = run_installer(home, *arguments, "--force")
     assert preserved.returncode == 0, preserved.stderr
     assert link.is_symlink() and link.readlink() == foreign
+
+
+@pytest.mark.parametrize("agent", ["grok", "pi"])
+def test_other_clients_preserve_instructions_and_refresh_block(
+    tmp_path: Path, agent: str
+) -> None:
+    home = tmp_path / agent
+    home.mkdir()
+    agents = home / "AGENTS.md"
+    agents.write_text("My existing instructions.\n", encoding="utf-8")
+    args = ("--agent", agent, f"--{agent}-home", str(home))
+    result = run_installer(tmp_path / "untouched-codex", *args)
+    assert result.returncode == 0, result.stderr
+    text = assert_standard_installed(REPOSITORY_ROOT, home)
+    assert text.startswith("My existing instructions.\n")
+    assert text.count("<!-- calibration:begin -->") == 1
+    assert "$calibration" not in text
+    assert not (tmp_path / "untouched-codex").exists()
+    agents.write_text(text.replace("# Global AGENTS.md", "# Old block"))
+    result = run_installer(None, *args)
+    assert result.returncode == 0, result.stderr
+    assert agents.read_text() == text
+    before = snapshot_tree(home)
+    assert run_installer(None, *args).returncode == 0
+    assert snapshot_tree(home) == before
+
+
+@pytest.mark.parametrize("agent", ["codex", "grok", "pi"])
+def test_skills_only_preserves_even_nonregular_instructions(
+    tmp_path: Path, agent: str
+) -> None:
+    home = tmp_path / agent
+    (home / "AGENTS.md").mkdir(parents=True)
+    marker = home / "AGENTS.md" / "keep"
+    marker.write_text("keep")
+    result = run_installer(
+        None, "--agent", agent, f"--{agent}-home", str(home), "--skills-only"
+    )
+    assert result.returncode == 0, result.stderr
+    assert marker.read_text() == "keep"
+    assert (home / "skills/calibration").resolve() == (
+        REPOSITORY_ROOT / "skills/calibration"
+    )
+
+
+def test_all_clients_preflight_before_mutation(tmp_path: Path) -> None:
+    codex, grok, pi = (tmp_path / name for name in ("codex", "grok", "pi"))
+    (pi / "skills/teach").mkdir(parents=True)
+    args = (
+        "--agent",
+        "all",
+        "--codex-home",
+        str(codex),
+        "--grok-home",
+        str(grok),
+        "--pi-home",
+        str(pi),
+    )
+    before = snapshot_tree(tmp_path)
+    result = run_installer(None, *args)
+    assert result.returncode != 0
+    assert snapshot_tree(tmp_path) == before
+    (pi / "skills/teach").rmdir()
+    before = snapshot_tree(tmp_path)
+    assert run_installer(None, *args, "--dry-run").returncode == 0
+    assert snapshot_tree(tmp_path) == before
+    result = run_installer(None, *args)
+    assert result.returncode == 0, result.stderr
+    for home in (codex, grok, pi):
+        assert_standard_installed(REPOSITORY_ROOT, home)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "<!-- calibration:begin -->\nunfinished\n",
+        "<!-- calibration:end -->\n",
+        "<!-- calibration:begin -->\n<!-- calibration:end -->\n"
+        "<!-- calibration:begin -->\n<!-- calibration:end -->\n",
+    ],
+)
+def test_malformed_managed_blocks_fail_without_writes(
+    tmp_path: Path, text: str
+) -> None:
+    home = tmp_path / "pi"
+    home.mkdir()
+    (home / "AGENTS.md").write_text(text)
+    before = snapshot_tree(home)
+    result = run_installer(None, "--agent", "pi", "--pi-home", str(home))
+    assert result.returncode != 0
+    assert snapshot_tree(home) == before
+
+
+def test_pi_environment_home_and_mise_independence(tmp_path: Path) -> None:
+    home = tmp_path / "custom-pi"
+    result = run_installer(
+        None,
+        "--agent",
+        "pi",
+        "--skills-only",
+        env_updates={"PI_CODING_AGENT_DIR": str(home)},
+    )
+    assert result.returncode == 0, result.stderr
+    assert (home / "skills/calibration").is_symlink()
+    assert not (home / "AGENTS.md").exists()
+
+
+@pytest.mark.parametrize(
+    "args",
+    [
+        ("--agent", "unknown"),
+        ("--agent",),
+        ("--agent", "pi", "--profile", "ao-worker"),
+        ("--pi-home", "relative"),
+        ("--grok-home", ""),
+    ],
+)
+def test_multi_client_invalid_arguments(tmp_path: Path, args: tuple[str, ...]) -> None:
+    result = run_installer(tmp_path / "unused", *args)
+    assert result.returncode == 2
+    assert not (tmp_path / "unused").exists()
+
+
+def test_overlapping_agent_homes_rejected(tmp_path: Path) -> None:
+    home = tmp_path / "agents"
+    result = run_installer(
+        home, "--agent", "codex", "pi", "--pi-home", str(home / "pi")
+    )
+    assert result.returncode == 2
+    assert not home.exists()
+
+
+@pytest.mark.parametrize("relative", ["pi", "pi/skills"])
+def test_later_nondirectory_target_fails_before_installing_earlier_client(
+    tmp_path: Path, relative: str
+) -> None:
+    obstruction = tmp_path / relative
+    obstruction.parent.mkdir(parents=True, exist_ok=True)
+    obstruction.write_text("keep")
+    before = snapshot_tree(tmp_path)
+    result = run_installer(
+        tmp_path / "codex",
+        "--agent",
+        "codex",
+        "pi",
+        "--pi-home",
+        str(tmp_path / "pi"),
+    )
+    assert result.returncode != 0
+    assert snapshot_tree(tmp_path) == before
+
+
+def test_managed_block_preserves_backslashes_in_rendered_paths(tmp_path: Path) -> None:
+    home = tmp_path / "pi"
+    home.mkdir()
+    (home / "AGENTS.md").write_text("Keep user guidance.\n")
+    config_root = tmp_path / "config\\test"
+    result = run_installer(
+        None,
+        "--agent",
+        "pi",
+        "--pi-home",
+        str(home),
+        env_updates={"XDG_CONFIG_HOME": str(config_root)},
+    )
+    assert result.returncode == 0, result.stderr
+    assert (
+        str(config_root / "calibration/AGENTS.md") in (home / "AGENTS.md").read_text()
+    )

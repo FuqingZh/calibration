@@ -27,7 +27,7 @@ INSTALL_ARRAY_PATTERN = re.compile(
     r"(?ms)^\s*(MANAGED_SKILLS|MANAGED_THIRDPARTY_SKILLS|"
     r"MANAGED_SHARED_THIRDPARTY_SKILLS)=\(\s*(.*?)^\s*\)"
 )
-RETIRED_FIELD = "disable-model-invocation"
+INVOCATION_FIELD = "disable-model-invocation"
 # Preserve archived metadata for restoration without permitting runtime installation.
 IMPLICIT_THIRDPARTY_ALLOWLIST = frozenset({"coding-protocol"})
 RETIRED_SHARED_THIRDPARTY_SKILLS = frozenset({"coding-protocol"})
@@ -120,8 +120,12 @@ def _validate_frontmatter(
             )
     if description is not None and len(description) > 1024:
         errors.append(f"{path}: description must be at most 1024 characters")
-    if _contains_key(data, RETIRED_FIELD):
-        errors.append(f"{path}: retired field {RETIRED_FIELD!r} is not allowed")
+    if _contains_key(
+        {k: v for k, v in data.items() if k != INVOCATION_FIELD}, INVOCATION_FIELD
+    ):
+        errors.append(f"{path}: retired field {INVOCATION_FIELD!r} is not allowed")
+    if INVOCATION_FIELD in data and not isinstance(data[INVOCATION_FIELD], bool):
+        errors.append(f"{path}: {INVOCATION_FIELD} must be a boolean")
     return name, description
 
 
@@ -131,6 +135,7 @@ def _validate_openai_metadata(
     name: str | None,
     description: str | None,
     errors: list[str],
+    frontmatter: dict[str, object] | None,
 ) -> None:
     path = skill_dir / "agents/openai.yaml"
     if not path.is_file():
@@ -143,8 +148,8 @@ def _validate_openai_metadata(
         errors.append(f"{path}: OpenAI skill metadata must be a mapping")
         return
     data = cast(dict[str, object], raw_data)
-    if _contains_key(data, RETIRED_FIELD):
-        errors.append(f"{path}: retired field {RETIRED_FIELD!r} is not allowed")
+    if _contains_key(data, INVOCATION_FIELD):
+        errors.append(f"{path}: retired field {INVOCATION_FIELD!r} is not allowed")
 
     interface = data.get("interface")
     if not isinstance(interface, dict):
@@ -177,6 +182,12 @@ def _validate_openai_metadata(
     if not isinstance(implicit, bool):
         errors.append(f"{path}: allow_implicit_invocation must be an explicit boolean")
     elif description is not None:
+        if (
+            frontmatter is not None
+            and INVOCATION_FIELD in frontmatter
+            and frontmatter[INVOCATION_FIELD] is not (not implicit)
+        ):
+            errors.append(f"{path}: invocation policies disagree across clients")
         third_party_root = root / "thirdparty/skills"
         is_third_party = skill_dir.is_relative_to(third_party_root)
         is_shared_implicit_skill = (
@@ -401,7 +412,9 @@ def validate_repository(root: Path) -> list[str]:
             name = description = None
         else:
             name, description = _validate_frontmatter(skill_dir, frontmatter, errors)
-        _validate_openai_metadata(root, skill_dir, name, description, errors)
+        _validate_openai_metadata(
+            root, skill_dir, name, description, errors, frontmatter
+        )
         _validate_test_prompts(skill_dir, errors)
 
     active = _installer_skills(root, errors)

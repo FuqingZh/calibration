@@ -1,4 +1,5 @@
 ---
+disable-model-invocation: true
 name: teach
 description: User-invoked stateful teaching for a skill or concept in an explicitly selected personal learning workspace, with a session-only no-write mode.
 ---

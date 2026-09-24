@@ -1,4 +1,5 @@
 ---
+disable-model-invocation: true
 name: retrospect
 description: User-invoked evidence-driven retrospective mode for completed work, failures, repeated patterns, and cross-stage experience.
 ---

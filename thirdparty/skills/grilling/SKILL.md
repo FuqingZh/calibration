@@ -1,4 +1,5 @@
 ---
+disable-model-invocation: true
 name: grilling
 description: User-invoked adversarial stress-test mode for a plan, decision, or idea.
 ---
