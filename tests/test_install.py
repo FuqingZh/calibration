@@ -980,3 +980,72 @@ def test_managed_block_preserves_backslashes_in_rendered_paths(tmp_path: Path) -
     assert (
         str(config_root / "calibration/AGENTS.md") in (home / "AGENTS.md").read_text()
     )
+
+
+@pytest.mark.parametrize("agent", ["grok", "pi"])
+@pytest.mark.parametrize("dry_run", [False, True])
+@pytest.mark.parametrize("skills_only", [False, True])
+def test_selected_client_home_does_not_require_codex_defaults(
+    tmp_path: Path, agent: str, dry_run: bool, skills_only: bool
+) -> None:
+    home = tmp_path / agent
+    arguments = ["--agent", agent, f"--{agent}-home", str(home)]
+    if dry_run:
+        arguments.append("--dry-run")
+    if skills_only:
+        arguments.append("--skills-only")
+    before = snapshot_tree(tmp_path)
+
+    result = run_installer(
+        None,
+        *arguments,
+        env_updates={"XDG_CONFIG_HOME": str(tmp_path / "config")},
+        unset_env=("HOME", "CODEX_HOME", "PI_CODING_AGENT_DIR"),
+    )
+
+    assert result.returncode == 0, result.stderr
+    if dry_run:
+        assert snapshot_tree(tmp_path) == before
+    else:
+        for name in (*MANAGED_SKILLS, *MANAGED_THIRDPARTY_SKILLS):
+            assert (home / "skills" / name).is_symlink()
+        if skills_only:
+            assert not (home / "AGENTS.md").exists()
+        else:
+            assert_standard_installed(REPOSITORY_ROOT, home)
+
+
+def test_pi_environment_home_does_not_require_codex_or_home(tmp_path: Path) -> None:
+    home = tmp_path / "pi"
+    result = run_installer(
+        None,
+        "--agent",
+        "pi",
+        env_updates={
+            "PI_CODING_AGENT_DIR": str(home),
+            "XDG_CONFIG_HOME": str(tmp_path / "config"),
+        },
+        unset_env=("HOME", "CODEX_HOME"),
+    )
+    assert result.returncode == 0, result.stderr
+    assert_standard_installed(REPOSITORY_ROOT, home)
+
+
+@pytest.mark.parametrize("agent,label", [("grok", "Grok"), ("pi", "Pi")])
+def test_missing_selected_client_home_is_controlled_zero_write_failure(
+    tmp_path: Path, agent: str, label: str
+) -> None:
+    marker = tmp_path / "marker"
+    marker.write_text("preserve\n")
+    before = snapshot_tree(tmp_path)
+    result = run_installer(
+        None,
+        "--agent",
+        agent,
+        env_updates={"XDG_CONFIG_HOME": str(tmp_path / "config")},
+        unset_env=("HOME", "CODEX_HOME", "PI_CODING_AGENT_DIR"),
+    )
+    assert result.returncode == 2
+    assert f"Cannot derive default {label} home" in result.stderr
+    assert "unbound variable" not in result.stderr
+    assert snapshot_tree(tmp_path) == before
