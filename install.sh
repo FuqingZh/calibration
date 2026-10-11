@@ -113,38 +113,62 @@ configure_target() {
   if [[ "$PROFILE" == "ao-worker" ]] && ! $CLI_CODEX_HOME_SET; then
     fail_usage "ao-worker requires an explicit --codex-home PATH"
   fi
-  if $CLI_CODEX_HOME_SET; then
-    [[ -n "$CLI_CODEX_HOME" ]] ||
-      fail_usage "--codex-home requires a non-empty path"
-    [[ "$CLI_CODEX_HOME" == /* ]] ||
-      fail_usage "--codex-home must be an absolute path"
-    TARGET_HOME="$CLI_CODEX_HOME"
-  elif [[ -n "$CODEX_ENV_HOME" ]]; then
-    TARGET_HOME="$CODEX_ENV_HOME"
-  elif [[ -n "${HOME:-}" ]]; then
-    TARGET_HOME="$HOME/.codex"
-  else
-    fail_usage "Cannot derive default Codex home: HOME and CODEX_HOME are unset"
-  fi
-  [[ -n "$TARGET_HOME" ]] || fail_usage "Codex home must not be empty"
+  local agent_label
   case "$AGENT" in
-    grok) TARGET_HOME="${CLI_GROK_HOME:-$HOME/.grok}" ;;
-    pi) TARGET_HOME="${CLI_PI_HOME:-${PI_CODING_AGENT_DIR:-$HOME/.pi/agent}}" ;;
+    codex)
+      agent_label=Codex
+      if $CLI_CODEX_HOME_SET; then
+        [[ -n "$CLI_CODEX_HOME" ]] ||
+          fail_usage "--codex-home requires a non-empty path"
+        [[ "$CLI_CODEX_HOME" == /* ]] ||
+          fail_usage "--codex-home must be an absolute path"
+        TARGET_HOME="$CLI_CODEX_HOME"
+      elif [[ -n "$CODEX_ENV_HOME" ]]; then
+        TARGET_HOME="$CODEX_ENV_HOME"
+      elif [[ -n "${HOME:-}" ]]; then
+        TARGET_HOME="$HOME/.codex"
+      else
+        fail_usage "Cannot derive default Codex home: HOME and CODEX_HOME are unset"
+      fi
+      ;;
+    grok)
+      agent_label=Grok
+      if [[ -n "$CLI_GROK_HOME" ]]; then
+        TARGET_HOME="$CLI_GROK_HOME"
+      elif [[ -n "${HOME:-}" ]]; then
+        TARGET_HOME="$HOME/.grok"
+      else
+        fail_usage "Cannot derive default Grok home: HOME is unset"
+      fi
+      ;;
+    pi)
+      agent_label=Pi
+      if [[ -n "$CLI_PI_HOME" ]]; then
+        TARGET_HOME="$CLI_PI_HOME"
+      elif [[ -n "${PI_CODING_AGENT_DIR:-}" ]]; then
+        TARGET_HOME="$PI_CODING_AGENT_DIR"
+      elif [[ -n "${HOME:-}" ]]; then
+        TARGET_HOME="$HOME/.pi/agent"
+      else
+        fail_usage "Cannot derive default Pi home: HOME and PI_CODING_AGENT_DIR are unset"
+      fi
+      ;;
   esac
+  [[ -n "$TARGET_HOME" ]] || fail_usage "$agent_label home must not be empty"
   [[ "$TARGET_HOME" == /* ]] || fail_usage "Agent home must be an absolute path"
   SELECTED_TARGET_HOME="$TARGET_HOME"
 
   LEXICAL_TARGET_HOME="$(realpath -m -s -- "$TARGET_HOME")"
   TARGET_HOME="$(realpath -m -- "$TARGET_HOME")"
-  [[ "$TARGET_HOME" != "/" ]] || fail_usage "Refusing to use / as Codex home"
+  [[ "$TARGET_HOME" != "/" ]] || fail_usage "Refusing to use / as $agent_label home"
   case "$TARGET_HOME" in
     "$CALIBRATION_ROOT"|"$CALIBRATION_ROOT"/*)
-      fail_usage "Codex home must not equal or be inside the calibration checkout"
+      fail_usage "$agent_label home must not equal or be inside the calibration checkout"
       ;;
   esac
   case "$CALIBRATION_ROOT" in
     "$TARGET_HOME"/*)
-      fail_usage "Codex home must not contain the calibration checkout"
+      fail_usage "$agent_label home must not contain the calibration checkout"
       ;;
   esac
   if [[ "$PROFILE" == "ao-worker" ]]; then
