@@ -42,6 +42,15 @@ def write_fixture(root: Path, name: str = "sample") -> Path:
     return fixture
 
 
+def executor_output(root: Path) -> Path:
+    """Mirror run_case's executor layout, including Codex's required temp root."""
+    output = root / "output"
+    output.mkdir(mode=0o700)
+    for directory in ("codex-home", "home", "tmp"):
+        (output / directory).mkdir(mode=0o700)
+    return output
+
+
 def case_data(**updates: object) -> dict[str, object]:
     data: dict[str, object] = {
         "id": "T01",
@@ -693,9 +702,7 @@ def test_build_bwrap_command_protects_fixture_files(
     case = evaluation.load_case(write_case(evaluation_root / "cases/case.yaml"))
     workspace = tmp_path / "workspace"
     evaluation.prepare_workspace(case, workspace)
-    output = tmp_path / "output"
-    output.mkdir()
-    (output / "codex-home").mkdir()
+    output = executor_output(tmp_path)
 
     patch_runtime_discovery(monkeypatch, tmp_path)
     command = evaluation.build_bwrap_command(case, workspace, output, "model", "high")
@@ -770,8 +777,42 @@ def test_bwrap_command_fails_closed_without_shell_runtime(
         )
 
 
+@pytest.mark.parametrize("profile_contents", [None, "export PATH=/usr/bin\n"])
+def test_bwrap_command_rejects_missing_or_nonempty_shell_profile(
+    tmp_path: Path,
+    evaluation_root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    profile_contents: str | None,
+) -> None:
+    patch_runtime_discovery(monkeypatch, tmp_path)
+    case = evaluation.load_case(write_case(evaluation_root / "cases/case.yaml"))
+    workspace = tmp_path / "workspace"
+    evaluation.prepare_workspace(case, workspace)
+    runtime = tmp_path / "runtime"
+    runtime.mkdir()
+    evaluation.create_broker_shims(runtime, case)
+    profile = runtime / evaluation.SHELL_PROFILE_NAME
+    profile.unlink()
+    if profile_contents is not None:
+        profile.write_text(profile_contents, encoding="utf-8")
+    with pytest.raises(
+        EvaluationError, match="empty shell profile is missing or invalid"
+    ):
+        evaluation.build_bwrap_command(
+            case, workspace, tmp_path / "output", "model", "low", runtime
+        )
+
+
+@pytest.mark.parametrize(
+    ("shell", "shell_flags"),
+    [("bash", "-c"), ("sh", "-c"), ("bash", "-lc"), ("sh", "-lc")],
+)
 def test_bwrap_executor_and_broker_enforce_writable_eval_boundary(
-    tmp_path: Path, evaluation_root: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path,
+    evaluation_root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    shell: str,
+    shell_flags: str,
 ) -> None:
     """Exercise the real outer root, PATH shim, and runner-owned FIFOs together."""
     if evaluation.shutil.which("bwrap") is None:
@@ -794,9 +835,7 @@ def test_bwrap_executor_and_broker_enforce_writable_eval_boundary(
     protected.write_text("protected\n", encoding="utf-8")
     workspace = tmp_path / "workspace"
     evaluation.prepare_workspace(case, workspace)
-    output = tmp_path / "output"
-    output.mkdir()
-    (output / "codex-home").mkdir()
+    output = executor_output(tmp_path)
     runtime = tmp_path / "runtime"
     runtime.mkdir()
     evaluation.create_broker_shims(runtime, case)
@@ -837,7 +876,7 @@ def test_bwrap_executor_and_broker_enforce_writable_eval_boundary(
     # cannot contain; it must still enter the runner-owned wrapper. Networking
     # is asserted through the named-profile preflight, not this direct-shell
     # boundary probe.
-    command[-len(codex_tail) :] = ["/usr/bin/bash", "-c", payload]
+    command[-len(codex_tail) :] = [f"/usr/bin/{shell}", shell_flags, payload]
     try:
         result = evaluation._run(command, workspace, env=evaluation._evaluation_env())
     finally:
@@ -932,9 +971,7 @@ def test_codex_permission_profile_enforces_outer_executor_boundary(
     protected.write_text("protected\n", encoding="utf-8")
     workspace = tmp_path / "workspace"
     evaluation.prepare_workspace(case, workspace)
-    output = tmp_path / "output"
-    output.mkdir()
-    (output / "codex-home").mkdir()
+    output = executor_output(tmp_path)
     marker = output / "credential-marker"
     marker.write_text("synthetic-only\n", encoding="utf-8")
     runtime = tmp_path / "runtime"
@@ -1006,9 +1043,7 @@ def test_executor_boundary_preflight_reproduces_legacy_nested_net_failure(
     case = evaluation.load_case(write_case(evaluation_root / "cases/preflight.yaml"))
     workspace = tmp_path / "workspace"
     evaluation.prepare_workspace(case, workspace)
-    output = tmp_path / "output"
-    output.mkdir()
-    (output / "codex-home").mkdir()
+    output = executor_output(tmp_path)
 
     legacy_runtime = tmp_path / "legacy-runtime"
     legacy_runtime.mkdir()
@@ -1075,9 +1110,7 @@ def test_named_profile_executor_fifo_canonical_check_records_runner_event(
     )
     workspace = tmp_path / "workspace"
     evaluation.prepare_workspace(case, workspace)
-    output = tmp_path / "output"
-    output.mkdir()
-    (output / "codex-home").mkdir()
+    output = executor_output(tmp_path)
     runtime = tmp_path / "runtime"
     runtime.mkdir()
     evaluation.create_broker_shims(runtime, case)
@@ -1128,9 +1161,7 @@ def test_fifo_shim_fails_closed_on_stale_mismatched_response(
     )
     workspace = tmp_path / "workspace"
     evaluation.prepare_workspace(case, workspace)
-    output = tmp_path / "output"
-    output.mkdir()
-    (output / "codex-home").mkdir()
+    output = executor_output(tmp_path)
     runtime = tmp_path / "runtime"
     runtime.mkdir()
     evaluation.create_broker_shims(runtime, case)
@@ -1636,9 +1667,7 @@ def test_named_profile_rejects_response_fifo_injection(
     case = evaluation.load_case(write_case(evaluation_root / "cases/inject.yaml"))
     workspace = tmp_path / "workspace"
     evaluation.prepare_workspace(case, workspace)
-    output = tmp_path / "output"
-    output.mkdir()
-    (output / "codex-home").mkdir()
+    output = executor_output(tmp_path)
     runtime = tmp_path / "runtime"
     runtime.mkdir()
     evaluation.create_broker_shims(runtime, case)
@@ -1697,9 +1726,7 @@ def test_fifo_shim_lock_timeout_fails_closed_without_broker_event(
     )
     workspace = tmp_path / "workspace"
     evaluation.prepare_workspace(case, workspace)
-    output = tmp_path / "output"
-    output.mkdir()
-    (output / "codex-home").mkdir()
+    output = executor_output(tmp_path)
     runtime = tmp_path / "runtime"
     runtime.mkdir()
     monkeypatch.setattr(evaluation, "BROKER_LOCK_TIMEOUT_SECONDS", 0.1)
