@@ -2,14 +2,14 @@ from __future__ import annotations
 
 import os
 import shutil
-import subprocess
 from pathlib import Path
 
 import pytest
 
 from scripts.validate_skills import _validate_active_references
+from tests.support import REPOSITORY_ROOT
+from tests.support.installer import run_installer
 
-REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 MANAGED_SKILLS = ("calibration", "closeout", "retrospect", "writing-code-docs")
 MANAGED_THIRDPARTY_SKILLS = (
     "brainstorming",
@@ -17,32 +17,6 @@ MANAGED_THIRDPARTY_SKILLS = (
     "teach",
 )
 MANAGED_SHARED_THIRDPARTY_SKILLS: tuple[str, ...] = ()
-
-
-def run_installer(
-    codex_home: Path | None,
-    *arguments: str,
-    env_updates: dict[str, str] | None = None,
-    unset_env: tuple[str, ...] = (),
-    repository_root: Path = REPOSITORY_ROOT,
-) -> subprocess.CompletedProcess[str]:
-    env = os.environ.copy()
-    if codex_home is None:
-        env.pop("CODEX_HOME", None)
-    else:
-        env["CODEX_HOME"] = str(codex_home)
-    if env_updates:
-        env.update(env_updates)
-    for name in unset_env:
-        env.pop(name, None)
-    return subprocess.run(
-        ["bash", str(repository_root / "install.sh"), *arguments],
-        cwd=repository_root,
-        env=env,
-        check=False,
-        capture_output=True,
-        text=True,
-    )
 
 
 def assert_first_party_installed(repository_root: Path, codex_home: Path) -> str:

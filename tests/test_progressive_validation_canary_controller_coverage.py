@@ -10,6 +10,7 @@ from typing import cast
 import pytest
 
 from scripts import run_progressive_validation_selection_eval as batch
+from tests.support.progressive_validation import canary_result
 
 
 def _manifest() -> dict[str, object]:
@@ -25,36 +26,6 @@ def _manifest() -> dict[str, object]:
         },
         "arm_map": {},
         "schedule": [],
-    }
-
-
-def _result() -> dict[str, object]:
-    return {
-        "case_id": "C01",
-        "model": "frozen-model",
-        "reasoning_effort": "medium",
-        "codex_exit_code": 0,
-        "verification": {
-            "passed": True,
-            "unexpected_changes": [],
-            "missing_required_changes": [],
-        },
-        "task_outcome": {"valid": True, "errors": []},
-        "validation_selection": {
-            "enabled": True,
-            "contract_satisfied": True,
-            "required_covered": True,
-            "ordered_covered": True,
-            "required_missing": [],
-            "ordered_missing": [],
-            "forbidden_families": [],
-            "forbidden_event_count": 0,
-            "observations": [],
-        },
-        "evidence_integrity": {"valid": True, "errors": []},
-        "realized_safety_events": [],
-        "command_oracle": {"valid": True, "broker_events": [{}]},
-        "final_oracle": {"valid": True},
     }
 
 
@@ -261,7 +232,7 @@ def test_freeze_and_canary_field_validation_reject_incomplete_identity(
 
 @pytest.mark.parametrize("field", ["verification", "final_oracle"])
 def test_canary_result_requires_every_independent_oracle(field: str) -> None:
-    result = _result()
+    result = canary_result()
     result.pop(field)
     assert (
         batch._canary_result_is_valid(result, "C01", "frozen-model", "medium") is False
@@ -289,7 +260,7 @@ def test_canary_completion_ledger_is_append_only_and_fail_closed(
             json.dumps({"case_id": "wrong"}), encoding="utf-8"
         )
     elif kind != "missing":
-        result = _result()
+        result = canary_result()
         if kind == "bad_start":
             _write_canary(root, manifest, result, started={"case_id": "wrong"})
         else:
@@ -343,7 +314,7 @@ def test_canary_status_and_requirement_distinguish_freeze_absence_and_verified(
     monkeypatch.setattr(batch, "_private_manifest", private_manifest)
     monkeypatch.setattr(batch, "verify_freeze", _valid_freeze)
     assert batch.canary_status(tmp_path) == {"state": "not_yet_verified"}
-    _write_canary(root, manifest, _result())
+    _write_canary(root, manifest, canary_result())
     assert batch.canary_status(tmp_path) == {"state": "verified"}
     original_status = batch.canary_status
 
@@ -375,7 +346,7 @@ def test_run_canary_records_readback_and_execution_failures_without_reuse(
         output = cast(Path, args[5])
         output.mkdir(parents=True)
         output.joinpath("result.json").write_text(
-            json.dumps(_result()), encoding="utf-8"
+            json.dumps(canary_result()), encoding="utf-8"
         )
         return {"different": True}
 
