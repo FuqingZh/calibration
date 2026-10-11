@@ -64,6 +64,10 @@ conversation and returns control without automatically archiving it.
 | Grok Build | `~/.grok` | `--grok-home PATH` |
 | Pi | `$PI_CODING_AGENT_DIR` or `~/.pi/agent` | `--pi-home PATH` |
 
+Each client's home is resolved independently. If `HOME` is unset, provide homes
+for the selected clients and an absolute `XDG_CONFIG_HOME` for the shared
+private-host reference.
+
 Each skill is a symlink under the selected home's `skills/` directory pointing
 to this checkout. Keep the checkout at that path. Updating it updates linked
 content; rerun the installer when the managed skill list or global template
