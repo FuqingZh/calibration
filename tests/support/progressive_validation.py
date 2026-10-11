@@ -67,6 +67,7 @@ def batch_result(
 def projection_result(case_id: str = "P01") -> dict[str, object]:
     """Retain the projection fixture's existing serialized field order."""
     result = batch_result(case_id)
+    result["command_oracle"] = {"valid": True, "errors": []}
     leading = ("case_id", "model", "reasoning_effort", "elapsed_seconds")
     return {**{key: result.pop(key) for key in leading}, **result}
 
@@ -77,6 +78,7 @@ def smoke_result(case_id: str, *, model: str = "frozen-model") -> dict[str, obje
     result.pop("elapsed_seconds")
     result.pop("final_oracle")
     result["verification"] = {"passed": True}
+    result["command_oracle"] = {"valid": True, "errors": []}
     return result
 
 
