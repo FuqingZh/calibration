@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
@@ -74,20 +75,6 @@ def test_generated_agents_is_the_only_private_profile_discovery_path() -> None:
             assert "Agent Orchestrator" not in skill.read_text(encoding="utf-8")
 
 
-def test_v11_decision_records_contract_and_bounded_routing_canary() -> None:
-    decision = compact("docs/decisions/2026-07-31-portable-orchestrator-containment.md")
-
-    assert "Version: v1.1" in decision
-    assert "Static contract evidence" in decision
-    assert "pull request #46" in decision.lower()
-    assert "one bounded representative routing canary" in decision
-    assert "controller stopped cross-worktree writes" in decision
-    assert "original owner completed" in decision
-    assert "local gates, push, CI, and exact-head review" in decision
-    assert "no actionable feedback" in decision
-    assert "does not establish a universal model or workflow improvement" in decision
-
-
 def test_shared_aggregation_root_has_behavioral_prompt_coverage() -> None:
     prompts = text("skills/calibration/test-prompts.json")
 
@@ -149,21 +136,38 @@ def test_adoption_adapter_and_installer_have_distinct_codex_home_contracts() -> 
     assert "not a universal Desktop adapter" in runbook
 
 
-def test_docs_restore_stable_authority_and_historical_navigation() -> None:
-    docs = compact("docs/README.md")
-
-    assert "stable maintenance mode" in docs
-    assert "CAL-1 containment public contract is delivered" in docs
-    assert "without a behavioral-improvement claim" in docs
-    assert "Sol Advisor and Calibration ablation is complete" in docs
-    assert "rejects the tested mandatory CAL-MIN route" in docs
-    assert "systemd containment remains a proposal" in docs
-    assert "Five-phase convergence result" in docs
-    assert "## Open Evidence Gaps" in docs
-    assert "### Architecture And Documentation" in docs
-    assert "### Harness And Evaluation" in docs
-    assert "### Delivery And Orchestration" in docs
-    assert "20260727-v1.8-ai-native-calibration-convergence" in docs
+def test_docs_separate_current_authority_from_archived_plans() -> None:
+    source = REPOSITORY_ROOT / "docs/README.md"
+    docs = source.read_text(encoding="utf-8")
+    authority = docs.split("## Current Authority\n", 1)[1].split("\n## ", 1)[0]
+    current_targets = {
+        (source.parent / target.split("#", 1)[0]).resolve()
+        for target in re.findall(r"\[[^]]+\]\(([^)]+)\)", authority)
+    }
+    assert REPOSITORY_ROOT / GUIDE in current_targets
+    assert REPOSITORY_ROOT / "skills/calibration/SKILL.md" in current_targets
+    archive = REPOSITORY_ROOT / "docs/archive/README.md"
+    assert (source.parent / "archive/README.md").resolve() in {
+        (source.parent / target.split("#", 1)[0]).resolve()
+        for target in re.findall(r"\[[^]]+\]\(([^)]+)\)", docs)
+    }
+    archived_targets = {
+        (archive.parent / target.split("#", 1)[0]).resolve()
+        for target in re.findall(
+            r"\[[^]]+\]\(([^)]+)\)", archive.read_text(encoding="utf-8")
+        )
+    }
+    for relative in (
+        "docs/implementation-plans/"
+        "20260826-v1.0-self-contained-first-party-skills-migration-implementation-plan.md",
+        "docs/testing/20260825-v2.1-progressive-validation-relative-replacement-test-plan.md",
+        "docs/testing/"
+        "20260825-v2.2-progressive-validation-relative-replacement-correction-plan.md",
+        "evaluations/teach-adaptation/results.md",
+        "evaluations/teach-adaptation/v2/README.md",
+    ):
+        assert REPOSITORY_ROOT / relative in archived_targets
+        assert REPOSITORY_ROOT / relative not in current_targets
 
 
 def test_all_runtime_entrypoints_route_to_one_ao_authority() -> None:

@@ -74,6 +74,7 @@ BOUNDARY_PREFLIGHT_TIMEOUT_SECONDS = 30.0
 MODEL_EXECUTION_TIMEOUT_SECONDS = 900.0
 SHELL_WRAPPER_NAME = "executor-shell"
 SHELL_MANIFEST_NAME = "executor-shell-manifest.json"
+SHELL_PROFILE_NAME = "executor-shell-profile"
 REAL_SHELL_DIRECTORY = "real-shell"
 EXECUTOR_PERMISSION_PROFILE = "evaluation_runner"
 EXECUTOR_PERMISSION_PROFILE_CONFIG = (
@@ -906,7 +907,8 @@ def prepare_workspace(case: CaseSpec, workspace: Path) -> None:
     # The named :workspace-derived permission profile reserves this directory
     # as read-only. Materialize it before the executor boundary so Codex never
     # tries to create it through the workspace's read-only base mount.
-    for protected_directory in (".agents", ".codex"):
+    # Codex 0.162.1 also reserves .aws; .git is created by git init below.
+    for protected_directory in (".agents", ".codex", ".aws"):
         (workspace / protected_directory).mkdir(exist_ok=True)
     commands = (
         ("git", "init", "-q"),
@@ -1966,14 +1968,15 @@ def build_bwrap_command(
         # /usr/bin/bash. Override the real paths in this outer root so PATH
         # precedence cannot be bypassed. The named Codex permission profile,
         # verified by the runner-owned preflight, owns command-tool networking.
+        # Resolve aliases because bubblewrap rejects symlink mount destinations.
         command.extend(
             (
                 "--ro-bind",
                 str(broker_runtime / SHELL_WRAPPER_NAME),
-                "/usr/bin/bash",
+                str(Path("/usr/bin/bash").resolve()),
                 "--ro-bind",
                 str(broker_runtime / SHELL_WRAPPER_NAME),
-                "/usr/bin/sh",
+                str(Path("/usr/bin/sh").resolve()),
             )
         )
     for relative in sorted(case.allowed_changes):
@@ -2154,6 +2157,9 @@ def _validate_shell_runtime(runtime: Path, case: CaseSpec) -> None:
         raise EvaluationError("runner-owned executor shell wrapper is missing")
     if not manifest_path.is_file():
         raise EvaluationError("runner-owned executor shell manifest is missing")
+    profile = runtime / SHELL_PROFILE_NAME
+    if not profile.is_file() or profile.stat().st_size != 0:
+        raise EvaluationError("runner-owned empty shell profile is missing or invalid")
     for name in ("bash", "sh"):
         shell = real_shells / name
         if not shell.is_file() or not os.access(shell, os.X_OK):
@@ -2284,6 +2290,9 @@ def _create_executor_shell_runtime(runtime: Path, case: CaseSpec) -> None:
         encoding="utf-8",
     )
     manifest.chmod(0o444)
+    profile = runtime / SHELL_PROFILE_NAME
+    profile.write_text("", encoding="utf-8")
+    profile.chmod(0o444)
     real_shells = runtime / REAL_SHELL_DIRECTORY
     real_shells.mkdir()
     for name in ("bash", "sh"):
@@ -2335,10 +2344,13 @@ command = [
 for relative in sorted(allowed):
     command.extend(("--bind", f"/workspace/{relative}", f"/workspace/{relative}"))
 command.extend((
-    "--ro-bind", f"/broker/real-shell/{shell}", f"/usr/bin/{shell}",
+    "--ro-bind", f"/broker/real-shell/{shell}", os.path.realpath(f"/usr/bin/{shell}"),
+    # System and personal login profiles must not replace the broker PATH.
+    "--ro-bind", "/broker/executor-shell-profile", os.path.realpath("/etc/profile"),
     "--chdir", "/workspace", "--", "/usr/bin/env", "-i",
     "PATH=/broker/bin:/runtime/python/bin:/usr/bin:/bin",
-    "PYTHONDONTWRITEBYTECODE=1", "HOME=/tmp", "TMPDIR=/tmp",
+    # Immutable HOME keeps earlier commands' scratch profiles out of login shells.
+    "PYTHONDONTWRITEBYTECODE=1", "HOME=/broker", "TMPDIR=/tmp",
     f"/usr/bin/{shell}", *sys.argv[1:],
 ))
 os.execv(command[0], command)
