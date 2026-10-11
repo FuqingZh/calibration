@@ -907,7 +907,8 @@ def prepare_workspace(case: CaseSpec, workspace: Path) -> None:
     # The named :workspace-derived permission profile reserves this directory
     # as read-only. Materialize it before the executor boundary so Codex never
     # tries to create it through the workspace's read-only base mount.
-    for protected_directory in (".agents", ".codex"):
+    # Codex 0.162.1 also reserves .aws; .git is created by git init below.
+    for protected_directory in (".agents", ".codex", ".aws"):
         (workspace / protected_directory).mkdir(exist_ok=True)
     commands = (
         ("git", "init", "-q"),
@@ -2344,11 +2345,12 @@ for relative in sorted(allowed):
     command.extend(("--bind", f"/workspace/{relative}", f"/workspace/{relative}"))
 command.extend((
     "--ro-bind", f"/broker/real-shell/{shell}", os.path.realpath(f"/usr/bin/{shell}"),
-    # Host login profiles must not replace the runner-owned broker PATH.
+    # System and personal login profiles must not replace the broker PATH.
     "--ro-bind", "/broker/executor-shell-profile", os.path.realpath("/etc/profile"),
     "--chdir", "/workspace", "--", "/usr/bin/env", "-i",
     "PATH=/broker/bin:/runtime/python/bin:/usr/bin:/bin",
-    "PYTHONDONTWRITEBYTECODE=1", "HOME=/tmp", "TMPDIR=/tmp",
+    # Immutable HOME keeps earlier commands' scratch profiles out of login shells.
+    "PYTHONDONTWRITEBYTECODE=1", "HOME=/broker", "TMPDIR=/tmp",
     f"/usr/bin/{shell}", *sys.argv[1:],
 ))
 os.execv(command[0], command)

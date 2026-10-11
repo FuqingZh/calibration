@@ -235,12 +235,23 @@ def test_load_case_rejects_unreadable_shapes(
         evaluation.load_case(path)
 
 
+@pytest.mark.parametrize("existing_aws", [False, True])
 def test_prepare_workspace_and_changed_paths(
-    tmp_path: Path, evaluation_root: Path
+    tmp_path: Path, evaluation_root: Path, existing_aws: bool
 ) -> None:
+    fixture = evaluation_root / "fixtures/sample"
+    if existing_aws:
+        (fixture / ".aws").mkdir()
+        (fixture / ".aws/config").write_text("fixture-only\n", encoding="utf-8")
     case = evaluation.load_case(write_case(evaluation_root / "cases/case.yaml"))
     workspace = tmp_path / "workspace"
     evaluation.prepare_workspace(case, workspace)
+    assert (workspace / ".aws").is_dir()
+    assert (fixture / ".aws").exists() is existing_aws
+    if existing_aws:
+        assert (workspace / ".aws/config").read_text(
+            encoding="utf-8"
+        ) == "fixture-only\n"
     assert evaluation.changed_paths(workspace) == frozenset()
     (workspace / "value.txt").write_text("after\n", encoding="utf-8")
     assert evaluation.changed_paths(workspace) == frozenset({"value.txt"})
@@ -957,6 +968,70 @@ def test_bwrap_executor_and_broker_enforce_writable_eval_boundary(
         broker._inner_command(tuple(canonical_argv))
 
 
+@pytest.mark.parametrize("shell", ["/bin/bash", "/bin/sh"])
+def test_executor_login_ignores_profiles_written_by_previous_command(
+    tmp_path: Path, evaluation_root: Path, shell: str
+) -> None:
+    if evaluation.shutil.which("bwrap") is None:
+        pytest.skip("bwrap is required for sequential login-profile coverage")
+    program = "print('profile-safe-check')"
+    argv = ["python", "-c", program]
+    case = evaluation.load_case(
+        write_case(
+            evaluation_root / "cases/login-profile.yaml",
+            command_contract={"families": {"focused_test": {"commands": [argv]}}},
+        )
+    )
+    workspace = tmp_path / "workspace"
+    evaluation.prepare_workspace(case, workspace)
+    output = executor_output(tmp_path)
+    runtime = tmp_path / "runtime"
+    runtime.mkdir()
+    evaluation.create_broker_shims(runtime, case)
+    broker = evaluation.CommandBroker(case, workspace, runtime, "login-profile")
+    broker.start()
+    poison = (
+        "for profile in .bash_profile .bash_login .profile; do "
+        "printf 'export PATH=/usr/bin:/bin\\n' > /tmp/$profile; done"
+    )
+    driver = "\n".join(
+        (
+            "from pathlib import Path",
+            "import subprocess, sys",
+            f"subprocess.run([{shell!r}, '-c', {poison!r}], check=True)",
+            "assert Path('/tmp/.profile').read_text() == "
+            "'export PATH=/usr/bin:/bin\\n'",
+            f"result = subprocess.run([{shell!r}, '-lc', "
+            f"{shlex.join(argv)!r}], capture_output=True, text=True)",
+            "sys.stdout.write(result.stdout)",
+            "sys.stderr.write(result.stderr)",
+            "raise SystemExit(result.returncode)",
+        )
+    )
+    command = evaluation.build_bwrap_command(
+        case, workspace, output, "unused-model", "low", runtime
+    )
+    codex_tail = evaluation.build_codex_command(
+        case,
+        Path("/workspace"),
+        Path("/output/final-message.txt"),
+        "unused-model",
+        "low",
+        "/runtime/codex/bin/codex",
+    )
+    command[-len(codex_tail) :] = ["/runtime/python/bin/python3", "-c", driver]
+    try:
+        result = evaluation._run(command, workspace, env=evaluation._evaluation_env())
+    finally:
+        broker.close()
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "profile-safe-check\n"
+    assert broker.errors == []
+    assert [event.argv for event in broker.events] == [tuple(argv)]
+    assert [event.exit_code for event in broker.events] == [0]
+    assert evaluation.changed_paths(workspace) == frozenset()
+
+
 def test_codex_permission_profile_enforces_outer_executor_boundary(
     tmp_path: Path, evaluation_root: Path
 ) -> None:
@@ -999,6 +1074,9 @@ def test_codex_permission_profile_enforces_outer_executor_boundary(
             "Path('/workspace/value.txt').write_text('profile-write\\n')",
             "denied(lambda: Path('/workspace/protected.txt').write_text('blocked'))",
             "denied(lambda: Path('/workspace/new.txt').write_text('blocked'))",
+            "for metadata in ('.git', '.agents', '.codex', '.aws'):",
+            "    target = Path('/workspace') / metadata / 'blocked'",
+            "    denied(lambda: target.write_text('blocked'))",
         )
     )
     command = evaluation.build_bwrap_command(
