@@ -3,7 +3,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from tests.test_install import REPOSITORY_ROOT, run_installer
+from tests.support import REPOSITORY_ROOT
+from tests.support.installer import run_installer
 
 
 def read(path: str) -> str:

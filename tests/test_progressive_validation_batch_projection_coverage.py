@@ -8,38 +8,7 @@ from typing import cast
 import pytest
 
 from scripts import run_progressive_validation_selection_eval as batch
-
-
-def _result(case_id: str = "P01") -> dict[str, object]:
-    return {
-        "case_id": case_id,
-        "model": "frozen-model",
-        "reasoning_effort": "medium",
-        "elapsed_seconds": 1.0,
-        "codex_exit_code": 0,
-        "verification": {
-            "passed": True,
-            "checks": [{"exit_code": 0}],
-            "unexpected_changes": [],
-            "missing_required_changes": [],
-        },
-        "task_outcome": {"valid": True, "errors": []},
-        "validation_selection": {
-            "enabled": True,
-            "contract_satisfied": True,
-            "required_covered": True,
-            "ordered_covered": True,
-            "required_missing": [],
-            "ordered_missing": [],
-            "forbidden_families": [],
-            "forbidden_event_count": 0,
-            "observations": [],
-        },
-        "evidence_integrity": {"valid": True, "errors": []},
-        "realized_safety_events": [],
-        "command_oracle": {"valid": True, "errors": []},
-        "final_oracle": {"valid": True},
-    }
+from tests.support.progressive_validation import projection_result, write_completed_slot
 
 
 def _smoke_manifest() -> dict[str, object]:
@@ -56,26 +25,13 @@ def _smoke_manifest() -> dict[str, object]:
 def _write_completed_slot(
     root: Path, manifest: dict[str, object], slot: dict[str, object]
 ) -> tuple[Path, dict[str, object]]:
-    slot_id = cast(str, slot["slot_id"])
-    case_id = cast(str, slot["case_id"])
-    arm_key = cast(str, slot["arm_key"])
-    slot_root = root / "slots" / slot_id
-    output = slot_root / "output"
-    output.mkdir(parents=True)
-    result = _result(case_id)
-    result_path = output / "result.json"
-    result_path.write_text(json.dumps(result), encoding="utf-8")
-    started = {"slot_id": slot_id, "case_id": case_id, "arm_key": arm_key}
-    (slot_root / "started.json").write_text(json.dumps(started), encoding="utf-8")
-    completed = {
-        **started,
-        "requested_model": manifest["requested_model"],
-        "requested_reasoning_effort": manifest["requested_reasoning_effort"],
-        "result_sha256": hashlib.sha256(result_path.read_bytes()).hexdigest(),
-        "classification": "precise",
-    }
-    (slot_root / "completed.json").write_text(json.dumps(completed), encoding="utf-8")
-    return slot_root, completed
+    return write_completed_slot(
+        root,
+        manifest,
+        slot,
+        projection_result(cast(str, slot["case_id"])),
+        classification="precise",
+    )
 
 
 def test_project_public_filters_observations_hashes_errors_and_rejects_leaks(
@@ -84,7 +40,7 @@ def test_project_public_filters_observations_hashes_errors_and_rejects_leaks(
 ) -> None:
     private = tmp_path / "private.json"
     public = tmp_path / "public.json"
-    payload = _result()
+    payload = projection_result()
     payload["verification"] = {
         "passed": True,
         "changed_paths": ["README.md", "/private/path", 3],
@@ -144,7 +100,7 @@ def test_project_public_filters_observations_hashes_errors_and_rejects_leaks(
         "errors": [],
     }
 
-    leaking = _result()
+    leaking = projection_result()
     leaking["model"] = "arm"
     private.write_text(json.dumps(leaking), encoding="utf-8")
     model_projection = batch.project_public(private, tmp_path / "model.json")
@@ -154,7 +110,7 @@ def test_project_public_filters_observations_hashes_errors_and_rejects_leaks(
         {"requested_model": "auth-arm-candidate"}
     )
 
-    unsafe = _result()
+    unsafe = projection_result()
     unsafe["realized_safety_events"] = ["sandbox_bypass"]
     private.write_text(json.dumps(unsafe), encoding="utf-8")
     unsafe_projection = batch.project_public(private, tmp_path / "unsafe.json")
@@ -173,7 +129,7 @@ def test_project_public_fails_closed_when_projection_breaks_public_schema(
     tmp_path: Path,
 ) -> None:
     private = tmp_path / "private.json"
-    payload = _result("not-a-public-case")
+    payload = projection_result("not-a-public-case")
     private.write_text(json.dumps(payload), encoding="utf-8")
 
     with pytest.raises(batch.BatchError, match="public projection fails schema"):
@@ -188,7 +144,7 @@ def test_project_public_requires_a_public_projection_schema(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path, schema: dict[str, object]
 ) -> None:
     private = tmp_path / "private.json"
-    payload = _result()
+    payload = projection_result()
     private.write_text(json.dumps(payload), encoding="utf-8")
     original_json = batch._json
 
@@ -206,7 +162,7 @@ def test_classification_and_smoke_slot_boundaries_are_fail_closed() -> None:
         == "critical"
     )
     assert batch._classification("baseline", {}) == "critical"
-    unsafe = _result()
+    unsafe = projection_result()
     unsafe["verification"] = {"checks": [{"exit_code": "0"}]}
     assert batch._classification("baseline", unsafe) == "critical"
 
@@ -258,7 +214,7 @@ def test_completed_slot_rejects_invalid_ledger_identity_hash_and_symlink(
     root = tmp_path / "batch"
     slot_root, completed = _write_completed_slot(root, manifest, slot)
     assert batch._validate_completed_slot(root, manifest, slot) == batch._assessment(
-        _result(cast(str, slot["case_id"]))
+        projection_result(cast(str, slot["case_id"]))
     )
 
     invalid_manifest = {**manifest, "requested_reasoning_effort": ""}

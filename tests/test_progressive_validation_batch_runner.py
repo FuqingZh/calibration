@@ -10,6 +10,7 @@ from typing import cast
 import pytest
 
 from scripts import run_progressive_validation_selection_eval as batch
+from tests.support.progressive_validation import batch_result, write_manifest
 
 
 @pytest.fixture(autouse=True)
@@ -45,74 +46,8 @@ def _private_manifest(tmp_path: Path) -> tuple[Path, dict[str, object]]:
         "case_ids": ["P02", "P03", "P05"],
         "initial_repetitions": 2,
     }
-    canonical = json.dumps(manifest, indent=2, sort_keys=True) + "\n"
-    (root / "manifest.json").write_text(canonical, encoding="utf-8")
-    (root / "manifest.sha256").write_text(
-        json.dumps(
-            {"sha256": hashlib.sha256(canonical.encode()).hexdigest()},
-            indent=2,
-            sort_keys=True,
-        )
-        + "\n",
-        encoding="utf-8",
-    )
+    write_manifest(root, manifest)
     return root, manifest
-
-
-def _result(
-    case_id: str,
-    *,
-    model: str = "frozen-model",
-    effort: str = "medium",
-    oracle_errors: list[str] | None = None,
-    codex_exit_code: int = 0,
-    final_valid: bool = True,
-    required_missing: int = 0,
-    ordered_missing: int = 0,
-    forbidden_events: int = 0,
-) -> dict[str, object]:
-    errors = oracle_errors or []
-    oracle_valid = not errors
-    return {
-        "case_id": case_id,
-        "model": model,
-        "reasoning_effort": effort,
-        "codex_exit_code": codex_exit_code,
-        "elapsed_seconds": 1.0,
-        "verification": {
-            "passed": True,
-            "checks": [{"exit_code": 0}],
-            "unexpected_changes": [],
-            "missing_required_changes": [],
-        },
-        "task_outcome": {
-            "valid": codex_exit_code == 0 and final_valid,
-            "errors": [],
-        },
-        "validation_selection": {
-            "enabled": True,
-            "contract_satisfied": not (
-                required_missing or ordered_missing or forbidden_events
-            ),
-            "required_covered": required_missing == 0,
-            "ordered_covered": ordered_missing == 0,
-            "required_missing": [
-                {"family": "focused_test", "exit": "zero"}
-                for _ in range(required_missing)
-            ],
-            "ordered_missing": [
-                {"family": "focused_test", "exit": "zero"}
-                for _ in range(ordered_missing)
-            ],
-            "forbidden_families": ["complete_gate"] if forbidden_events else [],
-            "forbidden_event_count": forbidden_events,
-            "observations": [],
-        },
-        "evidence_integrity": {"valid": oracle_valid, "errors": errors},
-        "realized_safety_events": [],
-        "command_oracle": {"valid": oracle_valid, "errors": errors},
-        "final_oracle": {"valid": final_valid},
-    }
 
 
 def _valid_freeze(_private_root: Path) -> dict[str, object]:
@@ -350,7 +285,7 @@ def test_manifest_slot_derives_every_execution_field_and_is_exclusive(
             effort=effort,
         )
         output_dir.mkdir(parents=True)
-        payload = _result(cast(str, first["case_id"]))
+        payload = batch_result(cast(str, first["case_id"]))
         (output_dir / "result.json").write_text(
             json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
         )
@@ -614,26 +549,26 @@ def test_runner_preflight_failure_is_recorded_as_invalid_and_cannot_reuse_slot(
 
 def test_result_classification_never_hides_non_selection_failure() -> None:
     assert (
-        batch._classification("baseline", _result("P01", forbidden_events=1))
+        batch._classification("baseline", batch_result("P01", forbidden_events=1))
         == "overvalidation"
     )
     assert (
         batch._classification(
             "candidate",
-            _result("P01", oracle_errors=["line 1: unrecognized command"]),
+            batch_result("P01", oracle_errors=["line 1: unrecognized command"]),
         )
         == "evidence_invalid"
     )
     assert (
         batch._classification(
             "baseline",
-            _result("P01", forbidden_events=1, codex_exit_code=1),
+            batch_result("P01", forbidden_events=1, codex_exit_code=1),
         )
         == "critical"
     )
     assert (
         batch._classification(
-            "baseline", _result("P01", forbidden_events=1, final_valid=False)
+            "baseline", batch_result("P01", forbidden_events=1, final_valid=False)
         )
         == "critical"
     )
@@ -642,11 +577,11 @@ def test_result_classification_never_hides_non_selection_failure() -> None:
 def test_relative_pairing_and_tiebreak_execution_are_symmetric(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    critical = batch._assessment(_result("P01", codex_exit_code=1))
-    precise = batch._assessment(_result("P01"))
-    overvalidation = batch._assessment(_result("P01", forbidden_events=1))
+    critical = batch._assessment(batch_result("P01", codex_exit_code=1))
+    precise = batch._assessment(batch_result("P01"))
+    overvalidation = batch._assessment(batch_result("P01", forbidden_events=1))
     invalid = batch._assessment(
-        _result("P01", oracle_errors=["line 1: unrecognized command"])
+        batch_result("P01", oracle_errors=["line 1: unrecognized command"])
     )
     assert batch._paired_outcome(critical, precise) == "candidate_win"
     assert batch._paired_outcome(precise, critical) == "baseline_win"
@@ -732,8 +667,8 @@ def test_relative_status_accepts_noninferior_tasks_with_fewer_extra_checks(
         slot: dict[str, object],
     ) -> dict[str, object]:
         if slot["arm_key"] == "baseline":
-            return batch._assessment(_result("P02", forbidden_events=1))
-        return batch._assessment(_result("P02"))
+            return batch._assessment(batch_result("P02", forbidden_events=1))
+        return batch._assessment(batch_result("P02"))
 
     monkeypatch.setattr(batch, "_validate_completed_slot", assessment)
     status = batch.relative_status(tmp_path)
@@ -768,8 +703,8 @@ def test_relative_status_rejects_real_task_or_coverage_regression(
         slot: dict[str, object],
     ) -> dict[str, object]:
         if slot["arm_key"] == "candidate":
-            return batch._assessment(_result("P02", required_missing=1))
-        return batch._assessment(_result("P02"))
+            return batch._assessment(batch_result("P02", required_missing=1))
+        return batch._assessment(batch_result("P02"))
 
     monkeypatch.setattr(batch, "_validate_completed_slot", assessment)
     status = batch.relative_status(tmp_path)
@@ -810,7 +745,7 @@ def test_initial_outcome_validation_and_tiebreak_authorization_fail_closed(
     def valid_completed(
         _root: Path, _manifest: object, _slot: object
     ) -> dict[str, object]:
-        return batch._assessment(_result("P01"))
+        return batch._assessment(batch_result("P01"))
 
     monkeypatch.setattr(batch, "_smoke_slots", one_slot)
     monkeypatch.setattr(batch, "_validate_completed_slot", valid_completed)
@@ -861,7 +796,7 @@ def test_manifest_slot_accepts_only_an_eligible_tiebreak(
         _root: Path, _manifest: object, slot: dict[str, object]
     ) -> dict[str, object]:
         validated.append(cast(str, slot["slot_id"]))
-        return batch._assessment(_result(cast(str, slot["case_id"])))
+        return batch._assessment(batch_result(cast(str, slot["case_id"])))
 
     def successful_run(
         _archive: Path,
@@ -873,7 +808,9 @@ def test_manifest_slot_accepts_only_an_eligible_tiebreak(
         model: str,
         effort: str,
     ) -> dict[str, object]:
-        payload = _result(cast(str, tiebreak["case_id"]), model=model, effort=effort)
+        payload = batch_result(
+            cast(str, tiebreak["case_id"]), model=model, effort=effort
+        )
         output.mkdir(parents=True)
         (output / "result.json").write_text(json.dumps(payload), encoding="utf-8")
         return payload
@@ -929,7 +866,7 @@ def test_smoke_status_recomputes_complete_ledger(
         slot_root = root / "slots" / slot_id
         output = slot_root / "output"
         output.mkdir(parents=True)
-        payload = _result(
+        payload = batch_result(
             case_id,
             oracle_errors=(
                 ["missing required docs_check (zero)"]

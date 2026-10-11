@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 
-from tests.test_install import REPOSITORY_ROOT
+from tests.support import REPOSITORY_ROOT
 
 
 def _prompt_cases() -> dict[int, dict[str, str]]:

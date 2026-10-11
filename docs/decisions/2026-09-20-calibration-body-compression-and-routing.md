@@ -75,3 +75,18 @@ To reverse this trial, restore only the three named reference bodies from
 the baseline commit after inspecting intervening edits. Preserve unrelated
 work and all experiment records. Source hashes and the exact adopted scope
 are recorded with the routing diagnosis.
+
+## Follow-up: Executor Compatibility Resolved
+
+On 2026-10-11, [PR #65](https://github.com/FuqingZh/calibration/pull/65)
+resolved the executor compatibility gap reported above. It supplied the required
+executor temporary directory, corrected shell symlink mounts, prepared protected
+metadata directories before isolation, and protected login-shell HOME and PATH.
+The historical failure counts and trial conclusions above remain unchanged.
+
+The follow-up passed the full local Python 3.12 gate with 581 tests and 100%
+script line coverage. GitHub CI passed on the same head with 561 tests and 20
+tool-dependent skips; the local run exercised those skipped integrations.
+Focused checks also passed with Codex 0.148.0, alongside the full local run using
+Codex 0.162.1. These are bounded compatibility results; they do not establish
+universal client compatibility, general model improvements, or live AO behavior.
