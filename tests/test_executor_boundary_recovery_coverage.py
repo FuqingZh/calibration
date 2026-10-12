@@ -10,6 +10,11 @@ import pytest
 
 from scripts import run_writable_agent_eval as evaluation
 from scripts.run_writable_agent_eval import CaseSpec, EvaluationError
+from tests.support.executor_preflight import (
+    PreflightClient,
+    PreflightListener,
+    patch_preflight_dependencies,
+)
 
 
 def _case(command_contract: dict[str, object] | None = None) -> CaseSpec:
@@ -22,64 +27,6 @@ def _case(command_contract: dict[str, object] | None = None) -> CaseSpec:
         allowed_changes=frozenset({"value.txt"}),
         required_changes=frozenset({"value.txt"}),
         command_contract=command_contract,
-    )
-
-
-class _FakeClient:
-    def __init__(self) -> None:
-        self.closed = False
-
-    def close(self) -> None:
-        self.closed = True
-
-
-class _FakeListener:
-    def __init__(self, client: _FakeClient | None = None) -> None:
-        self.client = client
-        self.closed = False
-        self.timeouts: list[float] = []
-
-    def bind(self, address: tuple[str, int]) -> None:
-        assert address == ("127.0.0.1", 0)
-
-    def listen(self, backlog: int) -> None:
-        assert backlog == 1
-
-    def settimeout(self, timeout: float) -> None:
-        self.timeouts.append(timeout)
-
-    def getsockname(self) -> tuple[str, int]:
-        return ("127.0.0.1", 43123)
-
-    def accept(self) -> tuple[_FakeClient, tuple[str, int]]:
-        if self.client is None:
-            raise TimeoutError
-        return self.client, ("127.0.0.1", 43124)
-
-    def close(self) -> None:
-        self.closed = True
-
-
-def _patch_preflight_dependencies(
-    monkeypatch: pytest.MonkeyPatch, listener: _FakeListener
-) -> None:
-    def fake_socket(_family: int, _kind: int) -> _FakeListener:
-        return listener
-
-    def synthetic_command(
-        _case: CaseSpec,
-        _workspace: Path,
-        _output_dir: Path,
-        _runtime: Path,
-        _listener_port: int,
-    ) -> list[str]:
-        return ["synthetic-preflight"]
-
-    monkeypatch.setattr(evaluation.socket, "socket", fake_socket)
-    monkeypatch.setattr(
-        evaluation,
-        "build_executor_boundary_preflight_command",
-        synthetic_command,
     )
 
 
@@ -137,8 +84,8 @@ def test_preflight_timeout_is_reported_and_private_marker_is_removed(
 ) -> None:
     output = tmp_path / "output"
     output.mkdir()
-    listener = _FakeListener()
-    _patch_preflight_dependencies(monkeypatch, listener)
+    listener = PreflightListener()
+    patch_preflight_dependencies(monkeypatch, listener)
 
     def timed_out(*_args: object, **_kwargs: object) -> Never:
         raise subprocess.TimeoutExpired("synthetic-preflight", 1)
@@ -171,8 +118,8 @@ def test_preflight_nonzero_reports_stderr_then_stdout_or_no_detail(
 ) -> None:
     output = tmp_path / "output"
     output.mkdir()
-    listener = _FakeListener()
-    _patch_preflight_dependencies(monkeypatch, listener)
+    listener = PreflightListener()
+    patch_preflight_dependencies(monkeypatch, listener)
 
     def nonzero_result(
         *_args: object, **_kwargs: object
@@ -198,7 +145,7 @@ def test_preflight_rejects_an_unexpected_success_marker(
 ) -> None:
     output = tmp_path / "output"
     output.mkdir()
-    _patch_preflight_dependencies(monkeypatch, _FakeListener())
+    patch_preflight_dependencies(monkeypatch, PreflightListener())
 
     def wrong_marker(
         *_args: object, **_kwargs: object
@@ -224,9 +171,9 @@ def test_preflight_rejects_a_loopback_connection(
 ) -> None:
     output = tmp_path / "output"
     output.mkdir()
-    client = _FakeClient()
-    listener = _FakeListener(client)
-    _patch_preflight_dependencies(monkeypatch, listener)
+    client = PreflightClient()
+    listener = PreflightListener(client)
+    patch_preflight_dependencies(monkeypatch, listener)
 
     def successful_result(
         *_args: object, **_kwargs: object
