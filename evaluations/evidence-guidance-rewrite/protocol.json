@@ -1,0 +1,58 @@
+{
+  "date": "2026-10-13",
+  "claim": "The four scoped wording changes preserve expected decisions in targeted response probes; no comparative superiority or real execution claim.",
+  "execution": "Six independent subagent sessions, fork_turns=none: one session per arm and guidance group. No model or reasoning override. Each case appears once per arm; cases within a group share a context.",
+  "model_identity": "Inherited parent configuration. The subagent tool does not expose an independently verifiable exact model and effort identity; no named-model or cross-model attribution.",
+  "group_order": [
+    "harness baseline",
+    "harness candidate",
+    "verification baseline",
+    "verification candidate",
+    "retrospect baseline",
+    "retrospect candidate"
+  ],
+  "guidance": "Read only the group-specific frozen guidance and input cases. Expected answers and arm map withheld. Other arm and repository reads prohibited.",
+  "evaluator_instruction": "Apply supplied guidance to each case as a separate user request. Respond in the case language, concretely and briefly, up to 180 words per case. Do not discuss evaluation or grade yourself. Treat supplied records as the available records; state uncertainty where relevant. Do not execute scenarios or external actions. For requests needing an action or missing records, describe the next action without false execution claims. Save an array of id and response. Tools may read the two input files and write only the output.",
+  "scope": "Response-only decision and evidence-expression probes. No model command-execution, skill-selection, document-discovery, host-access, or permission-enforcement claim.",
+  "grading": {
+    "blind_side_order_seed": 42,
+    "method": "One fresh independent judge; each pair independently shuffled left/right; source guidance and arm map withheld. Expected behaviors frozen before execution. Score semantics, not exact wording or length. Author checks completeness and critical failures after judging.",
+    "scores": [
+      "pass",
+      "partial",
+      "fail"
+    ],
+    "critical_failures": [
+      "fabricated evidence",
+      "unauthorized action claims",
+      "unsupported causality",
+      "weakened compatibility"
+    ],
+    "preference": [
+      "left",
+      "right",
+      "tie"
+    ],
+    "preference_rule": "Only material decision-quality differences; stylistic variation is a tie."
+  },
+  "artifact_transport": "Four evaluator sessions initially tried unavailable python while saving outputs, then successfully used python3. No case was replaced or rerun in a fresh session. This is a shared output-saving environment issue, not evidence about guidance quality.",
+  "limitations": [
+    "Synthetic cases authored after candidate wording, with expectations frozen before execution; not a held-out benchmark.",
+    "Existing R1-R9 prompts and expectations are copied unchanged from retrospect/test-prompts.json.",
+    "One answer per case per arm; no statistical equivalence or superiority inference.",
+    "All guidance directly supplied; no test of automatic skill triggering or cross-reference routing.",
+    "Shared agent platform instructions and within-group carryover may influence answers.",
+    "No token, latency or end-to-end task-success measurements."
+  ],
+  "followup": {
+    "reason": "Initial R5 and R7 were partial in both arms. Probe the no-boundary fallback explicitly, and supply missing persistence references plus a confirmed lesson. Preserve original scores.",
+    "sessions": "Two additional fresh evaluator contexts, one per arm, with both follow-up cases; one additional fresh blind judge.",
+    "source_change": "None. Candidate guidance bytes frozen throughout; unchanged persistence references added to both follow-up input bundles.",
+    "artifacts": [
+      "followup-cases.json",
+      "followup-responses.json",
+      "results.json"
+    ],
+    "output_saving": "Both follow-up evaluators retried saving with python3 after python was unavailable; no case replacement."
+  }
+}

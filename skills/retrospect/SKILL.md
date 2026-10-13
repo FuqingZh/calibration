@@ -29,7 +29,10 @@ already confirmed here without conducting another retrospective.
 - separate checked evidence from memory, interpretation, and open questions
 - identify the consequential difference between expectation and reality
 
-For a local execution delta, produce a concrete rule for the next similar task.
+For a verified local execution delta, identify the concrete action to change
+on the next similar task. If existing guidance is sufficient, explain the
+observed omission and its supported cause without requiring a new permanent
+rule. When the cause is uncertain, retain the hypothesis and verification gap.
 For a repeated or cross-stage pattern, name its boundary, evidence, risk, and
 consequence for future action.
 
