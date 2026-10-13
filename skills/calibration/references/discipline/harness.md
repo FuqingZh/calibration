@@ -21,6 +21,22 @@ lowest durable layer that can provide it. Do not default to adding prompt text.
 Confirm the gap from actual failures, review feedback, or repeated task
 evidence. A longer instruction is not a substitute for a missing capability.
 
+When a session repeatedly searches for the same fact, identify the entrypoint
+the agent actually read and the authoritative source it needed. Prefer a
+navigation pointer between them. If the source was already reachable, check
+for misleading names, stale content, or conflicting authority before adding
+another link or document.
+
+Before proposing a new coding rule, distinguish a mechanically decidable
+violation (such as a banned API, import shape, or file-location constraint) from
+a judgment call that depends on surrounding context. Inspect the repository's
+existing check command and CI wiring first. A check that exists but is unwired
+or broken calls for repairing that feedback path; a check that correctly catches
+an implementation defect calls for fixing the implementation. Add or extend a
+deterministic check only for an uncovered mechanical constraint. Keep genuine
+judgment guidance with its existing owner and available to the stages that
+need it.
+
 ## Placement Ladder
 
 Place each learned capability with the owner able to keep it current and, when

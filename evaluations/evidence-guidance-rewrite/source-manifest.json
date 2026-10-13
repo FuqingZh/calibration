@@ -1,0 +1,58 @@
+{
+  "baseline_commit": "f00ef2cc0dde0277c4b8e2768f9fc0f77dd65163",
+  "upstream_commit": "49dd158d1076134a641b33efb035946536778336",
+  "sources": {
+    "skills/calibration/references/principles.md": {
+      "baseline": "6ed50f093f3b1ba7d3da9c3c7d3c05ea8f0127888820e4c32f1ce28d653f5bfe",
+      "candidate": "6ed50f093f3b1ba7d3da9c3c7d3c05ea8f0127888820e4c32f1ce28d653f5bfe"
+    },
+    "skills/calibration/references/discipline/harness.md": {
+      "baseline": "ef0218e5b54662f31533b2e6db8c0678d5ca6b78451fdd8d6f322754657db641",
+      "candidate": "52f4e32d94d089758c61e0335b6b93f23d5c1a9b278a33e329383a197598585c"
+    },
+    "skills/calibration/references/discipline/verification.md": {
+      "baseline": "6c334075bcde9baa51bba9575a0cda7e7bc0894a80fb1b981ab29f7811de6137",
+      "candidate": "f9d77750d90f9e3c052afae8ed3840250d2c8aa78e80db8917f8c72dca6fbdd0"
+    },
+    "skills/retrospect/SKILL.md": {
+      "baseline": "5f3f1f77c1301901ad7176c62ff98b4068c29a4b67cab98c836bd413116267ef",
+      "candidate": "86388255a12292a14dccfed5721281c88b4e15a53d2397f69cdc1bb3aad808ef"
+    }
+  },
+  "cases_sha256": "fabdfddd157dbc6ba9ec693c339f75806f1cf9fedf4842c3b3db4b30ef614045",
+  "groups": {
+    "harness": [
+      "skills/calibration/references/principles.md",
+      "skills/calibration/references/discipline/harness.md"
+    ],
+    "verification": [
+      "skills/calibration/references/principles.md",
+      "skills/calibration/references/discipline/verification.md"
+    ],
+    "retrospect": [
+      "skills/retrospect/SKILL.md"
+    ]
+  },
+  "unchanged_contracts": {
+    "skills/calibration/SKILL.md": "8102cd5f74754ddfcc46f0fa4f6fc549468d3311b5e5ae48c89a95234e3eb231",
+    "skills/retrospect/agents/openai.yaml": "fd99395452befecc35fdac940d889122795077d925416418366e72f5e158afac",
+    "skills/retrospect/test-prompts.json": "89e84aeb800415dc6cdbe444781e1e91e48b6ef9ca1cc7e0ff6dc771a4f42518",
+    "skills/calibration/references/discipline/evaluation.md": "1f33fac081427d504694978a16f984cddc21286cbf5420eee1a1a38f272e8ec3",
+    "codex/AGENTS.md.template": "1fe95c7639e27c0a7c505ba9a108b10f571bb8460b16e34b03c59f76c8f7f8a4",
+    "install.sh": "3714248fd745b07afc8536080f6d97cbd2b44ef1d22f7989514182d946e34417",
+    "pdm.lock": "aee7ad4ab099432d25db179a81bd3e3b945fc34af76d1db71c7984fe1561cf6f"
+  },
+  "followup_reference_sha256": {
+    "skills/retrospect/references/trace-retro.md": "ab912e1eb04fddf54892042c519608c4e9899b255681408a7e0dd63fbe052c90",
+    "skills/retrospect/references/task-traces-and-retros.md": "db6f2eb6e81c0c8c472e83f64021d4128f962ecd687b08597ef5914d77762a5b"
+  },
+  "followup_cases_sha256": "8a8c3a3d076113a1e4db474f8ca9f7510a61618579de7f753218810f855f36ba",
+  "evidence_sha256": {
+    "cases.json": "fabdfddd157dbc6ba9ec693c339f75806f1cf9fedf4842c3b3db4b30ef614045",
+    "followup-cases.json": "8a8c3a3d076113a1e4db474f8ca9f7510a61618579de7f753218810f855f36ba",
+    "followup-responses.json": "ba49087e391a5f66285310a4f68221a0c24fd527037856233ec3170411fcf04a",
+    "protocol.json": "bce753ecfd35629bb27fbf5f1434ef345cdcdb1d7a65427b9f54b25989d3d788",
+    "responses.json": "3f62ff46bcfd7c05bac9cad38f13a76ef66104aeb344740633c5322523f9e2b2",
+    "results.json": "764c883a9dfdd3af9e1b4d641a2f9e0d357f0e0b0cf92a416541bcce3a443b7d"
+  }
+}

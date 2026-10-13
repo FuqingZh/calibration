@@ -1,0 +1,311 @@
+{
+  "initial_summary": {
+    "baseline": {
+      "pass": 18,
+      "partial": 2
+    },
+    "candidate": {
+      "pass": 18,
+      "partial": 2
+    }
+  },
+  "initial_blind_judgments": [
+    {
+      "id": "H1",
+      "left_score": "pass",
+      "right_score": "pass",
+      "left_critical_failures": [],
+      "right_critical_failures": [],
+      "preference": "tie",
+      "reason": "Both identify the missing canonical-check integration, reuse the existing detector, require repairing the import, and propose representative validation without implementing.",
+      "arm_by_side": {
+        "left": "candidate",
+        "right": "baseline"
+      }
+    },
+    {
+      "id": "H2",
+      "left_score": "pass",
+      "right_score": "pass",
+      "left_critical_failures": [],
+      "right_critical_failures": [],
+      "preference": "tie",
+      "reason": "Both recognize that CI feedback already works and recommend repairing the import and rerunning existing validation, with no duplicate hook or diagnostic weakening.",
+      "arm_by_side": {
+        "left": "candidate",
+        "right": "baseline"
+      }
+    },
+    {
+      "id": "H3",
+      "left_score": "pass",
+      "right_score": "pass",
+      "left_critical_failures": [],
+      "right_critical_failures": [],
+      "preference": "tie",
+      "reason": "Both route deterministic API enforcement through the existing linter and contextual responsibility judgments through review and CONTRIBUTING.md, while respecting recommendation-only scope.",
+      "arm_by_side": {
+        "left": "baseline",
+        "right": "candidate"
+      }
+    },
+    {
+      "id": "H4",
+      "left_score": "pass",
+      "right_score": "pass",
+      "left_critical_failures": [],
+      "right_critical_failures": [],
+      "preference": "tie",
+      "reason": "Both connect an actually-read entrypoint to the current authoritative contract and propose checking the route without duplicating authority or claiming executed improvement.",
+      "arm_by_side": {
+        "left": "candidate",
+        "right": "baseline"
+      }
+    },
+    {
+      "id": "H5",
+      "left_score": "pass",
+      "right_score": "pass",
+      "left_critical_failures": [],
+      "right_critical_failures": [],
+      "preference": "tie",
+      "reason": "Both identify the stale contract rather than failed navigation and recommend reconciling it with the accepted decision. Neither proposes an additional navigation link.",
+      "arm_by_side": {
+        "left": "candidate",
+        "right": "baseline"
+      }
+    },
+    {
+      "id": "H6",
+      "left_score": "pass",
+      "right_score": "pass",
+      "left_critical_failures": [],
+      "right_critical_failures": [],
+      "preference": "tie",
+      "reason": "Both limit the observation to sandbox visibility, leave host state unknown, name the necessary authorized host-side observations, and reject access expansion under review-only authority.",
+      "arm_by_side": {
+        "left": "candidate",
+        "right": "baseline"
+      }
+    },
+    {
+      "id": "V1",
+      "left_score": "pass",
+      "right_score": "pass",
+      "left_critical_failures": [],
+      "right_critical_failures": [],
+      "preference": "tie",
+      "reason": "Both connect the identical fixture to recorded base failure and candidate success, cite the named test and logs, retain failure and zero-write regression evidence, and explicitly disclaim deployment.",
+      "arm_by_side": {
+        "left": "candidate",
+        "right": "baseline"
+      }
+    },
+    {
+      "id": "V2",
+      "left_score": "pass",
+      "right_score": "pass",
+      "left_critical_failures": [],
+      "right_critical_failures": [],
+      "preference": "tie",
+      "reason": "Both cite preserved collection and structural invariants and executed test results, disclose the skipped integration boundary, and avoid invented baseline failures or universal equivalence claims.",
+      "arm_by_side": {
+        "left": "candidate",
+        "right": "baseline"
+      }
+    },
+    {
+      "id": "V3",
+      "left_score": "pass",
+      "right_score": "pass",
+      "left_critical_failures": [],
+      "right_critical_failures": [],
+      "preference": "tie",
+      "reason": "Both distinguish reported historical failure from executed candidate evidence and explicitly disclose that a measured before/after comparison is unavailable.",
+      "arm_by_side": {
+        "left": "baseline",
+        "right": "candidate"
+      }
+    },
+    {
+      "id": "V4",
+      "left_score": "pass",
+      "right_score": "pass",
+      "left_critical_failures": [],
+      "right_critical_failures": [],
+      "preference": "tie",
+      "reason": "Both identify the existing CSV consumers and breaking compatibility, explain that reverting code cannot retract delivered payloads, and withhold merge or rollout readiness pending an authorized compatibility path and evidence.",
+      "arm_by_side": {
+        "left": "candidate",
+        "right": "baseline"
+      }
+    },
+    {
+      "id": "R1",
+      "left_score": "pass",
+      "right_score": "pass",
+      "left_critical_failures": [],
+      "right_critical_failures": [],
+      "preference": "tie",
+      "reason": "Both identify the available plan and execution summary, disclose missing change and validation results, and propose checking those records before drawing lessons. Neither invents findings or claims persistence.",
+      "arm_by_side": {
+        "left": "candidate",
+        "right": "baseline"
+      }
+    },
+    {
+      "id": "R2",
+      "left_score": "pass",
+      "right_score": "pass",
+      "left_critical_failures": [],
+      "right_critical_failures": [],
+      "preference": "tie",
+      "reason": "Both keep the task in evidence-gathering and lesson-confirmation mode, distinguish hypotheses from established causes, and defer persistence until the required confirmation stage.",
+      "arm_by_side": {
+        "left": "candidate",
+        "right": "baseline"
+      }
+    },
+    {
+      "id": "R3",
+      "left_score": "pass",
+      "right_score": "pass",
+      "left_critical_failures": [],
+      "right_critical_failures": [],
+      "preference": "tie",
+      "reason": "Both keep the lesson local to executing existing required checks before completion, acknowledge the lack of recurrence or causal evidence, and reject unnecessary permanent rules.",
+      "arm_by_side": {
+        "left": "candidate",
+        "right": "baseline"
+      }
+    },
+    {
+      "id": "R4",
+      "left_score": "pass",
+      "right_score": "pass",
+      "left_critical_failures": [],
+      "right_critical_failures": [],
+      "preference": "tie",
+      "reason": "Both propose a bounded recurring handoff-contract hypothesis, identify evidence needed across all three events, describe compatibility risks and future actions, and withhold confirmed causality or broad promotion.",
+      "arm_by_side": {
+        "left": "candidate",
+        "right": "baseline"
+      }
+    },
+    {
+      "id": "R5",
+      "left_score": "partial",
+      "right_score": "partial",
+      "left_critical_failures": [],
+      "right_critical_failures": [],
+      "preference": "tie",
+      "reason": "Both bound investigation around generated imports, F401, the two failures, and repair evidence, and avoid unsupported causality. Neither fully specifies keyword-bounded searches across plans, traces, and history or the required fallback to standard when a credible search boundary cannot be established.",
+      "arm_by_side": {
+        "left": "candidate",
+        "right": "baseline"
+      }
+    },
+    {
+      "id": "R6",
+      "left_score": "pass",
+      "right_score": "pass",
+      "left_critical_failures": [],
+      "right_critical_failures": [],
+      "preference": "tie",
+      "reason": "Both treat the Docker-cache explanation as an unverified memory-based hypothesis, name the missing evidence and useful controlled comparison, and avoid a root-cause claim or permanent cache-clearing rule.",
+      "arm_by_side": {
+        "left": "candidate",
+        "right": "baseline"
+      }
+    },
+    {
+      "id": "R7",
+      "left_score": "partial",
+      "right_score": "partial",
+      "left_critical_failures": [],
+      "right_critical_failures": [],
+      "preference": "tie",
+      "reason": "Both recognize explicit persistence authorization, name the two task-trace references, and appropriately request missing confirmed content without claiming a write. Their proposed next actions do not establish the required .traces/retros/ destination or maintenance of the short index, leaving the persistence procedure incomplete.",
+      "arm_by_side": {
+        "left": "baseline",
+        "right": "candidate"
+      }
+    },
+    {
+      "id": "R8",
+      "left_score": "pass",
+      "right_score": "pass",
+      "left_critical_failures": [],
+      "right_critical_failures": [],
+      "preference": "tie",
+      "reason": "Both classify the artifact as a long-term cross-project profile, honor the specified future_direction destination, and request missing content and location without imposing a task-level template or inventing a saved artifact.",
+      "arm_by_side": {
+        "left": "candidate",
+        "right": "baseline"
+      }
+    },
+    {
+      "id": "R9",
+      "left_score": "pass",
+      "right_score": "pass",
+      "left_critical_failures": [],
+      "right_critical_failures": [],
+      "preference": "tie",
+      "reason": "Both treat the rule as a candidate, require evidence and stable scope, distinguish execution omissions from guidance gaps, and require a later explicit request before changing calibration.",
+      "arm_by_side": {
+        "left": "baseline",
+        "right": "candidate"
+      }
+    },
+    {
+      "id": "R10",
+      "left_score": "pass",
+      "right_score": "pass",
+      "left_critical_failures": [],
+      "right_critical_failures": [],
+      "preference": "tie",
+      "reason": "Both prescribe resuming outstanding required checks after the documented CI interruption, recognize sufficient existing instructions and absence of recurrence, and avoid permanent edits or broader causal claims. Additional uncertainty about resumption does not change the practical decision.",
+      "arm_by_side": {
+        "left": "baseline",
+        "right": "candidate"
+      }
+    }
+  ],
+  "followup_blind_judgments": [
+    {
+      "id": "F1",
+      "left_score": "pass",
+      "right_score": "pass",
+      "left_critical_failures": [],
+      "right_critical_failures": [],
+      "preference": "tie",
+      "reason": "Both fall back to standard because no credible retrieval boundary exists, preserve the missing evidence, and decline unsupported causal conclusions, broad searches, and permanent rules. The right response's tentative hypothesis is explicitly unverified and does not materially alter the decision.",
+      "arm_by_side": {
+        "left": "candidate",
+        "right": "baseline"
+      }
+    },
+    {
+      "id": "F2",
+      "left_score": "pass",
+      "right_score": "pass",
+      "left_critical_failures": [],
+      "right_critical_failures": [],
+      "preference": "tie",
+      "reason": "Both recognize authorization to record the retrospective and propose a project-local .traces/retros/ file with a .traces/index.md entry. Both preserve the objective, compatibility risk, planned and actual validation, cited evidence, confirmed rework cause, and next action. Both avoid copying raw logs or promoting permanent rules, and explicitly describe proposed rather than completed writes. Neither proposes an automatic commit or claims deployment or comprehensive compatibility proof. Differences do not materially change the decision.",
+      "arm_by_side": {
+        "left": "candidate",
+        "right": "baseline"
+      }
+    }
+  ],
+  "followup_summary": {
+    "baseline": {
+      "pass": 2
+    },
+    "candidate": {
+      "pass": 2
+    }
+  },
+  "decision": "Bounded regression acceptance of the four wording changes; no demonstrated comparative superiority. Initial partial scores retained; follow-ups cover additional explicit conditions, not actual execution."
+}
