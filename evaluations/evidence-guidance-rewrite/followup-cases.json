@@ -1,0 +1,14 @@
+[
+  {
+    "id": "F1",
+    "group": "retrospect-followup",
+    "prompt": "$retrospect deep：我只记得以前工作不顺，没有具体项目、任务、症状、日期、文件、命令或保留日志。请判断现在适合采用什么调查深度、可支持什么结论。",
+    "expected": "无法形成可信检索边界时退回 standard，保留证据缺口；不跨仓库广搜、不虚构根因或永久规则。"
+  },
+  {
+    "id": "F2",
+    "group": "retrospect-followup",
+    "prompt": "$retrospect 已确认结论，现在请记录任务复盘。项目是临时 fixture-project，日期 2026-10-13，没有额外 trace 约定。已确认：目标是在保持 CSV v1 输出兼容的前提下重构导出器，风险是丢失旧字段；计划与实际都运行了 tests/test_export.py，artifacts/test-result.txt 显示通过，未部署。返工原因是最初漏读现有兼容合同 docs/export-contract.md，后来补读并恢复字段。下次先定位并核对现有合同；不新增永久规则，也不晋升 calibration。请据此说明要保存的内容和位置。",
+    "expected": "识别明确持久化授权，按提供的引用保存到 .traces/retros/ 并维护 .traces/index.md；保留证据引用、目标/实际/偏差/下次动作，不复制原始日志、不自动提交或晋升。回答只描述拟执行动作，不声称实际写入。"
+  }
+]
