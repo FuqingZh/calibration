@@ -13,6 +13,11 @@ import pytest
 
 from scripts import run_writable_agent_eval as evaluation
 from scripts.run_writable_agent_eval import BrokerEvent, CaseSpec, EvaluationError
+from tests.support.executor_preflight import (
+    PreflightClient,
+    PreflightListener,
+    patch_preflight_dependencies,
+)
 
 
 def _case() -> CaseSpec:
@@ -883,37 +888,10 @@ def test_executor_boundary_preflight_fails_closed_on_probe_failure(
     output.mkdir()
     runtime.mkdir()
 
-    class Client:
-        closed = False
-
-        def close(self) -> None:
-            self.closed = True
-
-    client = Client()
-
-    class Listener:
-        def bind(self, _address: tuple[str, int]) -> None:
-            return None
-
-        def listen(self, _backlog: int) -> None:
-            return None
-
-        def settimeout(self, _timeout: float) -> None:
-            return None
-
-        def getsockname(self) -> tuple[str, int]:
-            return ("127.0.0.1", 2345)
-
-        def accept(self) -> tuple[Client, tuple[str, int]]:
-            if kind == "loopback":
-                return (client, ("127.0.0.1", 3456))
-            raise TimeoutError
-
-        def close(self) -> None:
-            return None
-
-    def command(*_args: object) -> list[str]:
-        return ["probe"]
+    client = PreflightClient()
+    listener = PreflightListener(
+        client if kind == "loopback" else None, port=2345, peer_port=3456
+    )
 
     def run(*_args: object, **_kwargs: object) -> subprocess.CompletedProcess[str]:
         if kind == "timeout":
@@ -923,13 +901,7 @@ def test_executor_boundary_preflight_fails_closed_on_probe_failure(
         stdout = "wrong" if kind == "marker" else "executor-boundary-preflight-ok"
         return subprocess.CompletedProcess(["probe"], 0, stdout, "")
 
-    def listener_socket(*_args: object) -> Listener:
-        return Listener()
-
-    monkeypatch.setattr(evaluation.socket, "socket", listener_socket)
-    monkeypatch.setattr(
-        evaluation, "build_executor_boundary_preflight_command", command
-    )
+    patch_preflight_dependencies(monkeypatch, listener, command="probe")
     monkeypatch.setattr(evaluation.subprocess, "run", run)
     with pytest.raises(EvaluationError, match=message):
         evaluation.run_executor_boundary_preflight(_case(), workspace, output, runtime)
@@ -948,40 +920,14 @@ def test_executor_boundary_preflight_accepts_denied_loopback(
     output.mkdir()
     runtime.mkdir()
 
-    class Listener:
-        def bind(self, _address: tuple[str, int]) -> None:
-            return None
-
-        def listen(self, _backlog: int) -> None:
-            return None
-
-        def settimeout(self, _timeout: float) -> None:
-            return None
-
-        def getsockname(self) -> tuple[str, int]:
-            return ("127.0.0.1", 2345)
-
-        def accept(self) -> tuple[object, tuple[str, int]]:
-            raise TimeoutError
-
-        def close(self) -> None:
-            return None
-
-    def listener_socket(*_args: object) -> Listener:
-        return Listener()
-
-    def command(*_args: object) -> list[str]:
-        return ["probe"]
+    listener = PreflightListener(port=2345)
 
     def run(*_args: object, **_kwargs: object) -> subprocess.CompletedProcess[str]:
         return subprocess.CompletedProcess(
             ["probe"], 0, "executor-boundary-preflight-ok\n", ""
         )
 
-    monkeypatch.setattr(evaluation.socket, "socket", listener_socket)
-    monkeypatch.setattr(
-        evaluation, "build_executor_boundary_preflight_command", command
-    )
+    patch_preflight_dependencies(monkeypatch, listener, command="probe")
     monkeypatch.setattr(evaluation.subprocess, "run", run)
 
     evaluation.run_executor_boundary_preflight(_case(), workspace, output, runtime)
