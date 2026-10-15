@@ -164,17 +164,12 @@ review, discuss, or write a plan remains read-only unless it also authorizes
 the change.
 
 At intake, discover the repository's accepted delivery path. Ordinary local
-engineering does not require AO, an issue tracker, or an orchestrator session.
-
-For AO-mediated delivery, adoption, owner routing, or teardown, read the
-[canonical AO integration guide](../agent-orchestrator-review-continuation.md)
-before lifecycle actions. It owns the exact-head GitHub native auto-merge gates,
-single-writer and release conditions, state evidence, and bounded retries.
-Preserve already-owned work and do not cross-write sibling worktrees. If the
-guide or its required authority is unavailable, preserve owned state; use
-isolated-worktree fallback only for new or unowned pull-request-bound work.
-Use native `using-ao` and CLI help for command mechanics. Do not create a second
-feedback scheduler or maintain another copy of AO's state table here.
+engineering does not require an issue tracker or an orchestrator session.
+Preserve existing ownership: do not write in another owner's branch or sibling
+worktree. Transfer only after verified write-authority revocation and runtime
+release. A terminated session is not proof that its children exited; require
+an empty OS-owned containment boundary before claiming full runtime release.
+Keep partial cleanup observable and retryable, and preserve dirty worktrees.
 
 ## Repository Delivery Feedback Loop
 

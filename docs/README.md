@@ -12,12 +12,10 @@ authority, recorded open work, and historical evidence.
 
 ## Public Architecture
 
-The four layers are reusable references inside the owning skill, skills as
-model interaction entrypoints, AO as an optional environment adapter, and
-private host configuration outside this repository. Public skills work without
-AO or a private host profile. The [AO guide](../skills/calibration/references/agent-orchestrator-review-continuation.md)
-owns integration requirements; current-host operation requires separate private
-authority and host readback.
+Reusable references live inside the owning skills, which provide model
+interaction entrypoints. Repository tools own setup and validation. Private host
+configuration stays outside this repository and is read only for explicit host
+operations. Calibration does not provide an orchestrator integration.
 
 ## Current Authority
 
@@ -31,7 +29,6 @@ authority and host readback.
 | Document layout and lifecycle | [Project docs architecture](../skills/calibration/references/docs/workflow/project_docs_architecture/20260805-v1.1-project-docs-architecture.md) |
 | Durable implementation-plan contract | [Implementation plans](../skills/calibration/references/docs/document-types/implementation-plan.md) |
 | Explicit conversation closeout | [Closeout skill](../skills/closeout/SKILL.md) |
-| Optional AO integration | [Canonical guide](../skills/calibration/references/agent-orchestrator-review-continuation.md) |
 
 The installer and skill sources define active behavior. Adoption rationale,
 completed comparisons, and superseded protocols are indexed in the

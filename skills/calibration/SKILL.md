@@ -37,23 +37,17 @@ Load only the routers required by the decisions at hand:
   failures, missing CI or review capability, cross-contract review feedback,
   review-convergence exhaustion, and delivery topology decisions:
   `references/discipline/harness.md`
-- explicit AO onboarding, AO diagnosis, or AO-mediated pull-request delivery
-  for an opted-in repository using an already installed Agent Orchestrator:
-  `references/agent-orchestrator-review-continuation.md`
 - architecture, module boundaries, interfaces, and abstraction:
   `references/design/README.md`
 - cross-boundary contract documentation or long-form engineering specifications:
   `references/docs_index.md`
 - task-level retrospectives and retrospective persistence: `$retrospect`
 
-Do not load the AO guide merely because a repository is opted in. Ordinary
-calibration engineering tasks remain on the engineering references above.
-
 For ordinary GitHub mechanics, use focused installed skills when their triggers
 apply: `github:gh-address-comments` for actionable pull-request feedback and
 `github:gh-fix-ci` for failing GitHub Actions checks. If unavailable, use
 repository- or platform-native tooling. These optional skills provide mechanics;
-they do not grant write or scope authority, transfer AO ownership, or trigger
+they do not grant write or scope authority, transfer ownership, or trigger
 calibration merely by being present or absent.
 
 For a completion claim involving a public or cross-boundary contract, always

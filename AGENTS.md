@@ -9,15 +9,10 @@
 - First-party skills live under `skills/`; do not change behavioral cases as
   part of an unrelated implementation.
 
-## Conditional AO Delivery
+## Delivery
 
-AO is an optional environment adapter, not a property of every public clone.
-Use it only when the current environment has already installed AO, explicitly
-adopted this repository, and supplied local host authority. Otherwise use an
-isolated worktree only for new or unowned pull-request-bound work; an existing
-AO-owned pull request follows the canonical ownership-preservation rule. Ordinary
-local engineering tasks continue directly under repository rules without
-requiring AO or a new worktree.
+Use repository-native tools for local engineering and pull-request delivery.
+Keep existing owned branches and worktrees with their current writer.
 
 Conversation authorization for a low-risk implementation also authorizes the
 worker to request GitHub native auto-merge without a second merge
@@ -30,15 +25,6 @@ requires escalation.
 
 This authority applies to GitHub's native per-pull-request auto-merge after the
 exact-head gate. It does not grant blanket merge or deployment permission.
-
-Before any mutation, an already AO-owned repository, worktree, or branch stays
-with its owner; the controller remains read-only and must not cross-write an
-owner's sibling worktree. Follow the
-[canonical AO integration guide](skills/calibration/references/agent-orchestrator-review-continuation.md)
-for adoption, daemon readiness, quiescence, state routing, retries, and release.
-Read it before AO lifecycle actions. Missing authority, proof, or guidance means
-preserve owned state; isolated-worktree fallback is only for new or unowned
-PR-bound work. Ordinary local engineering still needs neither AO nor a worktree.
 
 ## Validation
 

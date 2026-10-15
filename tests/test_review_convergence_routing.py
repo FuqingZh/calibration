@@ -100,7 +100,7 @@ def test_calibration_prompts_cover_focused_github_routing() -> None:
     assert "非 GitHub Actions provider 只报告其 URL" in cases[31]
     assert "不得静默安装 provider" in cases[32]
     assert "仅因 skill 缺失调用 calibration" in cases[32]
-    assert "不授予写权限、转移 AO ownership 或创建第二 writer" in cases[33]
+    assert "不授予写权限、转移 ownership 或创建第二 writer" in cases[33]
     assert "preserve branch、head、worktree、owner 和 feedback state" in cases[33]
 
 
@@ -118,16 +118,10 @@ def test_installer_propagates_global_review_tripwire(tmp_path: Path) -> None:
         "skills/calibration/references/discipline/harness.md"
     )
 
-    for profile in ("standard", "ao-worker"):
-        codex_home = tmp_path / profile
-        arguments = ["--profile", profile]
-        if profile == "ao-worker":
-            arguments.extend(["--codex-home", str(codex_home)])
-        result = run_installer(codex_home, *arguments)
-        assert result.returncode == 0, result.stderr
-        installed = " ".join(
-            (codex_home / "AGENTS.md").read_text(encoding="utf-8").split()
-        )
-        assert expected in installed
-        assert "distinct review-convergence budget is exhausted" in installed
-        assert "remains a preserve-and-report condition" in installed
+    codex_home = tmp_path / "standard"
+    result = run_installer(codex_home)
+    assert result.returncode == 0, result.stderr
+    installed = " ".join((codex_home / "AGENTS.md").read_text(encoding="utf-8").split())
+    assert expected in installed
+    assert "distinct review-convergence budget is exhausted" in installed
+    assert "remains a preserve-and-report condition" in installed

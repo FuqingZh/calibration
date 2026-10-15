@@ -25,8 +25,8 @@ Options:
   --skills-only       Install skill links without changing global instructions.
   --grok-home PATH    Override the default ~/.grok directory.
   --pi-home PATH      Override PI_CODING_AGENT_DIR or ~/.pi/agent.
-  --profile PROFILE   Install profile: standard (default) or ao-worker.
-  --codex-home PATH   Override CODEX_HOME. Required for ao-worker.
+  --profile PROFILE   Install profile: standard (default).
+  --codex-home PATH   Override CODEX_HOME.
   --dry-run           Show planned actions without modifying files.
   --force             Replace existing foreign skill or non-regular AGENTS paths.
   --no-backup         Do not back up AGENTS.md before replacing it.
@@ -99,20 +99,14 @@ while [[ $# -gt 0 ]]; do
 done
 
 case "$PROFILE" in
-  standard|ao-worker) ;;
+  standard) ;;
   *) fail_usage "Unknown profile: $PROFILE" ;;
 esac
 
 [[ ${#AGENTS[@]} -gt 0 ]] || AGENTS=(codex)
-if [[ "$PROFILE" == "ao-worker" ]]; then
-  [[ "${AGENTS[*]}" == codex ]] || fail_usage "ao-worker supports only codex"
-fi
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 CALIBRATION_ROOT="$(realpath -m -- "$SCRIPT_DIR")"
 configure_target() {
-  if [[ "$PROFILE" == "ao-worker" ]] && ! $CLI_CODEX_HOME_SET; then
-    fail_usage "ao-worker requires an explicit --codex-home PATH"
-  fi
   local agent_label
   case "$AGENT" in
     codex)
@@ -156,9 +150,7 @@ configure_target() {
   esac
   [[ -n "$TARGET_HOME" ]] || fail_usage "$agent_label home must not be empty"
   [[ "$TARGET_HOME" == /* ]] || fail_usage "Agent home must be an absolute path"
-  SELECTED_TARGET_HOME="$TARGET_HOME"
 
-  LEXICAL_TARGET_HOME="$(realpath -m -s -- "$TARGET_HOME")"
   TARGET_HOME="$(realpath -m -- "$TARGET_HOME")"
   [[ "$TARGET_HOME" != "/" ]] || fail_usage "Refusing to use / as $agent_label home"
   case "$TARGET_HOME" in
@@ -171,31 +163,8 @@ configure_target() {
       fail_usage "$agent_label home must not contain the calibration checkout"
       ;;
   esac
-  if [[ "$PROFILE" == "ao-worker" ]]; then
-    if [[ "$LEXICAL_TARGET_HOME" != "$TARGET_HOME" ]]; then
-      fail_usage "ao-worker Codex home path must not traverse a symlink"
-    fi
-    if [[ -e "$SELECTED_TARGET_HOME" && ! -d "$SELECTED_TARGET_HOME" ]]; then
-      fail_usage "ao-worker Codex home must be a directory"
-    fi
-    if [[ -d "$SELECTED_TARGET_HOME" ]]; then
-      home_mode="$(stat -c '%a' -- "$SELECTED_TARGET_HOME")"
-      if (( (8#$home_mode & 8#077) != 0 )); then
-        fail_usage "ao-worker Codex home must not grant group or other permissions"
-      fi
-    fi
-  fi
-
   SKILLS_DIR="$TARGET_HOME/skills"
   AGENTS_TARGET="$TARGET_HOME/AGENTS.md"
-  if [[ "$PROFILE" == "ao-worker" ]]; then
-    if [[ -L "$SKILLS_DIR" ]]; then
-      fail_usage "ao-worker skills target must not be a symlink"
-    fi
-    if [[ -e "$SKILLS_DIR" && ! -d "$SKILLS_DIR" ]]; then
-      fail_usage "ao-worker skills target must be a directory"
-    fi
-  fi
   for directory in "$TARGET_HOME" "$SKILLS_DIR"; do
     if [[ ( -e "$directory" || -L "$directory" ) && ! -d "$directory" ]]; then
       fail_usage "Agent home and skills root must be directories: $directory"
@@ -456,11 +425,9 @@ preflight_target() {
   for skill in "${MANAGED_SKILLS[@]}"; do
     preflight_skill_link "$skill" "$SKILL_SOURCE_ROOT"
   done
-  if [[ "$PROFILE" == "standard" ]]; then
-    for skill in "${MANAGED_THIRDPARTY_SKILLS[@]}"; do
-      preflight_skill_link "$skill" "$THIRDPARTY_SKILL_SOURCE_ROOT"
-    done
-  fi
+  for skill in "${MANAGED_THIRDPARTY_SKILLS[@]}"; do
+    preflight_skill_link "$skill" "$THIRDPARTY_SKILL_SOURCE_ROOT"
+  done
   for skill in "${MANAGED_SHARED_THIRDPARTY_SKILLS[@]}"; do
     preflight_skill_link "$skill" "$THIRDPARTY_SKILL_SOURCE_ROOT"
   done
@@ -468,19 +435,7 @@ preflight_target() {
 }
 
 install_target() {
-  if [[ "$PROFILE" == "ao-worker" ]]; then
-    if [[ ! -d "$TARGET_HOME" ]]; then
-      run install -d -m 0700 "$TARGET_HOME"
-    fi
-    if [[ ! -e "$SKILLS_DIR" ]]; then
-      run install -d -m 0700 "$SKILLS_DIR"
-    elif [[ ! -d "$SKILLS_DIR" ]]; then
-      echo "AO worker skills target is not a directory: $SKILLS_DIR" >&2
-      exit 1
-    fi
-  else
-    run mkdir -p "$SKILLS_DIR"
-  fi
+  run mkdir -p "$SKILLS_DIR"
   for skill in "${RETIRED_SKILLS[@]}"; do
     remove_owned_skill_link "$skill" "$SKILL_SOURCE_ROOT" "Retired skill"
   done
@@ -496,27 +451,16 @@ install_target() {
     install_skill_link "$skill" "$THIRDPARTY_SKILL_SOURCE_ROOT"
   done
 
-  if [[ "$PROFILE" == "standard" ]]; then
-    for skill in "${RETIRED_THIRDPARTY_SKILLS[@]}"; do
-      remove_owned_skill_link \
-        "$skill" "$THIRDPARTY_SKILL_SOURCE_ROOT" "Retired skill"
-    done
-    for skill in "${RETIRED_UNMANAGED_SKILLS[@]}"; do
-      remove_retired_unmanaged_skill_path "$skill"
-    done
-    for skill in "${MANAGED_THIRDPARTY_SKILLS[@]}"; do
-      install_skill_link "$skill" "$THIRDPARTY_SKILL_SOURCE_ROOT"
-    done
-  else
-    for skill in "${RETIRED_THIRDPARTY_SKILLS[@]}"; do
-      remove_owned_skill_link \
-        "$skill" "$THIRDPARTY_SKILL_SOURCE_ROOT" "Retired third-party skill"
-    done
-    for skill in "${MANAGED_THIRDPARTY_SKILLS[@]}"; do
-      remove_owned_skill_link \
-        "$skill" "$THIRDPARTY_SKILL_SOURCE_ROOT" "Managed third-party skill"
-    done
-  fi
+  for skill in "${RETIRED_THIRDPARTY_SKILLS[@]}"; do
+    remove_owned_skill_link \
+      "$skill" "$THIRDPARTY_SKILL_SOURCE_ROOT" "Retired skill"
+  done
+  for skill in "${RETIRED_UNMANAGED_SKILLS[@]}"; do
+    remove_retired_unmanaged_skill_path "$skill"
+  done
+  for skill in "${MANAGED_THIRDPARTY_SKILLS[@]}"; do
+    install_skill_link "$skill" "$THIRDPARTY_SKILL_SOURCE_ROOT"
+  done
   if ! $SKILLS_ONLY; then install_agents_file; fi
 }
 

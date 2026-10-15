@@ -93,18 +93,11 @@ plugins, or approval settings. It only adds a conditional reference to private
 host guidance at `${XDG_CONFIG_HOME:-$HOME/.config}/calibration/AGENTS.md`;
 that private file is not required for ordinary skill use.
 
-### Optional AO worker profile
-
-Agent Orchestrator (AO) is an optional integration. To install only first-party
-skills and global instructions into an isolated Codex worker home:
-
-```bash
-bash install.sh --profile ao-worker --codex-home /absolute/path/to/worker-home
-```
-
-This profile requires an explicit home and supports only Codex. It does not
-install or adopt AO. See the [AO integration guide](skills/calibration/references/agent-orchestrator-review-continuation.md)
-for environment and ownership requirements.
+The former `ao-worker` profile and AO repository-adoption script were retired.
+`--profile standard` remains accepted; `--profile ao-worker` now fails before
+writes. Use the normal installer for supported clients. See the
+[retirement decision](docs/decisions/2026-10-15-ao-integration-retirement.md)
+for compatibility and historical evidence.
 
 ## Development
 

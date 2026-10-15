@@ -1,9 +1,8 @@
 # AO-Native Delivery Convergence
 
-Historical decision and evidence. For current commands and lifecycle routing,
-use the [v0.12.12 consolidation](2026-09-07-ao-native-guidance-consolidation.md)
-and its canonical AO guide; old draft-ready, REST-only, and project-autoMerge
-instructions below are not current operating requirements.
+Historical decision and evidence. The
+[2026-10-15 retirement](2026-10-15-ao-integration-retirement.md) supersedes all
+AO integration and lifecycle instructions below.
 
 Date: 2026-07-29
 
@@ -21,6 +20,6 @@ Status: historical public summary
 - Dashboard terminal access is a control surface and is off by default.
 
 Host binaries, forks, patches, services, network addresses, hashes, backup
-paths, and deployment readback were moved to private host authority. Current
-public guidance lives in
-[`../../skills/calibration/references/agent-orchestrator-review-continuation.md`](../../skills/calibration/references/agent-orchestrator-review-continuation.md).
+paths, and deployment readback were moved to private host authority. The former
+public guidance is preserved in
+[archived integration guide](../archive/ao-integration-retired-2026-10-15.md).
