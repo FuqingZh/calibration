@@ -4,12 +4,12 @@ import json
 from pathlib import Path
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
-SKILL_PATH = REPOSITORY_ROOT / "thirdparty/skills/coding-protocol/SKILL.md"
+SKILL_PATH = REPOSITORY_ROOT / "thirdparty/archive/coding-protocol/SKILL.md"
 REFERENCE_PATH = (
     REPOSITORY_ROOT
-    / "thirdparty/skills/coding-protocol/references/validation-selection.md"
+    / "thirdparty/archive/coding-protocol/references/validation-selection.md"
 )
-PROMPTS_PATH = REPOSITORY_ROOT / "thirdparty/skills/coding-protocol/test-prompts.json"
+PROMPTS_PATH = REPOSITORY_ROOT / "thirdparty/archive/coding-protocol/test-prompts.json"
 
 
 def test_conditional_load_and_reference_free_exit() -> None:
@@ -72,9 +72,9 @@ def test_static_prompts_cover_selection_boundaries() -> None:
     )
 
 
-def test_protocol_is_implicitly_active_and_trail_structure_is_independent() -> None:
+def test_archived_metadata_and_independent_structure_are_preserved() -> None:
     metadata = (
-        REPOSITORY_ROOT / "thirdparty/skills/coding-protocol/agents/openai.yaml"
+        REPOSITORY_ROOT / "thirdparty/archive/coding-protocol/agents/openai.yaml"
     ).read_text(encoding="utf-8")
     assert "allow_implicit_invocation: true" in metadata
     assert "Select honest repository evidence proportionally" in metadata

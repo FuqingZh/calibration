@@ -135,3 +135,11 @@ third-party screenshot runtime. `sources.tsv` retains the immutable imported
 and checked upstream refs. The installer retains owned-link cleanup for the
 retired name without claiming that the upstream utility is portable or
 supported by calibration.
+
+## Retired Source Relocation (2026-10-15)
+
+Moved `coding-protocol`, `writing-great-skills`, and `writing-plans` from
+`skills/` to `archive/` without changing source bytes. The
+[archive manifest](archive/manifest.json) preserves hashes and the path mapping.
+Historical import manifests retain original paths; provenance checks resolve
+them to the archived files. Installer cleanup recognizes both owned locations.

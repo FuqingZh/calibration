@@ -10,6 +10,7 @@ patches stay explicit.
 ## Layout
 
 - `skills/`: vendored skill directories installed into `$CODEX_HOME/skills`
+- `archive/`: retired source trees; excluded from installation and runtime discovery
 - `sources.tsv`: upstream source and local policy for each vendored skill
 - `PATCHES.md`: local modifications from the upstream or imported copy
 - `import-manifests/`: machine-readable source roles, license treatment, and
@@ -36,6 +37,9 @@ The import manifest records historical import treatment and immutable byte
 hashes; its `vendored+patched+shared` label describes the original import.
 `sources.tsv` records current runtime policy, and `PATCHES.md` records the
 transition. Runtime retirement does not rewrite historical import evidence.
+
+See the [archive index](archive/README.md) for relocated sources, integrity hashes,
+and restoration boundaries.
 
 ## Policy
 

@@ -446,6 +446,8 @@ install_target() {
   for skill in "${RETIRED_SHARED_THIRDPARTY_SKILLS[@]}"; do
     remove_owned_skill_link \
       "$skill" "$THIRDPARTY_SKILL_SOURCE_ROOT" "Retired shared third-party skill"
+    remove_owned_skill_link \
+      "$skill" "$CALIBRATION_ROOT/thirdparty/archive" "Archived third-party skill"
   done
   for skill in "${MANAGED_SHARED_THIRDPARTY_SKILLS[@]}"; do
     install_skill_link "$skill" "$THIRDPARTY_SKILL_SOURCE_ROOT"
@@ -454,6 +456,8 @@ install_target() {
   for skill in "${RETIRED_THIRDPARTY_SKILLS[@]}"; do
     remove_owned_skill_link \
       "$skill" "$THIRDPARTY_SKILL_SOURCE_ROOT" "Retired skill"
+    remove_owned_skill_link \
+      "$skill" "$CALIBRATION_ROOT/thirdparty/archive" "Archived third-party skill"
   done
   for skill in "${RETIRED_UNMANAGED_SKILLS[@]}"; do
     remove_retired_unmanaged_skill_path "$skill"

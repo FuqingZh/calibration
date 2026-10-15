@@ -50,7 +50,7 @@ The last three skills are vendored third-party adaptations, included in the
 standard profile. Their [sources](thirdparty/sources.tsv),
 [local patches](thirdparty/PATCHES.md), and upstream license information are
 tracked separately. Installation uses local files and does not download skills.
-Archived skills are excluded from installation.
+[Archived skills](thirdparty/archive/README.md) are excluded from installation.
 
 Use your client's native skill command, for example `$closeout` in Codex,
 `/closeout` in Grok Build, or `/skill:closeout` in Pi. Closeout documents the

@@ -93,6 +93,13 @@ def manifest() -> Manifest:
     return cast(Manifest, json.loads(MANIFEST_PATH.read_text(encoding="utf-8")))
 
 
+def current_path(historical_path: str) -> Path:
+    """Resolve the relocated tree without rewriting the immutable import record."""
+    return REPOSITORY_ROOT / historical_path.replace(
+        "thirdparty/skills/coding-protocol/", "thirdparty/archive/coding-protocol/"
+    )
+
+
 def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
@@ -115,7 +122,7 @@ def test_manifest_schema_policies_and_license_paths() -> None:
         assert all(char in "0123456789abcdef" for char in source["source_blob_sha256"])
         local_license_path = source["local_license_path"]
         if local_license_path is not None:
-            assert (REPOSITORY_ROOT / local_license_path).is_file()
+            assert current_path(local_license_path).is_file()
 
     gonka = by_name["verification-before-completion"]
     trail = by_name["designing-workflow-skills"]
@@ -140,7 +147,7 @@ def test_lencx_import_hashes_reproduce_exact_local_bytes() -> None:
     assert len(imported_files) == len(LENCX_IMPORTED_PATHS)
 
     for imported in imported_files:
-        path = REPOSITORY_ROOT / imported["local_path"]
+        path = current_path(imported["local_path"])
         assert path.is_file()
         assert sha256(path) == imported["local_sha256"]
         assert len(imported["upstream_sha256"]) == 64
@@ -171,7 +178,7 @@ def test_lencx_import_hashes_reproduce_exact_local_bytes() -> None:
     )
     for imported in unchanged:
         blob = subprocess.run(
-            ["git", "hash-object", str(REPOSITORY_ROOT / imported["local_path"])],
+            ["git", "hash-object", str(current_path(imported["local_path"]))],
             cwd=REPOSITORY_ROOT,
             check=True,
             capture_output=True,
@@ -190,7 +197,7 @@ def test_lencx_import_hashes_reproduce_exact_local_bytes() -> None:
         "cb62f9878a21491202867663bf9dc442e061be698a8adb196f481a01f668ff7f"
     )
     assert source["source_blob_sha256"] != sha256(
-        REPOSITORY_ROOT / "thirdparty/skills/coding-protocol/SKILL.md"
+        REPOSITORY_ROOT / "thirdparty/archive/coding-protocol/SKILL.md"
     )
 
 
@@ -199,7 +206,7 @@ def test_gonkagate_derivative_and_trail_method_boundary_are_recorded() -> None:
     gonka = by_name["verification-before-completion"]
     assert "local_derivative_path" in gonka
     assert "local_derivative_sha256" in gonka
-    derivative = REPOSITORY_ROOT / gonka["local_derivative_path"]
+    derivative = current_path(gonka["local_derivative_path"])
     text = derivative.read_text(encoding="utf-8")
     assert sha256(derivative) == gonka["local_derivative_sha256"]
     assert "Apache-2.0 derivative notice" in text
@@ -243,7 +250,7 @@ def test_sources_tsv_preserves_provenance_and_current_runtime_policy() -> None:
 
 def test_coding_protocol_preserves_metadata_but_is_not_installer_managed() -> None:
     metadata = (
-        REPOSITORY_ROOT / "thirdparty/skills/coding-protocol/agents/openai.yaml"
+        REPOSITORY_ROOT / "thirdparty/archive/coding-protocol/agents/openai.yaml"
     ).read_text(encoding="utf-8")
     assert "allow_implicit_invocation: true" in metadata
 

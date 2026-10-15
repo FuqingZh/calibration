@@ -513,16 +513,22 @@ def test_repository_and_home_paths_with_spaces_are_supported(
     assert_standard_installed(repository_root, codex_home)
 
 
-@pytest.mark.parametrize("profile", ["standard"])
-def test_archived_skill_removes_only_owned_link(tmp_path: Path, profile: str) -> None:
+@pytest.mark.parametrize("agent", ["codex", "grok", "pi"])
+@pytest.mark.parametrize("source_root", ["thirdparty/skills", "thirdparty/archive"])
+@pytest.mark.parametrize(
+    "name", ["coding-protocol", "writing-great-skills", "writing-plans"]
+)
+def test_archived_skill_removes_only_owned_link(
+    tmp_path: Path, agent: str, source_root: str, name: str
+) -> None:
     home = tmp_path / "home"
     skills = home / "skills"
     skills.mkdir(parents=True)
     home.chmod(0o700)
-    link = skills / "writing-great-skills"
-    source = REPOSITORY_ROOT / "thirdparty/skills/writing-great-skills"
+    link = skills / name
+    source = REPOSITORY_ROOT / source_root / name
     link.symlink_to(source)
-    arguments = ["--profile", profile, "--codex-home", str(home)]
+    arguments = ["--agent", agent, f"--{agent}-home", str(home)]
     preview = run_installer(home, *arguments, "--dry-run")
     assert preview.returncode == 0, preview.stderr
     assert link.is_symlink()
@@ -535,6 +541,13 @@ def test_archived_skill_removes_only_owned_link(tmp_path: Path, profile: str) ->
     preserved = run_installer(home, *arguments, "--force")
     assert preserved.returncode == 0, preserved.stderr
     assert link.is_symlink() and link.readlink() == foreign
+    link.unlink()
+    link.mkdir()
+    marker = link / "user-owned.txt"
+    marker.write_text("preserve")
+    preserved_directory = run_installer(home, *arguments, "--force")
+    assert preserved_directory.returncode == 0, preserved_directory.stderr
+    assert marker.read_text() == "preserve"
 
 
 @pytest.mark.parametrize("agent", ["grok", "pi"])

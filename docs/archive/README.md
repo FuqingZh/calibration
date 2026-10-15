@@ -32,6 +32,10 @@ Earlier July harness and delivery plans remain in
 [implementation-plans](../implementation-plans/); completed local phases do not
 authorize new host operations or reopen downstream work.
 
+The [retired third-party skill archive](../../thirdparty/archive/README.md)
+contains coding-protocol, writing-great-skills, and writing-plans with their
+source and provenance preserved outside the active skill tree.
+
 ## Adoption Decisions And Comparison Evidence
 
 | Topic | Record and limits |
