@@ -1,4 +1,8 @@
-# Portable Agent Orchestrator Integration Guide
+# Retired Agent Orchestrator Integration Guide
+
+Retired on 2026-10-15. This document preserves the former integration contract
+for historical evidence and recovery. It is not current operating guidance.
+The adoption script and worker installer profile have been removed.
 
 This is the single calibration authority for AO adoption, owner routing, and
 release boundaries. AO is an optional environment adapter. Calibration does
@@ -105,7 +109,7 @@ same-scope mechanical feedback through AO's native CI/review loop. Verify the
 configured loop instead of creating a second controller polling or nudge loop.
 
 Apply the coordinator accountability and foreground handoff gate in
-[Repository Delivery Feedback Loop](discipline/harness.md#repository-delivery-feedback-loop).
+[Repository Delivery Feedback Loop](../../skills/calibration/references/discipline/harness.md#repository-delivery-feedback-loop).
 A running worker, ready daemon, or delivered task does not prove that AO has
 accepted project-level follow-up or can notify the current coordinator. Verify
 coverage for the actual session, work, and feedback source; a proven PR loop

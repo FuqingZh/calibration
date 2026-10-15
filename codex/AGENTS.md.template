@@ -42,23 +42,16 @@ tool supports them. Prefer repository indexes and targeted lookups. If the
 required boundary or safe query cannot be determined, stop the broad search
 and report the narrower host-side check needed.
 
-Before any mutation, preserve an already AO-owned repository, worktree, or
-branch: the controller remains read-only, even without a pull request. Never
-cross-write an owner's sibling worktree or repeat rejected filesystem escalation.
-For AO lifecycle actions, first read the canonical integration guide through
-`$calibration`. It owns adoption, owner-state routing, retries, and release:
-`{{CALIBRATION_ROOT}}/skills/calibration/references/agent-orchestrator-review-continuation.md`.
-Require installed AO, adoption, supplied local host authority, and continuation
-proof or an explicitly bounded canary, then authoritative daemon readiness.
-Without these gates or when the guide is unavailable, preserve existing owned
-state; isolated-worktree fallback applies only to new or unowned PR-bound work.
-Do not transfer ownership without verified revocation and runtime release.
+Preserve an existing owner's repository, worktree, and branch. Do not write in
+another owner's sibling worktree or repeat rejected filesystem escalation.
+Transfer ownership only after verified write-authority revocation and runtime
+release; an idle owner or a terminated session alone is insufficient proof.
 
 Use focused installed skills for ordinary GitHub mechanics when their triggers
 apply: `github:gh-address-comments` for actionable pull-request feedback and
 `github:gh-fix-ci` for failing GitHub Actions checks; otherwise use repository-
 or platform-native tooling. These skills do not grant write or scope authority
-or transfer AO ownership. Keep same-scope feedback in the current owner loop.
+or transfer ownership. Keep same-scope feedback in the current owner loop.
 If review crosses the authorized pull-request contract or the distinct
 review-convergence budget is exhausted, preserve branch, head, worktree, owner,
 and feedback state and invoke calibration. Transport, polling, and
@@ -66,13 +59,11 @@ idempotent-operation retry exhaustion remains a preserve-and-report condition.
 
 A terminated session is not proof that its children exited. Keep incomplete
 cleanup observable and retryable; require an empty OS-owned containment boundary
-before claiming full runtime release. Use the canonical guide for restoration
-and transfer decisions, and native `using-ao` or CLI help for command mechanics.
+before claiming full runtime release. Preserve state when release cannot be proved.
 
-For explicit AO installation, adoption, daemon, worker, Dashboard, systemd,
-nginx, remote-mount, shared-filesystem, or other host-operation tasks only,
-read `{{HOST_AUTHORITY}}` if that file exists. Use it to resolve any private
-host path or containment rule before host-wide discovery. It is rendered local
+For explicit service, remote-mount, shared-filesystem, or other host-operation
+tasks only, read `{{HOST_AUTHORITY}}` if that file exists. Use it to resolve
+any private host path or containment rule before host-wide discovery. It is rendered local
 authority, not a public calibration dependency.
 Do not load it for ordinary engineering work, and do not treat its absence
 inside a sandbox as proof that the host profile is absent.

@@ -1422,10 +1422,7 @@ def test_install_arm_home_materializes_runtime_closure(
     reference = source / "skills/calibration/references/principles.md"
     reference.parent.mkdir(parents=True)
     reference.write_text("# Principles\n", encoding="utf-8")
-    runbook = (
-        source
-        / "skills/calibration/references/agent-orchestrator-review-continuation.md"
-    )
+    runbook = source / "skills/calibration/references/discipline/verification.md"
     runbook.parent.mkdir(parents=True, exist_ok=True)
     runbook.write_text("# Runbook\n", encoding="utf-8")
     license_file = source / "thirdparty/licenses/GonkaGate-Apache-2.0.txt"
@@ -1449,9 +1446,7 @@ def test_install_arm_home_materializes_runtime_closure(
     assert (home / "skills/calibration/SKILL.md").is_file()
     assert not (home / "skills/calibration").is_symlink()
     assert (home / "skills/calibration/references/principles.md").is_file()
-    assert (
-        home / "skills/calibration/references/agent-orchestrator-review-continuation.md"
-    ).is_file()
+    assert (home / "skills/calibration/references/discipline/verification.md").is_file()
     assert not (home / "references").exists()
     assert not (home / "docs/runbooks").exists()
     assert (home / "licenses/GonkaGate-Apache-2.0.txt").is_file()

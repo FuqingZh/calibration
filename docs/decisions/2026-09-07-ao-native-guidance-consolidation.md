@@ -1,7 +1,8 @@
 # AO Native Guidance Consolidation
 
-Status: implemented locally; static contract validation, no behavioral
-improvement or deployed-AO equivalence claim.
+Status: historical; superseded by the
+[2026-10-15 retirement](2026-10-15-ao-integration-retirement.md). The implementation
+and validation evidence below describes the former integration.
 
 ## Decision
 

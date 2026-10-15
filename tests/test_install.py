@@ -74,14 +74,12 @@ def test_default_and_explicit_standard_are_equivalent(tmp_path: Path) -> None:
     assert_standard_installed(REPOSITORY_ROOT, default_home)
 
 
-@pytest.mark.parametrize("profile", ["standard", "ao-worker"])
+@pytest.mark.parametrize("profile", ["standard"])
 def test_installed_first_party_skills_are_lexically_self_contained(
     tmp_path: Path, profile: str
 ) -> None:
     codex_home = tmp_path / profile
     arguments = ["--profile", profile]
-    if profile == "ao-worker":
-        arguments.extend(["--codex-home", str(codex_home)])
 
     result = run_installer(codex_home, *arguments)
 
@@ -128,56 +126,16 @@ def test_missing_home_and_codex_home_is_controlled_zero_write_failure(
     assert list(tmp_path.iterdir()) == [marker]
 
 
-@pytest.mark.parametrize("profile", ["standard", "ao-worker"])
+@pytest.mark.parametrize("profile", ["standard"])
 def test_dry_runs_do_not_write_target_home(tmp_path: Path, profile: str) -> None:
     codex_home = tmp_path / profile
     arguments = ["--profile", profile, "--dry-run"]
-    if profile == "ao-worker":
-        arguments.extend(["--codex-home", str(codex_home)])
 
     result = run_installer(codex_home, *arguments)
 
     assert result.returncode == 0, result.stderr
     assert "[dry-run]" in result.stdout
     assert not codex_home.exists()
-
-
-def test_ao_worker_requires_explicit_safe_cli_home_before_writes(
-    tmp_path: Path,
-) -> None:
-    env_home = tmp_path / "environment-home"
-    root_link = tmp_path / "root-link"
-    root_link.symlink_to("/")
-    cases = (
-        ("--profile", "ao-worker"),
-        ("--profile", "ao-worker", "--codex-home"),
-        ("--profile", "ao-worker", "--codex-home", ""),
-        ("--profile", "ao-worker", "--codex-home", "/"),
-        ("--profile", "ao-worker", "--codex-home", "//"),
-        ("--profile", "ao-worker", "--codex-home", "/tmp/.."),
-        ("--profile", "ao-worker", "--codex-home", "."),
-        ("--profile", "ao-worker", "--codex-home", str(root_link)),
-        ("--profile", "ao-worker", "--codex-home", str(REPOSITORY_ROOT)),
-        (
-            "--profile",
-            "ao-worker",
-            "--codex-home",
-            str(REPOSITORY_ROOT / "worker-home"),
-        ),
-        (
-            "--profile",
-            "ao-worker",
-            "--codex-home",
-            str(REPOSITORY_ROOT.parent),
-        ),
-        ("--profile", "unknown", "--codex-home", str(tmp_path / "other")),
-    )
-
-    for arguments in cases:
-        result = run_installer(env_home, *arguments)
-        assert result.returncode == 2
-        assert not env_home.exists()
-        assert root_link.is_symlink() and root_link.readlink() == Path("/")
 
 
 def test_relative_xdg_config_home_is_rejected_before_writes(
@@ -209,171 +167,6 @@ def test_standard_environment_home_cannot_overlap_source(
     assert not (REPOSITORY_ROOT / "skills/AGENTS.md").exists()
 
 
-def test_ao_worker_uses_explicit_second_home_and_cli_precedence(
-    tmp_path: Path,
-) -> None:
-    environment_home = tmp_path / "environment"
-    worker_home = tmp_path / "worker home"
-    xdg_root = tmp_path / "config root"
-
-    result = run_installer(
-        environment_home,
-        "--profile",
-        "ao-worker",
-        "--codex-home",
-        str(worker_home),
-        env_updates={"XDG_CONFIG_HOME": str(xdg_root)},
-    )
-
-    assert result.returncode == 0, result.stderr
-    assert not environment_home.exists()
-    agents = assert_first_party_installed(REPOSITORY_ROOT, worker_home)
-    assert_shared_third_party_installed(REPOSITORY_ROOT, worker_home)
-    assert str(xdg_root / "calibration/AGENTS.md") in agents
-    for name in MANAGED_THIRDPARTY_SKILLS:
-        assert not (worker_home / "skills" / name).exists()
-    assert worker_home.stat().st_mode & 0o777 == 0o700
-    assert (worker_home / "skills").stat().st_mode & 0o777 == 0o700
-
-
-def test_ao_worker_rejects_broad_existing_home_without_writes(
-    tmp_path: Path,
-) -> None:
-    worker_home = tmp_path / "broad-home"
-    worker_home.mkdir(mode=0o755)
-    worker_home.chmod(0o755)
-    marker = worker_home / "marker"
-    marker.write_text("preserve\n", encoding="utf-8")
-
-    result = run_installer(
-        None,
-        "--profile",
-        "ao-worker",
-        "--codex-home",
-        str(worker_home),
-    )
-
-    assert result.returncode == 2
-    assert "group or other permissions" in result.stderr
-    assert marker.read_text(encoding="utf-8") == "preserve\n"
-    assert list(worker_home.iterdir()) == [marker]
-
-
-def test_ao_worker_rejects_all_symlink_path_forms_without_writes(
-    tmp_path: Path,
-) -> None:
-    target = tmp_path / "private-target"
-    target.mkdir(mode=0o700)
-    marker = target / "marker"
-    marker.write_text("preserve\n", encoding="utf-8")
-    link = tmp_path / "worker-link"
-    link.symlink_to(target, target_is_directory=True)
-    intermediate_target = tmp_path / "intermediate-target"
-    nested_home = intermediate_target / "worker"
-    nested_home.mkdir(parents=True, mode=0o700)
-    nested_home.chmod(0o700)
-    nested_marker = nested_home / "marker"
-    nested_marker.write_text("nested preserve\n", encoding="utf-8")
-    intermediate_link = tmp_path / "intermediate-link"
-    intermediate_link.symlink_to(intermediate_target, target_is_directory=True)
-
-    selected_paths = (
-        str(link),
-        f"{link}/",
-        f"{link}/.",
-        str(intermediate_link / "worker"),
-    )
-    for selected in selected_paths:
-        result = run_installer(
-            None,
-            "--profile",
-            "ao-worker",
-            "--codex-home",
-            selected,
-        )
-        assert result.returncode == 2
-        assert "must not traverse a symlink" in result.stderr
-
-    assert link.is_symlink() and link.readlink() == target
-    assert intermediate_link.is_symlink()
-    assert intermediate_link.readlink() == intermediate_target
-    assert marker.read_text(encoding="utf-8") == "preserve\n"
-    assert nested_marker.read_text(encoding="utf-8") == "nested preserve\n"
-    assert list(target.iterdir()) == [marker]
-    assert list(nested_home.iterdir()) == [nested_marker]
-
-
-def test_ao_worker_rejects_non_directory_home_without_writes(
-    tmp_path: Path,
-) -> None:
-    file_home = tmp_path / "worker-file"
-    file_home.write_text("not a directory\n", encoding="utf-8")
-
-    result = run_installer(
-        None,
-        "--profile",
-        "ao-worker",
-        "--codex-home",
-        str(file_home),
-    )
-
-    assert result.returncode == 2
-    assert "must be a directory" in result.stderr
-    assert file_home.read_text(encoding="utf-8") == "not a directory\n"
-
-
-def test_ao_worker_rejects_symlinked_skills_target_without_external_writes(
-    tmp_path: Path,
-) -> None:
-    worker_home = tmp_path / "worker"
-    worker_home.mkdir(mode=0o700)
-    worker_home.chmod(0o700)
-    external = tmp_path / "external-skills"
-    external.mkdir()
-    marker = external / "marker"
-    marker.write_text("external preserve\n", encoding="utf-8")
-    skills_link = worker_home / "skills"
-    skills_link.symlink_to(external, target_is_directory=True)
-    external_before = snapshot_tree(external)
-    home_before = snapshot_tree(worker_home)
-
-    result = run_installer(
-        None,
-        "--profile",
-        "ao-worker",
-        "--codex-home",
-        str(worker_home),
-    )
-
-    assert result.returncode == 2
-    assert "ao-worker skills target must not be a symlink" in result.stderr
-    assert snapshot_tree(external) == external_before
-    assert snapshot_tree(worker_home) == home_before
-
-
-def test_ao_worker_rejects_non_directory_skills_target_without_writes(
-    tmp_path: Path,
-) -> None:
-    worker_home = tmp_path / "worker"
-    worker_home.mkdir(mode=0o700)
-    worker_home.chmod(0o700)
-    skills_file = worker_home / "skills"
-    skills_file.write_text("not a directory\n", encoding="utf-8")
-    home_before = snapshot_tree(worker_home)
-
-    result = run_installer(
-        None,
-        "--profile",
-        "ao-worker",
-        "--codex-home",
-        str(worker_home),
-    )
-
-    assert result.returncode == 2
-    assert "ao-worker skills target must be a directory" in result.stderr
-    assert snapshot_tree(worker_home) == home_before
-
-
 def test_private_profile_absence_does_not_block_install(tmp_path: Path) -> None:
     worker_home = tmp_path / "worker"
     config_root = tmp_path / "missing-config"
@@ -381,7 +174,7 @@ def test_private_profile_absence_does_not_block_install(tmp_path: Path) -> None:
     result = run_installer(
         None,
         "--profile",
-        "ao-worker",
+        "standard",
         "--codex-home",
         str(worker_home),
         env_updates={"XDG_CONFIG_HOME": str(config_root)},
@@ -391,69 +184,6 @@ def test_private_profile_absence_does_not_block_install(tmp_path: Path) -> None:
     agents = assert_first_party_installed(REPOSITORY_ROOT, worker_home)
     assert "if that file exists" in " ".join(agents.split())
     assert not config_root.exists()
-
-
-def test_profiles_are_idempotent_and_convert_safely(tmp_path: Path) -> None:
-    codex_home = tmp_path / "codex-home"
-    foreign_target = tmp_path / "foreign"
-
-    first_standard = run_installer(codex_home)
-    second_standard = run_installer(codex_home, "--profile", "standard")
-    assert first_standard.returncode == second_standard.returncode == 0
-    assert "AGENTS.md already current" in second_standard.stdout
-    codex_home.chmod(0o700)
-
-    owned = codex_home / "skills" / MANAGED_THIRDPARTY_SKILLS[0]
-    owned.unlink()
-    owned.symlink_to(foreign_target)
-    worker = run_installer(
-        None,
-        "--profile",
-        "ao-worker",
-        "--codex-home",
-        str(codex_home),
-    )
-    second_worker = run_installer(
-        None,
-        "--profile",
-        "ao-worker",
-        "--codex-home",
-        str(codex_home),
-    )
-    assert worker.returncode == second_worker.returncode == 0
-    assert_shared_third_party_installed(REPOSITORY_ROOT, codex_home)
-    assert owned.is_symlink() and owned.readlink() == foreign_target
-    for name in MANAGED_THIRDPARTY_SKILLS[1:]:
-        assert not (codex_home / "skills" / name).exists()
-
-    retired_owned = codex_home / "skills/darwin-skill"
-    retired_owned.symlink_to(REPOSITORY_ROOT / "thirdparty/skills/darwin-skill")
-    retired_foreign = codex_home / "skills/writing-plans"
-    retired_foreign.symlink_to(foreign_target)
-    worker_again = run_installer(
-        None,
-        "--profile",
-        "ao-worker",
-        "--codex-home",
-        str(codex_home),
-    )
-    assert worker_again.returncode == 0, worker_again.stderr
-    assert not retired_owned.exists() and not retired_owned.is_symlink()
-    assert retired_foreign.is_symlink()
-
-    standard_refused = run_installer(codex_home, "--profile", "standard")
-    assert standard_refused.returncode == 1
-    assert "without --force" in standard_refused.stderr
-    assert owned.is_symlink() and owned.readlink() == foreign_target
-
-    standard_again = run_installer(
-        codex_home,
-        "--profile",
-        "standard",
-        "--force",
-    )
-    assert standard_again.returncode == 0, standard_again.stderr
-    assert_standard_installed(REPOSITORY_ROOT, codex_home)
 
 
 def test_retired_protocol_preserves_foreign_link_even_with_force(
@@ -473,7 +203,7 @@ def test_retired_protocol_preserves_foreign_link_even_with_force(
         assert shared.is_symlink() and shared.readlink() == foreign
 
 
-@pytest.mark.parametrize("profile", ["standard", "ao-worker"])
+@pytest.mark.parametrize("profile", ["standard"])
 def test_retired_shared_protocol_removes_only_owned_links_idempotently(
     tmp_path: Path, profile: str
 ) -> None:
@@ -493,18 +223,14 @@ def test_retired_shared_protocol_removes_only_owned_links_idempotently(
     codex_home = tmp_path / f"{profile}-home"
     skills = codex_home / "skills"
     skills.mkdir(parents=True)
-    if profile == "ao-worker":
-        codex_home.chmod(0o700)
     owned = skills / "coding-protocol"
     owned.symlink_to(repository_root / "thirdparty/skills/coding-protocol")
     foreign_target = tmp_path / "foreign-shared-target"
     foreign_target.mkdir()
     arguments = ["--profile", profile]
-    if profile == "ao-worker":
-        arguments.extend(["--codex-home", str(codex_home)])
 
     first = run_installer(
-        codex_home if profile == "standard" else None,
+        codex_home,
         *arguments,
         repository_root=repository_root,
     )
@@ -513,12 +239,12 @@ def test_retired_shared_protocol_removes_only_owned_links_idempotently(
 
     owned.symlink_to(foreign_target, target_is_directory=True)
     second = run_installer(
-        codex_home if profile == "standard" else None,
+        codex_home,
         *arguments,
         repository_root=repository_root,
     )
     third = run_installer(
-        codex_home if profile == "standard" else None,
+        codex_home,
         *arguments,
         repository_root=repository_root,
     )
@@ -527,8 +253,8 @@ def test_retired_shared_protocol_removes_only_owned_links_idempotently(
     assert owned.is_symlink() and owned.readlink() == foreign_target
 
 
-@pytest.mark.parametrize("profile", ["standard", "ao-worker"])
-def test_first_party_preflight_fails_before_creating_either_profile_home(
+@pytest.mark.parametrize("profile", ["standard"])
+def test_first_party_preflight_fails_before_creating_home(
     tmp_path: Path, profile: str
 ) -> None:
     repository_root = tmp_path / "missing-first-party-source"
@@ -543,11 +269,9 @@ def test_first_party_preflight_fails_before_creating_either_profile_home(
     )
     codex_home = tmp_path / f"{profile}-home"
     arguments = ["--profile", profile]
-    if profile == "ao-worker":
-        arguments.extend(["--codex-home", str(codex_home)])
 
     result = run_installer(
-        codex_home if profile == "standard" else None,
+        codex_home,
         *arguments,
         repository_root=repository_root,
     )
@@ -635,7 +359,7 @@ def test_force_replaces_matching_external_agents_symlink(tmp_path: Path) -> None
     assert backups[0].is_symlink() and backups[0].readlink() == external
 
 
-def test_ao_worker_preserves_unowned_codex_state_byte_exactly(
+def test_installer_preserves_unowned_codex_state_byte_exactly(
     tmp_path: Path,
 ) -> None:
     codex_home = tmp_path / "worker"
@@ -658,7 +382,7 @@ def test_ao_worker_preserves_unowned_codex_state_byte_exactly(
     result = run_installer(
         None,
         "--profile",
-        "ao-worker",
+        "standard",
         "--codex-home",
         str(codex_home),
     )
@@ -688,7 +412,7 @@ def test_dry_run_preserves_content_and_uses_planned_wording(
     result = run_installer(
         None,
         "--profile",
-        "ao-worker",
+        "standard",
         "--codex-home",
         str(codex_home),
         "--dry-run",
@@ -789,7 +513,7 @@ def test_repository_and_home_paths_with_spaces_are_supported(
     assert_standard_installed(repository_root, codex_home)
 
 
-@pytest.mark.parametrize("profile", ["standard", "ao-worker"])
+@pytest.mark.parametrize("profile", ["standard"])
 def test_archived_skill_removes_only_owned_link(tmp_path: Path, profile: str) -> None:
     home = tmp_path / "home"
     skills = home / "skills"
@@ -923,13 +647,20 @@ def test_pi_environment_home_and_mise_independence(tmp_path: Path) -> None:
     [
         ("--agent", "unknown"),
         ("--agent",),
-        ("--agent", "pi", "--profile", "ao-worker"),
+        ("--agent", "pi", "--profile", "unknown"),
         ("--pi-home", "relative"),
         ("--grok-home", ""),
     ],
 )
 def test_multi_client_invalid_arguments(tmp_path: Path, args: tuple[str, ...]) -> None:
-    result = run_installer(tmp_path / "unused", *args)
+    result = run_installer(
+        tmp_path / "unused",
+        *args,
+        env_updates={
+            "HOME": str(tmp_path / "home"),
+            "PI_CODING_AGENT_DIR": str(tmp_path / "pi"),
+        },
+    )
     assert result.returncode == 2
     assert not (tmp_path / "unused").exists()
 
@@ -1049,3 +780,32 @@ def test_missing_selected_client_home_is_controlled_zero_write_failure(
     assert f"Cannot derive default {label} home" in result.stderr
     assert "unbound variable" not in result.stderr
     assert snapshot_tree(tmp_path) == before
+
+
+@pytest.mark.parametrize("profile", ["ao-worker", "unknown"])
+def test_removed_or_unknown_profile_fails_without_writes(
+    tmp_path: Path, profile: str
+) -> None:
+    home = tmp_path / "existing-home"
+    home.mkdir()
+    (home / "AGENTS.md").write_text("preserve instructions\n")
+    before = snapshot_tree(home)
+    result = run_installer(home, "--profile", profile, "--force")
+    assert result.returncode == 2
+    assert f"Unknown profile: {profile}" in result.stderr
+    assert snapshot_tree(home) == before
+    absent = tmp_path / "new-home"
+    result = run_installer(absent, "--profile", profile)
+    assert result.returncode == 2
+    assert not absent.exists()
+
+
+def test_standard_install_is_idempotent(tmp_path: Path) -> None:
+    home = tmp_path / "home"
+    first = run_installer(home)
+    assert first.returncode == 0, first.stderr
+    before = snapshot_tree(home)
+    second = run_installer(home)
+    assert second.returncode == 0, second.stderr
+    assert "AGENTS.md already current" in second.stdout
+    assert snapshot_tree(home) == before

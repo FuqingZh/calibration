@@ -18,6 +18,6 @@ Ready-for-review is a claim prerequisite, not proof that the event loop works.
 ## Public Boundary
 
 AO installation, patches, binary hashes, service definitions, credentials,
-host paths, and recovery evidence are private host authority. The current
-portable contract lives in
-[`../../skills/calibration/references/agent-orchestrator-review-continuation.md`](../../skills/calibration/references/agent-orchestrator-review-continuation.md).
+host paths, and recovery evidence are private host authority. The former
+portable contract is preserved in
+[archived integration guide](../archive/ao-integration-retired-2026-10-15.md).

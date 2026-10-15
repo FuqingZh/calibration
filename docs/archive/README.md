@@ -22,7 +22,7 @@ preservation.
 | [Corrected relative replacement v2.2](../testing/20260825-v2.2-progressive-validation-relative-replacement-correction-plan.md) | Completed comparison; the [corrected decision](../decisions/2026-08-25-progressive-validation-relative-replacement-acceptance.md) supersedes the earlier acceptance interpretation. |
 | [Progressive validation evaluation](../../evaluations/progressive-validation-selection/README.md) | Completed comparison, empirically inconclusive; later adoption and retirement are separate user decisions. |
 | [Teach first comparison](../../evaluations/teach-adaptation/results.md) | Superseded by [traceable V2](../../evaluations/teach-adaptation/v2/README.md); both evidence bundles remain intact. |
-| [Review-convergence routing](../implementation-plans/20260803-v2.3-review-convergence-routing-implementation-plan.md) | Completed increment; [harness](../../skills/calibration/references/discipline/harness.md) and the AO guide own current routing. |
+| [Review-convergence routing](../implementation-plans/20260803-v2.3-review-convergence-routing-implementation-plan.md) | Completed increment; [harness](../../skills/calibration/references/discipline/harness.md) owns current routing. |
 | [Closeout implementation](../implementation-plans/20260804-v2.4-closeout-skill-implementation-plan.md) | Completed increment; the [whole-conversation contract](../decisions/2026-09-07-closeout-whole-conversation-contract.md) supersedes the earlier durability gates. |
 | [CAL-1 containment](../implementation-plans/20260731-v2.1-portable-orchestrator-containment-implementation-plan.md) | Public contract delivered; upstream process containment is a proposal, not verified AO behavior. |
 
@@ -68,10 +68,10 @@ These retain their historical roles without becoming current execution plans.
 
 ## AO And Host History
 
-The [canonical AO guide](../../skills/calibration/references/agent-orchestrator-review-continuation.md)
-owns current public integration rules. These records retain rationale and
-historical evidence; detailed host snapshots and deployment material belong to
-private host authority.
+The [retired AO guide](ao-integration-retired-2026-10-15.md) and these records
+retain rationale and historical evidence. They do not define current integration
+rules. Detailed host snapshots and deployment material belong to private host
+authority.
 
 - [Native guidance consolidation](../decisions/2026-09-07-ao-native-guidance-consolidation.md)
 - [Older archived guidance](ao-guidance-before-v0.12.12/)
@@ -89,3 +89,12 @@ private host authority.
 - [Host CLI closeout](../decisions/2026-08-04-ao-host-calibration-cli-closeout.md)
 
 For further historical decisions, use the [decision directory](../decisions/).
+
+## Retired AO Integration
+
+The [retirement decision](../decisions/2026-10-15-ao-integration-retirement.md)
+retires all AO integration entrypoints. The
+[former canonical guide](ao-integration-retired-2026-10-15.md) and the AO records
+above are historical evidence only. Their adoption, lifecycle, and installation
+instructions no longer define calibration behavior. Frozen evaluation bundles
+retain their original paths, hashes, and invocation metadata.
