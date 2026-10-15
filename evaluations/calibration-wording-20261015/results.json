@@ -1,0 +1,258 @@
+[
+  {
+    "run": 1,
+    "arm": "baseline",
+    "seconds": 21.970011949539185,
+    "exit_code": 0,
+    "tool_calls": 0,
+    "usage": {
+      "input_tokens": 12725,
+      "cached_input_tokens": 0,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 366,
+      "reasoning_output_tokens": 0
+    },
+    "answers": [
+      {
+        "id": "forwarder",
+        "decision": "Remove the helper.",
+        "reason": "It only forwards arguments and preserves no distinct contract; removal reduces indirection without losing responsibility.",
+        "review_pass": true
+      },
+      {
+        "id": "shared_policy",
+        "decision": "Retain the shared helper.",
+        "reason": "Tenant access validation and redaction provide policy isolation; inlining duplicates security-sensitive rules across three callers.",
+        "review_pass": true
+      },
+      {
+        "id": "single_lifecycle",
+        "decision": "Keep the adapter; a second backend is unnecessary.",
+        "reason": "Error-path resource cleanup and preservation of public legacy errors independently justify the boundary.",
+        "review_pass": true
+      },
+      {
+        "id": "caller_contract",
+        "decision": "Assess the full caller contract.",
+        "reason": "Include region configuration, initialization order, asynchronous error handling, and latency guarantees alongside the signature; these determine caller obligations and observable behavior.",
+        "review_pass": true
+      },
+      {
+        "id": "zero_exit",
+        "decision": "Do not mark the bug fixed yet.",
+        "reason": "Inspect the report at its expected path and verify previously omitted customer rows under the original triggering conditions. A zero exit status does not establish correct output.",
+        "review_pass": true
+      },
+      {
+        "id": "recorded_failure",
+        "decision": "Proceed using the recorded failure and exact-input replay.",
+        "reason": "The production log and saved input establish the original failure; corrected replay output supplies after evidence. Preserve their references and disclose that production execution remains unverified.",
+        "review_pass": true
+      },
+      {
+        "id": "local_scope",
+        "decision": "Proceed with the authorized fix and focused check.",
+        "reason": "Clear local rules and executable feedback suffice for this reversible private change. No design plan, renewed approval, or full suite is required absent a repository mandate or uncovered obligation.",
+        "review_pass": true
+      },
+      {
+        "id": "partial_completion",
+        "decision": "Claim only that the migration passes local tests; overall completion remains unverified.",
+        "reason": "The downstream compatibility obligation is unresolved. Identify the consumer and missing evidence, verify its affected contract, and record explicit compatibility and documentation decisions before claiming completion.",
+        "review_pass": true
+      }
+    ]
+  },
+  {
+    "run": 2,
+    "arm": "candidate",
+    "seconds": 22.46544647216797,
+    "exit_code": 0,
+    "tool_calls": 0,
+    "usage": {
+      "input_tokens": 12796,
+      "cached_input_tokens": 0,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 387,
+      "reasoning_output_tokens": 0
+    },
+    "answers": [
+      {
+        "id": "forwarder",
+        "decision": "Remove the helper and call the stable function directly.",
+        "reason": "Inlining removes indirection without duplicating policy or losing a contract.",
+        "review_pass": true
+      },
+      {
+        "id": "shared_policy",
+        "decision": "Keep the shared helper.",
+        "reason": "It centralizes tenant-access validation and redaction; inlining would duplicate security policy across three callers.",
+        "review_pass": true
+      },
+      {
+        "id": "single_lifecycle",
+        "decision": "Keep the adapter; a second backend is unnecessary.",
+        "reason": "Error-path resource cleanup and preservation of the public legacy error contract independently justify the boundary.",
+        "review_pass": true
+      },
+      {
+        "id": "caller_contract",
+        "decision": "Assess the full caller contract.",
+        "reason": "The interface includes region configuration, initialize-before-send ordering, asynchronous errors, and the documented latency guarantee, alongside inputs and outputs.",
+        "review_pass": true
+      },
+      {
+        "id": "zero_exit",
+        "decision": "Do not mark the bug fixed.",
+        "reason": "Inspect the generated report at its expected path using the original triggering input and verify the previously omitted customer rows and their content. Exit status alone cannot detect the original symptom.",
+        "review_pass": true
+      },
+      {
+        "id": "recorded_failure",
+        "decision": "Accept the recorded failure and exact-input replay as bug-fix evidence.",
+        "reason": "The production log and saved input establish the original failure; corrected replay output supplies fresh verification. Preserve those references and disclose that production was not rerun. No manufactured failure or blanket block is required.",
+        "review_pass": true
+      },
+      {
+        "id": "local_scope",
+        "decision": "Proceed with the authorized fix and focused check.",
+        "reason": "Clear repository rules and executable feedback suffice for this reversible private change. Calibration requires no design plan, renewed approval, or full suite absent an explicit mandate or uncovered obligation.",
+        "review_pass": true
+      },
+      {
+        "id": "partial_completion",
+        "decision": "Claim only that the migration passes local tests; overall completion remains unverified.",
+        "reason": "The downstream consumer's compatibility is unknown. Identify that consumer and the missing check, report the remaining risk, and resolve compatibility, verification, and documentation impacts before claiming completion.",
+        "review_pass": true
+      }
+    ]
+  },
+  {
+    "run": 3,
+    "arm": "candidate",
+    "seconds": 18.89050006866455,
+    "exit_code": 0,
+    "tool_calls": 0,
+    "usage": {
+      "input_tokens": 12796,
+      "cached_input_tokens": 0,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 368,
+      "reasoning_output_tokens": 0
+    },
+    "answers": [
+      {
+        "id": "forwarder",
+        "decision": "Remove the helper and call the stable function directly.",
+        "reason": "Inlining removes indirection without duplicating policy or losing a contract.",
+        "review_pass": true
+      },
+      {
+        "id": "shared_policy",
+        "decision": "Keep the shared helper.",
+        "reason": "It centralizes tenant-access validation and redaction; inlining would duplicate security policy across three callers.",
+        "review_pass": true
+      },
+      {
+        "id": "single_lifecycle",
+        "decision": "Keep the adapter; a second backend is unnecessary.",
+        "reason": "Error-path resource cleanup and preservation of the public legacy error contract justify the boundary.",
+        "review_pass": true
+      },
+      {
+        "id": "caller_contract",
+        "decision": "Assess the full caller-facing contract.",
+        "reason": "Include region configuration, initialization order, asynchronous errors, and the latency guarantee alongside names, inputs, outputs, and side effects.",
+        "review_pass": true
+      },
+      {
+        "id": "zero_exit",
+        "decision": "Do not mark the bug fixed.",
+        "reason": "Inspect the report at its expected output path using the original triggering conditions and verify the expected customer rows. Exit status zero does not establish correct content.",
+        "review_pass": true
+      },
+      {
+        "id": "recorded_failure",
+        "decision": "Proceed using the recorded failure and exact-input replay.",
+        "reason": "The production log and saved input establish the original failure; corrected replay output supplies fresh verification. Preserve those references and disclose that production was not rerun and any resulting uncertainty.",
+        "review_pass": true
+      },
+      {
+        "id": "local_scope",
+        "decision": "Apply the authorized fix and run the focused check.",
+        "reason": "Clear repository rules and executable feedback suffice for this reversible private change. Calibration requires no design plan, renewed approval, or full suite absent a repository mandate or uncovered obligation.",
+        "review_pass": true
+      },
+      {
+        "id": "partial_completion",
+        "decision": "Claim only that the migration passes local tests; overall completion remains unverified.",
+        "reason": "Downstream compatibility is unknown. Identify the affected consumer and missing check, resolve compatibility, and record verification and documentation decisions before claiming completion.",
+        "review_pass": true
+      }
+    ]
+  },
+  {
+    "run": 4,
+    "arm": "baseline",
+    "seconds": 24.321208238601685,
+    "exit_code": 0,
+    "tool_calls": 0,
+    "usage": {
+      "input_tokens": 12725,
+      "cached_input_tokens": 0,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 398,
+      "reasoning_output_tokens": 0
+    },
+    "answers": [
+      {
+        "id": "forwarder",
+        "decision": "Remove the helper.",
+        "reason": "It only forwards arguments for one caller and protects no contract; removing it reduces indirection without losing responsibility.",
+        "review_pass": true
+      },
+      {
+        "id": "shared_policy",
+        "decision": "Keep the shared helper.",
+        "reason": "Tenant authorization and redaction provide policy isolation across three callers; inlining duplicates security-sensitive behavior.",
+        "review_pass": true
+      },
+      {
+        "id": "single_lifecycle",
+        "decision": "Keep the adapter; a second backend is unnecessary.",
+        "reason": "Resource cleanup on errors and preservation of public legacy errors independently justify the boundary.",
+        "review_pass": true
+      },
+      {
+        "id": "caller_contract",
+        "decision": "Assess the full caller contract.",
+        "reason": "Include region configuration, initialization order, asynchronous error handling, and the latency guarantee alongside names, inputs, outputs, side effects, and lifecycle requirements.",
+        "review_pass": true
+      },
+      {
+        "id": "zero_exit",
+        "decision": "Do not mark the bug fixed yet.",
+        "reason": "Inspect the generated report at its expected path using the original triggering input, and verify the omitted customer rows and relevant content. A zero exit status does not establish correct output.",
+        "review_pass": true
+      },
+      {
+        "id": "recorded_failure",
+        "decision": "Proceed using the recorded failure and exact-input replay.",
+        "reason": "The production log and saved input establish the original failure; corrected local replay supplies fresh evidence. Preserve those references and disclose that production was not rerun; no manufactured failure is required.",
+        "review_pass": true
+      },
+      {
+        "id": "local_scope",
+        "decision": "Complete the authorized fix with the focused check.",
+        "reason": "Clear repository rules and executable feedback suffice for this reversible private change. No design plan, renewed approval, or full suite is required absent a repository mandate or uncovered obligation.",
+        "review_pass": true
+      },
+      {
+        "id": "partial_completion",
+        "decision": "Claim only that local tests pass; migration completion remains unverified.",
+        "reason": "The downstream compatibility obligation is unresolved. Identify the consumer and missing verification, state its risk, and require explicit compatibility, verification, and documentation decisions before claiming completion. The referenced discipline router is unavailable; the supplied baseline and verification rules support this decision.",
+        "review_pass": true
+      }
+    ]
+  }
+]
