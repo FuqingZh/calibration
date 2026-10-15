@@ -12,6 +12,8 @@ analysis.
   configuration, paths, permissions, and generated artifacts.
 - Fix the supported cause with the smallest effective change. Do not hide the
   failure through broader exception handling or silent fallback.
-- Rerun the original failing check or an equivalent that exercises the same
-  path. Claim resolution only with fresh evidence that the fix addresses that
-  failure; report any remaining uncertainty and its impact.
+- Rerun the original failing check or an equivalent that would detect the
+  original symptom under the same triggering conditions. Exercising the same
+  path or obtaining exit status zero is insufficient by itself. Claim resolution
+  only with fresh evidence that the fix addresses that failure; report any
+  remaining uncertainty and its impact.

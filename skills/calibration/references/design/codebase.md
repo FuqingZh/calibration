@@ -7,14 +7,17 @@ adapters, shared helpers, wrapper layers, and where logic belongs.
 
 - Deep module: a module whose interface is simpler than the functionality it
   hides.
-- Interface: the contract a caller depends on, including names, inputs, outputs,
-  errors, side effects, and lifecycle expectations.
+- Interface: everything a caller must know to use the module correctly, including
+  names, inputs, outputs, errors, side effects, configuration, call ordering,
+  lifecycle, and any performance guarantees the caller relies on.
 - Locality: the ability to understand or change behavior by reading one small
   region instead of chasing scattered helpers.
 - Leverage: the amount of real complexity removed or real reuse gained by an
   abstraction.
-- Deletion test: if removing a layer makes the main path clearer without losing
-  a contract, the layer probably did not earn its place.
+- Deletion test: mentally inline the abstraction into its callers. Remove it
+  when this eliminates indirection without duplicating policy, exposing hidden
+  complexity, or losing a contract. Keep it when callers would otherwise each
+  need to manage that complexity.
 
 ## Judgment Checks
 
@@ -37,7 +40,8 @@ adapters, shared helpers, wrapper layers, and where logic belongs.
 A design change is ready when:
 
 - the new or changed boundary has a clear caller and responsibility
-- the interface is smaller or more stable than the implementation it hides
-- the abstraction passes the deletion test or has a documented reason to stay
+- callers can use the boundary without managing the complexity it owns
+- the deletion test identifies what complexity or contract justifies keeping
+  the abstraction; otherwise remove it
 - the main path is easier to audit, not merely more factored
 - compatibility, tests, and documentation impacts are known

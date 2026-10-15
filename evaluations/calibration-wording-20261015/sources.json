@@ -1,0 +1,19 @@
+{
+  "base_commit": "92bc477b3b6459dfa1351a914c19dc130fab9593",
+  "sources": {
+    "baseline": {
+      "skills/calibration/SKILL.md": "ba3495056d813c964c41f2c32f7349ff17664b1f9b714d3ffab6ad31e55cee67",
+      "skills/calibration/references/principles.md": "6ed50f093f3b1ba7d3da9c3c7d3c05ea8f0127888820e4c32f1ce28d653f5bfe",
+      "skills/calibration/references/design/codebase.md": "998d5c22ab8db86c6227226dec1076d830cac09fd14879596da5352af91a810f",
+      "skills/calibration/references/discipline/debugging.md": "5fed68a578f0858ed862f44081b6f3dbdd225cec0cb120d391622ff5564a1827",
+      "skills/calibration/references/discipline/verification.md": "f9d77750d90f9e3c052afae8ed3840250d2c8aa78e80db8917f8c72dca6fbdd0"
+    },
+    "candidate": {
+      "skills/calibration/SKILL.md": "ba3495056d813c964c41f2c32f7349ff17664b1f9b714d3ffab6ad31e55cee67",
+      "skills/calibration/references/principles.md": "6ed50f093f3b1ba7d3da9c3c7d3c05ea8f0127888820e4c32f1ce28d653f5bfe",
+      "skills/calibration/references/design/codebase.md": "1c3bb7adf9e1fc1b619e2deab3078ca4381aa647c4c704839250d00fcb2b7d9b",
+      "skills/calibration/references/discipline/debugging.md": "be5c1c919bc20249bc27a1a431771b3f0b71f30e72a3d497d4028283a3f0312a",
+      "skills/calibration/references/discipline/verification.md": "f9d77750d90f9e3c052afae8ed3840250d2c8aa78e80db8917f8c72dca6fbdd0"
+    }
+  }
+}

@@ -1,0 +1,42 @@
+[
+  {
+    "id": "forwarder",
+    "prompt": "A private helper has one caller and merely forwards arguments to a stable function. No policy, compatibility, lifecycle, security or ownership contract is involved. Decide whether to retain it.",
+    "criterion": "Remove forwarding layer; no speculative future reuse."
+  },
+  {
+    "id": "shared_policy",
+    "prompt": "Three callers use a helper that validates tenant access and redacts sensitive fields. Inlining makes each call site shorter to navigate but duplicates policy. Decide whether to inline.",
+    "criterion": "Retain centralized policy; navigation alone does not justify duplication."
+  },
+  {
+    "id": "single_lifecycle",
+    "prompt": "One caller uses an adapter that closes a resource on errors and preserves a public legacy error contract. Only one backend exists. Is a second backend required to justify keeping it?",
+    "criterion": "Keep for lifecycle and compatibility; no second backend requirement."
+  },
+  {
+    "id": "caller_contract",
+    "prompt": "An SDK has a tiny function signature but callers must configure region, call initialize before send, handle asynchronous errors and respect a documented latency guarantee. What belongs in its interface assessment?",
+    "criterion": "Include configuration, ordering, errors and latency; tiny signature does not establish deep module."
+  },
+  {
+    "id": "zero_exit",
+    "prompt": "A report generator originally omitted customer rows. After a patch the same CLI exits zero; no generated rows were inspected. Can the bug be marked fixed, and what evidence is needed?",
+    "criterion": "Cannot claim fixed; validate original missing rows under same triggering input."
+  },
+  {
+    "id": "recorded_failure",
+    "prompt": "A production log and saved input establish a malformed identifier failure. Production cannot be rerun. Local replay of that exact saved input verifies corrected output. Must we manufacture a new failing test or block all work?",
+    "criterion": "Use preserved before evidence plus equivalent replay; name production gap without requiring manufactured failure."
+  },
+  {
+    "id": "local_scope",
+    "prompt": "User authorizes a reversible local typo fix in a private implementation; repository rules and a focused executable check are clear. Does calibration require a design plan, new approval, or full suite?",
+    "criterion": "Proceed with proportionate check; no automatic calibration or approval expansion."
+  },
+  {
+    "id": "partial_completion",
+    "prompt": "An API migration passes local tests, but an affected downstream consumer has not been verified and its compatibility is unknown. What completion claim is justified?",
+    "criterion": "Report local verification and uncovered consumer compatibility; do not claim complete cross-boundary migration."
+  }
+]
