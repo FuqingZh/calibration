@@ -16,6 +16,13 @@ The median paired token difference was +2.8%, with mixed directions; it did not
 establish stable overhead. The trial tests the practical value of removing a
 repeated entrypoint, not a claim that every protocol rule is obsolete.
 
+## Source Relocation (2026-10-15)
+
+The retained tree now lives in `thirdparty/archive/coding-protocol/`; see the
+[archive index](../../thirdparty/archive/README.md). The activation receipt below
+records the historical path. The restoration example uses the relocated source.
+A durable restoration also needs to move that source back into the active tree.
+
 ## Activation And Restoration
 
 The personal entry is `skills/coding-protocol` under the selected Codex home.
@@ -41,7 +48,7 @@ and the entry is absent before recreating the symlink:
 ```bash
 calibration_checkout="/absolute/path/to/calibration" # Replace with the recorded checkout
 coding_protocol_entry="${CODEX_HOME:-$HOME/.codex}/skills/coding-protocol"
-coding_protocol_source="$calibration_checkout/thirdparty/skills/coding-protocol"
+coding_protocol_source="$calibration_checkout/thirdparty/archive/coding-protocol"
 test -f "$calibration_checkout/skills/calibration/SKILL.md" && \
   test -f "$coding_protocol_source/SKILL.md" && \
   test ! -e "$coding_protocol_entry" && test ! -L "$coding_protocol_entry" && \

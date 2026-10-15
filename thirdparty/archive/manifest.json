@@ -1,0 +1,70 @@
+{
+  "archived_on": "2026-10-15",
+  "files": [
+    {
+      "original_path": "thirdparty/skills/coding-protocol/LICENSE",
+      "archived_path": "thirdparty/archive/coding-protocol/LICENSE",
+      "sha256": "16e71e88dc4c8cc3d4d46d04bfa2e47c08b27d6d3a7893ddb262364399f84374"
+    },
+    {
+      "original_path": "thirdparty/skills/coding-protocol/SKILL.md",
+      "archived_path": "thirdparty/archive/coding-protocol/SKILL.md",
+      "sha256": "c464f64edc4c565cfc22489257d2647d6eadb7fcf61bf542208c0685d5a538f2"
+    },
+    {
+      "original_path": "thirdparty/skills/coding-protocol/agents/openai.yaml",
+      "archived_path": "thirdparty/archive/coding-protocol/agents/openai.yaml",
+      "sha256": "565eb5938be4a0172dcc6e25e33ad701f6832a17d31d3de5b5c86228bb9a2100"
+    },
+    {
+      "original_path": "thirdparty/skills/coding-protocol/references/rule-rationale.md",
+      "archived_path": "thirdparty/archive/coding-protocol/references/rule-rationale.md",
+      "sha256": "f21f18a9c681d2ec2d2530e857f99906cef935c0a99841e54621d39bb3bf4e8a"
+    },
+    {
+      "original_path": "thirdparty/skills/coding-protocol/references/validation-selection.md",
+      "archived_path": "thirdparty/archive/coding-protocol/references/validation-selection.md",
+      "sha256": "54dd01f6a47acc9a14b456e9a939236d2b3c6aa3c2bcd7b9352d7b6a7b56188d"
+    },
+    {
+      "original_path": "thirdparty/skills/coding-protocol/references/verification.md",
+      "archived_path": "thirdparty/archive/coding-protocol/references/verification.md",
+      "sha256": "7c45752dc537a38b4165a98fc117391b5bc3bae35820a9f1beb882a070fa9918"
+    },
+    {
+      "original_path": "thirdparty/skills/coding-protocol/test-prompts.json",
+      "archived_path": "thirdparty/archive/coding-protocol/test-prompts.json",
+      "sha256": "f97fd3bd0a899f357369b5390d4d833c22bd799e371cce65e50a6303b83e69a9"
+    },
+    {
+      "original_path": "thirdparty/skills/writing-great-skills/GLOSSARY.md",
+      "archived_path": "thirdparty/archive/writing-great-skills/GLOSSARY.md",
+      "sha256": "f070f2095c19082d8b2a01aea97782698798074f32e5289234c0c817227d9b8a"
+    },
+    {
+      "original_path": "thirdparty/skills/writing-great-skills/SKILL.md",
+      "archived_path": "thirdparty/archive/writing-great-skills/SKILL.md",
+      "sha256": "6f6549ac82371950e2663de0793a76c192e453882a288fb168d7bb0c54fdc681"
+    },
+    {
+      "original_path": "thirdparty/skills/writing-great-skills/agents/openai.yaml",
+      "archived_path": "thirdparty/archive/writing-great-skills/agents/openai.yaml",
+      "sha256": "3d26301f7c8cda633a027ba70a9d1a6ccc5458fa0e10cbdf786d4c230ae1f164"
+    },
+    {
+      "original_path": "thirdparty/skills/writing-plans/SKILL.md",
+      "archived_path": "thirdparty/archive/writing-plans/SKILL.md",
+      "sha256": "81c2ca0f7dcf68d89220c8f7ef8ea8d17d602d791c131a2baf26812a9055c65d"
+    },
+    {
+      "original_path": "thirdparty/skills/writing-plans/agents/openai.yaml",
+      "archived_path": "thirdparty/archive/writing-plans/agents/openai.yaml",
+      "sha256": "e620054c4917f27a3afa4e8b66c4ec898f5f0b8dd34b46282fc0484c564d46fa"
+    },
+    {
+      "original_path": "thirdparty/skills/writing-plans/plan-document-reviewer-prompt.md",
+      "archived_path": "thirdparty/archive/writing-plans/plan-document-reviewer-prompt.md",
+      "sha256": "aa728b96aad603c8be28875a4305637f6c984aa81ffcadcb13e743202fa2a0c7"
+    }
+  ]
+}
