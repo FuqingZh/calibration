@@ -14,6 +14,7 @@ decision.
 | Public object method names | `method.md` |
 | Class, dataclass, enum, config, plan, report, or adapter type names | `type.md` |
 | CLI option names | `cli.md` |
+| Version identifiers, release increments, and compatibility meaning | `version.md` |
 | Local variable, parameter, dictionary, and structural role names | `variable.md` |
 | Loop, lambda, closure, or anonymous-function binder names | `loop.md` |
 | Public-facing schema fields and exported headers | `schema.md` |
@@ -26,6 +27,7 @@ decision.
 - Module-level function prefixes
 - Public method boundaries
 - Public CLI option naming
+- Version identifiers and compatibility conventions
 - Public-facing schema and export header naming
 - Internal variable naming guidance
 - Loop and closure binder naming guidance
