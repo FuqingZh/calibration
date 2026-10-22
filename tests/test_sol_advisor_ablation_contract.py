@@ -68,8 +68,6 @@ def test_ablation_frozen_sources_match_manifest() -> None:
     evidence = load_object(EVALUATION_ROOT / "runs.json")
     source = cast(dict[str, object], evidence["source"])
     assert source["distributableFixtureSha256"] == manifest["fixtureSha256"]
-    assert len(current.read_text(encoding="utf-8").split()) == 1106
-    assert len(candidate.read_text(encoding="utf-8").split()) == 489
 
 
 def test_ablation_results_cover_three_complete_factorial_repetitions() -> None:

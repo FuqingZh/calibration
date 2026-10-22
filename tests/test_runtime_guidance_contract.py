@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import json
 import re
 from pathlib import Path
 
@@ -45,31 +47,6 @@ def test_shared_aggregation_root_has_behavioral_prompt_coverage() -> None:
     assert "concurrency" in prompts
 
 
-def test_future_behavior_evaluation_is_conditional_and_correctly_scoped() -> None:
-    plan = compact(
-        "docs/implementation-plans/"
-        "20260731-v2.1-portable-orchestrator-containment-implementation-plan.md"
-    )
-
-    for phrase in (
-        "assigned repository itself as the Git root",
-        "task prompt supplies neither the containment rule",
-        "structured command and tool events",
-        "resolved root escapes the assigned repository",
-        "sibling manifest",
-        "read-only answer cannot pass",
-        "candidate source",
-        "Codex CLI version",
-        "reasoning effort",
-        "scoring method",
-        "private evidence location",
-    ):
-        assert phrase in plan
-    assert "behavior evaluation is not an active phase" in plan
-    assert "separately reviewed executable protocol" in plan
-    assert "No model evaluation is part of this plan" in plan
-
-
 def test_docs_separate_current_authority_from_archived_plans() -> None:
     source = REPOSITORY_ROOT / "docs/README.md"
     docs = source.read_text(encoding="utf-8")
@@ -93,6 +70,8 @@ def test_docs_separate_current_authority_from_archived_plans() -> None:
     }
     for relative in (
         "docs/implementation-plans/"
+        "20260731-v2.1-portable-orchestrator-containment-implementation-plan.md",
+        "docs/implementation-plans/"
         "20260826-v1.0-self-contained-first-party-skills-migration-implementation-plan.md",
         "docs/testing/20260825-v2.1-progressive-validation-relative-replacement-test-plan.md",
         "docs/testing/"
@@ -104,16 +83,23 @@ def test_docs_separate_current_authority_from_archived_plans() -> None:
         assert REPOSITORY_ROOT / relative not in current_targets
 
 
-def test_old_rules_are_archived_outside_skill_loading() -> None:
+def test_retired_guidance_preserves_exact_bytes_outside_skill_loading() -> None:
     archive = REPOSITORY_ROOT / "docs/archive/ao-guidance-before-v0.12.12"
-    assert {p.name for p in archive.iterdir()} == {
-        "global-agents.txt",
-        "repository-agents.txt",
-        "harness.txt",
-        "ao-guide.txt",
+    records = json.loads(text("docs/archive/retired-guidance-manifest.json"))["files"]
+    recorded_paths = {row["path"] for row in records}
+    assert len(recorded_paths) == len(records)
+    assert recorded_paths == {
+        "docs/implementation-plans/"
+        "20260731-v2.1-portable-orchestrator-containment-implementation-plan.md",
+        *(
+            path.relative_to(REPOSITORY_ROOT).as_posix()
+            for path in archive.rglob("*")
+            if path.is_file()
+        ),
     }
-    assert "REST resume-agent" in (archive / "global-agents.txt").read_text()
-    assert "no CLI resume command" in (archive / "ao-guide.txt").read_text()
+    for row in records:
+        path = REPOSITORY_ROOT / row["path"]
+        assert hashlib.sha256(path.read_bytes()).hexdigest() == row["sha256"], path
     for path in (
         "skills/calibration/SKILL.md",
         "skills/calibration/references/discipline/harness.md",

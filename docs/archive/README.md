@@ -11,6 +11,12 @@ rewritten or deduplicated. Historical invocation metadata does not activate a
 retired skill. The installer retains owned-link cleanup and foreign-link
 preservation.
 
+Frozen skill contents are checked by the [skill archive test](../../tests/test_archived_skills.py).
+The [retired guidance manifest](retired-guidance-manifest.json) preserves the four
+older AO rule files and the CAL-1 plan byte for byte. These integrity checks
+replace historical wording assertions; runtime isolation, ownership rules,
+installer compatibility, provenance, and evaluation-result checks remain active.
+
 ## Completed Plans And Superseded Protocols
 
 | Record | Lifecycle and current source |

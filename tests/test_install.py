@@ -15,7 +15,6 @@ MANAGED_THIRDPARTY_SKILLS = (
     "grilling",
     "teach",
 )
-MANAGED_SHARED_THIRDPARTY_SKILLS: tuple[str, ...] = ()
 
 
 def assert_first_party_installed(repository_root: Path, codex_home: Path) -> str:
@@ -28,18 +27,8 @@ def assert_first_party_installed(repository_root: Path, codex_home: Path) -> str
     return agents
 
 
-def assert_shared_third_party_installed(
-    repository_root: Path, codex_home: Path
-) -> None:
-    for name in MANAGED_SHARED_THIRDPARTY_SKILLS:
-        assert (codex_home / "skills" / name).readlink() == (
-            repository_root / "thirdparty/skills" / name
-        )
-
-
 def assert_standard_installed(repository_root: Path, codex_home: Path) -> str:
     agents = assert_first_party_installed(repository_root, codex_home)
-    assert_shared_third_party_installed(repository_root, codex_home)
     for name in MANAGED_THIRDPARTY_SKILLS:
         assert (codex_home / "skills" / name).readlink() == (
             repository_root / "thirdparty/skills" / name
@@ -75,14 +64,12 @@ def test_default_and_explicit_standard_are_equivalent(tmp_path: Path) -> None:
     assert_standard_installed(REPOSITORY_ROOT, default_home)
 
 
-@pytest.mark.parametrize("profile", ["standard"])
 def test_installed_first_party_skills_are_lexically_self_contained(
-    tmp_path: Path, profile: str
+    tmp_path: Path,
 ) -> None:
-    codex_home = tmp_path / profile
-    arguments = ["--profile", profile]
+    codex_home = tmp_path / "standard"
 
-    result = run_installer(codex_home, *arguments)
+    result = run_installer(codex_home, "--profile", "standard")
 
     assert result.returncode == 0, result.stderr
     for name in MANAGED_SKILLS:
@@ -127,12 +114,10 @@ def test_missing_home_and_codex_home_is_controlled_zero_write_failure(
     assert list(tmp_path.iterdir()) == [marker]
 
 
-@pytest.mark.parametrize("profile", ["standard"])
-def test_dry_runs_do_not_write_target_home(tmp_path: Path, profile: str) -> None:
-    codex_home = tmp_path / profile
-    arguments = ["--profile", profile, "--dry-run"]
+def test_dry_runs_do_not_write_target_home(tmp_path: Path) -> None:
+    codex_home = tmp_path / "standard"
 
-    result = run_installer(codex_home, *arguments)
+    result = run_installer(codex_home, "--profile", "standard", "--dry-run")
 
     assert result.returncode == 0, result.stderr
     assert "[dry-run]" in result.stdout
@@ -204,9 +189,8 @@ def test_retired_protocol_preserves_foreign_link_even_with_force(
         assert shared.is_symlink() and shared.readlink() == foreign
 
 
-@pytest.mark.parametrize("profile", ["standard"])
 def test_retired_shared_protocol_removes_only_owned_links_idempotently(
-    tmp_path: Path, profile: str
+    tmp_path: Path,
 ) -> None:
     repository_root = tmp_path / "retired-shared-repository"
     (repository_root / "codex").mkdir(parents=True)
@@ -221,14 +205,14 @@ def test_retired_shared_protocol_removes_only_owned_links_idempotently(
         REPOSITORY_ROOT / "thirdparty/skills"
     )
 
-    codex_home = tmp_path / f"{profile}-home"
+    codex_home = tmp_path / "standard-home"
     skills = codex_home / "skills"
     skills.mkdir(parents=True)
     owned = skills / "coding-protocol"
     owned.symlink_to(repository_root / "thirdparty/skills/coding-protocol")
     foreign_target = tmp_path / "foreign-shared-target"
     foreign_target.mkdir()
-    arguments = ["--profile", profile]
+    arguments = ["--profile", "standard"]
 
     first = run_installer(
         codex_home,
@@ -254,9 +238,8 @@ def test_retired_shared_protocol_removes_only_owned_links_idempotently(
     assert owned.is_symlink() and owned.readlink() == foreign_target
 
 
-@pytest.mark.parametrize("profile", ["standard"])
 def test_first_party_preflight_fails_before_creating_home(
-    tmp_path: Path, profile: str
+    tmp_path: Path,
 ) -> None:
     repository_root = tmp_path / "missing-first-party-source"
     (repository_root / "codex").mkdir(parents=True)
@@ -268,12 +251,12 @@ def test_first_party_preflight_fails_before_creating_home(
     (repository_root / "codex/AGENTS.md.template").write_bytes(
         (REPOSITORY_ROOT / "codex/AGENTS.md.template").read_bytes()
     )
-    codex_home = tmp_path / f"{profile}-home"
-    arguments = ["--profile", profile]
+    codex_home = tmp_path / "standard-home"
 
     result = run_installer(
         codex_home,
-        *arguments,
+        "--profile",
+        "standard",
         repository_root=repository_root,
     )
 
