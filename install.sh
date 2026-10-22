@@ -195,7 +195,6 @@ MANAGED_SKILLS=(
   writing-code-docs
 )
 MANAGED_THIRDPARTY_SKILLS=(
-  brainstorming
   grilling
   teach
 )
@@ -210,6 +209,7 @@ RETIRED_SKILLS=(
   writing-docstrings
 )
 RETIRED_THIRDPARTY_SKILLS=(
+  brainstorming
   writing-great-skills
   writing-plans
   darwin-skill

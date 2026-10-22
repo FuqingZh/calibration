@@ -33,14 +33,15 @@ Earlier July harness and delivery plans remain in
 authorize new host operations or reopen downstream work.
 
 The [retired third-party skill archive](../../thirdparty/archive/README.md)
-contains coding-protocol, writing-great-skills, and writing-plans with their
-source and provenance preserved outside the active skill tree.
+contains brainstorming, coding-protocol, writing-great-skills, and writing-plans
+with their source and provenance preserved outside the active skill tree.
 
 ## Adoption Decisions And Comparison Evidence
 
 | Topic | Record and limits |
 | --- | --- |
 | Version naming | [Decision and source comparison](../decisions/2026-10-21-version-naming-reference.md); scoped reference adoption, no agent-performance claim. |
+| Brainstorming retirement | [Decision](../decisions/2026-10-22-brainstorming-retirement.md); user-requested removal from installation, unchanged source retained, no model-quality equivalence claim. |
 | Design and debugging wording | [Trial](../../evaluations/calibration-wording-20261015/README.md); repeated decision-only regression acceptance, no superiority or whole-skill replacement claim. |
 | Multi-client installation | [Decision](../decisions/2026-09-24-multi-client-skill-installation.md); bounded installation and discovery evidence. |
 | Body compression | [Decision](../decisions/2026-09-20-calibration-body-compression-and-routing.md), [routing diagnosis](../../evaluations/calibration-routing-diagnosis/README.md); three bodies adopted, metadata candidates remain experimental. |

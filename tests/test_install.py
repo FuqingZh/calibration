@@ -12,7 +12,6 @@ from tests.support.installer import run_installer
 
 MANAGED_SKILLS = ("calibration", "closeout", "retrospect", "writing-code-docs")
 MANAGED_THIRDPARTY_SKILLS = (
-    "brainstorming",
     "grilling",
     "teach",
 )
@@ -45,6 +44,8 @@ def assert_standard_installed(repository_root: Path, codex_home: Path) -> str:
         assert (codex_home / "skills" / name).readlink() == (
             repository_root / "thirdparty/skills" / name
         )
+    assert not (codex_home / "skills/brainstorming").is_symlink()
+    assert not (codex_home / "skills/brainstorming").exists()
     return agents
 
 
@@ -516,7 +517,8 @@ def test_repository_and_home_paths_with_spaces_are_supported(
 @pytest.mark.parametrize("agent", ["codex", "grok", "pi"])
 @pytest.mark.parametrize("source_root", ["thirdparty/skills", "thirdparty/archive"])
 @pytest.mark.parametrize(
-    "name", ["coding-protocol", "writing-great-skills", "writing-plans"]
+    "name",
+    ["brainstorming", "coding-protocol", "writing-great-skills", "writing-plans"],
 )
 def test_archived_skill_removes_only_owned_link(
     tmp_path: Path, agent: str, source_root: str, name: str

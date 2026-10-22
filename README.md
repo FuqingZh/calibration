@@ -42,15 +42,18 @@ installation to discover the skills.
 | [writing-code-docs](skills/writing-code-docs/SKILL.md) | Document public APIs and caller/maintainer contracts | When relevant |
 | [closeout](skills/closeout/SKILL.md) | Review the whole conversation and document gaps and unresolved work | Explicit only |
 | [retrospect](skills/retrospect/SKILL.md) | Derive reusable lessons from completed work and evidence | Explicit only |
-| [brainstorming](thirdparty/skills/brainstorming/SKILL.md) | Explore ambiguous problems and design choices | Explicit only |
 | [grilling](thirdparty/skills/grilling/SKILL.md) | Stress-test a plan or decision | Explicit only |
 | [teach](thirdparty/skills/teach/SKILL.md) | Teach a bounded topic in session-only or learning-workspace mode | Explicit only |
 
-The last three skills are vendored third-party adaptations, included in the
+The last two skills are vendored third-party adaptations, included in the
 standard profile. Their [sources](thirdparty/sources.tsv),
 [local patches](thirdparty/PATCHES.md), and upstream license information are
 tracked separately. Installation uses local files and does not download skills.
 [Archived skills](thirdparty/archive/README.md) are excluded from installation.
+
+`brainstorming` is retired from standard installation. Its source and evaluation
+history remain in the archive; installer refresh removes only this repository's
+owned links to its former or archived location.
 
 Use your client's native skill command, for example `$closeout` in Codex,
 `/closeout` in Grok Build, or `/skill:closeout` in Pi. Closeout documents the

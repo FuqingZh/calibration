@@ -5,7 +5,7 @@ Exact imported and checked refs live in `sources.tsv`.
 
 ## Cross-client explicit invocation
 
-The installed `brainstorming`, `grilling`, and `teach` skills also declare
+The installed `grilling` and `teach` skills, and archived `brainstorming`, declare
 `disable-model-invocation: true` in SKILL.md frontmatter for Pi and Grok Build.
 This mirrors their existing Codex explicit-only policy; source refs and bodies
 are unchanged.
@@ -33,9 +33,15 @@ Imported from lencx `skills/coding-protocol` at
 - Add static behavioral prompts for Exit, focused selection, mandatory
   broadening, and failure diagnosis.
 
-## brainstorming
+## brainstorming (archived)
 
 Imported from Superpowers `brainstorming`.
+
+Retired from runtime installation on 2026-10-22 by user request. The source,
+visual companion, and invocation metadata are retained unchanged under
+`archive/brainstorming/`. The installer removes only repository-owned links to
+the former or archived location. The changes below describe the retained
+historical adaptation, not active guidance.
 
 Local changes:
 
