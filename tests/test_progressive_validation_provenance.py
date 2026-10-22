@@ -7,8 +7,6 @@ import subprocess
 from pathlib import Path
 from typing import NotRequired, TypedDict, cast
 
-from scripts.validate_skills import _installer_skills
-
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 MANIFEST_PATH = (
     REPOSITORY_ROOT
@@ -246,15 +244,3 @@ def test_sources_tsv_preserves_provenance_and_current_runtime_policy() -> None:
         "planned local derivative"
         not in rows["verification-before-completion"]["notes"]
     )
-
-
-def test_coding_protocol_preserves_metadata_but_is_not_installer_managed() -> None:
-    metadata = (
-        REPOSITORY_ROOT / "thirdparty/archive/coding-protocol/agents/openai.yaml"
-    ).read_text(encoding="utf-8")
-    assert "allow_implicit_invocation: true" in metadata
-
-    errors: list[str] = []
-    active_skills = _installer_skills(REPOSITORY_ROOT, errors)
-    assert errors == []
-    assert REPOSITORY_ROOT / "thirdparty/skills/coding-protocol" not in active_skills

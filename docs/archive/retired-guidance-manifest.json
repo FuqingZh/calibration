@@ -1,0 +1,24 @@
+{
+  "files": [
+    {
+      "path": "docs/archive/ao-guidance-before-v0.12.12/ao-guide.txt",
+      "sha256": "28fba935e57c7226908f23f702c753c87ab3faed5913a30c039bd9b477bba715"
+    },
+    {
+      "path": "docs/archive/ao-guidance-before-v0.12.12/global-agents.txt",
+      "sha256": "66a2feac6f280887282a857abf3fff844b7b8f3efa71c60fe825f14ffa1176c0"
+    },
+    {
+      "path": "docs/archive/ao-guidance-before-v0.12.12/harness.txt",
+      "sha256": "586b0a8fb94356d47f9d9ef71232e585b85d7d7d8945aebd9646e50b63719937"
+    },
+    {
+      "path": "docs/archive/ao-guidance-before-v0.12.12/repository-agents.txt",
+      "sha256": "6a6ef00554544d844594f42317158fcfb48c039b2e4a961cc9120001316cd5ed"
+    },
+    {
+      "path": "docs/implementation-plans/20260731-v2.1-portable-orchestrator-containment-implementation-plan.md",
+      "sha256": "dc285c1321cdbba9d006fd208417b81536daadbf225a485d7d67e58550475ed5"
+    }
+  ]
+}
