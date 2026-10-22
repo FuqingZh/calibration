@@ -7,13 +7,21 @@ from pathlib import Path
 from scripts.validate_skills import _installer_skills, discover_skills
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
-ARCHIVED_NAMES = {"coding-protocol", "writing-great-skills", "writing-plans"}
+ARCHIVED_NAMES = {
+    "brainstorming",
+    "coding-protocol",
+    "writing-great-skills",
+    "writing-plans",
+}
 
 
 def test_archived_sources_preserve_exact_bytes_and_stay_out_of_runtime() -> None:
     archive = REPOSITORY_ROOT / "thirdparty/archive"
-    manifest = json.loads((archive / "manifest.json").read_text(encoding="utf-8"))
-    records = manifest["files"]
+    records = [
+        row
+        for name in ("manifest.json", "brainstorming-manifest.json")
+        for row in json.loads((archive / name).read_text(encoding="utf-8"))["files"]
+    ]
     assert {Path(row["archived_path"]).parts[2] for row in records} == ARCHIVED_NAMES
     expected_paths: set[Path] = set()
     for row in records:
