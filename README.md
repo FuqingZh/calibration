@@ -85,6 +85,11 @@ By default, the installer also installs global instructions:
 - **`--skills-only`:** leaves global instructions untouched, including any
   previously installed calibration block.
 
+The shared global template owns always-loaded communication preferences,
+instruction applicability, and bounded implementation autonomy. These defaults
+apply independently of calibration skill activation; `--skills-only` does not
+install or refresh them.
+
 All selected destinations are checked before writes. Existing conflicting
 skill paths are rejected unless `--force` is supplied; that option can remove
 existing files or directories, so inspect `--dry-run --force` first. A filesystem

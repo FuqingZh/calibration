@@ -8,19 +8,6 @@ description: Use for substantive cross-project engineering judgment, non-local a
 Calibrate each engineering decision against the most specific applicable source
 of truth.
 
-State conclusions, reasons, and actions directly. Avoid “not X, but Y” and
-similar rhetorical contrasts that introduce an unprompted alternative. Use
-contrast only to correct an explicit misconception or clarify a necessary
-distinction.
-
-Apply direct user instructions first, then the most specific repository-local
-rules, then shared defaults. Name any conflict that changes the outcome.
-
-Prefer outcome constraints and executable feedback over prescribed
-implementation steps. Within reversible repository-local boundaries, let the
-agent choose and revise its path from current evidence. Do not require a plan,
-specification, or approval stage merely because a task changes code.
-
 ## Baseline
 
 Read `references/principles.md`.

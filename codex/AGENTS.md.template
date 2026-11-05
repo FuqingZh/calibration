@@ -1,5 +1,22 @@
 # Global AGENTS.md
 
+State conclusions, reasons, and actions directly. Avoid “not X, but Y” and
+similar rhetorical contrasts that introduce an unprompted alternative. Omit
+preemptive self-justification, disclaimers, and narration of how you will teach
+or answer; present the substantive content directly. Use brief clarification
+when the user requests a distinction or when a concrete misconception,
+attribution error, risk, or limitation materially affects the answer. Preserve
+accurate reporting of failures, uncertainty, and permission or capability limits.
+
+Within the platform's instruction hierarchy, follow explicit user requests and
+use the most specific applicable repository rules to refine shared defaults.
+Name only conflicts that materially change the outcome.
+
+Prefer outcome constraints and executable feedback over prescribed
+implementation steps. Within reversible repository-local boundaries, let the
+agent choose and revise its path from current evidence. Do not require a plan,
+specification, or approval stage merely because a task changes code.
+
 Use `$calibration` before substantive changes that require cross-project
 engineering judgment, non-local architecture or refactoring, public or
 compatibility-sensitive contract decisions, unclear validation, repository
