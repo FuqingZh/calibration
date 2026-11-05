@@ -600,7 +600,17 @@ def test_calibration_defaults_to_outcome_autonomy() -> None:
     assert "## Outcome Autonomy And Feedback" in principles
     assert "Treat plans as working hypotheses" in principles
     assert "Select validation proportionally" in principles
-    assert "Prefer outcome constraints and executable feedback" in skill
+    promoted_defaults = (
+        "State conclusions, reasons, and actions directly",
+        "Within the platform's instruction hierarchy",
+        "Prefer outcome constraints and executable feedback",
+    )
+    for default in promoted_defaults:
+        assert default in agents_contract
+        assert default not in skill
+    assert "preemptive self-justification, disclaimers" in agents_contract
+    assert "permission or capability limits" in agents_contract
+    assert "Within reversible repository-local boundaries" in agents_contract
     assert "work directly from those sources" in agents_template
     assert "repository-owned validation entrypoint" in agents_contract
     assert "select validation proportionally" in agents_contract
