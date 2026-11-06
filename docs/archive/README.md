@@ -20,8 +20,8 @@ installer compatibility, provenance, and evaluation-result checks remain active.
 ## Retired Pipeline Conventions
 
 The [pipeline convention archive](pipeline-conventions/README.md) preserves the
-former schema/header naming, artifact prefixes, directory layout, and stage
-handoff rules. Current guidance defers these choices to repository and consumer
+former schema/header naming, artifact prefixes, identifier encoding, directory
+layout, and stage handoff rules. Current guidance defers these choices to repository and consumer
 contracts; the historical rules do not apply to new work by default.
 
 ## Completed Plans And Superseded Protocols

@@ -47,3 +47,18 @@ def test_remaining_specialized_contracts_are_still_routed() -> None:
     for name in ("cli", "version", "schema", "artifact"):
         assert f"]({name}.md)" in guide
         assert (NAMING / f"{name}.md").is_file()
+
+
+def test_version_sources_keep_policy_and_publication_boundaries() -> None:
+    guide = " ".join((NAMING / "version.md").read_text(encoding="utf-8").split())
+    for source in (
+        "https://semver.org/spec/v2.0.0.html",
+        "https://packaging.python.org/en/latest/discussions/versioning/",
+        "https://packaging.python.org/en/latest/discussions/single-source-version/",
+    ):
+        assert f"]({source})" in guide
+    assert "Identify the versioned unit" in guide
+    assert "repository's declared versioning and release policy" in guide
+    assert "Preserve the existing release contract" in guide
+    assert "does not authorize publication or prove deployment" in guide
+    assert "../discipline/verification.md" in guide

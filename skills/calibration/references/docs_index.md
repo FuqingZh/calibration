@@ -9,9 +9,8 @@ may be loaded selectively when the task requires more detail.
 - Load a specific document only when the current task materially depends on its
   rules.
 - Prefer `principles.md` and `naming/README.md` unless the task is specifically about
-  identifiers, document-type selection,
-  project documentation architecture, engineering traces, retrospectives, or
-  main-path readability.
+  document-type selection, project documentation architecture, engineering traces,
+  retrospectives, or main-path readability.
 
 ## Technology
 
@@ -42,8 +41,6 @@ may be loaded selectively when the task requires more detail.
 - `naming/schema.md` and `naming/artifact.md`
   - Use for locating repository-owned field and artifact contracts; follow the
     applicable protocol or workflow engine instead of a cross-project layout.
-- `docs/schema/identifier/20260304-v1.1.md`
-  - Use for reversible technical identifiers and cross-module join keys.
 
 ## Selection Rule
 
