@@ -17,6 +17,13 @@ older AO rule files and the CAL-1 plan byte for byte. These integrity checks
 replace historical wording assertions; runtime isolation, ownership rules,
 installer compatibility, provenance, and evaluation-result checks remain active.
 
+## Retired Pipeline Conventions
+
+The [pipeline convention archive](pipeline-conventions/README.md) preserves the
+former schema/header naming, artifact prefixes, directory layout, and stage
+handoff rules. Current guidance defers these choices to repository and consumer
+contracts; the historical rules do not apply to new work by default.
+
 ## Completed Plans And Superseded Protocols
 
 | Record | Lifecycle and current source |

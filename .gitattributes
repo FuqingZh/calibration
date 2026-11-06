@@ -1,2 +1,4 @@
 docs/runbooks/patches/*.patch -whitespace
 evaluations/teach-adaptation/v2/runs/** -whitespace
+# Frozen snapshot: preserve original Markdown hard breaks; archive tests pin its hash.
+docs/archive/pipeline-conventions/step-to-step-artifact-flow.md whitespace=-blank-at-eol

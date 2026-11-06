@@ -1,10 +1,9 @@
-# Schema and Header Naming
+# Schema And Header Contracts
 
-Use these rules for public-facing schema fields and exported headers.
+Follow the target protocol, data format, and consumer's existing schema for
+field names and exported headers. Repository-owned contracts define any casing
+or abbreviation conventions and internal-to-external mappings.
 
-| Context | Rule | Example |
-| --- | --- | --- |
-| Exported headers | use PascalCase | `SampleId`, `PtmFdr` |
-| Standalone abbreviation token | use ALLCAPS | `ID`, `PTM`, `FDR` |
-| Abbreviation inside a multi-token header | use PascalCase abbreviation segment | `SampleId`, `PtmFdr` |
-| Internal storage | snake_case is acceptable internally; expose PascalCase through views, aliases, or export adapters | `sample_id` -> `SampleId` |
+Treat changes to published fields as compatibility changes; preserve mappings
+at explicit adapters and verify them against consumers. Use
+[verification discipline](../discipline/verification.md) for acceptance evidence.
