@@ -145,10 +145,6 @@ validation requirements.
   improvement proposals. Include the client version, command, and relevant
   sanitized output when reporting installation problems.
 
-Optional GitHub integrations `github:gh-address-comments` and `github:gh-fix-ci`
-are not vendored or managed by this installer. Use them when available for
-ordinary PR feedback and CI diagnosis; otherwise use native platform tooling.
-
 Behavioral prompts and evaluations support bounded conclusions under their
 recorded conditions. Skill discovery and passing static checks do not establish
 equal behavior across clients or a general improvement in model performance.
