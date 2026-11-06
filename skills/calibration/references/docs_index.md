@@ -27,9 +27,9 @@ may be loaded selectively when the task requires more detail.
   - Do not use it for PR body generation unless the user asks how PR summaries
     relate to durable project docs.
 - `docs/workflow/branch_and_pr_collaboration/20260602-v1.0.md`
-  - Use when defining, reviewing, or applying branch naming, PR branch flow,
-    protected main policy, staging/test branch usage, merge policy, auto-merge,
-    merge queue, or CI/CD-driven merge rules.
+  - Official GitHub sources for collaboration flow, branch protection, and merge
+    queues. Use when a decision depends on those platform behaviors; repository
+    rules own release and deployment exceptions.
 - `docs/workflow/project_docs_architecture/20260805-v1.1-project-docs-architecture.md`
   - Use when defining project `docs/` layout, documentation file names,
     README navigation, document lifecycle, and long-lived knowledge placement.
