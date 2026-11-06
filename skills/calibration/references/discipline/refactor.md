@@ -15,8 +15,8 @@ cleanup, or staged convergence work.
 - After moving code, clean the transition debt in the same batch when practical:
   broad imports, unused exports, duplicate helpers, compatibility aliases,
   suppression comments, temporary names, and dead routes.
-- Do not leave lint suppressions such as unused-import ignores as a substitute
-  for resolving the actual import surface.
+- Apply the [diagnostic suppression baseline](harness.md#diagnostic-suppression-baseline)
+  when resolving checker findings during the move.
 - Search for old paths, names, call sites, docs, tests, fixtures, and generated
   references before claiming convergence.
 - Keep tests aligned with the intended preserved behavior. Add or update tests
@@ -32,5 +32,7 @@ A refactor is complete only when:
 - temporary compatibility code is either removed or tracked with an explicit
   retirement condition
 - imports, exports, and suppressions reflect real current usage
-- relevant tests or smoke checks pass, or the unrun checks are explicitly named
-  with the reason they were not run
+- preserved behavior is supported by checks that would detect a regression
+
+Apply [verification discipline](verification.md) for acceptance evidence,
+compatibility review, and reporting.

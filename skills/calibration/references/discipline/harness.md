@@ -173,57 +173,23 @@ Keep partial cleanup observable and retryable, and preserve dirty worktrees.
 
 ## Repository Delivery Feedback Loop
 
-Delegation transfers execution, not responsibility for the requested outcome.
-The coordinator tracks progress, routes actionable blockers, and verifies final
-acceptance. A sent instruction, running worker, or intermediate success is not
-completion. Use existing task state to retain the goal, acceptance criteria,
-owner, outstanding work, and next observation; do not require another document.
+Delegation retains responsibility for the outcome. Use existing task and platform
+state to track the goal, acceptance criteria, owner, pending work, and next
+observation. Choose available tools for waiting and notification.
 
-Before ending foreground tracking of unfinished work, verify that a durable
-continuation mechanism has accepted responsibility for observing the work,
-resuming its owner, and delivering actionable or terminal notifications to a
-reachable recipient. Otherwise continue bounded observation and authorized
-follow-up, or report the exact tracking blocker when continuation is unavailable.
-Do not silently make the user responsible for asking again. This accountability
-does not require per-command supervision or a duplicate polling scheduler.
+Before ending foreground tracking, verify that a durable continuation mechanism
+has accepted responsibility for observing the work, resuming its owner, and
+notifying a reachable recipient. Saved task state or PR submission alone does
+not establish that handoff. Otherwise continue bounded observation and authorized
+follow-up, or report the exact blocker while keeping pending work explicit.
 
-When a repository change is intended to land through a pull request:
-
-Tool access does not grant write or scope authority or replace the current owner.
-
-1. Discover the repository-owned setup, validation, and delivery commands,
-   together with the current CI and review feedback surfaces.
-2. Use existing platform defaults and automatic setup before adding custom
-   configuration.
-3. Classify an observed setup, validation, review, or environment failure
-   before changing the harness. When an existing check correctly identifies an
-   implementation defect, fix the product code; the feedback capability is
-   already working. Do not preconfigure every repository.
-4. Only treat the failure as a missing capability when the repository cannot
-   reliably discover, execute, decide, or observe what delivery requires. Then
-   place the smallest fix with its durable owner: a repository command or
-   script, a mechanical test or CI check, a useful repository-specific
-   `AGENTS.md` increment, or the external platform that owns the capability.
-5. Prefer one repository-owned entrypoint that local agents, CI, cloud
-   environments, and developers can reuse.
-6. Hand the pull request to mechanical validation and platform-native agent
-   review. After remote readback confirms acceptance of the current commit and
-   the continuation handoff above is verified, return control with the durable
-   PR state and outstanding work instead of keeping a foreground conversation
-   open for expected remote waits. PR submission alone is not that handoff.
-7. Continue asynchronous CI, review, and deployment waits through the owning
-   platform or an already accepted event-driven continuation orchestrator.
-   Use a background or scheduled task only when that control plane can observe
-   the work and resume its owner; do not substitute an unreachable scheduler
-   for server-side continuation. Wake the foreground only for actionable
-   feedback, a terminal result, or a decision requiring human authority;
-   keep pending work explicit rather than claiming completion.
-8. Address mechanical feedback in a bounded background iteration and repeat
-   until the declared checks pass. Escalate product intent, tradeoffs, risk, and
-   irreversible actions rather than making the user babysit routine polling.
-9. Verify external state after changing it. If the current surface cannot
-   observe or modify an external control plane, report the exact authorization
-   or configuration action without claiming completion.
+For pull-request delivery, use repository-owned checks and platform review on
+the current commit. Classify failures before changing the harness: fix product
+defects when existing checks correctly detect them; add capability only for an
+observed execution or feedback gap. Tool access does not grant write or scope
+authority or replace the current owner. Follow
+[verification](verification.md) for acceptance evidence and external readback;
+report unavailable external access and the action needed to restore it.
 
 For review convergence, continue mechanical feedback within the current
 explicitly declared and authorized pull request contract through the existing
@@ -264,13 +230,8 @@ support it. Put only repository-specific review guidance in the closest useful
 `AGENTS.md`; do not assume that global local instructions are available in
 cloud execution.
 
-Adopt a recurring pull-request babysitter or failure-classification task only
-after the operation is genuinely recurring. A foreground conversation that
-repeatedly polls CI or review queues, or repeatedly reopens after mechanical
-feedback, is evidence of that recurrence. Prefer one shared task covering
-selected repositories over duplicated per-repository tasks, and keep schedule
-state in the platform control plane rather than representing it as repository
-state.
+Add recurring monitoring only for demonstrated recurring work. Keep scheduling
+in the platform control plane and use the continuation handoff above.
 
 ## Harness Proportionality
 

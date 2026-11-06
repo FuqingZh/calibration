@@ -1,46 +1,19 @@
-# Version Naming And Compatibility
+# Version Sources And Release Contracts
 
-Use for version identifiers, release increments, and the compatibility meaning
-of a version. Follow the repository's declared policy and the target ecosystem's
-syntax. For SemVer projects, follow [SemVer 2.0.0](https://semver.org/spec/v2.0.0.html).
-A calendar-based policy may be appropriate; do not infer compatibility from
-its date fields. [PyPA's versioning guide](https://packaging.python.org/en/latest/discussions/versioning/)
-illustrates the distinction between version syntax and versioning policy.
+Identify the versioned unit and the repository's declared versioning and release
+policy. Consult the relevant source rather than inferring compatibility from a
+version string or imposing one scheme across ecosystems:
 
-Local additions:
+- [SemVer 2.0.0](https://semver.org/spec/v2.0.0.html) for projects adopting SemVer.
+- [PyPA versioning](https://packaging.python.org/en/latest/discussions/versioning/)
+  for Python version syntax, scheme choices, and ecosystem behavior.
+- [PyPA single-source guidance](https://packaging.python.org/en/latest/discussions/single-source-version/)
+  for Python version-source integration. Use the native build and release tools
+  for other ecosystems.
 
-- Identify the versioned unit and its public contract: package, application,
-  API, schema, or dataset. Follow its independent or coordinated release policy;
-  a shared repository does not by itself require a shared version.
-- Assess consumer-visible changes since the preceding release on the target
-  release line. Select the increment for the complete release, including
-  deprecations and incompatible changes, rather than from the latest commit
-  alone. Follow configured commit-based automation and check that its proposed
-  increment matches the actual compatibility impact.
-- Include documented CLI behavior, configuration, schemas, outputs, and support
-  requirements in the compatibility assessment. Use the ecosystem's guidance
-  and repository support policy to classify changes; a small diff or a bug-fix
-  label does not establish compatibility. When impact is uncertain, identify
-  affected consumers and the evidence needed before claiming a compatible bump.
-- For `0.x` and prereleases, follow explicit repository policy and dependency
-  resolver semantics. Do not treat an unstable version as permission to ignore
-  consumer migration needs or as a guarantee of compatibility.
-- Keep one authoritative version source per release unit, whether a manifest,
-  VCS tag, or build configuration. Derive other representations or check their
-  consistency mechanically, following the repository's declared mapping.
-  See [PyPA's single-source guidance](https://packaging.python.org/en/latest/discussions/single-source-version/).
-- Use native tooling for version parsing, ordering, and prerelease spelling.
-  Package versions, Git tags, and container tags may use different spellings;
-  preserve their mapping instead of forcing identical strings.
-- Keep published version identities and release artifacts immutable. Publish
-  corrections under a new version; do not repoint a released version tag or
-  overwrite an artifact. Distinguish moving channel aliases such as `latest`
-  from immutable version identifiers.
-- Record consumer-visible changes and migration guidance in the repository's
-  release-note mechanism, especially for deprecations, removals, and incompatible
-  changes. Version bumps and release timing follow repository policy; a commit
-  or pull request alone does not require a new release.
+Keep repository-specific version sources, tag mappings, release automation, and
+migration commitments in the owning repository. Preserve the existing release
+contract when changing them; use native tooling for parsing and ordering.
 
-Version selection does not authorize publication or prove deployment. Use
-[verification](../discipline/verification.md) for release completion claims;
-keep release commands, credentials, and deployment steps in the owning repository.
+Version selection does not authorize publication or prove deployment. Follow
+[verification discipline](../discipline/verification.md) for release completion.

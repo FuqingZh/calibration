@@ -615,7 +615,10 @@ def test_calibration_defaults_to_outcome_autonomy() -> None:
     assert "repository-owned validation entrypoint" in agents_contract
     assert "select validation proportionally" in agents_contract
     assert "smallest relevant checks" in agents_contract
-    assert "repository-local policy explicitly requires it" in agents_contract
+    assert (
+        "Broaden for required repository policy or uncovered obligations"
+        in agents_contract
+    )
     assert "complete canonical gate before delivery" not in agents_contract
     assert "authoritative host context" in agents_contract
 
@@ -684,9 +687,12 @@ def test_diagnostic_suppression_policy_preserves_first_party_contracts() -> None
     assert "Do not silence or weaken required diagnostics for first-party code" in (
         template
     )
-    assert "typed adapter, stub, wrapper, or repository-owned exclusion" in template
-    assert "source-level suppression only when no such boundary" in template
-    assert "blanket and file-, module-, or project-wide weakening" in template
+    assert "Before introducing a suppression or exclusion" in template
+    assert "references/discipline/harness.md" in template
+    assert "typed adapter" not in template
+    assert "adapter, stub, wrapper" in harness
+    assert "Use a source-level suppression only when no such boundary" in harness
+    assert "Blanket and file-, module-, or project-wide weakening" in harness
     assert "Classify a diagnostic by the owner" in harness
     assert "Do not hide a first-party failure on the same line" in harness
     assert "prevent unexplained growth" in harness
@@ -697,25 +703,66 @@ def test_delivery_loop_classifies_failures_before_harness_changes() -> None:
         REPOSITORY_ROOT / "skills/calibration/references/discipline/harness.md"
     ).read_text(encoding="utf-8")
 
-    assert "before changing the harness" in harness
-    assert "implementation defect, fix the product code" in harness
-    assert "Only treat the failure as a missing capability" in harness
+    harness = " ".join(harness.split())
+    assert "Classify failures before changing the harness" in harness
+    assert "fix product defects when existing checks correctly detect them" in harness
+    assert "add capability only for an observed execution or feedback gap" in harness
 
 
-def test_delivery_loop_hands_remote_waits_to_background() -> None:
+def test_delivery_loop_requires_observable_continuation_handoff() -> None:
     harness = (
         REPOSITORY_ROOT / "skills/calibration/references/discipline/harness.md"
     ).read_text(encoding="utf-8")
 
     harness = " ".join(harness.split())
 
-    assert "the continuation handoff above is verified" in harness
-    assert "PR submission alone is not that handoff" in harness
+    assert "Before ending foreground tracking" in harness
     assert "a durable continuation mechanism has accepted responsibility" in harness
-    assert "Otherwise continue bounded observation and authorized" in harness
-    assert "return control with the durable PR state" in harness
-    assert "foreground conversation that repeatedly polls" in harness
-    assert "keep pending work explicit" in harness
+    assert "observing the work, resuming its owner" in harness
+    assert "notifying a reachable recipient" in harness
+    assert (
+        "Saved task state or PR submission alone does not establish that handoff"
+        in harness
+    )
+    assert "Otherwise continue bounded observation and authorized follow-up" in harness
+    assert "report the exact blocker while keeping pending work explicit" in harness
+    assert "review on the current commit" in harness
+    assert "[verification](verification.md)" in harness
+    assert "Keep scheduling in the platform control plane" in harness
+
+
+def test_completion_guidance_routes_to_shared_verification() -> None:
+    root = REPOSITORY_ROOT / "skills/calibration"
+    verification = " ".join(
+        (root / "references/discipline/verification.md").read_text().split()
+    )
+    for obligation in (
+        "completion claim and affected seam",
+        "repository-owned validation entrypoint",
+        "repository-local policy explicitly requires it",
+        "leaves an obligation uncovered",
+        "Read back external writes",
+        "For checks not run",
+        "do not invent a prior failure",
+        "compatibility, tests, and documentation impact",
+    ):
+        assert obligation in verification
+
+    for path in (
+        "SKILL.md",
+        "references/principles.md",
+        "references/discipline/debugging.md",
+        "references/discipline/refactor.md",
+        "references/discipline/harness.md",
+        "references/design/codebase.md",
+    ):
+        assert "verification.md)" in (root / path).read_text()
+
+    debugging = (root / "references/discipline/debugging.md").read_text()
+    refactor = (root / "references/discipline/refactor.md").read_text()
+    assert "original symptom under the same triggering conditions" in debugging
+    assert "checks that would detect a regression" in refactor
+    assert "harness.md#diagnostic-suppression-baseline" in refactor
 
 
 def test_evaluation_reserves_broad_ab_for_important_claims() -> None:

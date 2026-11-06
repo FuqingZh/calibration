@@ -42,6 +42,6 @@ worth carrying forward.
 
 ## Completion
 
-Complete only when the selected rules have been applied and every affected
-public or cross-boundary contract has an explicit compatibility, verification,
-and documentation decision supported by fresh evidence.
+Apply the selected rules and
+[verification discipline](references/discipline/verification.md) before claiming
+completion.

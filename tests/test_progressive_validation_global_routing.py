@@ -9,27 +9,34 @@ def _compact(relative_path: str) -> str:
     )
 
 
-def test_global_fallback_selects_validation_from_claim_and_affected_seam() -> None:
+def test_global_fallback_keeps_bounded_validation_and_routes_details() -> None:
     template = _compact("codex/AGENTS.md.template")
 
-    assert "completion claim and affected seam" in template
-    assert (
-        "smallest relevant checks using a repository-owned validation entrypoint"
-        in template
+    assert "select validation proportionally" in template
+    assert "smallest relevant checks at a repository-owned validation entrypoint" in (
+        template
     )
-    assert "repository-local policy explicitly requires it" in template
-    assert "narrower evidence leaves an obligation uncovered" in template
-    assert "unchecked boundary" in template
+    assert "Broaden for required repository policy or uncovered obligations" in template
+    assert "Report evidence, unchecked boundaries, and residual risk" in template
+    assert "verification reference for completion details" in template
     assert "complete canonical gate when the change can affect runtime" not in template
 
 
-def test_shared_principle_keeps_broadening_bounded_and_reported() -> None:
+def test_shared_principle_routes_to_complete_verification_contract() -> None:
     principles = _compact("skills/calibration/references/principles.md")
+    verification = _compact("skills/calibration/references/discipline/verification.md")
 
-    assert "completion claim and affected seam" in principles
-    assert "smallest repository-owned check that can falsify the claim" in principles
-    assert "explicit repository-local mandate or an uncovered obligation" in principles
-    assert "unchecked boundaries and residual risk" in principles
+    assert "[verification discipline](discipline/verification.md)" in principles
+    assert "completion claim and affected seam" in verification
+    assert "repository-owned validation entrypoint that can falsify the claim" in (
+        verification
+    )
+    assert "repository-local policy explicitly requires it" in verification
+    assert "evidence leaves an obligation uncovered" in verification
+    assert "For checks not run, state the exact command or evidence path" in (
+        verification
+    )
+    assert "why it was skipped, and the remaining risk" in verification
 
 
 def test_calibration_excludes_ordinary_prose_but_keeps_contract_documentation() -> None:

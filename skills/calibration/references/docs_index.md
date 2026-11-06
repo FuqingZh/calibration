@@ -9,9 +9,8 @@ may be loaded selectively when the task requires more detail.
 - Load a specific document only when the current task materially depends on its
   rules.
 - Prefer `principles.md` and `naming/README.md` unless the task is specifically about
-  pipeline layout, artifact contracts, identifiers, document-type selection,
-  project documentation architecture, engineering traces, retrospectives, or
-  main-path readability.
+  document-type selection, project documentation architecture, engineering traces,
+  retrospectives, or main-path readability.
 
 ## Technology
 
@@ -27,9 +26,9 @@ may be loaded selectively when the task requires more detail.
   - Do not use it for PR body generation unless the user asks how PR summaries
     relate to durable project docs.
 - `docs/workflow/branch_and_pr_collaboration/20260602-v1.0.md`
-  - Use when defining, reviewing, or applying branch naming, PR branch flow,
-    protected main policy, staging/test branch usage, merge policy, auto-merge,
-    merge queue, or CI/CD-driven merge rules.
+  - Official GitHub sources for collaboration flow, branch protection, and merge
+    queues. Use when a decision depends on those platform behaviors; repository
+    rules own release and deployment exceptions.
 - `docs/workflow/project_docs_architecture/20260805-v1.1-project-docs-architecture.md`
   - Use when defining project `docs/` layout, documentation file names,
     README navigation, document lifecycle, and long-lived knowledge placement.
@@ -39,13 +38,9 @@ may be loaded selectively when the task requires more detail.
 
 ## Schema
 
-- `docs/schema/pipeline_directory_layout_specification/20260304-v1.1.md`
-  - Use for step-based pipeline directory layout, stage root shape, and
-    manifest placement.
-- `docs/schema/step_to_step_artifact_flow_specification/20260304-v1.1.md`
-  - Use for public/private artifact boundaries and cross-stage handoff rules.
-- `docs/schema/identifier/20260304-v1.1.md`
-  - Use for reversible technical identifiers and cross-module join keys.
+- `naming/schema.md` and `naming/artifact.md`
+  - Use for locating repository-owned field and artifact contracts; follow the
+    applicable protocol or workflow engine instead of a cross-project layout.
 
 ## Selection Rule
 

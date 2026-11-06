@@ -26,21 +26,15 @@ For ordinary local implementation with clear repository rules and executable
 feedback, work directly from those sources without adding a calibration step.
 Load only the references routed for the current task.
 
-For repository changes, select validation proportionally: state the completion
-claim and affected seam, then run the smallest relevant checks using a
-repository-owned validation entrypoint where it can falsify that claim. Broaden
-only when repository-local policy explicitly requires it or the narrower
-evidence leaves an obligation uncovered. Prefer configured repository tools
-over a universal language checklist. Report every unchecked boundary,
-unavailable required check, and residual risk rather than silently skipping it.
+For repository changes, select validation proportionally using the smallest
+relevant checks at a repository-owned validation entrypoint. Broaden for required
+repository policy or uncovered obligations. Report evidence, unchecked boundaries,
+and residual risk; use calibration's verification reference for completion details.
 
-Do not silence or weaken required diagnostics for first-party code merely to
-pass a check; fix first-party code and interfaces. Contain external, generated,
-vendored, or checker gaps with a typed adapter, stub, wrapper, or
-repository-owned exclusion. Use a source-level suppression only when no such
-boundary can express a demonstrably valid contract, naming the exact diagnostic
-and evidence. Prohibit blanket and file-, module-, or project-wide weakening,
-and keep exceptions mechanically auditable.
+Do not silence or weaken required diagnostics for first-party code; fix the
+owning contract. Keep external or checker gaps at a narrow, auditable boundary.
+Before introducing a suppression or exclusion, use `$calibration` to apply the
+diagnostic suppression baseline in `references/discipline/harness.md`.
 
 When a diagnosis depends on host state outside the current sandbox or process
 context, treat sandbox-visible absence or mismatch as a hypothesis, not a host
