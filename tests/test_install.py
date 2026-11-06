@@ -807,3 +807,32 @@ def test_standard_install_is_idempotent(tmp_path: Path) -> None:
     assert second.returncode == 0, second.stderr
     assert "AGENTS.md already current" in second.stdout
     assert snapshot_tree(home) == before
+
+
+@pytest.mark.parametrize("agent", ["codex", "grok", "pi"])
+def test_installed_global_body_matches_rendered_template(
+    tmp_path: Path, agent: str
+) -> None:
+    home = tmp_path / agent
+    config = tmp_path / "config"
+    result = run_installer(
+        None,
+        "--agent",
+        agent,
+        f"--{agent}-home",
+        str(home),
+        env_updates={"XDG_CONFIG_HOME": str(config)},
+    )
+    assert result.returncode == 0, result.stderr
+    expected = (REPOSITORY_ROOT / "codex/AGENTS.md.template").read_text()
+    expected = expected.replace("{{CALIBRATION_ROOT}}", str(REPOSITORY_ROOT))
+    expected = expected.replace(
+        "{{HOST_AUTHORITY}}", str(config / "calibration/AGENTS.md")
+    )
+    installed = (home / "AGENTS.md").read_text()
+    if agent != "codex":
+        expected = expected.replace("$calibration", "calibration")
+        installed = installed.split("<!-- calibration:begin -->", 1)[1].split(
+            "<!-- calibration:end -->", 1
+        )[0]
+    assert installed.strip() == expected.strip()
