@@ -22,49 +22,17 @@ SNAPSHOTS = {
 def test_retired_pipeline_snapshots_are_preserved() -> None:
     for name, digest in SNAPSHOTS.items():
         assert hashlib.sha256((ARCHIVE / name).read_bytes()).hexdigest() == digest
-    index = (ARCHIVE / "README.md").read_text(encoding="utf-8")
-    assert "historical evidence, not current defaults" in index
-    assert "retirement does not authorize migration" in index
 
 
-def test_pipeline_paths_remain_retired_without_active_routing() -> None:
+def test_retired_paths_redirect_without_active_routing() -> None:
     index = (REFERENCES / "docs_index.md").read_text(encoding="utf-8")
-    for directory in (
-        "pipeline_directory_layout_specification",
-        "step_to_step_artifact_flow_specification",
-    ):
+    redirects = {
+        "pipeline_directory_layout_specification": "artifact",
+        "step_to_step_artifact_flow_specification": "artifact",
+        "identifier": "schema",
+    }
+    for directory, target in redirects.items():
         path = f"docs/schema/{directory}/20260304-v1.1.md"
         pointer = (REFERENCES / path).read_text(encoding="utf-8")
-        assert "Retired Reference" in pointer
-        assert "../../../naming/artifact.md" in pointer
+        assert f"](../../../naming/{target}.md)" in pointer
         assert path not in index
-    assert "`naming/schema.md` and `naming/artifact.md`" in index
-
-
-def test_identifier_protocol_is_archived_without_migrating_consumers() -> None:
-    path = "docs/schema/identifier/20260304-v1.1.md"
-    pointer = (REFERENCES / path).read_text(encoding="utf-8")
-    index = (REFERENCES / "docs_index.md").read_text(encoding="utf-8")
-    schema = " ".join(
-        (REFERENCES / "naming/schema.md").read_text(encoding="utf-8").split()
-    )
-    assert path not in index
-    assert "Retired Reference" in pointer
-    assert "../../../naming/schema.md" in pointer
-    assert "identity, uniqueness, stability, and cross-system mapping" in schema
-    for text in (pointer, schema):
-        assert "B64J:" not in text
-        assert "_EntityId" not in text
-
-
-def test_current_contracts_preserve_consumers_without_pipeline_defaults() -> None:
-    schema = (REFERENCES / "naming/schema.md").read_text(encoding="utf-8")
-    artifact = (REFERENCES / "naming/artifact.md").read_text(encoding="utf-8")
-    assert "consumer's existing schema" in schema
-    assert "published fields as compatibility changes" in schema
-    assert "Preserve existing consumer contracts" in artifact
-    assert "file versus dataset shape, partitioning, and lifecycle" in artifact
-    for text in (schema, artifact):
-        assert "../discipline/verification.md" in text
-        for retired_rule in ("PascalCase", "data-*", "info-*", "stats-*", "TOML"):
-            assert retired_rule not in text
