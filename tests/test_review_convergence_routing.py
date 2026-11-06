@@ -71,33 +71,36 @@ def test_calibration_prompts_cover_both_review_convergence_branches() -> None:
         assert phrase in reroute
 
 
-def test_focused_github_skills_own_ordinary_provider_mechanics() -> None:
-    skill = compact("skills/calibration/SKILL.md")
-    discipline = compact("skills/calibration/references/discipline/README.md")
+def test_delivery_guidance_is_tool_independent() -> None:
+    paths = (
+        "skills/calibration/SKILL.md",
+        "skills/calibration/references/discipline/README.md",
+        "skills/calibration/references/discipline/harness.md",
+        "codex/AGENTS.md.template",
+        "README.md",
+        "install.sh",
+    )
+    for path in paths:
+        surface = read(path)
+        assert "gh-address-comments" not in surface
+        assert "gh-fix-ci" not in surface
+
     harness = compact("skills/calibration/references/discipline/harness.md")
-    readme = compact("README.md")
-
-    for surface in (skill, discipline, harness, readme):
-        assert "github:gh-address-comments" in surface
-        assert "github:gh-fix-ci" in surface
-
-    assert "do not grant write or scope authority" in harness
-    assert "make their absence a harness gap" in harness
-    assert "not vendored or managed by this installer" in readme
-    assert "gh-address-comments" not in read("install.sh")
-    assert "gh-fix-ci" not in read("install.sh")
-    assert "/home/" not in skill
+    assert "Tool access does not grant write or scope authority" in harness
+    assert "or replace the current owner" in harness
     assert "/home/" not in harness
+    assert "/home/" not in read("skills/calibration/SKILL.md")
 
 
-def test_calibration_prompts_cover_focused_github_routing() -> None:
+def test_calibration_prompts_cover_tool_independent_delivery() -> None:
     prompts = json.loads(read("skills/calibration/test-prompts.json"))
     cases = {case["id"]: " ".join(case["expected"].split()) for case in prompts}
 
-    assert "github:gh-address-comments" in cases[30]
+    for case_id in (30, 31, 32, 33):
+        assert "github:gh-" not in cases[case_id]
     assert "不需要仅因普通 review mechanics 调用 calibration" in cases[30]
-    assert "github:gh-fix-ci" in cases[31]
-    assert "非 GitHub Actions provider 只报告其 URL" in cases[31]
+    assert "与失败表面相关的验证" in cases[31]
+    assert "实际工具能力" in cases[31]
     assert "不得静默安装 provider" in cases[32]
     assert "仅因 skill 缺失调用 calibration" in cases[32]
     assert "不授予写权限、转移 ownership 或创建第二 writer" in cases[33]
@@ -105,11 +108,7 @@ def test_calibration_prompts_cover_focused_github_routing() -> None:
 
 
 def test_installer_propagates_global_review_tripwire(tmp_path: Path) -> None:
-    expected = (
-        "Use focused installed skills for ordinary GitHub mechanics when their "
-        "triggers apply: `github:gh-address-comments` for actionable pull-request "
-        "feedback and `github:gh-fix-ci` for failing GitHub Actions checks"
-    )
+    expected = "Keep same-scope review feedback in the current owner loop."
     template = compact("codex/AGENTS.md.template")
     assert expected in template
     assert "and feedback state and invoke calibration" in template

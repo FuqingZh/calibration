@@ -30,13 +30,6 @@ Load only the routers required by the decisions at hand:
   `references/docs_index.md`
 - task-level retrospectives and retrospective persistence: `$retrospect`
 
-For ordinary GitHub mechanics, use focused installed skills when their triggers
-apply: `github:gh-address-comments` for actionable pull-request feedback and
-`github:gh-fix-ci` for failing GitHub Actions checks. If unavailable, use
-repository- or platform-native tooling. These optional skills provide mechanics;
-they do not grant write or scope authority, transfer ownership, or trigger
-calibration merely by being present or absent.
-
 For a completion claim involving a public or cross-boundary contract, always
 load `references/discipline/verification.md`.
 

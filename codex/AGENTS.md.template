@@ -64,11 +64,7 @@ another owner's sibling worktree or repeat rejected filesystem escalation.
 Transfer ownership only after verified write-authority revocation and runtime
 release; an idle owner or a terminated session alone is insufficient proof.
 
-Use focused installed skills for ordinary GitHub mechanics when their triggers
-apply: `github:gh-address-comments` for actionable pull-request feedback and
-`github:gh-fix-ci` for failing GitHub Actions checks; otherwise use repository-
-or platform-native tooling. These skills do not grant write or scope authority
-or transfer ownership. Keep same-scope feedback in the current owner loop.
+Keep same-scope review feedback in the current owner loop.
 If review crosses the authorized pull-request contract or the distinct
 review-convergence budget is exhausted, preserve branch, head, worktree, owner,
 and feedback state and invoke calibration. Transport, polling, and
