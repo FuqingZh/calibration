@@ -14,6 +14,7 @@ Use this index as a router. Read only the file needed for the current task.
 | Repeated agent stalls, missing repository capability, `AGENTS.md`, human escalation, or orchestration adoption | `harness.md` |
 | Repeated delivery failure, missing CI or review capability, cross-contract feedback, review-convergence exhaustion, or cloud execution failure | `harness.md` |
 | Repository quality-gate adoption, Python lint policy, or Ruff rule selection | `harness.md` |
+| Diagnostic suppression or exclusion decisions | `harness.md` (Diagnostic suppression baseline) |
 | Agent, skill, harness, or workflow quality comparison on representative tasks | `evaluation.md` |
 
 ## Scope

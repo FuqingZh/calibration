@@ -44,4 +44,6 @@ A design change is ready when:
 - the deletion test identifies what complexity or contract justifies keeping
   the abstraction; otherwise remove it
 - the main path is easier to audit, not merely more factored
-- compatibility, tests, and documentation impacts are known
+
+Apply [verification discipline](../discipline/verification.md) for compatibility,
+tests, documentation impacts, and completion evidence.

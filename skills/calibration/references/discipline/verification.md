@@ -3,6 +3,11 @@
 Use before completion claims for public or cross-boundary contracts,
 user-visible behavior, generated outputs, external writes, or deployments.
 
+- State the completion claim and affected seam, then run the smallest relevant
+  checks at a repository-owned validation entrypoint that can falsify the claim.
+  Broaden only when repository-local policy explicitly requires it or evidence
+  leaves an obligation uncovered. Prefer configured repository tools over a
+  universal language checklist.
 - Use current evidence for the final contract. Inspect generated outputs at
   their expected path and check relevant content; generator exit status alone
   does not establish the result.
@@ -14,13 +19,12 @@ user-visible behavior, generated outputs, external writes, or deployments.
 - Report what changed, what was verified, and the command, artifact, endpoint,
   or readback supporting the claim. For checks not run, state the exact command
   or evidence path, why it was skipped, and the remaining risk to the user.
-- Match evidence to each material claim. For a bug fix, show before and after
-  under the same triggering conditions, using available failure records or
-  execution results. For a behavior-preserving refactor, name the invariants
-  and the checks that establish they still hold. When before evidence is
-  unavailable, state the gap; do not invent a prior failure or imply an old
-  version was executed. Keep the original evidence accessible through a
-  reconstructable reference or an approved evidence location.
+- Match evidence to each material claim. Keep original evidence accessible
+  through a reconstructable reference or an approved evidence location. When
+  before evidence is unavailable, state the gap; do not invent a prior failure
+  or imply an old version was executed. Domain-specific criteria live in
+  [debugging](debugging.md), [refactoring](refactor.md), and
+  [design](../design/codebase.md).
 - Describe risk through the affected consumers or operations and any effects
   that would remain after reverting the code. Preserve compatibility and
   permission boundaries; a rollback claim does not authorize destructive
